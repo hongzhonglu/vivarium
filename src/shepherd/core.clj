@@ -73,7 +73,7 @@
 
 (defn boot
   [{:keys [kafka] :as config}]
-  (let [state (atom {:last-message {}})
+  (let [state (atom {:agents {}})
         {:keys [bus producer consumer]} (boot-kafka state kafka)]
     {:config config
      :bus bus
@@ -82,4 +82,4 @@
      :state state}))
 
 (defn execute-agent
-  [path ])
+  [path command options])
