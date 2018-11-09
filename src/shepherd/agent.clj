@@ -4,12 +4,11 @@
    [shepherd.process :as process]))
 
 (defn launch-agent
-  [agent-spec]
+  [spec dir]
   (process/launch
    ["python" "-m" "environment.boot"
-    "--id" (:agent-id agent-spec)
-    "--type" (:agent-type agent-spec)
-    "--config" (json/generate-string (:agent-config agent-spec))]))
+    "--id" (:id spec)
+    "--type" (:type spec)
+    "--config" (json/generate-string (:config spec))]
+   {:dir dir}))
 
-(defn add-agent
-  [shepherd kafka agent-spec])
