@@ -1,14 +1,17 @@
 (ns shepherd.agent
   (:require
    [cheshire.core :as json]
+   [taoensso.timbre :as log]
    [shepherd.process :as process]))
 
 (defn launch-agent
-  [spec dir]
-  (process/launch
-   ["python" "-m" "environment.boot"
-    "--id" (:id spec)
-    "--type" (:type spec)
-    "--config" (json/generate-string (:config spec))]
-   {:dir dir}))
+  [spec config]
+  (let [serial (json/generate-string (:config spec))]
+    (log/info serial)
+    (process/launch
+     ["python" "-u" "-m" (get config :boot "agent.boot")
+      "--id" (:id spec)
+      "--type" (:type spec)
+      "--config" serial]
+     config)))
 

@@ -1,5 +1,7 @@
 {:port 41114
- :dir "/Users/rspangler/Code/wcEcoli"
+ :launch
+ {:dir "/home/spanglry/Code/wcEcoli"
+  :boot "agent.boot"}
  :kafka
  {:host "localhost:9092"
   :group-id "shepherd"

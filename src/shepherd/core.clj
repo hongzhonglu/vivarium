@@ -8,13 +8,18 @@
 
 (defn add-agent
   [state message]
-  (log/info "add agent:" message)
+  (log/info "add agent:" message state)
   (let [record (select-keys message [:id :type :config])
-        born (agent/launch-agent message (:agent-dir state))
+        launch-config (get state :launch)
+        _ (log/info "launch config" launch-config)
+        born (agent/launch-agent message launch-config)
         record (assoc record :agent born)]
     (swap! (:agents state) assoc (:id record) record)
     (log/info "new agent" record)
-    (process/stream-out (:agent record))))
+    (process/stream-out (:agent record) :out)
+    (log/info "between")
+    (process/stream-out (:agent record) :err)
+    (log/info "after")))
 
 (defn handle-message
   [state topic message]
