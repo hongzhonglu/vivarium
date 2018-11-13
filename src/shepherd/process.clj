@@ -38,4 +38,4 @@
 
 (defn stream-out
   [process from]
-  (stream-to process from (System/out)))
+  (future (stream-to process from (System/out))))
