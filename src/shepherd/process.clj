@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [taoensso.timbre :as log]))
 
-(defn launch
+(defn launch!
   [command {:keys [dir env clear] :as config}]
   (let [builder (ProcessBuilder. (into-array String command))
         environment (.environment builder)]
@@ -20,9 +20,27 @@
        :err (.getErrorStream process)
        :process process})))
 
-(defn kill
+(defn alive?
+  [process]
+  (.isAlive (:process process)))
+
+(defn wait
+  ([process] (wait process 30))
+  ([process timeout]
+   (future
+     (.waitFor (:process process) 30 java.util.concurrent.TimeUnit/SECONDS))))
+
+(defn kill!
   [process]
   (.destroy (:process process)))
+
+(defn ensure-termination!
+  ([process] (ensure-termination! process 30))
+  ([process timeout]
+   (wait (:process process) timeout)
+   (when (alive? (:process process))
+     (log/info "process: had to kill" process)
+     (kill! (:process process)))))
 
 (defn stream-to
   ([process from to] (stream-to process from to {}))

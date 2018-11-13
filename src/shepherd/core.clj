@@ -9,9 +9,15 @@
   [state topic message]
   (condp = (:event message)
     "ADD_AGENT"
-    (agent/add-agent state message)
+    (agent/add-agent! state message)
     "REMOVE_AGENT"
-    (agent/remove-agent state message)))
+    (agent/remove-agent! state message)
+    "TRIGGER_ALL"
+    (agent/control-agents! state message)
+    "PAUSE_ALL"
+    (agent/control-agents! state message)
+    "SHUTDOWN_ALL"
+    (agent/control-agents! state message)))
 
 (defn boot
   [config]
