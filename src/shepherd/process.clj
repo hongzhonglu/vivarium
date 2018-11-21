@@ -37,10 +37,10 @@
 (defn ensure-termination!
   ([process] (ensure-termination! process 30))
   ([process timeout]
-   (wait (:process process) timeout)
-   (when (alive? (:process process))
+   (wait process timeout)
+   (when (alive? process)
      (log/info "process: had to kill" process)
-     (kill! (:process process)))))
+     (kill! process))))
 
 (defn stream-to
   ([process from to] (stream-to process from to {}))

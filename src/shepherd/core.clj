@@ -6,18 +6,18 @@
    [shepherd.agent :as agent]))
 
 (defn handle-message
-  [state topic message]
+  [state node nexus topic message]
   (condp = (:event message)
     "ADD_AGENT"
-    (agent/add-agent! state message)
+    (agent/add-agent! state node nexus message)
     "REMOVE_AGENT"
-    (agent/remove-agent! state message)
+    (agent/remove-agent! state node nexus message)
     "TRIGGER_ALL"
-    (agent/control-agents! state message)
+    (agent/control-agents! state node nexus "TRIGGER_AGENT" message)
     "PAUSE_ALL"
-    (agent/control-agents! state message)
+    (agent/control-agents! state node nexus "PAUSE_AGENT" message)
     "SHUTDOWN_ALL"
-    (agent/control-agents! state message)))
+    (agent/control-agents! state node nexus "SHUTDOWN_AGENT" message)))
 
 (defn boot
   [config]
