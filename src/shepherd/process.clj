@@ -27,8 +27,7 @@
 (defn wait
   ([process] (wait process 30))
   ([process timeout]
-   (future
-     (.waitFor (:process process) 30 java.util.concurrent.TimeUnit/SECONDS))))
+   (.waitFor (:process process) 30 java.util.concurrent.TimeUnit/SECONDS)))
 
 (defn kill!
   [process]
