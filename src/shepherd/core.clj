@@ -2,7 +2,9 @@
   (:require
    [manifold.deferred :as defer]
    [taoensso.timbre :as log]
+   [cheshire.core :as json]
    [flow.core :as flow]
+   [shepherd.process :as process]
    [shepherd.agent :as agent]))
 
 (defn handle-message
@@ -19,10 +21,31 @@
     "SHUTDOWN_ALL"
     (agent/control-agents! state node nexus "SHUTDOWN_AGENT" message)))
 
+(defn view-agent
+  [agent]
+  (let [config (select-keys agent [:agent_id :agent_type :agent_config])
+        alive? (process/alive? (:agent agent))
+        view (assoc config :alive alive?)]
+    view))
+
+(defn status-handler
+  [state]
+  (fn [request]
+    (let [agents @(:agents state)
+          status (mapv view-agent (vals agents))]
+      {:status 200
+       :headers {"content-type" "application/json"}
+       :body (json/generate-string status)})))
+
+(defn shepherd-routes
+  [state]
+  [["/status" :status (#'status-handler state)]])
+
 (defn boot
   [config]
   (let [agents (atom {})
         state {:agents agents :config config}
+        state (assoc-in state [:config :routes] shepherd-routes)
         handle (partial handle-message state)
         config (assoc-in config [:kafka :handle-message] handle)
         flow (flow/boot config)]
