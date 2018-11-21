@@ -44,8 +44,8 @@
 (defn boot
   [config]
   (let [agents (atom {})
+        config (assoc config :routes shepherd-routes)
         state {:agents agents :config config}
-        state (assoc-in state [:config :routes] shepherd-routes)
         handle (partial handle-message state)
         config (assoc-in config [:kafka :handle-message] handle)
         flow (flow/boot config)]
