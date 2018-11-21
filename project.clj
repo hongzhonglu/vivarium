@@ -4,5 +4,5 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [orb/flow "0.0.2"]]
+                 [orb/flow "0.0.3"]]
   :main shepherd.core)

@@ -19,7 +19,7 @@
 
 (defn add-agent!
   [state node nexus message]
-  (log/info "add agent:" message state)
+  (log/info "add agent:" message)
   (let [record (select-keys message [:agent_id :agent_type :agent_config])
         launch-config (get-in state [:config :launch])
         _ (log/info "launch config" launch-config)
