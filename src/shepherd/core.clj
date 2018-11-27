@@ -3,7 +3,7 @@
    [manifold.deferred :as defer]
    [taoensso.timbre :as log]
    [cheshire.core :as json]
-   [flow.core :as flow]
+   [shepherd.message :as message]
    [shepherd.process :as process]
    [shepherd.agent :as agent]))
 
@@ -48,13 +48,13 @@
         state {:agents agents :config config}
         handle (partial handle-message state)
         config (assoc-in config [:kafka :handle-message] handle)
-        flow (flow/boot config)]
+        flow (message/boot config)]
     (assoc state :flow flow)))
 
 (defn -main
   [& args]
-  (let [config (flow/read-config "config/config.clj")
+  (let [config (message/read-config "config/config.clj")
         state (boot config)]
     (log/info "shepherd starting" (:port config))
     (log/info state)
-    (flow/start state)))
+    (message/start state)))

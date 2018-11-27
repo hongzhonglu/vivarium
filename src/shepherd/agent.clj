@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [taoensso.timbre :as log]
-   [flow.core :as flow]
+   [shepherd.message :as message]
    [shepherd.process :as process]))
 
 (defn launch-agent!
@@ -33,7 +33,7 @@
   [state node nexus id]
   (let [agent (get @(:agents state) id)
         topic (get-in state [:config :kafka :topics :agent-receive])]
-    (flow/send!
+    (message/send!
      nexus topic
      {:event "SHUTDOWN_AGENT"
       :agent_id id})
@@ -61,7 +61,7 @@
   [state node nexus event message]
   (let [topic (get-in state [:config :kafka :topics :agent-receive])]
     (doseq [[id agent] @(:agents state)]
-      (flow/send!
+      (message/send!
        nexus topic
        {:event event
         :agent_id id}))))
