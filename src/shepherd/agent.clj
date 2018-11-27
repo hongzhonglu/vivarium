@@ -17,10 +17,20 @@
       "--config" serial]
      config)))
 
+(defn ensure-kafka-config
+  [state message]
+  (if (get-in message [:agent_config :kafka_config])
+    message
+    (let [all-kafka (get-in state [:config :kafka])
+          kafka (select-keys all-kafka [:host :topics])
+          kafka (assoc kafka :subscribe [])]
+      (assoc-in message [:agent_config :kafka_config] kafka))))
+
 (defn add-agent!
   [state node nexus message]
   (log/info "add agent:" message)
   (let [record (select-keys message [:agent_id :agent_type :agent_config])
+        message (ensure-kafka-config state message)
         launch-config (get-in state [:config :launch])
         _ (log/info "launch config" launch-config)
         born (launch-agent! message launch-config)
@@ -32,7 +42,7 @@
 (defn shutdown-agent!
   [state node nexus id]
   (let [agent (get @(:agents state) id)
-        topic (get-in state [:config :kafka :topics :agent-receive])]
+        topic (get-in state [:config :kafka :topics :agent_receive])]
     (message/send!
      nexus topic
      {:event "SHUTDOWN_AGENT"
@@ -59,7 +69,7 @@
 
 (defn control-agents!
   [state node nexus event message]
-  (let [topic (get-in state [:config :kafka :topics :agent-receive])]
+  (let [topic (get-in state [:config :kafka :topics :agent_receive])]
     (doseq [[id agent] @(:agents state)]
       (message/send!
        nexus topic
