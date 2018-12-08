@@ -1,6 +1,6 @@
 {:port 41114
  :launch
- {:dir "/home/spanglry/Code/wcEcoli"
+ {:dir "../wcEcoli"
   :boot "environment.boot"}
  :kafka
  {:host "localhost:9092"
