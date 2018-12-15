@@ -28,7 +28,8 @@
 
 (defn add-agent!
   [state node nexus message]
-  (log/info "add agent:" message)
+  (log/info "add agent:" (dissoc message :blobs))
+  ; TODO(jerry): feed the first blob to the new agent
   (let [record (select-keys message [:agent_id :agent_type :agent_config])
         message (ensure-kafka-config state message)
         launch-config (get-in state [:config :launch])

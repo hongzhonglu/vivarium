@@ -14,7 +14,12 @@
    [taoensso.timbre :as log]
    [ring.middleware.params :as params]
    [ring.middleware.resource :as resource]
-   [ring.middleware.keyword-params :as keyword]))
+   [ring.middleware.keyword-params :as keyword])
+  (:import
+    iff.Chunk
+    iff.Writer
+    org.apache.kafka.common.serialization.ByteArrayDeserializer
+    org.apache.kafka.common.serialization.ByteArraySerializer))
 
 (def poll-interval Long/MAX_VALUE)
 (def non-numeric-factory
@@ -37,19 +42,72 @@
   [config]
   {:bootstrap.servers (:host config)})
 
+
+(defn byte-array-serializer
+  "Kafka's own byte[] serializer."
+  []
+  (ByteArraySerializer.))
+
+(defn byte-array-deserializer
+  "Kafka's own byte[] deserializer"
+  []
+  (ByteArrayDeserializer.))
+
+
+(defn write-chunk
+  [^String type ^"[B" body ^java.io.InputStream stream]
+  (.write (Writer. type body) stream false))
+
+(defn serialize-to-chunks
+  "Serialize an Agent message dict with optional :blobs list to a byte[] of chunks."
+  [dict]
+  (let [blobs (get dict :blobs [])
+        agent-msg (dissoc dict :blobs)
+        stream (java.io.ByteArrayOutputStream.)]
+    (write-chunk "JSON" (.getBytes (json/generate-string agent-msg)) stream)
+    (doseq [blob blobs] (write-chunk "BLOB" blob stream))
+    (.toByteArray stream)))
+
+(defn read-chunks
+  [^java.io.InputStream stream]
+  (loop [chunks (Chunk/readAll stream false)
+         agent-msg {}
+         blobs []]
+    (let [chunk (first chunks)]
+      (if chunk
+        (case (.-chunkType chunk)
+          "JSON"
+          (recur
+            (rest chunks)
+            (json/parse-string (String. (.-body chunk) "UTF-8") true)
+            blobs)
+          "BLOB"
+          (recur
+            (rest chunks)
+            agent-msg
+            (conj blobs (.-body chunk)))
+          )
+        (assoc agent-msg :blobs blobs)))))
+
+(defn deserialize-from-chunks
+  "Deserialize an Agent message map with :blobs list from a byte[] of chunks."
+  [bytes]
+  (read-chunks (java.io.ByteArrayInputStream. bytes)))
+
+
 (defn boot-producer
   [config]
   (kafka/producer
    (producer-config config)
    (kafka/keyword-serializer)
-   (kafka/json-serializer)))
+   (byte-array-serializer)))
 
 (defn send!
   [producer topic message]
   (kafka/send!
    producer
    {:topic topic
-    :value message}))
+    :value (serialize-to-chunks message)}))
 
 (defn consumer-config
   [config]
@@ -64,7 +122,7 @@
   (kafka/consumer
    (consumer-config config)
    (kafka/keyword-deserializer)
-   (kafka/json-deserializer)))
+   (byte-array-deserializer)))
 
 (defn handle-message
   [state bus producer handle record]
@@ -73,11 +131,13 @@
       (let [topics (last record)]
         (doseq [[topic messages] topics]
           (doseq [message messages]
-            (log/info topic ":" message)
-            (let [value {topic (:value message)}]
-              (handle bus producer topic (:value message))
-              (swap! state assoc :last-message value)
-              (bus/publish! bus topic (json/generate-string value)))))))
+            (let [payload (:value message)
+                  agent-msg (deserialize-from-chunks payload)
+                  msg {topic (dissoc agent-msg :blobs)}]
+              (log/info (get-in msg ["shepherd-receive" :event] "") msg)
+              (handle bus producer topic agent-msg)
+              (swap! state assoc :last-message msg)
+              (bus/publish! bus topic (json/generate-string msg)))))))
     (catch Exception e
       (log/error (.getMessage e))
       (.printStackTrace e))))

@@ -6,6 +6,10 @@ manage a flock of distributed agents
 
     > lein run
 
+Then you can open a web browser onto its web interface
+
+    http://localhost:41114/status
+
 ## License
 
 Copyright © 2018 Covert Lab
