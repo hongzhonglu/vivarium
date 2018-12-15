@@ -5,11 +5,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /** A simple chunk writer. */
-public class Writer {
+public class ChunkWriter {
     public final String chunkType;
     public final byte[] body;
 
-    public Writer(String chunkType, byte[] body) {
+    public ChunkWriter(String chunkType, byte[] body) {
         this.chunkType = chunkType;
         this.body = body;
     }
@@ -19,7 +19,7 @@ public class Writer {
     /** Write the chunk to the output stream. */
     public void write(OutputStream outputStream, boolean align) throws IOException {
         DataOutputStream output = new DataOutputStream(outputStream);
-        byte[] chunkTypeBytes = chunkType.getBytes(Chunk.ASCII);
+        byte[] chunkTypeBytes = chunkType.getBytes(ChunkReader.ASCII);
 
         output.write(chunkTypeBytes);
         output.writeInt(body.length);

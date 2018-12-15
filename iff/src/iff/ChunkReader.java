@@ -10,15 +10,13 @@ import java.util.List;
 
 /**
  * A simple chunk reader class to read the next IFF or IFF-like chunk from an
- * InputStream, similar to the Python Chunk library.
- *<p/>
- * NOTE: That library's skip()-to-end method should be private or folded into
- * its close() method.
+ * InputStream, similar to Python's Chunk library. [That library's skip()-to-end
+ * method should be private.]
  *<p/>
  * CAUTION: If a read method raises an IOException, the offset into the
  * underlying input stream will be unknown!
  */
-public class Chunk {
+public class ChunkReader {
     static final Charset ASCII = Charset.forName("US-ASCII");
 
     public final String chunkType;
@@ -29,15 +27,21 @@ public class Chunk {
     private int offset;
     private boolean closed;
 
-    /** Read the Chunks in inputStream into a List<Writer>. */
-    public static List<Writer> readAll(InputStream inputStream, boolean align) {
-        List<Writer> result = new ArrayList<>();
+    /**
+     * Read all the Chunks in inputStream into a List<ChunkWriter> (not to imply
+     * that the caller will write them; ChunkWriter is just a POJO to hold the
+     * contents).
+     */
+    public static List<ChunkWriter> readAll(
+            InputStream inputStream, boolean align) {
+        List<ChunkWriter> result = new ArrayList<>();
 
         while (true) {
             try {
-                Chunk reader = new Chunk(inputStream, align);
-                Writer transfer = new Writer(reader.getName(), reader.read());
-                result.add(transfer);
+                ChunkReader reader = new ChunkReader(inputStream, align);
+                ChunkWriter chunk =
+                        new ChunkWriter(reader.getName(), reader.read());
+                result.add(chunk);
             } catch (EOFException e) {
                 break;
             } catch (IOException e) {
@@ -50,7 +54,7 @@ public class Chunk {
     }
 
     /**
-     * Open a Chunk reader to read the next chunk from the given input stream.
+     * Open a ChunkReader to read the next chunk from the given input stream.
      * This supports network byte order (big-endian) chunkSize fields, per
      * EA-IFF 85.
      *
@@ -58,10 +62,11 @@ public class Chunk {
      * @param align whether to read past a chunk alignment pad byte. Pass true
      *              for EA-IFF 85, false for simpler files.
      *
-     * @throws EOFException where there isn't another chunk to read
+     * @throws EOFException when there isn't another chunk to read
      * @throws IOException on other I/O errors
      */
-    public Chunk(InputStream inputStream, boolean align) throws IOException {
+    public ChunkReader(InputStream inputStream, boolean align)
+            throws IOException {
         byte[] chunkTypeBytes = new byte[4];
 
         this.input = new DataInputStream(inputStream);
@@ -82,9 +87,9 @@ public class Chunk {
     }
 
     /**
-     * Close the Chunk, seeking the input stream to the next chunk (past the
-     * rest of this chunk body and any pad byte) so the caller can open the next
-     * Chunk.
+     * Close the ChunkReader, seeking the input stream to the next chunk (past
+     * the rest of this chunk body and any pad byte) so the caller can open the
+     * next ChunkReader. Idempotent.
      */
     public void close() throws IOException {
         if (!closed) {

@@ -16,8 +16,7 @@
    [ring.middleware.resource :as resource]
    [ring.middleware.keyword-params :as keyword])
   (:import
-    iff.Chunk
-    iff.Writer
+    [iff ChunkReader ChunkWriter]
     org.apache.kafka.common.serialization.ByteArrayDeserializer
     org.apache.kafka.common.serialization.ByteArraySerializer))
 
@@ -56,7 +55,7 @@
 
 (defn write-chunk
   [^String type ^"[B" body ^java.io.InputStream stream]
-  (.write (Writer. type body) stream false))
+  (.write (ChunkWriter. type body) stream false))
 
 (defn serialize-to-chunks
   "Serialize an Agent message dict with optional :blobs list to a byte[] of chunks."
@@ -70,7 +69,7 @@
 
 (defn read-chunks
   [^java.io.InputStream stream]
-  (loop [chunks (Chunk/readAll stream false)
+  (loop [chunks (ChunkReader/readAll stream false)
          agent-msg {}
          blobs []]
     (let [chunk (first chunks)]
@@ -79,7 +78,9 @@
           "JSON"
           (recur
             (rest chunks)
-            (json/parse-string (String. (.-body chunk) "UTF-8") true)
+            (if (empty? agent-msg)
+              (json/parse-string (String. (.-body chunk) "UTF-8") true)
+              agent-msg)
             blobs)
           "BLOB"
           (recur
@@ -142,18 +143,21 @@
       (log/error (.getMessage e))
       (.printStackTrace e))))
 
+(defn poll!
+  [consumer]
+  (try
+    (kafka/poll! consumer poll-interval)
+    (catch Exception e
+      (log/error (.getMessage e)))))
+
 (defn consume
   [consumer handle]
   (binding [factory/*json-factory* non-numeric-factory]
-    (loop [records
-           (try
-             (kafka/poll! consumer poll-interval)
-             (catch Exception e
-               (log/error (.getMessage e))))]
+    (loop [records (poll! consumer)]
       (when-not (empty? records)
         (doseq [record records]
           (handle record)))
-      (recur (kafka/poll! consumer poll-interval)))))
+      (recur (poll! consumer)))))
 
 (defn boot-kafka
   [state config]
