@@ -138,11 +138,14 @@
           (doseq [message messages]
             (let [payload (:value message)
                   agent-msg (deserialize-from-chunks payload)
-                  msg {topic (dissoc agent-msg :blobs)}]
-              (log/info (get-in msg ["shepherd-receive" :event] "") msg)
+                  num-blobs (count (:blobs agent-msg))
+                  blob-note (if (pos? num-blobs) (str "+ " num-blobs " BLOBs") "")
+                  msg (dissoc agent-msg :blobs)
+                  msg2 {topic msg}]
+              (log/info (:event msg "") msg2 blob-note)
               (handle bus producer topic agent-msg)
-              (swap! state assoc :last-message msg)
-              (bus/publish! bus topic (json/generate-string msg)))))))
+              (swap! state assoc :last-message msg2)
+              (bus/publish! bus topic (json/generate-string msg2)))))))
     (catch Exception e
       (log/error (.getMessage e))
       (.printStackTrace e))))
@@ -157,6 +160,7 @@
 (defn consume
   [consumer handle]
   (binding [factory/*json-factory* non-numeric-factory]
+    ; TODO(jerry): Revisit unpacking the poll! result.
     (loop [records (poll! consumer)]
       (when-not (empty? records)
         (doseq [record records]

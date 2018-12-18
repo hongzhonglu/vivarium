@@ -7,7 +7,7 @@
   [command {:keys [dir env clear] :as config}]
   (let [builder (ProcessBuilder. (into-array String command))
         environment (.environment builder)]
-    (log/info :launch command :dir dir)
+    (log/info "launch" command "dir" dir)
     (.redirectErrorStream builder true)
     (when dir
       (.directory builder (io/file dir)))

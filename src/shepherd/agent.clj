@@ -48,16 +48,15 @@
     (catch SecurityException e (log-exception e))))
 
 (defn blobs-to-temp-files!
-  "Move message's :blobs to temp :files in its :agent-config.
-  The filenames are positional args within the agent-config."
+  "Move message's :blobs to temp :files as positional args."
   [message]
   (if-let [blobs (:blobs message)]
     (let [files (mapv write-temp-blob! blobs)
           msg (dissoc message :blobs)]
       (if (pos? (count files))
         (assoc-in msg [:agent_config :files] files)
-        msg)))
-    message)
+        msg))
+    message))
 
 (defn add-agent!
   [state node nexus message]
