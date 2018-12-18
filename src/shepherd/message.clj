@@ -20,6 +20,8 @@
     org.apache.kafka.common.serialization.ByteArrayDeserializer
     org.apache.kafka.common.serialization.ByteArraySerializer))
 
+(set! *warn-on-reflection* true) ; DEBUG
+
 (def poll-interval Long/MAX_VALUE)
 (def non-numeric-factory
   (factory/make-json-factory {:allow-non-numeric-numbers true}))
@@ -53,8 +55,9 @@
   (ByteArrayDeserializer.))
 
 
-(defn write-chunk
-  [^String type ^"[B" body ^java.io.InputStream stream]
+(defn write-chunk!
+  "Write a chunk to a stream."
+  [^String type ^"[B" body ^java.io.OutputStream stream]
   (.write (ChunkWriter. type body) stream false))
 
 (defn serialize-to-chunks
@@ -63,17 +66,19 @@
   (let [blobs (get dict :blobs [])
         agent-msg (dissoc dict :blobs)
         stream (java.io.ByteArrayOutputStream.)]
-    (write-chunk "JSON" (.getBytes (json/generate-string agent-msg)) stream)
-    (doseq [blob blobs] (write-chunk "BLOB" blob stream))
+    (write-chunk! "JSON" (.getBytes (json/generate-string agent-msg)) stream)
+    (doseq [blob blobs] (write-chunk! "BLOB" blob stream))
     (.toByteArray stream)))
 
-(defn read-chunks
+(defn read-chunks!
+  "Read Agent message chunks from a stream to a message dict w/optional :blobs."
   [^java.io.InputStream stream]
   (loop [chunks (ChunkReader/readAll stream false)
          agent-msg {}
          blobs []]
-    (let [chunk (first chunks)]
-      (if chunk
+    (let [^ChunkWriter chunk (first chunks)]
+      (cond
+        chunk
         (case (.-chunkType chunk)
           "JSON"
           (recur
@@ -83,17 +88,16 @@
               agent-msg)
             blobs)
           "BLOB"
-          (recur
-            (rest chunks)
-            agent-msg
-            (conj blobs (.-body chunk)))
-          )
-        (assoc agent-msg :blobs blobs)))))
+          (recur (rest chunks) agent-msg (conj blobs (.-body chunk)))
+          (recur (rest chunks) agent-msg blobs))
+        (pos? (count blobs))
+        (assoc agent-msg :blobs blobs)
+        :else agent-msg))))
 
 (defn deserialize-from-chunks
   "Deserialize an Agent message map with :blobs list from a byte[] of chunks."
-  [bytes]
-  (read-chunks (java.io.ByteArrayInputStream. bytes)))
+  [^"[B" bytes]
+  (read-chunks! (java.io.ByteArrayInputStream. bytes)))
 
 
 (defn boot-producer

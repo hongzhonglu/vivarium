@@ -31,6 +31,8 @@ public class ChunkReader {
      * Read all the Chunks in inputStream into a List<ChunkWriter> (not to imply
      * that the caller will write them; ChunkWriter is just a POJO to hold the
      * contents).
+     *<p/>
+     * TODO(jerry): An Iterator would be smarter than a List.
      */
     public static List<ChunkWriter> readAll(
             InputStream inputStream, boolean align) {
