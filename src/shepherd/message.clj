@@ -61,19 +61,21 @@
   (.write (ChunkWriter. type body) stream false))
 
 (defn serialize-to-chunks
-  "Serialize an Agent message dict with optional :blobs list to a byte[] of chunks."
-  [dict]
-  (let [blobs (get dict :blobs [])
-        agent-msg (dissoc dict :blobs)
+  "Serialize an Agent message map with an optional :blobs list to a Kafka
+  message payload in chunk format."
+  [agent-message]
+  (let [blobs (get agent-message :blobs [])
+        agent-msg (dissoc agent-message :blobs)
         stream (java.io.ByteArrayOutputStream.)]
     (write-chunk! "JSON" (.getBytes (json/generate-string agent-msg)) stream)
-    (doseq [blob blobs] (write-chunk! "BLOB" blob stream))
+    (doseq [blob blobs]
+      (write-chunk! "BLOB" blob stream))
     (.toByteArray stream)))
 
 (defn read-chunks!
-  "Read Agent message chunks from a stream to a message dict w/optional :blobs."
-  [^java.io.InputStream stream]
-  (loop [chunks (ChunkReader/readAll stream false)
+  "Read an Agent message map with an optional :blobs list from a stream of chunks."
+  [^java.io.InputStream payload-stream]
+  (loop [chunks (ChunkReader/readAll payload-stream false)
          agent-msg {}
          blobs []]
     (let [^ChunkWriter chunk (first chunks)]
@@ -95,9 +97,10 @@
         :else agent-msg))))
 
 (defn deserialize-from-chunks
-  "Deserialize an Agent message map with :blobs list from a byte[] of chunks."
-  [^"[B" bytes]
-  (read-chunks! (java.io.ByteArrayInputStream. bytes)))
+  "Deserialize an Agent message map with an optional :blobs list from a Kafka
+  message payload in chunk format."
+  [^"[B" payload-bytes]
+  (read-chunks! (java.io.ByteArrayInputStream. payload-bytes)))
 
 
 (defn boot-producer
