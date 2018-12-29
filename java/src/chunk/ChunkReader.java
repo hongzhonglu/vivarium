@@ -1,4 +1,4 @@
-package iff;
+package chunk;
 
 import java.io.DataInputStream;
 import java.io.EOFException;
