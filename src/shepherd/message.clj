@@ -147,15 +147,14 @@
               (swap! state assoc :last-message msg2)
               (bus/publish! bus topic (json/generate-string msg2)))))))
     (catch Exception e
-      (log/error (.getMessage e))
-      (.printStackTrace e))))
+      (log/error e))))
 
 (defn poll!
   [consumer]
   (try
     (kafka/poll! consumer poll-interval)
     (catch Exception e
-      (log/error (.getMessage e)))))
+      (log/error e))))
 
 (defn consume
   [consumer handle]

@@ -29,12 +29,6 @@
           kafka (assoc kafka :subscribe [])]
       (assoc-in message [:agent_config :kafka_config] kafka))))
 
-(defn log-exception
-  [^Throwable e]
-  (log/error (.getMessage e))
-  (.printStackTrace e)
-  nil)
-
 (defn write-temp-blob!
   "Write a byte array to a new temp file and return its file path."
   [^"[B" blob]
@@ -44,8 +38,8 @@
       (when blob
         (Files/write path blob (make-array OpenOption 0)))
       (.toString path))
-    (catch IOException e (log-exception e))
-    (catch SecurityException e (log-exception e))))
+    (catch IOException e (log/error e))
+    (catch SecurityException e (log/error e))))
 
 (defn blobs-to-temp-files!
   "Move message's :blobs to temp :files as positional args."

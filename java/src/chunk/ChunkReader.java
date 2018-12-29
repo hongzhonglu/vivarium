@@ -9,9 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A simple chunk reader class to read the next IFF or IFF-like chunk from an
- * InputStream, similar to Python's Chunk library. [That library's skip()-to-end
- * method should be private.]
+ * A simple chunk reader class, similar to Python's Chunk library. [That
+ * library's skip()-to-end method should be private.]
  *<p/>
  * CAUTION: If a read method raises an IOException, the offset into the
  * underlying input stream will be unknown!
@@ -28,9 +27,9 @@ public class ChunkReader {
     private boolean closed;
 
     /**
-     * Read all the Chunks in inputStream into a List<ChunkWriter> (not to imply
-     * that the caller will write them; ChunkWriter is just a POJO to hold the
-     * contents).
+     * Read all the chunks in inputStream into a List<ChunkWriter>. (This is not
+     * to imply that the caller will write them. ChunkWriter is just a POJO to
+     * hold a chunk's contents.)
      *<p/>
      * TODO(jerry): An Iterator would be smarter than a List.
      */
@@ -57,12 +56,13 @@ public class ChunkReader {
 
     /**
      * Open a ChunkReader to read the next chunk from the given input stream.
-     * This supports network byte order (big-endian) chunkSize fields, per
-     * EA-IFF 85.
+     * This supports network byte order (big-endian) chunkSize fields, like
+     * EA-IFF 85. An IFF reader would also need a method to open a nested chunk
+     * reader using e.g. a bounded FilterInputStream onto inputStream.
      *
      * @param inputStream the stream to read from
      * @param align whether to read past a chunk alignment pad byte. Pass true
-     *              for EA-IFF 85, false for simpler files.
+     *              for IFF; false for simpler files.
      *
      * @throws EOFException when there isn't another chunk to read
      * @throws IOException on other I/O errors
@@ -90,8 +90,8 @@ public class ChunkReader {
 
     /**
      * Close the ChunkReader, seeking the input stream to the next chunk (past
-     * the rest of this chunk body and any pad byte) so the caller can open the
-     * next ChunkReader. Idempotent.
+     * the rest of this chunk body and any alignment pad byte) so the caller can
+     * open the next ChunkReader. Idempotent.
      */
     public void close() throws IOException {
         if (!closed) {

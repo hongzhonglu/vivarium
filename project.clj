@@ -11,4 +11,4 @@
                  [polaris "0.0.19"]
                  [spootnik/kinsky "0.1.22"]]
   :main shepherd.core
-  :java-source-paths ["chunk/src"])
+  :java-source-paths ["java/src"])
