@@ -72,29 +72,37 @@
       (write-chunk! "BLOB" blob stream))
     (.toByteArray stream)))
 
+(defn message-with-optional-blobs
+  [agent-msg blobs]
+  (if (empty? blobs)
+    agent-msg
+    (assoc agent-msg :blobs blobs)))
+
+(defn read-json-chunk
+  [^ChunkWriter chunk]
+  (let [body (String. (.-body chunk) "UTF-8")]
+    (json/parse-string body true)))
+
+(defn decode-json-chunk
+  [previous-msg ^ChunkWriter chunk]
+  (if (empty? previous-msg) (read-json-chunk chunk) previous-msg))
+
 (defn read-chunks!
   "Read an Agent message map with an optional :blobs list from a stream of chunks."
   [^java.io.InputStream payload-stream]
   (loop [chunks (ChunkReader/readAll payload-stream false)
          agent-msg {}
          blobs []]
-    (let [^ChunkWriter chunk (first chunks)]
-      (cond
-        chunk
-        (case (.-chunkType chunk)
-          "JSON"
-          (recur
-            (rest chunks)
-            (if (empty? agent-msg)
-              (json/parse-string (String. (.-body chunk) "UTF-8") true)
-              agent-msg)
-            blobs)
-          "BLOB"
-          (recur (rest chunks) agent-msg (conj blobs (.-body chunk)))
-          (recur (rest chunks) agent-msg blobs))
-        (pos? (count blobs))
-        (assoc agent-msg :blobs blobs)
-        :else agent-msg))))
+    (let [^ChunkWriter chunk (first chunks)
+          more (rest chunks)]
+      (case (if chunk (.-chunkType chunk) :done)
+        :done
+        (message-with-optional-blobs agent-msg blobs)
+        "JSON"
+        (recur more (decode-json-chunk agent-msg chunk) blobs)
+        "BLOB"
+        (recur more agent-msg (conj blobs (.-body chunk)))
+        (recur more agent-msg blobs)))))
 
 (defn deserialize-from-chunks
   "Deserialize an Agent message map with an optional :blobs list from a Kafka
@@ -140,15 +148,15 @@
         (doseq [[topic messages] topics]
           (doseq [message messages]
             (let [payload (:value message)
-                  agent-msg (deserialize-from-chunks payload)
-                  num-blobs (count (:blobs agent-msg))
+                  agent-message (deserialize-from-chunks payload)
+                  num-blobs (count (:blobs agent-message))
                   blob-note (if (pos? num-blobs) (str "+ " num-blobs " BLOBs") "")
-                  msg (dissoc agent-msg :blobs)
-                  msg2 {topic msg}]
-              (log/info (:event msg "") msg2 blob-note)
-              (handle bus producer topic agent-msg)
-              (swap! state assoc :last-message msg2)
-              (bus/publish! bus topic (json/generate-string msg2)))))))
+                  agent-msg (dissoc agent-message :blobs)
+                  topic-msg-pair {topic agent-msg}]
+              (log/info (:event agent-msg "") topic-msg-pair blob-note)
+              (handle bus producer topic agent-message)
+              (swap! state assoc :last-message topic-msg-pair)
+              (bus/publish! bus topic (json/generate-string topic-msg-pair)))))))
     (catch Exception e
       (log/error e))))
 
