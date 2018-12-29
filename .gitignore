@@ -11,12 +11,5 @@ pom.xml.asc
 .hg/
 
 out/
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/**/usage.statistics.xml
-.idea/**/dictionaries
-.idea/**/shelf
-.idea/**/contentModel.xml
-.idea/replstate.xml
-.idea/uiDesigner.xml
-.idea/httpRequests
+.idea/
+*.iml
