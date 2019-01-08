@@ -55,10 +55,10 @@
   [message]
   (if-let [blobs (:blobs message)]
     (let [files (mapv write-temp-blob! blobs)
-          msg (dissoc message :blobs)]
+          bare (dissoc message :blobs)]
       (if (pos? (count files))
-        (assoc-in msg [:agent_config :files] files)
-        msg))
+        (assoc-in bare [:agent_config :files] files)
+        bare))
     message))
 
 (defn add-agent!

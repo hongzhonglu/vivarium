@@ -170,7 +170,7 @@
                   agent-message (dissoc agent-message :blobs)
                   topic-message-pair {topic agent-message}]
               (log/info (:event agent-message "") topic-message-pair blob-note)
-              (handle state bus producer topic agent-message)
+              (handle bus producer topic agent-message)
               (swap! state assoc :last-message topic-message-pair)
               (bus/publish! bus topic (json/generate-string topic-message-pair)))))))
     (catch Exception e
