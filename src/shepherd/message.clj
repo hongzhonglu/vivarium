@@ -14,7 +14,13 @@
    [taoensso.timbre :as log]
    [ring.middleware.params :as params]
    [ring.middleware.resource :as resource]
-   [ring.middleware.keyword-params :as keyword]))
+   [ring.middleware.keyword-params :as keyword])
+  (:import
+    [chunk ChunkReader ChunkWriter]
+    org.apache.kafka.common.serialization.ByteArrayDeserializer
+    org.apache.kafka.common.serialization.ByteArraySerializer))
+
+(set! *warn-on-reflection* true) ; DEBUG
 
 (def poll-interval Long/MAX_VALUE)
 (def non-numeric-factory
@@ -37,19 +43,87 @@
   [config]
   {:bootstrap.servers (:host config)})
 
+
+(defn byte-array-serializer
+  "Kafka's own byte[] serializer."
+  []
+  (ByteArraySerializer.))
+
+(defn byte-array-deserializer
+  "Kafka's own byte[] deserializer"
+  []
+  (ByteArrayDeserializer.))
+
+
+(defn write-chunk!
+  "Write a chunk to a stream."
+  [^String type ^"[B" body ^java.io.OutputStream stream]
+  (.write (ChunkWriter. type body) stream false))
+
+(defn serialize-to-chunks
+  "Serialize an Agent message map with an optional :blobs list to a Kafka
+  message payload in chunk format."
+  [agent-message]
+  (let [blobs (get agent-message :blobs [])
+        agent-msg (dissoc agent-message :blobs)
+        stream (java.io.ByteArrayOutputStream.)]
+    (write-chunk! "JSON" (.getBytes (json/generate-string agent-msg)) stream)
+    (doseq [blob blobs]
+      (write-chunk! "BLOB" blob stream))
+    (.toByteArray stream)))
+
+(defn message-with-optional-blobs
+  [agent-msg blobs]
+  (if (empty? blobs)
+    agent-msg
+    (assoc agent-msg :blobs blobs)))
+
+(defn read-json-chunk
+  [^ChunkWriter chunk]
+  (let [body (String. (.-body chunk) "UTF-8")]
+    (json/parse-string body true)))
+
+(defn decode-json-chunk
+  [previous-msg ^ChunkWriter chunk]
+  (if (empty? previous-msg) (read-json-chunk chunk) previous-msg))
+
+(defn read-chunks!
+  "Read an Agent message map with an optional :blobs list from a stream of chunks."
+  [^java.io.InputStream payload-stream]
+  (loop [chunks (ChunkReader/readAll payload-stream false)
+         agent-msg {}
+         blobs []]
+    (let [^ChunkWriter chunk (first chunks)
+          more (rest chunks)]
+      (case (if chunk (.-chunkType chunk) :done)
+        :done
+        (message-with-optional-blobs agent-msg blobs)
+        "JSON"
+        (recur more (decode-json-chunk agent-msg chunk) blobs)
+        "BLOB"
+        (recur more agent-msg (conj blobs (.-body chunk)))
+        (recur more agent-msg blobs)))))
+
+(defn deserialize-from-chunks
+  "Deserialize an Agent message map with an optional :blobs list from a Kafka
+  message payload in chunk format."
+  [^"[B" payload-bytes]
+  (read-chunks! (java.io.ByteArrayInputStream. payload-bytes)))
+
+
 (defn boot-producer
   [config]
   (kafka/producer
    (producer-config config)
    (kafka/keyword-serializer)
-   (kafka/json-serializer)))
+   (byte-array-serializer)))
 
 (defn send!
   [producer topic message]
   (kafka/send!
    producer
    {:topic topic
-    :value message}))
+    :value (serialize-to-chunks message)}))
 
 (defn consumer-config
   [config]
@@ -64,7 +138,7 @@
   (kafka/consumer
    (consumer-config config)
    (kafka/keyword-deserializer)
-   (kafka/json-deserializer)))
+   (byte-array-deserializer)))
 
 (defn handle-message
   [state bus producer handle record]
@@ -73,27 +147,35 @@
       (let [topics (last record)]
         (doseq [[topic messages] topics]
           (doseq [message messages]
-            (log/info topic ":" message)
-            (let [value {topic (:value message)}]
-              (handle bus producer topic (:value message))
-              (swap! state assoc :last-message value)
-              (bus/publish! bus topic (json/generate-string value)))))))
+            (let [payload (:value message)
+                  agent-message (deserialize-from-chunks payload)
+                  num-blobs (count (:blobs agent-message))
+                  blob-note (if (pos? num-blobs) (str "+ " num-blobs " BLOBs") "")
+                  agent-msg (dissoc agent-message :blobs)
+                  topic-msg-pair {topic agent-msg}]
+              (log/info (:event agent-msg "") topic-msg-pair blob-note)
+              (handle bus producer topic agent-message)
+              (swap! state assoc :last-message topic-msg-pair)
+              (bus/publish! bus topic (json/generate-string topic-msg-pair)))))))
     (catch Exception e
-      (log/error (.getMessage e))
-      (.printStackTrace e))))
+      (log/error e))))
+
+(defn poll!
+  [consumer]
+  (try
+    (kafka/poll! consumer poll-interval)
+    (catch Exception e
+      (log/error e))))
 
 (defn consume
   [consumer handle]
   (binding [factory/*json-factory* non-numeric-factory]
-    (loop [records
-           (try
-             (kafka/poll! consumer poll-interval)
-             (catch Exception e
-               (log/error (.getMessage e))))]
+    ; TODO(jerry): Revisit unpacking the poll! result.
+    (loop [records (poll! consumer)]
       (when-not (empty? records)
         (doseq [record records]
           (handle record)))
-      (recur (kafka/poll! consumer poll-interval)))))
+      (recur (poll! consumer)))))
 
 (defn boot-kafka
   [state config]

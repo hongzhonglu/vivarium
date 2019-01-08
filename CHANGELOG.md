@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased]
 ### Changed
 - Add a new arity to `make-widget-async` to provide a different widget shape.
+- Encode each Agent Kafka message payload as a sequence of chunks. It should
+hold one JSON dictionary and zero or more BLOB byte arrays.
 
 ## [0.1.1] - 2018-11-03
 ### Changed

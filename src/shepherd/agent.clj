@@ -3,12 +3,15 @@
    [cheshire.core :as json]
    [taoensso.timbre :as log]
    [shepherd.message :as message]
-   [shepherd.process :as process]))
+   [shepherd.process :as process])
+  (:import
+    [java.io IOException]
+    [java.nio.file Files OpenOption]
+    [java.nio.file.attribute FileAttribute]))
 
 (defn launch-agent!
   [spec config]
   (let [serial (json/generate-string (:agent_config spec))]
-    (log/info serial)
     (process/launch!
      ["python" "-u"
       "-m" (get config :boot "agent.boot")
@@ -26,13 +29,34 @@
           kafka (assoc kafka :subscribe [])]
       (assoc-in message [:agent_config :kafka_config] kafka))))
 
+(defn write-temp-blob!
+  "Write a byte array to a new temp file and return its file path."
+  [^"[B" blob]
+  (try
+    (let [path (Files/createTempFile "agent" ".blob" (make-array FileAttribute 0))]
+      (.deleteOnExit (.toFile path))
+      (when blob
+        (Files/write path blob (make-array OpenOption 0)))
+      (.toString path))
+    (catch IOException e (log/error e))
+    (catch SecurityException e (log/error e))))
+
+(defn blobs-to-temp-files!
+  "Move message's :blobs to temp :files as positional args."
+  [message]
+  (if-let [blobs (:blobs message)]
+    (let [files (mapv write-temp-blob! blobs)
+          msg (dissoc message :blobs)]
+      (if (pos? (count files))
+        (assoc-in msg [:agent_config :files] files)
+        msg))
+    message))
+
 (defn add-agent!
   [state node nexus message]
-  (log/info "add agent:" message)
   (let [record (select-keys message [:agent_id :agent_type :agent_config])
-        message (ensure-kafka-config state message)
+        message (blobs-to-temp-files! (ensure-kafka-config state message))
         launch-config (get-in state [:config :launch])
-        _ (log/info "launch config" launch-config)
         born (launch-agent! message launch-config)
         record (assoc record :agent born)]
     (swap! (:agents state) assoc (:agent_id record) record)
