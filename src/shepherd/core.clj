@@ -8,6 +8,12 @@
    [shepherd.agent :as agent]))
 
 (defn handle-message
+  "Handle messages from kafka.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     topic - a string naming the topic this message came from.
+     message - the actual message."
   [state node nexus topic message]
   (condp = (:event message)
     "ADD_AGENT"
@@ -22,6 +28,7 @@
     (agent/control-agents! state node nexus "SHUTDOWN_AGENT" message)))
 
 (defn view-agent
+  "Extract the values from an agent map that we want to transmit to the websocket client."
   [agent]
   (let [config (select-keys agent [:agent_id :agent_type :agent_config])
         alive? (process/alive? (:agent agent))
@@ -29,6 +36,7 @@
     view))
 
 (defn status-handler
+  "Render the status of all agents present in the system as json."
   [state]
   (fn [request]
     (let [agents @(:agents state)
@@ -38,10 +46,12 @@
        :body (json/generate-string status)})))
 
 (defn shepherd-routes
+  "Any routes the shepherd requires."
   [state]
   [["/status" :status (#'status-handler state)]])
 
 (defn boot
+  "Boot the shepherd with the given configuration."
   [config]
   (let [agents (atom {})
         config (assoc config :routes shepherd-routes)

@@ -27,6 +27,7 @@
   (factory/make-json-factory {:allow-non-numeric-numbers true}))
 
 (defn resource
+  "Load a resource at the given path."
   [path]
   (-> path
       io/resource
@@ -34,15 +35,18 @@
       io/reader))
 
 (defn read-config
+  "Read a configuration map from the given path."
   [path]
   (edn/read
    (java.io.PushbackReader.
     (resource path))))
 
 (defn producer-config
+  "Generate a config for a kafka producer, given a map of config values.
+     config - map of configuration values for the kafka producer.
+       :host - IP address of kafka cluster."
   [config]
   {:bootstrap.servers (:host config)})
-
 
 (defn byte-array-serializer
   "Kafka's own byte[] serializer."
@@ -54,7 +58,6 @@
   []
   (ByteArrayDeserializer.))
 
-
 (defn write-chunk!
   "Write a chunk to a stream."
   [^String type ^"[B" body ^java.io.OutputStream stream]
@@ -65,18 +68,19 @@
   message payload in chunk format."
   [agent-message]
   (let [blobs (get agent-message :blobs [])
-        agent-msg (dissoc agent-message :blobs)
+        agent-message (dissoc agent-message :blobs)
         stream (java.io.ByteArrayOutputStream.)]
-    (write-chunk! "JSON" (.getBytes (json/generate-string agent-msg)) stream)
+    (write-chunk! "JSON" (.getBytes (json/generate-string agent-message)) stream)
     (doseq [blob blobs]
       (write-chunk! "BLOB" blob stream))
     (.toByteArray stream)))
 
 (defn message-with-optional-blobs
-  [agent-msg blobs]
+  "Associate blobs to agent message if they exist."
+  [agent-message blobs]
   (if (empty? blobs)
-    agent-msg
-    (assoc agent-msg :blobs blobs)))
+    agent-message
+    (assoc agent-message :blobs blobs)))
 
 (defn read-json-chunk
   [^ChunkWriter chunk]
@@ -84,25 +88,25 @@
     (json/parse-string body true)))
 
 (defn decode-json-chunk
-  [previous-msg ^ChunkWriter chunk]
-  (if (empty? previous-msg) (read-json-chunk chunk) previous-msg))
+  [previous-message ^ChunkWriter chunk]
+  (if (empty? previous-message) (read-json-chunk chunk) previous-message))
 
 (defn read-chunks!
   "Read an Agent message map with an optional :blobs list from a stream of chunks."
   [^java.io.InputStream payload-stream]
   (loop [chunks (ChunkReader/readAll payload-stream false)
-         agent-msg {}
+         agent-message {}
          blobs []]
     (let [^ChunkWriter chunk (first chunks)
           more (rest chunks)]
       (case (if chunk (.-chunkType chunk) :done)
         :done
-        (message-with-optional-blobs agent-msg blobs)
+        (message-with-optional-blobs agent-message blobs)
         "JSON"
-        (recur more (decode-json-chunk agent-msg chunk) blobs)
+        (recur more (decode-json-chunk agent-message chunk) blobs)
         "BLOB"
-        (recur more agent-msg (conj blobs (.-body chunk)))
-        (recur more agent-msg blobs)))))
+        (recur more agent-message (conj blobs (.-body chunk)))
+        (recur more agent-message blobs)))))
 
 (defn deserialize-from-chunks
   "Deserialize an Agent message map with an optional :blobs list from a Kafka
@@ -110,8 +114,8 @@
   [^"[B" payload-bytes]
   (read-chunks! (java.io.ByteArrayInputStream. payload-bytes)))
 
-
 (defn boot-producer
+  "Instantiate a kafka producer with the given config."
   [config]
   (kafka/producer
    (producer-config config)
@@ -119,6 +123,7 @@
    (byte-array-serializer)))
 
 (defn send!
+  "Send a message using a kafka producer on the given topic."
   [producer topic message]
   (kafka/send!
    producer
@@ -126,6 +131,10 @@
     :value (serialize-to-chunks message)}))
 
 (defn consumer-config
+  "Generate the configuration for a kafka consumer.
+     config - a map containing options for the kafka consumer.
+       :host - IP address of kafka cluster.
+       :group-id - the kafka group id of this consumer."
   [config]
   {:bootstrap.servers (:host config)
    :enable.auto.commit "true"
@@ -134,6 +143,7 @@
    :auto.offset.reset "latest"})
 
 (defn boot-consumer
+  "Instantiate a kafka consumer with the given configuration."
   [config]
   (kafka/consumer
    (consumer-config config)
@@ -141,6 +151,12 @@
    (byte-array-deserializer)))
 
 (defn handle-message
+  "Handle a raw message from kafka, invoke the user provided handler on it then emit it to the
+   browser over websockets.
+     state - the overall state of the system.
+     bus - a manifold bus that emits messages over websockets to the browser or client.
+     producer - a kafka producer in case the user provided handler wishes to send a message.
+     handle - a function"
   [state bus producer handle record]
   (try
     (if (= (first record) :by-topic)
@@ -151,16 +167,18 @@
                   agent-message (deserialize-from-chunks payload)
                   num-blobs (count (:blobs agent-message))
                   blob-note (if (pos? num-blobs) (str "+ " num-blobs " BLOBs") "")
-                  agent-msg (dissoc agent-message :blobs)
-                  topic-msg-pair {topic agent-msg}]
-              (log/info (:event agent-msg "") topic-msg-pair blob-note)
-              (handle bus producer topic agent-message)
-              (swap! state assoc :last-message topic-msg-pair)
-              (bus/publish! bus topic (json/generate-string topic-msg-pair)))))))
+                  agent-message (dissoc agent-message :blobs)
+                  topic-message-pair {topic agent-message}]
+              (log/info (:event agent-message "") topic-message-pair blob-note)
+              (handle state bus producer topic agent-message)
+              (swap! state assoc :last-message topic-message-pair)
+              (bus/publish! bus topic (json/generate-string topic-message-pair)))))))
     (catch Exception e
       (log/error e))))
 
 (defn poll!
+  "Wait for message from kafka.
+     consumer - a reference to a kafka consumer."
   [consumer]
   (try
     (kafka/poll! consumer poll-interval)
@@ -168,6 +186,9 @@
       (log/error e))))
 
 (defn consume
+  "Poll for messages and send them to the handler when received.
+     consumer - a reference to a kafka consumer.
+     handle - function to call when a message is received."
   [consumer handle]
   (binding [factory/*json-factory* non-numeric-factory]
     ; TODO(jerry): Revisit unpacking the poll! result.
@@ -178,6 +199,7 @@
       (recur (poll! consumer)))))
 
 (defn boot-kafka
+  "Boot a kafka consumer and producer and also a message bus for communicating with the browser."
   [state config]
   (let [bus (bus/event-bus)
         producer (boot-producer config)
@@ -195,6 +217,10 @@
         (partial handle-message state bus producer handle)))}))
 
 (defn default-handle-client
+  "Handle messages from the browser or websocket client.
+     state - overall state of the system.
+     conn - connection to send messages to the browser.
+     message - message to send to the browser."
   [state conn message]
   (condp = (:event message)
     "INITIALIZE"
@@ -205,6 +231,8 @@
       (send! producer "flow" message))))
 
 (defn boot
+  "Boot the system using the provided config map.
+     config - map containing values needed to instantiate kafka and websockets."
   [{:keys [kafka] :as config}]
   (let [state (atom {:last-message {}})
         {:keys [bus producer consumer]} (boot-kafka state kafka)
@@ -217,6 +245,7 @@
      :handle-client handle-client}))
 
 (defn index-handler
+  "Render the index.html page on request."
   [state]
   (fn [request]
     {:status 200
@@ -224,6 +253,7 @@
      :body (slurp "resources/public/index.html")}))
 
 (defn connect-websocket
+  "Establish a connection to the websocket client."
   [request]
   (defer/catch
       (http/websocket-connection request)
@@ -235,6 +265,7 @@
    :body "must connect using websocket request"})
 
 (defn websocket-handler
+  "Connect the websocket client to the kafka streams."
   [{:keys [bus config handle-client] :as state}]
   (fn [request]
     (defer/let-flow [conn (connect-websocket request)]
@@ -254,11 +285,13 @@
            conn))))))
 
 (defn make-flow-routes
+  "A set of basic routes that any browser communication requires."
   [state]
   [["/" :index (#'index-handler state)]
    ["/ws" :websocket (#'websocket-handler state)]])
 
 (defn start
+  "Start the system with the provided state."
   [state]
   (let [config (:config state)
         make-routes (get config :routes (fn [_] []))

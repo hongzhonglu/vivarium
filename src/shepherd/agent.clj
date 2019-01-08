@@ -5,11 +5,19 @@
    [shepherd.message :as message]
    [shepherd.process :as process])
   (:import
-    [java.io IOException]
-    [java.nio.file Files OpenOption]
-    [java.nio.file.attribute FileAttribute]))
+   [java.io IOException]
+   [java.nio.file Files OpenOption]
+   [java.nio.file.attribute FileAttribute]))
 
 (defn launch-agent!
+  "Launch a python process based on the given agent spec.
+     spec - a map containing any information necessary to boot the agent.
+       :agent_id - a unique id for the new agent.
+       :agent_type - the type of the new agent to be invoked.
+       :agent_config - a configuration map containing any values needed by the python script
+          to boot the new agent.
+     config - system configuration.
+       :boot - which python file to use when booting agents."
   [spec config]
   (let [serial (json/generate-string (:agent_config spec))]
     (process/launch!
@@ -21,6 +29,7 @@
      config)))
 
 (defn ensure-kafka-config
+  "Enforce the presence of a kafka config if not present based on this system's kafka config."
   [state message]
   (if (get-in message [:agent_config :kafka_config])
     message
@@ -53,6 +62,15 @@
     message))
 
 (defn add-agent!
+  "Instantiate a new agent with the given configuration.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     message - the message containing any information necessary to boot the new agent.
+       :agent_id - a unique id for the new agent.
+       :agent_type - the type of the new agent to be invoked.
+       :agent_config - a configuration map containing any values needed by the python script
+          to boot the new agent."
   [state node nexus message]
   (let [record (select-keys message [:agent_id :agent_type :agent_config])
         message (blobs-to-temp-files! (ensure-kafka-config state message))
@@ -64,6 +82,11 @@
     (process/stream-out (:agent record) :err)))
 
 (defn shutdown-agent!
+  "Shutdown an agent with the given id.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     id - id of the agent to shutdown."
   [state node nexus id]
   (let [agent (get @(:agents state) id)
         topic (get-in state [:config :kafka :topics :agent_receive])]
@@ -75,10 +98,18 @@
     (swap! (:agents state) dissoc id)))
 
 (defn match-prefix
+  "Determine if a string matches the given prefix.
+     prefix - a string representing the prefix we are looking for.
+     s - the string to test if the prefix is present."
   [prefix s]
   (= prefix (.substring s 0 (count prefix))))
 
 (defn remove-prefix!
+  "Remove any agents with the given prefix.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     prefix - prefix to hunt for agents to remove."
   [state node nexus prefix]
   (let [agent-ids (keys @(:agents state))
         matching (filter (partial match-prefix prefix) agent-ids)]
@@ -86,12 +117,26 @@
       (shutdown-agent! state node nexus match))))
 
 (defn remove-agent!
+  "Remove agents based on the given message. If :agent_id is present, remove only that agent.
+   If :prefix is present, remove all agents with the given prefix.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     message - information to direct the removal of agents.
+       :prefix - if present, remove all agents with this prefix.
+       :agent_id - if present, remove the agent with the given id."
   [state node nexus message]
   (if-let [prefix (:prefix message)]
     (remove-prefix! state node nexus prefix)
     (shutdown-agent! state node nexus (:agent_id message))))
 
 (defn control-agents!
+  "Send a message to all agents in this shepherd.
+     state - state of the system.
+     node - a channel to send messages to the websocket client.
+     nexus - a reference to the kafka cluster.
+     event - which event this message represents.
+     message - the message to send to all agents."
   [state node nexus event message]
   (let [topic (get-in state [:config :kafka :topics :agent_receive])]
     (doseq [[id agent] @(:agents state)]
