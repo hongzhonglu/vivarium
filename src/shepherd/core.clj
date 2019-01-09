@@ -59,7 +59,6 @@
         handle (partial handle-message state)
         config (assoc-in config [:kafka :handle-message] handle)
         flow (message/boot config)]
-    ;; (assoc state :flow flow)
     (merge state flow)))
 
 (defn -main

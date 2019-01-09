@@ -32,7 +32,6 @@
         config (assoc-in config [:kafka :handle-message] handle)
         config (assoc config :handle-client handle-client)
         flow (message/boot config)]
-    ;; (assoc state :flow flow)
     (merge state flow)))
 
 (defn -main
