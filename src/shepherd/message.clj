@@ -156,7 +156,12 @@
      state - the overall state of the system.
      bus - a manifold bus that emits messages over websockets to the browser or client.
      producer - a kafka producer in case the user provided handler wishes to send a message.
-     handle - a function"
+     handle - a function which takes four arguments:
+       bus - the same bus as above
+       producer - the kafka producer
+       topic - the topic the message came from
+       message - the message as parsed by the chunk/blob component
+     record - the raw kafka record, to be parsed by the chunk/blob component"
   [state bus producer handle record]
   (try
     (if (= (first record) :by-topic)
@@ -167,8 +172,8 @@
                   agent-message (deserialize-from-chunks payload)
                   num-blobs (count (:blobs agent-message))
                   blob-note (if (pos? num-blobs) (str "+ " num-blobs " BLOBs") "")
-                  agent-message (dissoc agent-message :blobs)
-                  topic-message-pair {topic agent-message}]
+                  bare (dissoc agent-message :blobs)
+                  topic-message-pair {topic bare}]
               (log/info (:event agent-message "") topic-message-pair blob-note)
               (handle bus producer topic agent-message)
               (swap! state assoc :last-message topic-message-pair)
