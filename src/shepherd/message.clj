@@ -16,9 +16,9 @@
    [ring.middleware.resource :as resource]
    [ring.middleware.keyword-params :as keyword])
   (:import
-    [chunk ChunkReader ChunkWriter]
-    org.apache.kafka.common.serialization.ByteArrayDeserializer
-    org.apache.kafka.common.serialization.ByteArraySerializer))
+   [chunk ChunkReader ChunkWriter]
+   org.apache.kafka.common.serialization.ByteArrayDeserializer
+   org.apache.kafka.common.serialization.ByteArraySerializer))
 
 (set! *warn-on-reflection* true) ; DEBUG
 
