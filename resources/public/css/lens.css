@@ -1,0 +1,23 @@
+header {
+    background-color: #f1f1f1;
+    text-align: center;
+    padding: 20px;
+}
+
+.column {
+    float: left;
+}
+
+.column.visualization {
+    width: 75%;
+}
+
+.column.control {
+    width: 25%;
+}
+
+.row:after {
+    content: "";
+    display: table;
+    clear: both;
+}

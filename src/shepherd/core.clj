@@ -59,11 +59,14 @@
         handle (partial handle-message state)
         config (assoc-in config [:kafka :handle-message] handle)
         flow (message/boot config)]
-    (assoc state :flow flow)))
+    (merge state flow)))
 
 (defn -main
   [& args]
   (let [config (message/read-config "config/config.clj")
+        {:keys [port kafka]} (:shepherd config)
+        config (assoc config :port port)
+        config (update config :kafka merge kafka)
         state (boot config)]
     (log/info "shepherd starting" (:port config))
     (log/info state)
