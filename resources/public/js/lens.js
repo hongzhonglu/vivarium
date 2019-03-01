@@ -369,7 +369,7 @@ function updateLens(draw, lens, data) {
   // remove any cells that are no longer referenced in the data
   _.each(_.keys(lens.cells), function(key) {
     if (!_.has(data.simulations, key)) {
-      lens.cells[key].whole.remove();
+      lens.cells[key].container.remove();
       lens.cells = _.omit(lens.cells, [key]);
     }
   })
