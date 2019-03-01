@@ -410,8 +410,6 @@ function buildMoleculeSelect(select, molecules) {
 function bootLens(lens) {
   var lens = {edgeLength: 10.0};
 
-  // var draw = Snap('#lens');
-
   // set up SVG
   var draw = SVG('lens');
   var plate = buildLattice(
