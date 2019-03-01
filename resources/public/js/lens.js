@@ -64,28 +64,45 @@ function updateCell(cell, data, born) {
   console.log(data.location)
   console.log(length)
 
-  var translation = [cx * data.scale, cy * data.scale];
-  var transform = 't' + translation[0]
-      + ',' + translation[1]
-      + 'r' + rotationTransform(orientation)
-      + ',' + originX * data.scale
-      + ',' + originY * data.scale;
-  console.log(transform)
+  // create the matrix representing the successive application of rotation and translation
+  var transform = new SVG.Matrix()
+      .translate(cx * data.scale, cy * data.scale)
+      .rotate(rotationTransform(data.orientation))
 
   // transform the svg group as a whole
-  var sizeUpdate = {
-    width: data.width * data.scale,
-    height: length * data.scale,
-  }
+  var whole = born ? cell.whole : cell.whole.animate()
+  whole.transform(transform)
 
-  born = true;
-  if (born) {
-    cell.whole.attr({transform: transform})
-    cell.membrane.attr(sizeUpdate);
-  } else {
-    cell.whole.animate({transform: transform}, 1000)
-    cell.membrane.animate(sizeUpdate, 1000);
-  }
+  // increase the length of the membrane
+  var membrane = born ? cell.membrane : cell.membrane.animate()
+  membrane
+    .attr({
+      width: data.width * data.scale,
+      height: length * data.scale,
+    });
+
+  // // var translation = [cx * data.scale, cy * data.scale];
+  // // var transform = 't' + translation[0]
+  // //     + ',' + translation[1]
+  // //     + 'r' + rotationTransform(orientation)
+  // //     + ',' + originX * data.scale
+  // //     + ',' + originY * data.scale;
+  // // console.log(transform)
+
+  // // // transform the svg group as a whole
+  // // var sizeUpdate = {
+  // //   width: data.width * data.scale,
+  // //   height: length * data.scale,
+  // // }
+
+  // // born = true;
+  // // if (born) {
+  // //   cell.whole.attr({transform: transform})
+  // //   cell.membrane.attr(sizeUpdate);
+  // // } else {
+  // //   cell.whole.animate({transform: transform}, 1000)
+  // //   cell.membrane.animate(sizeUpdate, 1000);
+  // // }
 
   // // translate the center point to the center of the membrane
   // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
@@ -116,11 +133,17 @@ function buildCell(lens, draw, id, data) {
       })
 
   // create the rectangle representing the outer bounds of the cell
-  var membrane = whole.rect(0, 0, data.width * data.scale, data.scale)
-  membrane.attr({
-    rx: 0.3 * data.scale,
-    ry: 0.3 * data.scale,
-    fill: rgbToHex([0.1, 0.1, 0.1])})
+  var membrane = whole
+      .rect(data.width * PATCH_WIDTH, PATCH_WIDTH)
+      .rx(30)
+      .ry(30)
+      .fill(rgbToHex([0.1, 0.1, 0.1]))
+
+  // // var membrane = whole.rect(0, 0, data.width * data.scale, data.scale)
+  // // membrane.attr({
+  // //   rx: 0.3 * data.scale,
+  // //   ry: 0.3 * data.scale,
+  // //   fill: rgbToHex([0.1, 0.1, 0.1])})
       
   // // create the center point
   // var nucleoid = whole
@@ -365,8 +388,10 @@ function buildMoleculeSelect(select, molecules) {
 function bootLens(lens) {
   var lens = {edgeLength: 10.0};
 
+  // var draw = Snap('#lens');
+
   // set up SVG
-  var draw = Snap('#lens');
+  var draw = SVG('lens');
   var plate = buildLattice(
     lens,
     draw,
