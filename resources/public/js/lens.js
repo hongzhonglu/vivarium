@@ -81,10 +81,10 @@ function updateCell(cell, data, born) {
       height: length * data.scale,
     });
 
-  var hudX = data.location[1] - (0.5 * data.width);
-  var hudY = data.location[0] - (0.3 * data.width);
+  var hudX = data.location[1] - (0.4 * data.width);
+  var hudY = data.location[0] - (0.4 * data.width);
   var translate = new SVG.Matrix()
-      .translate(hudX * data.scale, hudY * data.scale)
+      .translate(hudX * data.scale, hudY * data.scale);
 
   var hud = born ? cell.hud : cell.hud.animate()
   cell.hud.text(('' + data.volume).substr(0, 8));
@@ -101,7 +101,9 @@ function updateCell(cell, data, born) {
 // to apply the rest of the transformations
 function buildCell(lens, draw, id, data) {
   // make the container
-  var whole = draw
+  var container = draw.group();
+
+  var whole = container
       .group()
       .click(function() {
         console.log('membrane click! ' + id);
@@ -125,7 +127,7 @@ function buildCell(lens, draw, id, data) {
       .ry(0.3 * data.scale)
       .fill(rgbToHex([0.1, 0.1, 0.1]))
 
-  var hud = draw
+  var hud = container
       .text("hello")
       .fill(rgbToHex([0.9, 0.9, 0.9]))
       .attr({'fill-opacity': 0.0});
@@ -137,6 +139,7 @@ function buildCell(lens, draw, id, data) {
 
   // create an object containing a reference to each component of the svg group
   var cell = {
+    container: container,
     whole: whole,
     membrane: membrane,
     hud: hud,
@@ -144,19 +147,21 @@ function buildCell(lens, draw, id, data) {
     // nucleoid: nucleoid
   }
 
-  whole
+  container
     .mouseover(function() {
       console.log('mouseover');
+      // cell.hud.finish();
       if (!cell.hovering) {
         cell.hovering = true;
-        cell.hud.animate(300).attr({'fill-opacity': 1.0});
+        cell.hud.animate(200).attr({'fill-opacity': 1.0});
       }
     })
     .mouseout(function() {
       console.log('mouseout');
+      // cell.hud.finish();
       if (cell.hovering) {
         cell.hovering = false;
-        cell.hud.animate(300).attr({'fill-opacity': 0.0});
+        cell.hud.animate(200).attr({'fill-opacity': 0.0});
       }
     })
 
