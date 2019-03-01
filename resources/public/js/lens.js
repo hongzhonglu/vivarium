@@ -50,8 +50,8 @@ function updateCell(cell, data, born) {
   var offsetY = originX * sin + originY * cos;
 
   // apply the offset
-  var cx = data.location[1] - originX // - offsetX;
-  var cy = data.location[0] - originY // - offsetY;
+  var cx = data.location[1] - offsetX;
+  var cy = data.location[0] - offsetY;
 
   var previousRotation = /r([^,]+)/.exec(cell.whole.transform()['string']);
   var orientation = data.orientation;
@@ -80,29 +80,6 @@ function updateCell(cell, data, born) {
       width: data.width * data.scale,
       height: length * data.scale,
     });
-
-  // // var translation = [cx * data.scale, cy * data.scale];
-  // // var transform = 't' + translation[0]
-  // //     + ',' + translation[1]
-  // //     + 'r' + rotationTransform(orientation)
-  // //     + ',' + originX * data.scale
-  // //     + ',' + originY * data.scale;
-  // // console.log(transform)
-
-  // // // transform the svg group as a whole
-  // // var sizeUpdate = {
-  // //   width: data.width * data.scale,
-  // //   height: length * data.scale,
-  // // }
-
-  // // born = true;
-  // // if (born) {
-  // //   cell.whole.attr({transform: transform})
-  // //   cell.membrane.attr(sizeUpdate);
-  // // } else {
-  // //   cell.whole.animate({transform: transform}, 1000)
-  // //   cell.membrane.animate(sizeUpdate, 1000);
-  // // }
 
   // // translate the center point to the center of the membrane
   // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
@@ -134,17 +111,11 @@ function buildCell(lens, draw, id, data) {
 
   // create the rectangle representing the outer bounds of the cell
   var membrane = whole
-      .rect(data.width * PATCH_WIDTH, PATCH_WIDTH)
-      .rx(30)
-      .ry(30)
+      .rect(data.width * data.scale, data.scale)
+      .rx(0.3 * data.scale)
+      .ry(0.3 * data.scale)
       .fill(rgbToHex([0.1, 0.1, 0.1]))
 
-  // // var membrane = whole.rect(0, 0, data.width * data.scale, data.scale)
-  // // membrane.attr({
-  // //   rx: 0.3 * data.scale,
-  // //   ry: 0.3 * data.scale,
-  // //   fill: rgbToHex([0.1, 0.1, 0.1])})
-      
   // // create the center point
   // var nucleoid = whole
   //     .circle(30)
@@ -191,33 +162,29 @@ function buildLattice(lens, draw, m, n, width) {
   for (i = 0; i < m; i++) {
     var column = [];
     for (j = 0; j < n; j++) {
-      var rect = draw.rect(0, 0, Math.ceil(width), Math.ceil(width))
-      rect.attr({
-        x: i*width,
-        y: j*width,
-        fill: rgbToHex([i / m, 1 - (j / m), 1])
-      })
-
-      rect.click(function(patch) {
-        return function(event) {
-          var x = event.offsetY * lens.edgeLength / VISUALIZATION_WIDTH;
-          var y = event.offsetX * lens.edgeLength / VISUALIZATION_WIDTH;
-          // var x = event.offsetY * VISUALIZATION_WIDTH / lens.edgeLength;
-          // var y = event.offsetX * VISUALIZATION_WIDTH / lens.edgeLength;
-
-          console.log('lattice click! ' + [x, y]);
-
-          lens.send({
-            event: 'ADD_AGENT',
-            agent_id: uuid(),
-            agent_type: lens.data.agent_type,
-            agent_config: {
-              'outer_id': lens.data.outer_id,
-              'location': [x, y]
+      var rect = draw
+          .rect(width, width)
+          .x(i*width)
+          .y(j*width)
+          .fill(rgbToHex([i / m, 1 - (j / m), 1]))
+          .click(function(patch) {
+            return function(event) {
+              var x = event.offsetY * lens.edgeLength / VISUALIZATION_WIDTH;
+              var y = event.offsetX * lens.edgeLength / VISUALIZATION_WIDTH;
+              console.log(event);
+              console.log('lattice click! ' + [x, y]);
+              lens.socket.send(JSON.stringify({
+                event: 'ADD_AGENT',
+                agent_id: uuid(),
+                agent_type: lens.data.agent_type,
+                agent_config: {
+                  'outer_id': lens.data.outer_id,
+                  'location': [x, y]
+                }
+              }));
             }
-          });
-        }
-      } ([i, j]))
+          } ([i, j]))
+          .back();
 
       column.push(rect);
     }
@@ -231,7 +198,15 @@ function buildLattice(lens, draw, m, n, width) {
 function buildConcentrationBar(draw, lens, molecule, bounds) {
   var concentration = draw.group();
   var colors = lens.colors[molecule];
-  var gradient = draw.gradient('l(0, 1, 0, 0)'+rgbToHex(colors(0))+'-'+rgbToHex(colors(1)));
+  var gradient = draw.gradient('linear', function(stop) {
+    stop.at(0, rgbToHex(colors(0)));
+    stop.at(1, rgbToHex(colors(1)));
+  }).attr({
+    'x1': 0,
+    'x2': 0,
+    'y1': 1,
+    'y2': 0
+  });
 
   var height = VISUALIZATION_WIDTH * 0.56;
   var width = 60;
@@ -240,14 +215,21 @@ function buildConcentrationBar(draw, lens, molecule, bounds) {
   var bottom = top + height;
   var right = left + width;
 
-  var bar = concentration.rect(0, 0, width, height)
-  bar.attr({
-    x: left,
-    y: top,
-    fill: gradient});
+  var bar = concentration
+      .rect(width, height)
+      .x(left)
+      .y(top)
+      .fill(gradient);
 
-  var min = concentration.text(left, bottom+20, bounds[0].toPrecision(DISPLAY_PRECISION))
-  var max = concentration.text(left, top-10, bounds[1].toPrecision(DISPLAY_PRECISION))
+  var min = concentration
+      .text(bounds[0].toPrecision(DISPLAY_PRECISION))
+      .x(left)
+      .y(bottom + 5);
+
+  var max = concentration
+      .text(bounds[1].toPrecision(DISPLAY_PRECISION))
+      .x(left)
+      .y(top-20);
 
   return {
     bar: bar,
@@ -268,13 +250,14 @@ function setStops(gradient, colors) {
 
 function updateConcentrationBar(draw, lens, molecule, bounds) {
   var colors = lens.colors[molecule];
-  var hexes = _.map(_.range(2), function(index) {
-    return rgbToHex(colors(index));
+
+  lens.bar.gradient.update(function(stop) {
+    stop.at(0, rgbToHex(colors(0)));
+    stop.at(1, rgbToHex(colors(1)));
   });
 
-  setStops(lens.bar.gradient, hexes)
-  lens.bar.min.attr({text: bounds[0].toPrecision(DISPLAY_PRECISION)});
-  lens.bar.max.attr({text: bounds[1].toPrecision(DISPLAY_PRECISION)});
+  lens.bar.min.text(bounds[0].toPrecision(DISPLAY_PRECISION));
+  lens.bar.max.text(bounds[1].toPrecision(DISPLAY_PRECISION));
 }
 
 function removeLattice(lattice) {
@@ -329,8 +312,10 @@ function updateLattice(draw, lens, data) {
       var column = rows[i];
       for (var j = 0; j < column.length; j++) {
         var value = spread === 0 ? 1 : (rows[i][j] - min) / spread;
-        lens.plate[j][i].animate({
-          fill: rgbToHex(colors(value))}, 1000);
+        lens.plate[j][i].animate()
+          .attr({fill: rgbToHex(colors(value))});
+        // lens.plate[j][i].animate({
+        //   fill: rgbToHex(colors(value))}, 1000);
       }
     }
 
