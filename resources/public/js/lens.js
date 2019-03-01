@@ -69,13 +69,18 @@ function updateCell(cell, data, born) {
       .translate(cx * data.scale, cy * data.scale)
       .rotate(rotationTransform(data.orientation))
 
+  function animateExisting(obj, born) {
+    return born ? obj : obj.animate();
+  }
+
   // transform the svg group as a whole
-  var whole = born ? cell.whole : cell.whole.animate()
-  whole.transform(transform)
+  // var whole = born ? cell.whole : cell.whole.animate()
+  animateExisting(cell.whole, born)
+    .transform(transform);
 
   // increase the length of the membrane
-  var membrane = born ? cell.membrane : cell.membrane.animate()
-  membrane
+  // var membrane = born ? cell.membrane : cell.membrane.animate()
+  animateExisting(cell.membrane, born)
     .attr({
       width: data.width * data.scale,
       height: length * data.scale,
@@ -86,9 +91,11 @@ function updateCell(cell, data, born) {
   var translate = new SVG.Matrix()
       .translate(hudX * data.scale, hudY * data.scale);
 
-  var hud = born ? cell.hud : cell.hud.animate()
   cell.hud.text(('' + data.volume).substr(0, 8));
-  hud.transform(translate);
+  animateExisting(cell.hud, born)
+    .transform(translate);
+  // cell.hud.transform(translate);
+  // var hud = born ? cell.hud : cell.hud.animate()
 
   // // translate the center point to the center of the membrane
   // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
@@ -153,7 +160,8 @@ function buildCell(lens, draw, id, data) {
       // cell.hud.finish();
       if (!cell.hovering) {
         cell.hovering = true;
-        cell.hud.animate(200).attr({'fill-opacity': 1.0});
+        cell.hud.attr({'fill-opacity': 1.0});
+        // cell.hud.animate(200).attr({'fill-opacity': 1.0});
       }
     })
     .mouseout(function() {
@@ -161,7 +169,8 @@ function buildCell(lens, draw, id, data) {
       // cell.hud.finish();
       if (cell.hovering) {
         cell.hovering = false;
-        cell.hud.animate(200).attr({'fill-opacity': 0.0});
+        cell.hud.attr({'fill-opacity': 0.0});
+        // cell.hud.animate(200).attr({'fill-opacity': 0.0});
       }
     })
 
