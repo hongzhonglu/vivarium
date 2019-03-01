@@ -81,6 +81,15 @@ function updateCell(cell, data, born) {
       height: length * data.scale,
     });
 
+  var hudX = data.location[1] - (0.5 * data.width);
+  var hudY = data.location[0] - (0.3 * data.width);
+  var translate = new SVG.Matrix()
+      .translate(hudX * data.scale, hudY * data.scale)
+
+  var hud = born ? cell.hud : cell.hud.animate()
+  cell.hud.text(('' + data.volume).substr(0, 8));
+  hud.transform(translate);
+
   // // translate the center point to the center of the membrane
   // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
   // nucleoid
@@ -116,6 +125,11 @@ function buildCell(lens, draw, id, data) {
       .ry(0.3 * data.scale)
       .fill(rgbToHex([0.1, 0.1, 0.1]))
 
+  var hud = draw
+      .text("hello")
+      .fill(rgbToHex([0.9, 0.9, 0.9]))
+      .attr({'fill-opacity': 0.0});
+
   // // create the center point
   // var nucleoid = whole
   //     .circle(30)
@@ -124,9 +138,27 @@ function buildCell(lens, draw, id, data) {
   // create an object containing a reference to each component of the svg group
   var cell = {
     whole: whole,
-    membrane: membrane
+    membrane: membrane,
+    hud: hud,
+    hovering: false
     // nucleoid: nucleoid
   }
+
+  whole
+    .mouseover(function() {
+      console.log('mouseover');
+      if (!cell.hovering) {
+        cell.hovering = true;
+        cell.hud.animate(300).attr({'fill-opacity': 1.0});
+      }
+    })
+    .mouseout(function() {
+      console.log('mouseout');
+      if (cell.hovering) {
+        cell.hovering = false;
+        cell.hud.animate(300).attr({'fill-opacity': 0.0});
+      }
+    })
 
   // apply the transformations implied by the supplied data.
   updateCell(cell, data, true);
