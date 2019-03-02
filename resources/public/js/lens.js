@@ -94,8 +94,6 @@ function updateCell(cell, data, born) {
   cell.hud.text(('' + data.volume).substr(0, 8));
   animateExisting(cell.hud, born)
     .transform(translate);
-  // cell.hud.transform(translate);
-  // var hud = born ? cell.hud : cell.hud.animate()
 
   // // translate the center point to the center of the membrane
   // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
@@ -157,7 +155,6 @@ function buildCell(lens, draw, id, data) {
   container
     .mouseover(function() {
       console.log('mouseover');
-      // cell.hud.finish();
       if (!cell.hovering) {
         cell.hovering = true;
         cell.hud.attr({'fill-opacity': 1.0});
@@ -166,7 +163,6 @@ function buildCell(lens, draw, id, data) {
     })
     .mouseout(function() {
       console.log('mouseout');
-      // cell.hud.finish();
       if (cell.hovering) {
         cell.hovering = false;
         cell.hud.attr({'fill-opacity': 0.0});
