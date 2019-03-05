@@ -3,7 +3,7 @@ TAU = 2 * Math.PI;
 INVERSE_TAU = 1.0 / TAU;
 VISUALIZATION_WIDTH = 1000;
 PATCHES_PER_EDGE = 10;
-DISPLAY_PRECISION = 4;
+DISPLAY_PRECISION = 8;
 GLUCOSE_KEY = 'GLC[p]'
 
 // generate a uuid
@@ -69,18 +69,16 @@ function updateCell(cell, data, born) {
       .translate(cx * data.scale, cy * data.scale)
       .rotate(rotationTransform(data.orientation))
 
-  function animateExisting(obj, born) {
+  function animateExisting(obj) {
     return born ? obj : obj.animate();
   }
 
   // transform the svg group as a whole
-  // var whole = born ? cell.whole : cell.whole.animate()
-  animateExisting(cell.whole, born)
+  animateExisting(cell.whole)
     .transform(transform);
 
   // increase the length of the membrane
-  // var membrane = born ? cell.membrane : cell.membrane.animate()
-  animateExisting(cell.membrane, born)
+  animateExisting(cell.membrane)
     .attr({
       width: data.width * data.scale,
       height: length * data.scale,
@@ -91,8 +89,8 @@ function updateCell(cell, data, born) {
   var translate = new SVG.Matrix()
       .translate(hudX * data.scale, hudY * data.scale);
 
-  cell.hud.text(('' + data.volume).substr(0, 8));
-  animateExisting(cell.hud, born)
+  cell.hud.text(data.volume.toPrecision(DISPLAY_PRECISION));
+  animateExisting(cell.hud)
     .transform(translate);
 
   // // translate the center point to the center of the membrane
@@ -130,7 +128,7 @@ function buildCell(lens, draw, id, data) {
       .rect(data.width * data.scale, data.scale)
       .rx(0.3 * data.scale)
       .ry(0.3 * data.scale)
-      .fill(rgbToHex([0.1, 0.1, 0.1]))
+      .fill(rgbToHex([0.6, 0.4, 0.3]))
 
   var hud = container
       .text("hello")
