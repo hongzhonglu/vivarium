@@ -94,8 +94,7 @@ function updateCell(cell, data, born) {
     .transform(translate);
 
   // // translate the center point to the center of the membrane
-  // var nucleoid = born ? cell.nucleoid : cell.nucleoid.animate()
-  // nucleoid
+  // animateExisting(cell.nucleoid)
   //   .cx(originX * PATCH_WIDTH)
   //   .cy(originY * PATCH_WIDTH)
 }
@@ -219,6 +218,7 @@ function buildLattice(lens, draw, m, n, width) {
                 agent_type: lens.data.agent_type,
                 agent_config: {
                   'outer_id': lens.data.outer_id,
+                  'seed': Math.round(37 * x + 3 * y),
                   'location': [x, y]
                 }
               }));
@@ -393,7 +393,7 @@ function updateLens(draw, lens, data) {
     }
   })
 
-  lens.trigger.innerHTML = data.running ? 'pause' : 'trigger';
+  lens.trigger.innerHTML = data.running ? 'Pause' : 'Run';
 
   // keep a reference to the new simulation states
   lens.data = data;
@@ -433,10 +433,10 @@ function bootLens(lens) {
   trigger.addEventListener('click', function(event) {
     if (lens.data && lens.data.running) {
       socket.send(JSON.stringify({'event': 'PAUSE_ALL'}));
-      lens.trigger.innerHTML = 'trigger';
+      lens.trigger.innerHTML = 'Run';
     } else {
       socket.send(JSON.stringify({'event': 'TRIGGER_ALL'}));
-      lens.trigger.innerHTML = 'pause';
+      lens.trigger.innerHTML = 'Pause';
     }
   });
 
