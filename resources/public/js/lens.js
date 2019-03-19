@@ -4,7 +4,7 @@ INVERSE_TAU = 1.0 / TAU;
 VISUALIZATION_WIDTH = 1000;
 PATCHES_PER_EDGE = 10;
 DISPLAY_PRECISION = 8;
-GLUCOSE_KEY = 'GLC[p]'
+GLUCOSE_KEY = 'GLC'
 
 // generate a uuid
 function uuid() {
