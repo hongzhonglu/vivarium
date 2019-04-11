@@ -5,6 +5,7 @@ VISUALIZATION_WIDTH = 1000;
 PATCHES_PER_EDGE = 10;
 DISPLAY_PRECISION = 8;
 GLUCOSE_KEY = 'GLC'
+DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 // generate a uuid
 function uuid() {
@@ -75,7 +76,8 @@ function updateCell(cell, data, born) {
 
   // transform the svg group as a whole
   animateExisting(cell.whole)
-    .transform(transform);
+    .transform(transform)
+    .fill(rgbToHex(data.color || DEFAULT_COLOR));
 
   // increase the length of the membrane
   animateExisting(cell.membrane)
@@ -127,7 +129,7 @@ function buildCell(lens, draw, id, data) {
       .rect(data.width * data.scale, data.scale)
       .rx(0.3 * data.scale)
       .ry(0.3 * data.scale)
-      .fill(rgbToHex([0.6, 0.4, 0.3]))
+      .fill(rgbToHex(data.color || DEFAULT_COLOR))
 
   var hud = container
       .text("hello")
