@@ -403,6 +403,23 @@ function updateLens(draw, lens, data) {
   updateLattice(draw, lens, data);
 }
 
+// set up molecule select
+function setMoleculeSelect() {
+  // TODO (Eran) -- get keys from environment_state to use in place of 'molecules
+  // assign glucose color scale directly
+  glucoseGradient = colorScale(
+    [0, 0.3, 0],
+    [0.9, 1, 0.5]);
+
+  // TODO -- make this a separate function makeMoleculeSelect
+  var moleculeSelect = document.getElementById('molecule');
+  var select = buildMoleculeSelect(moleculeSelect, moleculeNames);
+  var colors = buildColorScales(moleculeNames, 7, 5, 4);
+  colors[GLUCOSE_KEY] = glucoseGradient;
+
+  // TODO -- get moleculeSelect, select, and colors passed back to bootLens?
+}
+
 function buildMoleculeSelect(select, molecules) {
   _.each(molecules, function(molecule) {
     option = new Option(molecule, molecule);
@@ -442,16 +459,9 @@ function bootLens(lens) {
     }
   });
 
-  // assign glucose color scale directly
-  glucoseGradient = colorScale(
-    [0, 0.3, 0],
-    [0.9, 1, 0.5]);
-
-  // set up molecule select
-  var moleculeSelect = document.getElementById('molecule');
-  var select = buildMoleculeSelect(moleculeSelect, moleculeNames);
-  var colors = buildColorScales(moleculeNames, 7, 5, 4);
-  colors[GLUCOSE_KEY] = glucoseGradient;
+  // make the molecule selection menu
+  // TODO -- pass in data['environment-state']
+  setMoleculeSelect()
 
   // set up lens state
   lens.draw = draw;
