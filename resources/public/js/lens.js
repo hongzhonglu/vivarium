@@ -4,7 +4,6 @@ INVERSE_TAU = 1.0 / TAU;
 VISUALIZATION_WIDTH = 1000;
 PATCHES_PER_EDGE = 10;
 DISPLAY_PRECISION = 8;
-GLUCOSE_KEY = 'GLC'
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 // generate a uuid
@@ -84,7 +83,8 @@ function updateCell(cell, data, born) {
     .attr({
       width: data.width * data.scale,
       height: length * data.scale,
-    });
+    })
+    .fill(rgbToHex(data.color || DEFAULT_COLOR));
 
   var hudX = data.location[1] - (0.4 * data.width);
   var hudY = data.location[0] - (0.4 * data.width);
@@ -314,8 +314,8 @@ function removeLattice(lattice) {
 }
 
 function checkLattice(draw, lens, data) {
-  var width = data.lattice[GLUCOSE_KEY].length;
-  var height = data.lattice[GLUCOSE_KEY][0].length;
+  var width = data.lattice[lens.moleculeNames[0]].length;
+  var height = data.lattice[lens.moleculeNames[0]][0].length;
   if (lens.plate.length !== width ||
       lens.plate[0].length !== height) {
     removeLattice(lens.plate);
@@ -379,6 +379,16 @@ function updateLens(draw, lens, data) {
     }
   })
 
+  // get moleculeNames from environment-state, set in lens
+  var moleculeNames = _.keys(data.lattice);
+  if (!_.isEqual(moleculeNames, lens.moleculeNames)) {
+    lens.moleculeNames = moleculeNames;
+    select = setMoleculeSelect(moleculeNames);
+    lens.select = select.select;
+    lens.colors = select.colors;
+    lens.molecule = moleculeNames[0];
+  }
+
   // add any new cells that have appeared since the last set of data and update
   // existing cells with their new state
   var scale = VISUALIZATION_WIDTH / data.edge_length;
@@ -403,10 +413,31 @@ function updateLens(draw, lens, data) {
   updateLattice(draw, lens, data);
 }
 
+// set up molecule select
+function setMoleculeSelect(moleculeNames) {
+  // TODO (Eran) -- get keys from environment_state to use in place of 'molecules
+  // assign glucose color scale directly
+  glucoseGradient = colorScale(
+    [0, 0.3, 0],
+    [0.9, 1, 0.5]);
+
+  var moleculeSelect = document.getElementById('molecule');
+  var select = buildMoleculeSelect(moleculeSelect, moleculeNames);
+  var colors = buildColorScales(moleculeNames, 7, 5, 4);
+  colors[moleculeNames[0]] = glucoseGradient;
+  
+  return {
+    colors: colors,
+    select: moleculeSelect,
+  }
+}
+
 function buildMoleculeSelect(select, molecules) {
+  var firstMolecule = molecules[0];
+  _.each(select.options, function(option) {select.remove(0)});
   _.each(molecules, function(molecule) {
     option = new Option(molecule, molecule);
-    option.selected = molecule === GLUCOSE_KEY;
+    option.selected = molecule === firstMolecule;
     select.append(option);
   });
 }
@@ -442,16 +473,12 @@ function bootLens(lens) {
     }
   });
 
-  // assign glucose color scale directly
-  glucoseGradient = colorScale(
-    [0, 0.3, 0],
-    [0.9, 1, 0.5]);
-
-  // set up molecule select
-  var moleculeSelect = document.getElementById('molecule');
-  var select = buildMoleculeSelect(moleculeSelect, moleculeNames);
-  var colors = buildColorScales(moleculeNames, 7, 5, 4);
-  colors[GLUCOSE_KEY] = glucoseGradient;
+  // make the molecule selection menu
+  lens.moleculeNames = ['molecule'];
+  var select = setMoleculeSelect(lens.moleculeNames);
+  lens.select = select.select;
+  lens.colors = select.colors;
+  lens.molecule = lens.select.value;
 
   // set up lens state
   lens.draw = draw;
@@ -464,11 +491,9 @@ function bootLens(lens) {
     socket.send(JSON.stringify(message))
   }
   lens.initialized = false;
-  lens.colors = colors;
   lens.trigger = trigger;
-  lens.molecule = moleculeSelect.value;
   lens.keyboard = keyboard;
-  lens.bar = buildConcentrationBar(draw, lens, GLUCOSE_KEY, [0, 0]);
+  lens.bar = buildConcentrationBar(draw, lens, lens.moleculeNames[0], [0, 0]);
 
   // add event listeners
   socket.addEventListener('open', function(event) {
@@ -484,8 +509,8 @@ function bootLens(lens) {
     }
   });
 
-  moleculeSelect.addEventListener('change', function() {
-    lens.molecule = moleculeSelect.value;
+  lens.select.addEventListener('change', function() {
+    lens.molecule = lens.select.value;
     updateLattice(draw, lens, lens.data);
   });
 
