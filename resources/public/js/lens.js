@@ -5,6 +5,12 @@ VISUALIZATION_WIDTH = 1000;
 PATCHES_PER_EDGE = 10;
 DISPLAY_PRECISION = 8;
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
+RGB_SIZE = 255
+MEMBRANE_COLOR = [102/RGB_SIZE, 102/RGB_SIZE, 255/RGB_SIZE]
+OFFSET = {
+  periplasm : 0,
+  cytoplasm: 0.05
+}
 
 // generate a uuid
 function uuid() {
@@ -73,18 +79,23 @@ function updateCell(cell, data, born) {
     return born ? obj : obj.animate();
   }
 
+  function animateCapsule(group, data, offset, color) {
+    animateExisting(group)
+    .attr({
+      width: data.width * data.scale - 2 * offset,
+      height: length * data.scale - 2 * offset,
+    })
+    .fill(rgbToHex(color));
+  }
+
   // transform the svg group as a whole
   animateExisting(cell.whole)
     .transform(transform)
     .fill(rgbToHex(data.color || DEFAULT_COLOR));
 
-  // increase the length of the membrane
-  animateExisting(cell.membrane)
-    .attr({
-      width: data.width * data.scale,
-      height: length * data.scale,
-    })
-    .fill(rgbToHex(data.color || DEFAULT_COLOR));
+  // increase the length of the outerMembrane
+  animateCapsule(cell.periplasm, data, OFFSET.periplasm, data.color)
+  animateCapsule(cell.cytoplasm, data, OFFSET.cytoplasm, data.color)
 
   var hudX = data.location[1] - (0.4 * data.width);
   var hudY = data.location[0] - (0.4 * data.width);
@@ -124,12 +135,9 @@ function buildCell(lens, draw, id, data) {
         }
       })
 
-  // create the rectangle representing the outer bounds of the cell
-  var membrane = whole
-      .rect(data.width * data.scale, data.scale)
-      .rx(0.3 * data.scale)
-      .ry(0.3 * data.scale)
-      .fill(rgbToHex(data.color || DEFAULT_COLOR))
+  // create the rectangle representing the compartments of the cell
+  var periplasm = capsuleShape(whole, OFFSET.periplasm, data, data.color)
+  var cytoplasm = capsuleShape(whole, OFFSET.cytoplasm, data, data.color)
 
   var hud = container
       .text("hello")
@@ -145,7 +153,8 @@ function buildCell(lens, draw, id, data) {
   var cell = {
     container: container,
     whole: whole,
-    membrane: membrane,
+    periplasm: periplasm,
+    cytoplasm: cytoplasm,
     hud: hud,
     hovering: false
     // nucleoid: nucleoid
@@ -172,6 +181,22 @@ function buildCell(lens, draw, id, data) {
   // apply the transformations implied by the supplied data.
   updateCell(cell, data, true);
   return cell;
+}
+
+function capsuleShape(group, offset, data, color) {
+  // create the rectangle representing the outer bounds of the capsule
+  return group
+      .rect(data.width * data.scale - 2 * offset, data.scale  - 2 * offset)  // width, height
+      .x(offset)
+      .y(offset)
+      .rx((1 - offset) * 0.3 * data.scale)
+      .ry((1 - offset) * 0.3 * data.scale)
+      .attr({
+          fill: rgbToHex(color || DEFAULT_COLOR),
+          stroke: rgbToHex(MEMBRANE_COLOR),
+          'stroke-width': 2,
+          'stroke-opacity': 0.9,
+        })
 }
 
 // build a bunch of random cells (for demonstration only)
