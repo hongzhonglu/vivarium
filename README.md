@@ -1,4 +1,4 @@
-# shepherd
+# Lens
 
 manage a flock of distributed agents
 
