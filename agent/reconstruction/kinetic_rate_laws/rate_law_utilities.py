@@ -22,17 +22,16 @@ import json
 import numpy as np
 import argparse
 
+from itertools import ifilter
+
 # import matplotlib.pyplot as plt  # RuntimeError: Python is not installed as a framework.
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from reconstruction.spreadsheets import JsonReader
-from itertools import ifilter
-
-from environment.condition.look_up_tables.look_up import LookUp
-import utils.kinetic_rate_laws as rate_laws
-
+from agent.reconstruction.spreadsheets import JsonReader
+from agent.environment.condition.look_up_tables.look_up import LookUp
+import agent.utils.kinetic_rate_laws as rate_laws
 
 TSV_DIALECT = csv.excel_tab
 
