@@ -13,3 +13,14 @@ pom.xml.asc
 out/
 .idea/
 *.iml
+
+# Compiled source #
+###################
+*.pyc
+__pycache__
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*

@@ -7,7 +7,7 @@ DISPLAY_PRECISION = 8;
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
 RGB_SIZE = 255
 MEMBRANE_COLOR = [102/RGB_SIZE, 102/RGB_SIZE, 255/RGB_SIZE]
-OFFSET = {
+COMPARTMENT_OFFSET = {
   periplasm : 0,
   cytoplasm: 0.05
 }
@@ -80,13 +80,15 @@ function updateCell(cell, data, born) {
   }
 
   function animateCapsule(group, data, offset, color) {
-    animateExisting(group)
-    .attr({
-      width: data.width * data.scale - 2 * offset,
-      height: length * data.scale - 2 * offset,
-    })
-    .fill(rgbToHex(color));
-  }
+	    animateExisting(group)
+	    .attr({
+	      width: data.scale * data.width * (1 - offset),
+	      height: data.scale * length * (1 - 0.5 * offset),
+	      x: data.scale * 0.25*offset,
+	      y: data.scale * 0.5*offset
+	    })
+	    .fill(rgbToHex(color));
+	  }
 
   // transform the svg group as a whole
   animateExisting(cell.whole)
@@ -94,8 +96,8 @@ function updateCell(cell, data, born) {
     .fill(rgbToHex(data.color || DEFAULT_COLOR));
 
   // increase the length of the outerMembrane
-  animateCapsule(cell.periplasm, data, OFFSET.periplasm, data.color)
-  animateCapsule(cell.cytoplasm, data, OFFSET.cytoplasm, data.color)
+  animateCapsule(cell.periplasm, data, COMPARTMENT_OFFSET.periplasm, data.color)
+  animateCapsule(cell.cytoplasm, data, COMPARTMENT_OFFSET.cytoplasm, data.color)
 
   var hudX = data.location[1] - (0.4 * data.width);
   var hudY = data.location[0] - (0.4 * data.width);
@@ -136,8 +138,8 @@ function buildCell(lens, draw, id, data) {
       })
 
   // create the rectangle representing the compartments of the cell
-  var periplasm = capsuleShape(whole, OFFSET.periplasm, data, data.color)
-  var cytoplasm = capsuleShape(whole, OFFSET.cytoplasm, data, data.color)
+  var periplasm = capsuleShape(whole, COMPARTMENT_OFFSET.periplasm, data, data.color)
+  var cytoplasm = capsuleShape(whole, COMPARTMENT_OFFSET.cytoplasm, data, data.color)
 
   var hud = container
       .text("hello")
@@ -184,20 +186,20 @@ function buildCell(lens, draw, id, data) {
 }
 
 function capsuleShape(group, offset, data, color) {
-  // create the rectangle representing the outer bounds of the capsule
-  return group
-      .rect(data.width * data.scale - 2 * offset, data.scale  - 2 * offset)  // width, height
-      .x(offset)
-      .y(offset)
-      .rx((1 - offset) * 0.3 * data.scale)
-      .ry((1 - offset) * 0.3 * data.scale)
-      .attr({
-          fill: rgbToHex(color || DEFAULT_COLOR),
-          stroke: rgbToHex(MEMBRANE_COLOR),
-          'stroke-width': 2,
-          'stroke-opacity': 0.9,
-        })
-}
+	  // create the rectangle representing the outer bounds of the capsule
+	  return group
+	      .rect(data.width * data.scale, data.scale)  // width, height  TODO -- these values don't seem to matter
+	      // .x(data.scale * offset)
+	      // .y(data.scale * offset)
+	      .rx(0.3 * data.scale)
+	      .ry(0.3 * data.scale)
+	      .attr({
+	          fill: rgbToHex(color || DEFAULT_COLOR),
+	          stroke: rgbToHex(MEMBRANE_COLOR),
+	          'stroke-width': 2,
+	          'stroke-opacity': 0.9,
+	        })
+	}
 
 // build a bunch of random cells (for demonstration only)
 function buildCells(draw, n, scale, radius) {
