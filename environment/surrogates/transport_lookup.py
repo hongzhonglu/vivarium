@@ -18,7 +18,7 @@ TRANSPORT_IDS_FILE = os.path.join("reconstruction", "flat", "transport_reactions
 
 TSV_DIALECT = csv.excel_tab
 TUMBLE_JITTER = 2.0 # (radians)
-DEFAULT_COLOR = [color/255 for color in [255, 69, 0]]
+DEFAULT_COLOR = [color/255 for color in [0, 0, 0]]
 
 amino_acids = [
 	'L-ALPHA-ALANINE',
