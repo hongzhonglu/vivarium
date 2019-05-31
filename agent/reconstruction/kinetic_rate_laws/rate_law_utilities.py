@@ -35,10 +35,10 @@ import agent.utils.kinetic_rate_laws as rate_laws
 
 TSV_DIALECT = csv.excel_tab
 
-REACTIONS_FILE = os.path.join("reconstruction", "flat", "reactions.tsv")
-PROTEINS_FILE = os.path.join("reconstruction", "flat", "proteins.tsv")
-COMPLEXATION_FILE = os.path.join("reconstruction", "flat", "complexationReactions.tsv")
-KINETIC_PARAMETERS_PATH = os.path.join('reconstruction', 'kinetic_rate_laws', 'parameters')
+REACTIONS_FILE = os.path.join('agent', 'reconstruction', 'flat', 'reactions.tsv')
+PROTEINS_FILE = os.path.join('agent', 'reconstruction', 'flat', 'proteins.tsv')
+COMPLEXATION_FILE = os.path.join('agent', 'reconstruction', 'flat', 'complexationReactions.tsv')
+KINETIC_PARAMETERS_PATH = os.path.join('agent', 'reconstruction', 'kinetic_rate_laws', 'parameters')
 OUTPUT_DIR = os.path.join('out', 'kinetic_rate_laws')
 
 

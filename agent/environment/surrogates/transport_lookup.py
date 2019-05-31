@@ -13,8 +13,8 @@ from agent.reconstruction.kinetic_rate_laws.rate_law_utilities import load_react
 from agent.reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactions_from_exchange
 from agent.reconstruction.spreadsheets import JsonReader
 
-EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
-TRANSPORT_IDS_FILE = os.path.join("reconstruction", "flat", "transport_reactions.tsv")
+EXTERNAL_MOLECULES_FILE = os.path.join('agent', 'environment', 'condition', 'environment_molecules.tsv')
+TRANSPORT_IDS_FILE = os.path.join('agent', 'reconstruction', 'flat', 'transport_reactions.tsv')
 
 TSV_DIALECT = csv.excel_tab
 TUMBLE_JITTER = 2.0 # (radians)
