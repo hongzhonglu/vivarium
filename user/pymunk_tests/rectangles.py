@@ -1,6 +1,3 @@
-"""This example spawns (bouncing) balls randomly on a L-shape constructed of
-two segment shapes. Not interactive.
-"""
 
 __version__ = "$Id:$"
 __docformat__ = "reStructuredText"
@@ -26,7 +23,7 @@ RADIUS = 25
 INITIAL_LENGTH = 50
 DIVISION_LENGTH = 100
 
-class BouncyBalls(object):
+class MultiCell(object):
     """
     This class implements a simple scene in which there is a static platform (made up of a couple of lines)
     that don't move. Balls appear occasionally and drop onto the platform. They bounce around.
@@ -152,17 +149,19 @@ class BouncyBalls(object):
         radius, length = body.dimensions
         mass = body.mass
 
-        # import ipdb; ipdb.set_trace()
-        length = length / 2
-
+        new_length = length / 2
         for daughter in range(2):
+
+            position = body.position
+
+            import ipdb; ipdb.set_trace()
 
             # TODO -- place new cells in correct positions
             new_body, new_shape = self._add_cell(
                 radius,
-                length,
+                new_length,
                 mass,
-                body.position,
+                position,
                 body.angle,
                 body.angular_velocity,
                 shape.elasticity,
@@ -266,5 +265,5 @@ class BouncyBalls(object):
 
 
 if __name__ == '__main__':
-    game = BouncyBalls()
+    game = MultiCell()
     game.run()
