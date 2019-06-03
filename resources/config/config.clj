@@ -13,7 +13,7 @@
    :subscribe ["shepherd-receive"]}}
 
  :launch
- {:dir "../wcEcoli"
+ {:dir "."
   :boot "environment.boot"}
 
  :kafka

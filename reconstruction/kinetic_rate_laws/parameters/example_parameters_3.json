@@ -1,0 +1,10 @@
+{
+  "TRANS-RXN-122": {
+    "GLTP-MONOMER[i]": {
+      "GLT[p]": 1e-3,
+      "NA+[p]": 1e-3,
+      "PROTON[p]": null,
+      "kcat_f": 1
+    }
+  }
+}
