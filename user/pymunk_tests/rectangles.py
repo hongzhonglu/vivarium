@@ -18,20 +18,8 @@ from pygame.color import *
 import pymunk
 import pymunk.pygame_util
 
-jitter_force_sigma = 100
+jitter_force_sigma = 500
 jitter_location_sigma = 10
-
-
-def rectangle(body, width, height):
-    shape = pymunk.Poly(body,
-        [
-            (0, 0),
-            (width, 0),
-            (width, height),
-            (0, height)
-        ]
-        )
-    return shape
 
 
 class BouncyBalls(object):
@@ -67,6 +55,98 @@ class BouncyBalls(object):
         self._running = True
         self._ticks_to_next_ball = 10
 
+    # def grow(self):
+	#
+    #     for body, shape in self._space.bodies:
+    #         shape = list(body.shapes)[0]
+    #         new_body = body
+	#
+	#
+    #         mass, radius, length = new_body.dimensions
+    #         length += 0.2
+	#
+    #         # make shape, moment of inertia, and add a body
+    #         new_shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+    #         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
+    #         new_body = pymunk.Body(mass, inertia)
+    #         new_shape.body = new_body
+	#
+    #         new_body.position = body.position
+    #         new_body.dimensions = (mass, radius, length)
+	#
+    #         new_shape.elasticity = 0.95
+    #         new_shape.friction = 0.9
+	#
+	#
+    #         # import ipdb; ipdb.set_trace()
+	#
+    #         # swap bodies
+    #         self._space.add(new_body, new_shape)
+    #         self._space.remove(body, shape)
+    #         self._balls.append(new_shape)
+    #         self._balls.remove(shape)
+
+            # import ipdb; ipdb.set_trace()
+    # def grow(self, body, shape):
+	#
+    #     new_body = body.copy()
+	#
+    #     mass, radius, length = new_body.dimensions
+    #     length += 0.2
+	#
+    #     # make shape, moment of inertia, and add a body
+    #     new_shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+    #     inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
+    #     new_body = pymunk.Body(mass, inertia)
+    #     new_shape.body = new_body
+	#
+    #     new_body.position = body.position
+    #     new_body.dimensions = (mass, radius, length)
+	#
+    #     new_shape.elasticity = 0.95
+    #     new_shape.friction = 0.9
+	#
+	#
+    #     # swap bodies
+    #     self._space.add(new_body, new_shape)
+    #     self._space.remove(body, shape)
+    #     self._balls.append(new_shape)
+    #     self._balls.remove(shape)
+
+    def grow(self, body, shape):
+
+
+        import ipdb; ipdb.set_trace()
+
+
+
+
+
+        new_body = body.copy()
+
+        mass, radius, length = new_body.dimensions
+        length += 0.2
+
+        # make shape, moment of inertia, and add a body
+        new_shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+        inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
+        new_body = pymunk.Body(mass, inertia)
+        new_shape.body = new_body
+
+        new_body.position = body.position
+        new_body.dimensions = (mass, radius, length)
+
+        new_shape.elasticity = 0.95
+        new_shape.friction = 0.9
+
+
+        # swap bodies
+        self._space.add(new_body, new_shape)
+        self._space.remove(body, shape)
+        self._balls.append(new_shape)
+        self._balls.remove(shape)
+
+
     def run(self):
         """
         The main loop of the game.
@@ -74,18 +154,30 @@ class BouncyBalls(object):
         """
         # Main loop
         while self._running:
+
+
+            for i, body in enumerate(self._space.bodies):
+                # import ipdb; ipdb.set_trace()
+                shape = list(body.shapes)[0]
+                self.grow(body, shape)
+
+            # import ipdb; ipdb.set_trace()
+
+
             # Progress time forward
             for x in range(self._physics_steps_per_frame):
                 for body in self._space.bodies:
                     # Add jitter to cells
                     force = (random.normalvariate(0, jitter_force_sigma), random.normalvariate(0, jitter_force_sigma))
-                    location = (random.normalvariate(0, jitter_location_sigma), random.normalvariate(0, jitter_location_sigma))
+                    location = (
+                    random.normalvariate(0, jitter_location_sigma), random.normalvariate(0, jitter_location_sigma))
                     body.apply_force_at_local_point(force, location)
+
 
                 self._space.step(self._dt)
 
             self._process_events()
-            self._update_balls()
+            self._update_cells()
             self._clear_screen()
             self._draw_objects()
             pygame.display.flip()
@@ -123,7 +215,7 @@ class BouncyBalls(object):
             elif event.type == KEYDOWN and event.key == K_p:
                 pygame.image.save(self._screen, "bouncing_balls.png")
 
-    def _update_balls(self):
+    def _update_cells(self):
         """
         Create/remove balls as necessary. Call once per frame only.
         :return: None
@@ -135,25 +227,26 @@ class BouncyBalls(object):
 
     def _create_cell(self):
         """
-        Create a ball.
-        :return:
+        Create a cell.
         """
         mass = 10
         radius = 25
         length = 50
 
-        inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
+        # make shape, moment of inertia, and add a body
+        shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+        inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
+        shape.body = body
+
         x = random.randint(115, 350)
         body.position = x, 400
+        body.dimensions = (mass, radius, length)
 
-        # shape = pymunk.Circle(body, radius, (0, 0))
-        shape = rectangle(body, radius, length)
         shape.elasticity = 0.95
         shape.friction = 0.9
         self._space.add(body, shape)
         self._balls.append(shape)
-
 
 
     def _clear_screen(self):

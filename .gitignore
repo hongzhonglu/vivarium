@@ -13,3 +13,8 @@ pom.xml.asc
 out/
 .idea/
 *.iml
+
+# User files #
+################
+user/*
+!user/user.txt
