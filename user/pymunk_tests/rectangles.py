@@ -72,7 +72,6 @@ class BouncyBalls(object):
                     random.normalvariate(0, jitter_location_sigma), random.normalvariate(0, jitter_location_sigma))
                     body.apply_force_at_local_point(force, location)
 
-
                 self._space.step(self._dt)
 
             self._process_events()
@@ -128,19 +127,27 @@ class BouncyBalls(object):
     def _grow_cells(self):
         self._ticks_to_next_grow -= 1
         if self._ticks_to_next_grow <= 0:
-            for i, body in enumerate(self._space.bodies):
-                # import ipdb; ipdb.set_trace()
-                shape = list(body.shapes)[0]
+            for body in self._space.bodies:
+                shape = list(body.shapes)[0]  # assumes only one shape in each body
                 self.grow(body, shape)
 
             self._ticks_to_next_grow = 100
 
+    # def _divide_cells(self):
+
+
 
     def grow(self, body, shape):
 
-        new_body = body.copy()
+        # new_body = body.copy()
 
-        mass, radius, length = new_body.dimensions
+
+        # import ipdb; ipdb.set_trace()
+
+
+
+        radius, length = body.dimensions
+        mass = body.mass
         length += 10 #0.2
 
         # make shape, moment of inertia, and add a body
@@ -149,8 +156,12 @@ class BouncyBalls(object):
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
 
+        # TODO - reposition on center?
         new_body.position = body.position
-        new_body.dimensions = (mass, radius, length)
+        new_body.angle = body.angle
+        new_body.angular_velocity = body.angular_velocity
+
+        new_body.dimensions = (radius, length)
 
         new_shape.elasticity = 0.95
         new_shape.friction = 0.9
@@ -178,7 +189,7 @@ class BouncyBalls(object):
 
         x = random.randint(115, 350)
         body.position = x, 400
-        body.dimensions = (mass, radius, length)
+        body.dimensions = (radius, length)
 
         shape.elasticity = 0.95
         shape.friction = 0.9
