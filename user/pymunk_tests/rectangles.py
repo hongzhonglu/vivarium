@@ -18,8 +18,21 @@ from pygame.color import *
 import pymunk
 import pymunk.pygame_util
 
-jitter_mu = 0
-jitter_sigma = 100
+jitter_force_sigma = 100
+jitter_location_sigma = 10
+
+
+def rectangle(body, width, height):
+    shape = pymunk.Poly(body,
+        [
+            (0, 0),
+            (width, 0),
+            (width, height),
+            (0, height)
+        ]
+        )
+    return shape
+
 
 class BouncyBalls(object):
     """
@@ -65,8 +78,9 @@ class BouncyBalls(object):
             for x in range(self._physics_steps_per_frame):
                 for body in self._space.bodies:
                     # Add jitter to cells
-                    force = (random.normalvariate(jitter_mu, jitter_sigma), random.normalvariate(jitter_mu, jitter_sigma))
-                    body.apply_force_at_local_point(force, (0, 0))
+                    force = (random.normalvariate(0, jitter_force_sigma), random.normalvariate(0, jitter_force_sigma))
+                    location = (random.normalvariate(0, jitter_location_sigma), random.normalvariate(0, jitter_location_sigma))
+                    body.apply_force_at_local_point(force, location)
 
                 self._space.step(self._dt)
 
@@ -116,25 +130,31 @@ class BouncyBalls(object):
         """
         self._ticks_to_next_ball -= 1
         if self._ticks_to_next_ball <= 0:
-            self._create_ball()
+            self._create_cell()
             self._ticks_to_next_ball = 100
 
-    def _create_ball(self):
+    def _create_cell(self):
         """
         Create a ball.
         :return:
         """
         mass = 10
         radius = 25
+        length = 50
+
         inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
         body = pymunk.Body(mass, inertia)
         x = random.randint(115, 350)
         body.position = x, 400
-        shape = pymunk.Circle(body, radius, (0, 0))
+
+        # shape = pymunk.Circle(body, radius, (0, 0))
+        shape = rectangle(body, radius, length)
         shape.elasticity = 0.95
         shape.friction = 0.9
         self._space.add(body, shape)
         self._balls.append(shape)
+
+
 
     def _clear_screen(self):
         """
