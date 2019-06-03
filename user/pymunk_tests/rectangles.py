@@ -21,6 +21,10 @@ import pymunk.pygame_util
 jitter_force_sigma = 500
 jitter_location_sigma = 10
 
+INITIAL_MASS = 10
+RADIUS = 25
+INITIAL_LENGTH = 50
+DIVISION_LENGTH = 100
 
 class BouncyBalls(object):
     """
@@ -77,6 +81,7 @@ class BouncyBalls(object):
             self._process_events()
             self._update_cells()
             self._grow_cells()
+            self._divide_cells()
             self._clear_screen()
             self._draw_objects()
             pygame.display.flip()
@@ -133,22 +138,70 @@ class BouncyBalls(object):
 
             self._ticks_to_next_grow = 100
 
-    # def _divide_cells(self):
+    def _divide_cells(self):
 
+        for body in self._space.bodies:
+            radius, length = body.dimensions
+            if length > DIVISION_LENGTH:
+                shape = list(body.shapes)[0]  # assumes only one shape in each body
+                self.divide(body, shape)
+
+
+    def divide(self, body, shape):
+
+        radius, length = body.dimensions
+        mass = body.mass
+
+        # import ipdb; ipdb.set_trace()
+        length = length / 2
+
+        for daughter in range(2):
+
+            # TODO -- place new cells in correct positions
+            new_body, new_shape = self._add_cell(
+                radius,
+                length,
+                mass,
+                body.position,
+                body.angle,
+                body.angular_velocity,
+                shape.elasticity,
+                shape.friction,
+            )
+
+            # swap bodies
+            self._space.add(new_body, new_shape)
+            self._balls.append(new_shape)
+
+
+        self._space.remove(body, shape)
+        self._balls.remove(shape)
+
+
+
+    def _add_cell(self, radius, length, mass, position, angle, angular_velocity, elasticity, friction):
+        shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+        inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
+        body = pymunk.Body(mass, inertia)
+        shape.body = body
+
+        body.position = position
+        body.angle = angle
+        body.angular_velocity = angular_velocity
+        body.dimensions = (radius, length)
+
+        shape.elasticity = elasticity
+        shape.friction = friction
+
+        return body, shape
 
 
     def grow(self, body, shape):
 
-        # new_body = body.copy()
-
-
-        # import ipdb; ipdb.set_trace()
-
-
-
         radius, length = body.dimensions
-        mass = body.mass
-        length += 10 #0.2
+
+        mass = body.mass  # TODO -- need to update mass as well!
+        length += 10  # Growth. TODO -- Pass this in.
 
         # make shape, moment of inertia, and add a body
         new_shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
@@ -160,11 +213,10 @@ class BouncyBalls(object):
         new_body.position = body.position
         new_body.angle = body.angle
         new_body.angular_velocity = body.angular_velocity
-
         new_body.dimensions = (radius, length)
 
-        new_shape.elasticity = 0.95
-        new_shape.friction = 0.9
+        new_shape.elasticity = shape.elasticity
+        new_shape.friction = shape.friction
 
         # swap bodies
         self._space.add(new_body, new_shape)
@@ -173,13 +225,14 @@ class BouncyBalls(object):
         self._balls.remove(shape)
 
 
+    # TODO us _add_cell instead
     def _create_cell(self):
         """
         Create a cell.
         """
-        mass = 10
-        radius = 25
-        length = 50
+        mass = INITIAL_MASS
+        radius = RADIUS
+        length = INITIAL_LENGTH
 
         # make shape, moment of inertia, and add a body
         shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
