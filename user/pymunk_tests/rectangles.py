@@ -4,6 +4,7 @@ __docformat__ = "reStructuredText"
 
 # Python imports
 import random
+import math
 
 # Library imports
 import pygame
@@ -22,6 +23,8 @@ INITIAL_MASS = 10
 RADIUS = 25
 INITIAL_LENGTH = 50
 DIVISION_LENGTH = 100
+ELASTICITY = 0.95
+FRICTION = 0.9
 
 class MultiCell(object):
     """
@@ -62,6 +65,18 @@ class MultiCell(object):
         The main loop of the game.
         :return: None
         """
+
+        # create first cell
+        self._add_cell(
+            RADIUS,
+            INITIAL_LENGTH,
+            INITIAL_MASS,
+            (250, 250),
+            0,
+            ELASTICITY,
+            FRICTION,
+        )
+
         # Main loop
         while self._running:
             # Progress time forward
@@ -76,7 +91,7 @@ class MultiCell(object):
                 self._space.step(self._dt)
 
             self._process_events()
-            self._update_cells()
+            # self._update_cells()
             self._grow_cells()
             self._divide_cells()
             self._clear_screen()
@@ -86,45 +101,6 @@ class MultiCell(object):
             self._clock.tick(50)
             pygame.display.set_caption("fps: " + str(self._clock.get_fps()))
 
-    def _add_static_scenery(self):
-        """
-        Create the static bodies.
-        :return: None
-        """
-        static_body = self._space.static_body
-        static_lines = [
-            pymunk.Segment(static_body, (10.0, 10.0), (590.0, 10.0), 0.0),
-            pymunk.Segment(static_body, (590.0, 10.0), (590.0, 590.0), 0.0),
-            pymunk.Segment(static_body, (590.0, 590.0), (10.0, 590.0), 0.0),
-            pymunk.Segment(static_body, (10.0, 590.0), (10.0, 10.0), 0.0),
-            ]
-        for line in static_lines:
-            line.elasticity = 0.95
-            line.friction = 0.9
-        self._space.add(static_lines)
-
-    def _process_events(self):
-        """
-        Handle game and events like keyboard input. Call once per frame only.
-        :return: None
-        """
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                self._running = False
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                self._running = False
-            elif event.type == KEYDOWN and event.key == K_p:
-                pygame.image.save(self._screen, "bouncing_balls.png")
-
-    def _update_cells(self):
-        """
-        Create/remove balls as necessary. Call once per frame only.
-        :return: None
-        """
-        self._ticks_to_next_ball -= 1
-        if self._ticks_to_next_ball <= 0:
-            self._create_cell()
-            self._ticks_to_next_ball = 100
 
     def _grow_cells(self):
         self._ticks_to_next_grow -= 1
@@ -143,42 +119,35 @@ class MultiCell(object):
                 shape = list(body.shapes)[0]  # assumes only one shape in each body
                 self.divide(body, shape)
 
-
     def divide(self, body, shape):
 
         radius, length = body.dimensions
         mass = body.mass
 
         new_length = length / 2
+
+        pos_ratios = [0, 0.5]
         for daughter in range(2):
 
-            position = body.position
-
-            import ipdb; ipdb.set_trace()
-
-            # TODO -- place new cells in correct positions
-            new_body, new_shape = self._add_cell(
+            dy = length * pos_ratios[daughter] * math.sin(body.angle + math.pi/2) # add rotation to correc
+            dx = length * pos_ratios[daughter] * math.cos(body.angle + math.pi/2)
+            position = body.position + [dx, dy]
+            
+            self._add_cell(
                 radius,
                 new_length,
                 mass,
                 position,
                 body.angle,
-                body.angular_velocity,
                 shape.elasticity,
                 shape.friction,
+                body.angular_velocity,
             )
-
-            # swap bodies
-            self._space.add(new_body, new_shape)
-            self._balls.append(new_shape)
-
 
         self._space.remove(body, shape)
         self._balls.remove(shape)
 
-
-
-    def _add_cell(self, radius, length, mass, position, angle, angular_velocity, elasticity, friction):
+    def _add_cell(self, radius, length, mass, position, angle, elasticity, friction, angular_velocity=None):
         shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
         inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
@@ -186,13 +155,16 @@ class MultiCell(object):
 
         body.position = position
         body.angle = angle
-        body.angular_velocity = angular_velocity
         body.dimensions = (radius, length)
+        if angular_velocity:
+            body.angular_velocity = angular_velocity
 
         shape.elasticity = elasticity
         shape.friction = friction
 
-        return body, shape
+        # add body and shape to space
+        self._space.add(body, shape)
+        self._balls.append(shape)
 
 
     def grow(self, body, shape):
@@ -223,31 +195,35 @@ class MultiCell(object):
         self._balls.append(new_shape)
         self._balls.remove(shape)
 
-
-    # TODO us _add_cell instead
-    def _create_cell(self):
+    def _add_static_scenery(self):
         """
-        Create a cell.
+        Create the static bodies.
+        :return: None
         """
-        mass = INITIAL_MASS
-        radius = RADIUS
-        length = INITIAL_LENGTH
+        static_body = self._space.static_body
+        static_lines = [
+            pymunk.Segment(static_body, (10.0, 10.0), (590.0, 10.0), 0.0),
+            pymunk.Segment(static_body, (590.0, 10.0), (590.0, 590.0), 0.0),
+            pymunk.Segment(static_body, (590.0, 590.0), (10.0, 590.0), 0.0),
+            pymunk.Segment(static_body, (10.0, 590.0), (10.0, 10.0), 0.0),
+            ]
+        for line in static_lines:
+            line.elasticity = 0.95
+            line.friction = 0.9
+        self._space.add(static_lines)
 
-        # make shape, moment of inertia, and add a body
-        shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
-        inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
-        body = pymunk.Body(mass, inertia)
-        shape.body = body
-
-        x = random.randint(115, 350)
-        body.position = x, 400
-        body.dimensions = (radius, length)
-
-        shape.elasticity = 0.95
-        shape.friction = 0.9
-        self._space.add(body, shape)
-        self._balls.append(shape)
-
+    def _process_events(self):
+        """
+        Handle game and events like keyboard input. Call once per frame only.
+        :return: None
+        """
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_p:
+                pygame.image.save(self._screen, "bouncing_balls.png")
 
     def _clear_screen(self):
         """
