@@ -7,11 +7,9 @@ import numpy as np
 
 # pymunk imports
 import pymunk
-# import pymunk.pygame_util  # TODO -- is this needed?
 
 ELASTICITY = 0.95
 FRICTION = 0.9
-
 
 class MultiCellPhysics(object):
     ''''''
@@ -78,12 +76,7 @@ class MultiCellPhysics(object):
         # add cell
         self.cells[cell_id] = (body, shape)
 
-    def get_position(self, cell_id):
-        body, shape = self.cells[cell_id]
-        position = body.position
-        angle = body.angle
 
-        return np.array([position[0], position[1], angle])
 
     def update_cell(self, cell_id, length, radius, mass):
 
@@ -112,6 +105,39 @@ class MultiCellPhysics(object):
         self.cells[cell_id] = (new_body, new_shape)
 
 
+    def divide(self, cell_id, daughter_1, daughter_2):
+
+        body, shape = self.cells[cell_id]
+
+        radius, length = body.dimensions
+        mass = body.mass
+
+        new_length = length / 2
+
+        pos_ratios = [0, 0.5]
+        for daughter in range(2):
+
+            dy = length * pos_ratios[daughter] * math.sin(body.angle + math.pi/2) # add rotation to correc
+            dx = length * pos_ratios[daughter] * math.cos(body.angle + math.pi/2)
+            position = body.position + [dx, dy]
+
+            self._add_cell(
+                radius,
+                new_length,
+                mass,
+                position,
+                body.angle,
+                shape.elasticity,
+                shape.friction,
+                body.angular_velocity,
+            )
+
+        self._space.remove(body, shape)
+        self._objects.remove(shape)
+
+        # TODO -- return positions? new cell_ids?
+
+
     def remove_cell(self, cell_id):
         # get body and shape from cell_id, remove from space and from cells
         body, shape = self.cells[cell_id]
@@ -120,13 +146,21 @@ class MultiCellPhysics(object):
         del self.cells[cell_id]
 
 
+    def get_position(self, cell_id):
+        body, shape = self.cells[cell_id]
+        position = body.position
+        angle = body.angle
+
+        return np.array([position[0], position[1], angle])
+
+
     def add_barriers(self, bounds):
         """
         Create the static barriers.
         """
 
         x_bound = bounds[0]
-        y_bound = bounds[0]
+        y_bound = bounds[1]
 
         static_body = self.space.static_body
         static_lines = [
@@ -136,6 +170,6 @@ class MultiCellPhysics(object):
             pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), 0.0),
             ]
         for line in static_lines:
-            line.elasticity = 0.95
+            line.elasticity = 0.0  # no bounce
             line.friction = 0.9
         self.space.add(static_lines)

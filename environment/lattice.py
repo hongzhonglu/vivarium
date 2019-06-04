@@ -67,8 +67,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = 0.1 #10  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 0.1 #50 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = .1 #10  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 0.5 #50 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -155,13 +155,20 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
             self.physics.update_cell(agent_id, length, radius, mass)
 
-
         self.physics.run_incremental(5)
         # import ipdb; ipdb.set_trace()
 
         for agent_id, location in self.locations.iteritems():
             # update location
             self.locations[agent_id] = self.physics.get_position(agent_id)
+
+
+            # enforce boundaries # TODO (Eran) -- get pymunk to handle boundaries better
+            self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
+            self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
+
+
+        print("self.locations " + str(self.locations))
 
     def update_media(self):
         if self.timeline:
@@ -335,9 +342,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                 patch_site = tuple(np.floor(location).astype(int))
                 update[agent_id] = {}
-                update[agent_id]['concentrations'] = dict(zip(
-                    self._molecule_ids,
-                    self.lattice[:, patch_site[0], patch_site[1]]))
+
+                try:
+                    update[agent_id]['concentrations'] = dict(zip(
+                        self._molecule_ids,
+                        self.lattice[:, patch_site[0], patch_site[1]]))
+                except:
+                    print('patch_site: ' + str(patch_site) + ', location: ' + str(location))
+                    import ipdb; ipdb.set_trace()
 
                 update[agent_id]['media_id'] = self.media_id
 
