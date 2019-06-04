@@ -25,10 +25,13 @@ from environment.condition.make_media import Media
 from agent.outer import EnvironmentSimulation
 from environment.collision.grid import Grid, Rectangle
 from environment.collision.volume_exclusion import volume_exclusion
+from utils.physics import MultiCellPhysics
 
 # Constants
 N_AVOGADRO = constants.N_A
 PI = np.pi
+
+CELL_DENSITY = 1100
 
 # Lattice parameters
 N_DIMS = 2
@@ -46,6 +49,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self._timestep = 1.0 #DT
         self._max_time = 10e6
 
+        # constants
+        self.cell_density = CELL_DENSITY
+
         # configured parameters
         self.run_for = config.get('run_for', 5.0)
         self.edge_length = config.get('edge_length', 10.0)
@@ -61,8 +67,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = config.get('translation_jitter', 0.001)
-        self.rotation_jitter = config.get('rotation_jitter', 0.05)
+        self.translation_jitter = 0.1 #10  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 0.1 #50 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -85,7 +91,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.locations = {}     # map of agent_id to location and orientation
         self.motile_forces = {}	# map of agent_id to motile force, with magnitude and relative orientation
 
-        self.grid = Grid([self.edge_length, self.edge_length], 0.1)
+        # make physics object by passing in bounds
+        bounds = [self.edge_length, self.edge_length]
+        self.physics = MultiCellPhysics(
+            bounds,
+            self.translation_jitter,
+            self.rotation_jitter)
+
+        # make media
         media = config['concentrations']
         self._molecule_ids = config['concentrations'].keys()
         self.concentrations = config['concentrations'].values()
@@ -124,51 +137,31 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
+
         for agent_id, location in self.locations.iteritems():
+
+            # shape
+            volume = self.simulations[agent_id]['state']['volume']
+            radius = self.cell_radius
+            length = self.volume_to_length(volume, radius)
+
+            mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
+
+            # Motile forces
             magnitude = self.motile_forces[agent_id][0]
             direction = self.motile_forces[agent_id][1]
 
-            # Motile forces
-            self.locations[agent_id][2] = (location[2] + direction * self.run_for) #% (2 * PI)
-            self.locations[agent_id][0] += magnitude * np.cos(self.locations[agent_id][2]) * self.run_for
-            self.locations[agent_id][1] += magnitude * np.sin(self.locations[agent_id][2]) * self.run_for
+            # TODO -- add motile forces!
 
-            translation_jitter = np.random.normal(scale=np.sqrt(self.translation_jitter * self._timestep), size=N_DIMS)
-            rotation_jitter = np.random.normal(scale=self.rotation_jitter * self._timestep)
+            self.physics.update_cell(agent_id, length, radius, mass)
 
-            self.locations[agent_id][0:2] += translation_jitter * self.run_for
-            self.locations[agent_id][2] += rotation_jitter * self.run_for
 
-            # Enforce 2*PI range
-            self.locations[agent_id][2] = self.locations[agent_id][2] % (2 * PI)
-
-            # Enforce lattice edges
-            self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx/2 #-= self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] % self.edge_length
-            self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0 #-= self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0]
-
-        def make_shape(agent):
-            return Rectangle(
-                [agent['radius'] * 2,
-                 agent['length']],
-                agent['location'],
-                agent['orientation'])
-
-        agents = {
-            agent_id: {
-                'radius': self.cell_radius,
-                'length': self.volume_to_length(agent['state']['volume']),
-                'location': self.locations[agent_id][0:2],
-                'orientation': self.locations[agent_id][2],
-                'render': make_shape}
-            for agent_id, agent
-            in self.simulations.iteritems()}
-
-        exclusion = volume_exclusion(self.grid, agents, scale=0.3)
+        self.physics.run_incremental(5)
+        # import ipdb; ipdb.set_trace()
 
         for agent_id, location in self.locations.iteritems():
-            location[0:2] = exclusion[agent_id]['location']
-            location[2] = (exclusion[agent_id]['orientation']) % (2 * PI)
-
+            # update location
+            self.locations[agent_id] = self.physics.get_position(agent_id)
 
     def update_media(self):
         if self.timeline:
@@ -210,7 +203,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
     ## Conversion functions
-    def volume_to_length(self, volume):
+    def volume_to_length(self, volume, radius):
         '''
         get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
         a=length of cylinder without rounded caps, l=total length:
@@ -219,8 +212,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         l = a + 2*r
         '''
 
-        cylinder_length = (volume - (4/3) * PI * self.cell_radius**3) / (PI * self.cell_radius**2)
-        total_length = cylinder_length + 2 * self.cell_radius
+        cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
+        total_length = cylinder_length + 2 * radius
 
         return total_length
 
@@ -282,8 +275,30 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
             self.locations[agent_id] = np.hstack((location, orientation))
 
+            # add new cell to the physics simulation
+            self.add_cell_to_physics(agent_id, location, orientation)
+
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
+
+
+    def add_cell_to_physics(self, agent_id, position, angle):
+        ''' Add body to physics simulation'''
+
+        volume = self.simulations[agent_id]['state']['volume']
+        radius = self.cell_radius
+        length = self.volume_to_length(volume, self.cell_radius)
+        mass = volume * self.cell_density   # TODO -- get units to work
+
+        self.physics.add_cell(
+            agent_id,
+            radius,
+            length,
+            mass,
+            position,
+            angle,
+        )
+
 
     def apply_inner_update(self, update, now):
         '''
@@ -340,7 +355,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         index = simulation['index']
         orientation = parent_location[2]
         volume = self.simulations[agent_id]['state']['volume'] * 0.5
-        length = self.volume_to_length(volume)
+        length = self.volume_to_length(volume, self.cell_radius)
         location = self.daughter_location(parent_location[0:2], orientation, length, index)
 
         # print("=== parent: {} - daughter: {}".format(parent_location, location))

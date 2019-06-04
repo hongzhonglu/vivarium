@@ -1,154 +1,96 @@
-
 from __future__ import absolute_import, division, print_function
 
 # Python imports
 import random
 import math
+import numpy as np
 
 # pymunk imports
 import pymunk
-import pymunk.pygame_util
+# import pymunk.pygame_util  # TODO -- is this needed?
 
-jitter_force_sigma = 100
-jitter_location_sigma = 10
-
-INITIAL_MASS = 10
-RADIUS = 25
-INITIAL_LENGTH = 50
-DIVISION_LENGTH = 100
 ELASTICITY = 0.95
 FRICTION = 0.9
 
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self):
+    def __init__(self, bounds, translation_jitter, rotation_jitter):
+
+        self.elasticity = ELASTICITY
+        self.friction = FRICTION
+        self.translation_jitter = translation_jitter
+        self.rotation_jitter = rotation_jitter
+        
         # Space
-        self._space = pymunk.Space()
+        self.space = pymunk.Space()
 
-        # Physics
         # Time step
-        self._dt = 1.0 / 60.0
+        self.timestep = 1
+        self.physics_steps_per_frame = 60
+        self.physics_dt = self.timestep / self.physics_steps_per_frame
 
-        # Number of physics steps per screen frame
-        self._physics_steps_per_frame = 1
+        # Static barriers
+        self.add_barriers(bounds)
 
-        # Static barrier walls (lines) that the balls bounce off of
-        self._add_static_scenery()
+        # Objects that exist in the world
+        self.cells = {}
 
-        # Balls that exist in the world
-        self._balls = []
 
-        # Execution control and time until the next ball spawns
-        self._running = True
-        self._ticks_to_next_grow = 10
-
-    def run(self):
-        ''''''
-
-        # create first cell
-        self._add_cell(
-            RADIUS,
-            INITIAL_LENGTH,
-            INITIAL_MASS,
-            (250, 250),
-            0,
-            ELASTICITY,
-            FRICTION,
-        )
-
-        # Main loop
-        while self._running:
+    def run_incremental(self, run_for):
+        time = 0
+        while time < run_for:
+            time += self.timestep
+            
             # Progress time forward
-            for x in range(self._physics_steps_per_frame):
-                for body in self._space.bodies:
+            for x in range(self.physics_steps_per_frame * self.timestep):
+                for body in self.space.bodies:
                     # Add jitter to cells
-                    force = (random.normalvariate(0, jitter_force_sigma), random.normalvariate(0, jitter_force_sigma))
+                    force = (
+                        random.normalvariate(0, self.rotation_jitter) * self.physics_dt,
+                        random.normalvariate(0, self.rotation_jitter) * self.physics_dt)
                     location = (
-                    random.normalvariate(0, jitter_location_sigma), random.normalvariate(0, jitter_location_sigma))
+                        random.normalvariate(0, self.translation_jitter) * self.physics_dt,
+                        random.normalvariate(0, self.translation_jitter) * self.physics_dt)
                     body.apply_force_at_local_point(force, location)
 
-                self._space.step(self._dt)
-
-            self._process_events()
-            # self._update_cells()
-            self._grow_cells()
-            self._divide_cells()
+                self.space.step(self.physics_dt)
 
 
-    def _grow_cells(self):
-        self._ticks_to_next_grow -= 1
-        if self._ticks_to_next_grow <= 0:
-            for body in self._space.bodies:
-                shape = list(body.shapes)[0]  # assumes only one shape in each body
-                self.grow(body, shape)
-
-            self._ticks_to_next_grow = 100
-
-    def _divide_cells(self):
-
-        for body in self._space.bodies:
-            radius, length = body.dimensions
-            if length > DIVISION_LENGTH:
-                shape = list(body.shapes)[0]  # assumes only one shape in each body
-                self.divide(body, shape)
-
-    def divide(self, body, shape):
-
-        radius, length = body.dimensions
-        mass = body.mass
-
-        new_length = length / 2
-
-        pos_ratios = [0, 0.5]
-        for daughter in range(2):
-
-            dy = length * pos_ratios[daughter] * math.sin(body.angle + math.pi/2) # add rotation to correc
-            dx = length * pos_ratios[daughter] * math.cos(body.angle + math.pi/2)
-            position = body.position + [dx, dy]
-
-            self._add_cell(
-                radius,
-                new_length,
-                mass,
-                position,
-                body.angle,
-                shape.elasticity,
-                shape.friction,
-                body.angular_velocity,
-            )
-
-        self._space.remove(body, shape)
-        self._balls.remove(shape)
-
-    def _add_cell(self, radius, length, mass, position, angle, elasticity, friction, angular_velocity=None):
-        shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+    def add_cell(self, cell_id, radius, length, mass, position, angle, angular_velocity=None):
+        shape = pymunk.Poly(None, ((0, 0), (2*radius, 0), (2*radius, length), (0, length)))
         inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
         body.position = position
         body.angle = angle
-        body.dimensions = (radius, length)
+        body.dimensions = (2*radius, length)
         if angular_velocity:
             body.angular_velocity = angular_velocity
 
-        shape.elasticity = elasticity
-        shape.friction = friction
+        shape.elasticity = self.elasticity
+        shape.friction = self.friction
 
         # add body and shape to space
-        self._space.add(body, shape)
-        self._balls.append(shape)
+        self.space.add(body, shape)
 
-    def grow(self, body, shape):
+        # add cell
+        self.cells[cell_id] = (body, shape)
 
-        radius, length = body.dimensions
+    def get_position(self, cell_id):
+        body, shape = self.cells[cell_id]
+        position = body.position
+        angle = body.angle
 
-        mass = body.mass  # TODO -- need to update mass as well!
-        length += 10  # Growth. TODO -- Pass this in.
+        return np.array([position[0], position[1], angle])
+
+    def update_cell(self, cell_id, length, radius, mass):
+
+        body, shape = self.cells[cell_id]
 
         # make shape, moment of inertia, and add a body
-        new_shape = pymunk.Poly(None, ((0, 0), (radius, 0), (radius, length), (0, length)))
+        new_shape = pymunk.Poly(None, ((0, 0), (radius*2, 0), (radius*2, length), (0, length)))
         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
@@ -163,24 +105,37 @@ class MultiCellPhysics(object):
         new_shape.friction = shape.friction
 
         # swap bodies
-        self._space.add(new_body, new_shape)
-        self._space.remove(body, shape)
-        self._balls.append(new_shape)
-        self._balls.remove(shape)
+        self.space.add(new_body, new_shape)
+        self.space.remove(body, shape)
 
-    def _add_static_scenery(self):
+        # update cell
+        self.cells[cell_id] = (new_body, new_shape)
+
+
+    def remove_cell(self, cell_id):
+        # get body and shape from cell_id, remove from space and from cells
+        body, shape = self.cells[cell_id]
+
+        self.space.remove(body, shape)
+        del self.cells[cell_id]
+
+
+    def add_barriers(self, bounds):
         """
-        Create the static bodies.
-        :return: None
+        Create the static barriers.
         """
-        static_body = self._space.static_body
+
+        x_bound = bounds[0]
+        y_bound = bounds[0]
+
+        static_body = self.space.static_body
         static_lines = [
-            pymunk.Segment(static_body, (10.0, 10.0), (590.0, 10.0), 0.0),
-            pymunk.Segment(static_body, (590.0, 10.0), (590.0, 590.0), 0.0),
-            pymunk.Segment(static_body, (590.0, 590.0), (10.0, 590.0), 0.0),
-            pymunk.Segment(static_body, (10.0, 590.0), (10.0, 10.0), 0.0),
+            pymunk.Segment(static_body, (0.0, 0.0), (x_bound, 0.0), 0.0),
+            pymunk.Segment(static_body, (x_bound, 0.0), (x_bound, y_bound), 0.0),
+            pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), 0.0),
+            pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), 0.0),
             ]
         for line in static_lines:
             line.elasticity = 0.95
             line.friction = 0.9
-        self._space.add(static_lines)
+        self.space.add(static_lines)
