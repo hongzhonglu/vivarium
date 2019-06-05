@@ -11,6 +11,7 @@ from environment.surrogates.chemotaxis_MWC_sensors import Chemotaxis
 from environment.surrogates.endocrine import Endocrine
 from environment.surrogates.transport_kinetics import TransportKinetics
 from environment.surrogates.transport_lookup import TransportLookup
+from environment.surrogates.division import Division
 from environment.condition.make_media import Media
 
 
@@ -278,6 +279,43 @@ def boot_kinetic_transport(agent_id, agent_type, agent_config):
     return inner
 
 
+
+# minimal Chemotaxis surrogate initialize and boot
+def initialize_division(boot_config, synchronize_config):
+    '''
+    Args:
+        boot_config (dict): options for initializing a simulation
+        synchronize_config (dict): additional options that can be passed in for initialization
+    Returns:
+        simulation (CellSimulation): The actual simulation which will perform the calculations.
+    '''
+    boot_config.update(synchronize_config)
+    return Division(boot_config)
+
+def boot_division(agent_id, agent_type, agent_config):
+    agent_id = agent_id
+    outer_id = agent_config['outer_id']
+
+    # initialize state and options
+    state = {
+        'volume': 1.0,
+        'environment_change': {}}
+    agent_config['state'] = state
+    options = {}
+
+    inner = Inner(
+        agent_id,
+        outer_id,
+        agent_type,
+        agent_config,
+        options,
+        initialize_division)
+
+    return inner
+
+
+
+
 class BootEnvironment(BootAgent):
     def __init__(self):
         super(BootEnvironment, self).__init__()
@@ -289,6 +327,7 @@ class BootEnvironment(BootAgent):
             'endocrine': boot_endocrine,
             'kinetics': boot_kinetic_transport,
             'lookup': boot_lookup_transport,
+            'division': boot_division,
             }
 
 if __name__ == '__main__':
