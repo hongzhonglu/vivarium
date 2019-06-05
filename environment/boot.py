@@ -280,7 +280,7 @@ def boot_kinetic_transport(agent_id, agent_type, agent_config):
 
 
 
-# minimal Chemotaxis surrogate initialize and boot
+# division surrogate initialize and boot
 def initialize_division(boot_config, synchronize_config):
     '''
     Args:

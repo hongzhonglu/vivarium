@@ -1,23 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 import time
-import numpy as np
 
 from agent.inner import CellSimulation
 
 
-TUMBLE_JITTER = 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]
 
 class Division(CellSimulation):
-    '''
-    Simple chemotaxis surrogate that can move up glucose gradients. It can take on two states 'run' and 'tumble'.
-    State is a function of the current glucose concentrations, and internal CheY concentrations -- the 'memory' of
-    glucose concentrations from the previous time step.
-
-    TODO (Eran) implement mechanistic model of chemotaxis pathway. The following paper's model shoud suffice:
-    Bray, Dennis, Robert B. Bourret, and Melvin I. Simon. "Computer simulation of the phosphorylation cascade controlling bacterial chemotaxis." Molecular Biology of the Cell (1993)
-    '''
+    ''' '''
 
     def __init__(self, state):
         self.initial_time = state.get('time', 0.0)
@@ -36,7 +27,6 @@ class Division(CellSimulation):
         # update state based on internal and external concentrations
         self.volume += self.growth * self.timestep
 
-
     def check_division(self):
         # update division state based on time since initialization
         if self.volume >= self.division_volume:
@@ -49,7 +39,6 @@ class Division(CellSimulation):
 
     def apply_outer_update(self, update):
         self.external_concentrations = update['concentrations']
-
         self.environment_change = {}
         for molecule in self.external_concentrations.iterkeys():
             self.environment_change[molecule] = 0
