@@ -188,7 +188,7 @@ function buildCell(lens, draw, id, data) {
 function capsuleShape(group, offset, data, color) {
 	  // create the rectangle representing the outer bounds of the capsule
 	  return group
-	      .rect(data.width * data.scale, data.scale)  // width, height  TODO -- these values don't seem to matter
+	      .rect(data.width * data.scale, data.scale)  // width, height
 	      // .x(data.scale * offset)
 	      // .y(data.scale * offset)
 	      .rx(0.3 * data.scale)
@@ -421,7 +421,7 @@ function updateLens(draw, lens, data) {
   var scale = VISUALIZATION_WIDTH / data.edge_length;
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
-    simulation.width = data.cell_radius;
+    simulation.width = data.cell_radius * 2;
     simulation.scale = scale
 
     if (!_.has(lens.cells, key)) {

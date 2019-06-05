@@ -67,8 +67,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = .1 #10  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 0.5 #50 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = .2  # 0.1  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -152,7 +152,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             direction = self.motile_forces[agent_id][1]
 
             # TODO -- add motile forces!
-
             self.physics.update_cell(agent_id, length, radius, mass)
 
         self.physics.run_incremental(5)
@@ -161,7 +160,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for agent_id, location in self.locations.iteritems():
             # update location
             self.locations[agent_id] = self.physics.get_position(agent_id)
-
 
             # enforce boundaries # TODO (Eran) -- get pymunk to handle boundaries better
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
@@ -305,7 +303,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             position,
             angle,
         )
-
 
     def apply_inner_update(self, update, now):
         '''

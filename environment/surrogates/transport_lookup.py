@@ -58,7 +58,7 @@ class TransportLookup(CellSimulation):
         self.lookup_type = state.get('lookup', 'average')
         self.timestep = 1.0
         self.environment_change = {}
-        self.volume = 1.0  # (fL)
+        self.volume = 2.0  #1.0  # (fL)
         self.division_time = 100
         self.nAvogadro = constants.N_A
 

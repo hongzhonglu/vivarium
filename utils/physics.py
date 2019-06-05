@@ -1,5 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
+__version__ = "$Id:$"
+__docformat__ = "reStructuredText"
+
+# Library imports
+import pygame
+from pygame.key import *
+from pygame.locals import *
+from pygame.color import *
+
+
+
 # Python imports
 import random
 import math
@@ -7,6 +18,9 @@ import numpy as np
 
 # pymunk imports
 import pymunk
+import pymunk.pygame_util
+
+
 
 ELASTICITY = 0.95
 FRICTION = 0.9
@@ -28,11 +42,55 @@ class MultiCellPhysics(object):
         self.physics_steps_per_frame = 60
         self.physics_dt = self.timestep / self.physics_steps_per_frame
 
+        # pygame
+        pygame.init()
+        self._screen = pygame.display.set_mode((600, 600))
+        self._clock = pygame.time.Clock()
+        self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
+
         # Static barriers
         self.add_barriers(bounds)
 
         # Objects that exist in the world
         self.cells = {}
+
+    # pygame functions
+    def _process_events(self):
+        """
+        Handle game and events like keyboard input. Call once per frame only.
+        :return: None
+        """
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_p:
+                pygame.image.save(self._screen, "bouncing_objects.png")
+
+    def _clear_screen(self):
+        """
+        Clears the screen.
+        :return: None
+        """
+        self._screen.fill(THECOLORS["white"])
+
+    def _draw_objects(self):
+        """
+        Draw the objects.
+        :return: None
+        """
+        self.space.debug_draw(self._draw_options)
+
+    def update_screen(self):
+        # pygame
+        self._process_events()
+        self._clear_screen()
+        self._draw_objects()
+        pygame.display.flip()
+        # Delay fixed time between frames
+        self._clock.tick(50)
+        pygame.display.set_caption("fps: " + str(self._clock.get_fps()))
 
 
     def run_incremental(self, run_for):
@@ -54,6 +112,7 @@ class MultiCellPhysics(object):
 
                 self.space.step(self.physics_dt)
 
+        self.update_screen()
 
     def add_cell(self, cell_id, radius, length, mass, position, angle, angular_velocity=None):
         shape = pymunk.Poly(None, ((0, 0), (2*radius, 0), (2*radius, length), (0, length)))
@@ -76,6 +135,7 @@ class MultiCellPhysics(object):
         # add cell
         self.cells[cell_id] = (body, shape)
 
+        self.update_screen()
 
 
     def update_cell(self, cell_id, length, radius, mass):
@@ -83,7 +143,8 @@ class MultiCellPhysics(object):
         body, shape = self.cells[cell_id]
 
         # make shape, moment of inertia, and add a body
-        new_shape = pymunk.Poly(None, ((0, 0), (radius*2, 0), (radius*2, length), (0, length)))
+        # new_shape = pymunk.Poly(None, ((0, 0), (radius*2, 0), (radius*2, length), (0, length)))
+        new_shape = pymunk.Poly(None, ((0, 0), (length, 0), (length, radius * 2), (0, radius * 2)))
         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
@@ -105,37 +166,37 @@ class MultiCellPhysics(object):
         self.cells[cell_id] = (new_body, new_shape)
 
 
-    def divide(self, cell_id, daughter_1, daughter_2):
-
-        body, shape = self.cells[cell_id]
-
-        radius, length = body.dimensions
-        mass = body.mass
-
-        new_length = length / 2
-
-        pos_ratios = [0, 0.5]
-        for daughter in range(2):
-
-            dy = length * pos_ratios[daughter] * math.sin(body.angle + math.pi/2) # add rotation to correc
-            dx = length * pos_ratios[daughter] * math.cos(body.angle + math.pi/2)
-            position = body.position + [dx, dy]
-
-            self._add_cell(
-                radius,
-                new_length,
-                mass,
-                position,
-                body.angle,
-                shape.elasticity,
-                shape.friction,
-                body.angular_velocity,
-            )
-
-        self._space.remove(body, shape)
-        self._objects.remove(shape)
-
-        # TODO -- return positions? new cell_ids?
+    # def divide(self, cell_id, daughter_1, daughter_2):
+	#
+    #     body, shape = self.cells[cell_id]
+	#
+    #     radius, length = body.dimensions
+    #     mass = body.mass
+	#
+    #     new_length = length / 2
+	#
+    #     pos_ratios = [0, 0.5]
+    #     for daughter in range(2):
+	#
+    #         dy = length * pos_ratios[daughter] * math.sin(body.angle + math.pi/2) # add rotation to correc
+    #         dx = length * pos_ratios[daughter] * math.cos(body.angle + math.pi/2)
+    #         position = body.position + [dx, dy]
+	#
+    #         self.add_cell(
+    #             radius,
+    #             new_length,
+    #             mass,
+    #             position,
+    #             body.angle,
+    #             shape.elasticity,
+    #             shape.friction,
+    #             body.angular_velocity,
+    #         )
+	#
+    #     self._space.remove(body, shape)
+    #     self._objects.remove(shape)
+	#
+    #     # TODO -- return positions? new cell_ids?
 
 
     def remove_cell(self, cell_id):

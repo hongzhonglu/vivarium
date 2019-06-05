@@ -315,7 +315,6 @@ def boot_division(agent_id, agent_type, agent_config):
 
 
 
-
 class BootEnvironment(BootAgent):
     def __init__(self):
         super(BootEnvironment, self).__init__()
