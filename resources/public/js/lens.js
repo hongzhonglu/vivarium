@@ -21,6 +21,8 @@ function uuid() {
 }
 
 // given the volume of a cell and its radius, calculate the length of the cell.
+
+// TODO -- pass in shape directly to Lens
 function volumeToLength(radius, volume) {
   var ratio = (4/3) * Math.PI * Math.pow(radius, 3);
   var area = Math.PI * Math.pow(radius, 2);
@@ -44,7 +46,7 @@ function rotationTransform(theta) {
 // data to each of its components
 function updateCell(cell, data, born) {
   // calculate length from volume
-  var length = volumeToLength(data.width, data.volume);
+  var length = volumeToLength(data.width/2, data.volume);
 
   // calculate the offset from the corner of the rectangle to the center, given
   // the cell's orientation.
@@ -191,8 +193,8 @@ function capsuleShape(group, offset, data, color) {
 	      .rect(data.width * data.scale, data.scale)  // width, height
 	      // .x(data.scale * offset)
 	      // .y(data.scale * offset)
-	      .rx(0.3 * data.scale)
-	      .ry(0.3 * data.scale)
+	      .rx(0.6 * data.scale)
+	      .ry(0.6 * data.scale)
 	      .attr({
 	          fill: rgbToHex(color || DEFAULT_COLOR),
 	          stroke: rgbToHex(MEMBRANE_COLOR),
