@@ -18,11 +18,11 @@ import numpy as np
 import pymunk
 import pymunk.pygame_util
 
-INITIAL_MASS = 10
-RADIUS = 13
-INITIAL_LENGTH = 50
-DIVISION_LENGTH = 3  #3
-DIVISION_RANGE = [-0.25, 0.25]
+# INITIAL_MASS = 10
+# RADIUS = 13
+# INITIAL_LENGTH = 50
+# DIVISION_LENGTH = 3  #3
+# DIVISION_RANGE = [-0.25, 0.25]
 
 ELASTICITY = 0.95
 FRICTION = 0.9
@@ -32,10 +32,6 @@ PI = math.pi
 pymunk_scale = 60
 
 class MultiCellPhysics(object):
-    """
-    This class implements a simple scene in which there is a static platform (made up of a couple of lines)
-    that don't move. Balls appear occasionally and drop onto the platform. They bounce around.
-    """
     def __init__(self, bounds, translation_jitter, rotation_jitter):
 
         self.elasticity = ELASTICITY
@@ -47,14 +43,9 @@ class MultiCellPhysics(object):
         self.space = pymunk.Space()
 
         # Physics
-        # Time step
         self.timestep = 1
         self.physics_steps_per_frame = 60
         self.physics_dt = self.timestep / self.physics_steps_per_frame
-
-        # self._dt = 1.0 / 60.0
-        # # Number of physics steps per screen frame
-        # self._steps_per_frame = 5
 
         # pygame
         pygame.init()
@@ -62,16 +53,11 @@ class MultiCellPhysics(object):
         self._clock = pygame.time.Clock()
         self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
-        # Static barrier walls (lines) that the balls bounce off of
+        # Static barriers
         self.add_barriers(bounds)
 
-        # objects that exist in the world
+        # Cells
         self.cells = {}
-
-        # Execution control and time until the next ball spawns
-        self._running = True
-        self._ticks_to_next_grow = 2
-
 
     # pygame functions
     def _process_events(self):
@@ -96,6 +82,7 @@ class MultiCellPhysics(object):
         # Delay fixed time between frames
         self._clock.tick(5)
 
+
     def run_incremental(self, run_for):
         time = 0
         while time < run_for:
@@ -117,8 +104,9 @@ class MultiCellPhysics(object):
 
             self._update_screen()
 
+
     def add_cell(self, cell_id, radius, length, mass, position, angle, angular_velocity=None):
-        # shape = pymunk.Poly(None, ((0, 0), (2*radius, 0), (2*radius, length), (0, length)))
+
         shape = pymunk.Poly(None, (
             (0, 0),
             (length * pymunk_scale, 0),
@@ -144,11 +132,15 @@ class MultiCellPhysics(object):
         # add cell
         self.cells[cell_id] = (body, shape)
 
-        # self._update_screen()
 
     def update_cell(self, cell_id, length, radius, mass):
 
         body, shape = self.cells[cell_id]
+
+        radius_0, length_0 = body.dimensions
+        d_radius = radius - radius_0
+        d_length = length - length_0
+
 
         # make shape, moment of inertia, and add a body
         new_shape = pymunk.Poly(None, (
@@ -161,8 +153,14 @@ class MultiCellPhysics(object):
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
 
-        # TODO - reposition on center?
-        new_body.position = body.position
+        # reposition on center
+        # dy = 0
+        # dx = 0
+
+        dx = -1 * d_radius/2 * math.cos(body.angle)
+        dy = -1 * d_length/2 * math.sin(body.angle)
+
+        new_body.position = body.position + [dx * pymunk_scale, dy * pymunk_scale]
         new_body.angle = body.angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (radius, length)
@@ -177,6 +175,7 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
+
     def divide(self, cell_id, daughter_ids):
 
         body, shape = self.cells[cell_id]
@@ -188,8 +187,6 @@ class MultiCellPhysics(object):
 
         pos_ratios = [0, 0.5]
         for index, daughter_id in enumerate(daughter_ids):
-            # dy = length * pos_ratios[index] * math.sin(body.angle + math.pi / 2)  # add rotation to correc
-            # dx = length * pos_ratios[index] * math.cos(body.angle + math.pi / 2)
             dx = length * pos_ratios[index] * math.cos(body.angle)
             dy = length * pos_ratios[index] * math.sin(body.angle)
 
@@ -207,19 +204,18 @@ class MultiCellPhysics(object):
 
             self._update_screen()
 
-            # import ipdb; ipdb.set_trace()
-
         self.space.remove(body, shape)
         del self.cells[cell_id]
 
         # TODO -- return positions? new cell_ids?
 
+
     def remove_cell(self, cell_id):
         # get body and shape from cell_id, remove from space and from cells
         body, shape = self.cells[cell_id]
-
         self.space.remove(body, shape)
         del self.cells[cell_id]
+
 
     def get_position(self, cell_id):
         body, shape = self.cells[cell_id]
@@ -227,6 +223,7 @@ class MultiCellPhysics(object):
         angle = body.angle
 
         return np.array([position[0] / pymunk_scale, position[1] / pymunk_scale, angle])
+
 
     def add_barriers(self, bounds):
         """
