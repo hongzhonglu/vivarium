@@ -177,6 +177,43 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
+    def divide(self, cell_id, daughter_ids):
+
+        body, shape = self.cells[cell_id]
+
+        radius, length = body.dimensions
+        mass = body.mass # TODO -- divide mass?
+
+        new_length = length / 2
+
+        pos_ratios = [0, 0.5]
+        for index, daughter_id in enumerate(daughter_ids):
+            # dy = length * pos_ratios[index] * math.sin(body.angle + math.pi / 2)  # add rotation to correc
+            # dx = length * pos_ratios[index] * math.cos(body.angle + math.pi / 2)
+            dx = length * pos_ratios[index] * math.cos(body.angle)
+            dy = length * pos_ratios[index] * math.sin(body.angle)
+
+            position = body.position/pymunk_scale + [dx, dy]
+
+            self.add_cell(
+                daughter_id,
+                radius,
+                new_length,
+                mass,
+                position,
+                body.angle,
+                body.angular_velocity,
+            )
+
+            self._update_screen()
+
+            # import ipdb; ipdb.set_trace()
+
+        self.space.remove(body, shape)
+        del self.cells[cell_id]
+
+        # TODO -- return positions? new cell_ids?
+
     def remove_cell(self, cell_id):
         # get body and shape from cell_id, remove from space and from cells
         body, shape = self.cells[cell_id]
@@ -266,17 +303,19 @@ if __name__ == '__main__':
     running = True
     while running:
 
-        for cell_id, cell in physics.cells.iteritems():
-            body, shape = cell
+        for cell_id in physics.cells.keys():
+            body, shape = physics.cells[cell_id]
             radius, length = body.dimensions
             mass = body.mass  # TODO -- update mass
 
             # grow
             length += growth
 
-            physics.update_cell(cell_id, length, radius, mass)
-
-            # if length >= division_length:
-
+            if length >= division_length:
+                max_cell_id = max(physics.cells.keys())
+                daughter_ids = [max_cell_id + 1, max_cell_id + 2]
+                physics.divide(cell_id, daughter_ids)
+            else:
+                physics.update_cell(cell_id, length, radius, mass)
 
         physics.run_incremental(5)
