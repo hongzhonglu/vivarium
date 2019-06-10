@@ -101,6 +101,7 @@ function updateCell(cell, data, born) {
   animateCapsule(cell.periplasm, data, COMPARTMENT_OFFSET.periplasm, data.color)
   animateCapsule(cell.cytoplasm, data, COMPARTMENT_OFFSET.cytoplasm, data.color)
 
+  // heads up display
   var hudX = data.location[1] - (0.4 * data.width);
   var hudY = data.location[0] - (0.4 * data.width);
   var translate = new SVG.Matrix()
@@ -109,11 +110,6 @@ function updateCell(cell, data, born) {
   cell.hud.text(data.volume.toPrecision(DISPLAY_PRECISION));
   animateExisting(cell.hud)
     .transform(translate);
-
-  // // translate the center point to the center of the membrane
-  // animateExisting(cell.nucleoid)
-  //   .cx(originX * PATCH_WIDTH)
-  //   .cy(originY * PATCH_WIDTH)
 }
 
 // build a cell from data, initializing the svg group and passing the result to updateCell

@@ -206,12 +206,20 @@ class MultiCellPhysics(object):
         del self.cells[cell_id]
 
 
-    def get_position(self, cell_id):
+    def get_center(self, cell_id):
         body, shape = self.cells[cell_id]
+
+        radius, length = body.dimensions
+        half_length = length/2
         position = body.position
         angle = body.angle
 
-        return np.array([position[0] / pymunk_scale, position[1] / pymunk_scale, angle])
+        # get center
+        dx = half_length * math.sin(angle) + radius * math.sin(angle + PI/2)
+        dy = half_length * math.cos(angle) + radius * math.cos(angle + PI/2)
+        center = position + [dx * pymunk_scale, dy * pymunk_scale]
+
+        return np.array([center[0] / pymunk_scale, center[1] / pymunk_scale, angle])
 
 
     def add_barriers(self, bounds):
@@ -231,6 +239,8 @@ class MultiCellPhysics(object):
             line.elasticity = 0.0  # no bounce
             line.friction = 0.9
         self.space.add(static_lines)
+
+
 
 
 

@@ -152,19 +152,19 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # TODO -- add motile forces!
             self.physics.update_cell(agent_id, length, radius, mass)
 
-        self.physics.run_incremental(5)
+        self.physics.run_incremental(5)  # TODO -- use run_for
         # import ipdb; ipdb.set_trace()
 
         for agent_id, location in self.locations.iteritems():
             # update location
-            self.locations[agent_id] = self.physics.get_position(agent_id)
+            self.locations[agent_id] = self.physics.get_center(agent_id)
 
-            # enforce boundaries # TODO (Eran) -- get pymunk to handle boundaries better
+            # enforce boundaries # TODO (Eran) -- let pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
 
-
         print("self.locations " + str(self.locations))
+
 
     def update_media(self):
         if self.timeline:
