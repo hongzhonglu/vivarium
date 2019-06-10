@@ -23,8 +23,6 @@ from scipy.ndimage import convolve
 
 from environment.condition.make_media import Media
 from agent.outer import EnvironmentSimulation
-from environment.collision.grid import Grid, Rectangle
-from environment.collision.volume_exclusion import volume_exclusion
 from utils.physics import MultiCellPhysics
 
 # Constants
@@ -67,8 +65,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = .2  # 0.1  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = 5.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 500.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
