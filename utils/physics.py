@@ -18,20 +18,16 @@ import numpy as np
 import pymunk
 import pymunk.pygame_util
 
-# INITIAL_MASS = 10
-# RADIUS = 13
-# INITIAL_LENGTH = 50
-# DIVISION_LENGTH = 3  #3
-# DIVISION_RANGE = [-0.25, 0.25]
+pymunk_scale = 60
+
+PI = math.pi
 
 ELASTICITY = 0.95
 FRICTION = 0.9
 
-PI = math.pi
-
-pymunk_scale = 60
 
 class MultiCellPhysics(object):
+    ''''''
     def __init__(self, bounds, translation_jitter, rotation_jitter):
 
         self.elasticity = ELASTICITY
@@ -141,7 +137,6 @@ class MultiCellPhysics(object):
         d_radius = radius - radius_0
         d_length = length - length_0
 
-
         # make shape, moment of inertia, and add a body
         new_shape = pymunk.Poly(None, (
             (0, 0),
@@ -154,9 +149,6 @@ class MultiCellPhysics(object):
         new_shape.body = new_body
 
         # reposition on center
-        # dy = 0
-        # dx = 0
-
         dx = -1 * d_radius/2 * math.cos(body.angle)
         dy = -1 * d_length/2 * math.sin(body.angle)
 
@@ -204,14 +196,11 @@ class MultiCellPhysics(object):
 
             self._update_screen()
 
-        self.space.remove(body, shape)
-        del self.cells[cell_id]
-
+        self.remove_cell(cell_id)
         # TODO -- return positions? new cell_ids?
 
 
     def remove_cell(self, cell_id):
-        # get body and shape from cell_id, remove from space and from cells
         body, shape = self.cells[cell_id]
         self.space.remove(body, shape)
         del self.cells[cell_id]
@@ -226,9 +215,7 @@ class MultiCellPhysics(object):
 
 
     def add_barriers(self, bounds):
-        """
-        Create the static barriers.
-        """
+        """ Create static barriers """
 
         x_bound = bounds[0] * pymunk_scale
         y_bound = bounds[1] * pymunk_scale
