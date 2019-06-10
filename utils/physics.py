@@ -12,6 +12,7 @@ from pygame.color import *
 # Python imports
 import random
 import math
+import numpy as np
 
 # pymunk imports
 import pymunk
@@ -86,7 +87,7 @@ class MultiCellPhysics(object):
     def _draw_objects(self):
         self.space.debug_draw(self._draw_options)
 
-    def update_screen(self):
+    def _update_screen(self):
         # pygame
         self._process_events()
         self._clear_screen()
@@ -113,8 +114,8 @@ class MultiCellPhysics(object):
                     body.apply_force_at_local_point(force, location)
 
                 self.space.step(self.physics_dt)
-                
-            self.update_screen()
+
+            self._update_screen()
 
     def add_cell(self, cell_id, radius, length, mass, position, angle, angular_velocity=None):
         # shape = pymunk.Poly(None, ((0, 0), (2*radius, 0), (2*radius, length), (0, length)))
@@ -143,9 +144,52 @@ class MultiCellPhysics(object):
         # add cell
         self.cells[cell_id] = (body, shape)
 
-        # self.update_screen()
+        # self._update_screen()
 
+    def update_cell(self, cell_id, length, radius, mass):
 
+        body, shape = self.cells[cell_id]
+
+        # make shape, moment of inertia, and add a body
+        new_shape = pymunk.Poly(None, (
+            (0, 0),
+            (length * pymunk_scale, 0),
+            (length * pymunk_scale, radius * 2 * pymunk_scale),
+            (0, radius * 2 * pymunk_scale)))
+
+        inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
+        new_body = pymunk.Body(mass, inertia)
+        new_shape.body = new_body
+
+        # TODO - reposition on center?
+        new_body.position = body.position
+        new_body.angle = body.angle
+        new_body.angular_velocity = body.angular_velocity
+        new_body.dimensions = (radius, length)
+
+        new_shape.elasticity = shape.elasticity
+        new_shape.friction = shape.friction
+
+        # swap bodies
+        self.space.add(new_body, new_shape)
+        self.space.remove(body, shape)
+
+        # update cell
+        self.cells[cell_id] = (new_body, new_shape)
+
+    def remove_cell(self, cell_id):
+        # get body and shape from cell_id, remove from space and from cells
+        body, shape = self.cells[cell_id]
+
+        self.space.remove(body, shape)
+        del self.cells[cell_id]
+
+    def get_position(self, cell_id):
+        body, shape = self.cells[cell_id]
+        position = body.position
+        angle = body.angle
+
+        return np.array([position[0] / pymunk_scale, position[1] / pymunk_scale, angle])
 
     def add_barriers(self, bounds):
         """
@@ -189,34 +233,50 @@ def volume_to_length(volume, radius):
     return total_length
 
 if __name__ == '__main__':
+    cell_density = 1100
 
     bounds = [10.0, 10.0]
     translation_jitter = 5.0  # 1.0
-    rotation_jitter = 10000.0  # 20.0
+    rotation_jitter = 50000.0  # 20.0
     physics = MultiCellPhysics(bounds, translation_jitter, rotation_jitter)
 
-    cell_density = 1100
     volume = 1
     radius = 0.5
     length = volume_to_length(volume, radius)
     mass = volume * cell_density  # TODO -- get units to work
 
-    position = (random.uniform(length, bounds[0] - length), random.uniform(length, bounds[1] - length))
-    angle = random.uniform(0, 2 * PI)
+    # add cells
+    n_cells = 5
+    for cell_id in xrange(n_cells):
+        position = (random.uniform(length, bounds[0] - length), random.uniform(length, bounds[1] - length))
+        angle = random.uniform(0, 2 * PI)
 
-    cell_id = 1
-    # create first cell
-    physics.add_cell(
-        cell_id,
-        radius,
-        length,
-        mass,
-        position,
-        angle,
-    )
+        physics.add_cell(
+            cell_id,
+            radius,
+            length,
+            mass,
+            position,
+            angle,
+        )
+
+    growth = 0.1
+    division_length = length * 2
 
     running = True
     while running:
-        physics.run_incremental(5)
 
-    # physics.run()
+        for cell_id, cell in physics.cells.iteritems():
+            body, shape = cell
+            radius, length = body.dimensions
+            mass = body.mass  # TODO -- update mass
+
+            # grow
+            length += growth
+
+            physics.update_cell(cell_id, length, radius, mass)
+
+            # if length >= division_length:
+
+
+        physics.run_incremental(5)
