@@ -273,14 +273,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if agent_id not in self.locations:
             # Place cell at either the provided or a random initial location
             location = simulation['agent_config'].get(
-                'location', np.random.uniform(2, 2, N_DIMS))
+                'location', np.random.uniform(0, self.edge_length, N_DIMS))
             orientation = simulation['agent_config'].get(
-                'orientation', PI/4)
-
+                'orientation', np.random.uniform(0, 2*PI))
             # location = simulation['agent_config'].get(
-            #     'location', np.random.uniform(0, self.edge_length, N_DIMS))
+            #     'location', np.random.uniform(2, 2, N_DIMS))
             # orientation = simulation['agent_config'].get(
-            #     'orientation', np.random.uniform(0, 2*PI))
+            #     'orientation', PI/4)
 
             self.locations[agent_id] = np.hstack((location, orientation))
 
