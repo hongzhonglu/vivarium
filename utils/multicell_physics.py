@@ -17,8 +17,6 @@ import numpy as np
 import pymunk
 import pymunk.pygame_util
 
-pymunk_scale = 60
-
 PI = math.pi
 
 ELASTICITY = 0.95
@@ -27,11 +25,17 @@ FRICTION = 0.9
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter):
+    def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
+        self.pygame_scale = 60  # TODO (Eran) this influences jitter, should not have an effect.
+        # if self.pygame_viz:
+        #     self.pygame_scale = 60
+        # else:
+        #     self.pygame_scale = 1
 
+        self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.translation_jitter = translation_jitter * pymunk_scale
+        self.translation_jitter = translation_jitter * self.pygame_scale
         self.rotation_jitter = rotation_jitter
 
         # Space
@@ -42,11 +46,11 @@ class MultiCellPhysics(object):
         self.physics_steps_per_frame = 60
         self.physics_dt = self.timestep / self.physics_steps_per_frame
 
-        # pygame
-        pygame.init()
-        self._screen = pygame.display.set_mode((700, 700))
-        self._clock = pygame.time.Clock()
-        self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
+        if self.pygame_viz:
+            pygame.init()
+            self._screen = pygame.display.set_mode((700, 700))
+            self._clock = pygame.time.Clock()
+            self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
         # Static barriers
         self.add_barriers(bounds)
@@ -69,7 +73,6 @@ class MultiCellPhysics(object):
         self.space.debug_draw(self._draw_options)
 
     def _update_screen(self):
-        # pygame
         self._process_events()
         self._clear_screen()
         self._draw_objects()
@@ -97,22 +100,23 @@ class MultiCellPhysics(object):
 
                 self.space.step(self.physics_dt)
 
-            self._update_screen()
+            if self.pygame_viz:
+                self._update_screen()
 
 
     def add_cell_from_corner(self, cell_id, width, length, mass, corner_position, angle, angular_velocity=None):
 
         shape = pymunk.Poly(None, (
             (0, 0),
-            (length * pymunk_scale, 0),
-            (length * pymunk_scale, width * pymunk_scale),
-            (0, width * pymunk_scale)))
+            (length * self.pygame_scale, 0),
+            (length * self.pygame_scale, width * self.pygame_scale),
+            (0, width * self.pygame_scale)))
 
         inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
-        body.position = (corner_position[0] * pymunk_scale, corner_position[1] * pymunk_scale)
+        body.position = (corner_position[0] * self.pygame_scale, corner_position[1] * self.pygame_scale)
         body.angle = angle
         body.dimensions = (width, length)
         if angular_velocity:
@@ -168,9 +172,9 @@ class MultiCellPhysics(object):
         # make shape, moment of inertia, and add a body
         new_shape = pymunk.Poly(None, (
             (0, 0),
-            (length * pymunk_scale, 0),
-            (length * pymunk_scale, width * pymunk_scale),
-            (0, width * pymunk_scale)))
+            (length * self.pygame_scale, 0),
+            (length * self.pygame_scale, width * self.pygame_scale),
+            (0, width * self.pygame_scale)))
 
         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
         new_body = pymunk.Body(mass, inertia)
@@ -180,7 +184,7 @@ class MultiCellPhysics(object):
         dx = -1 * d_width/2 * math.cos(body.angle)
         dy = -1 * d_length/2 * math.sin(body.angle)
 
-        new_body.position = body.position + [dx * pymunk_scale, dy * pymunk_scale]
+        new_body.position = body.position + [dx * self.pygame_scale, dy * self.pygame_scale]
         new_body.angle = body.angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
@@ -208,7 +212,7 @@ class MultiCellPhysics(object):
             dx = length * pos_ratios[index] * math.cos(body.angle)
             dy = length * pos_ratios[index] * math.sin(body.angle)
 
-            position = body.position/pymunk_scale + [dx, dy]
+            position = body.position/self.pygame_scale + [dx, dy]
 
             self.add_cell_from_corner(
                 daughter_id,
@@ -239,20 +243,20 @@ class MultiCellPhysics(object):
         # get center
         center_position = self.center_from_corner(width, length, corner_position, angle)
 
-        return np.array([center_position[0] / pymunk_scale, center_position[1] / pymunk_scale, angle])
+        return np.array([center_position[0] / self.pygame_scale, center_position[1] / self.pygame_scale, angle])
 
     def get_corner(self, cell_id):
         body, shape = self.cells[cell_id]
         corner_position = body.position
         angle = body.angle
 
-        return np.array([corner_position[0] / pymunk_scale, corner_position[1] / pymunk_scale, angle])
+        return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
 
     def add_barriers(self, bounds):
         """ Create static barriers """
 
-        x_bound = bounds[0] * pymunk_scale
-        y_bound = bounds[1] * pymunk_scale
+        x_bound = bounds[0] * self.pygame_scale
+        y_bound = bounds[1] * self.pygame_scale
 
         static_body = self.space.static_body
         static_lines = [
@@ -265,82 +269,3 @@ class MultiCellPhysics(object):
             line.elasticity = 0.0  # no bounce
             line.friction = 0.9
         self.space.add(static_lines)
-
-
-
-
-
-
-
-
-
-
-# For testing. Not used in object.
-
-def volume_to_length(volume, radius):
-    '''
-    get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
-    a=length of cylinder without rounded caps, l=total length:
-
-    V = (4/3)*PI*r^3 + PI*r^2*a
-    l = a + 2*r
-    '''
-
-    PI = math.pi
-
-    cylinder_length = (volume - (4 / 3) * PI * radius ** 3) / (PI * radius ** 2)
-    total_length = cylinder_length + 2 * radius
-
-    return total_length
-
-if __name__ == '__main__':
-    cell_density = 1100
-
-    bounds = [10.0, 10.0]
-    translation_jitter = 5.0  # 1.0
-    rotation_jitter = 50000.0  # 20.0
-    physics = MultiCellPhysics(bounds, translation_jitter, rotation_jitter)
-
-    volume = 1
-    radius = 0.5
-    width = radius * 2
-    length = volume_to_length(volume, radius)
-    mass = volume * cell_density  # TODO -- get units to work
-
-    # add cells
-    n_cells = 5
-    for cell_id in xrange(n_cells):
-        position = (random.uniform(length, bounds[0] - length), random.uniform(length, bounds[1] - length))
-        angle = random.uniform(0, 2 * PI)
-
-        physics.add_cell_from_corner(
-            cell_id,
-            width,
-            length,
-            mass,
-            position,
-            angle,
-        )
-
-    growth = 0.1
-    division_length = length * 2
-
-    running = True
-    while running:
-
-        for cell_id in physics.cells.keys():
-            body, shape = physics.cells[cell_id]
-            width, length = body.dimensions
-            mass = body.mass  # TODO -- update mass
-
-            # grow
-            length += growth
-
-            if length >= division_length:
-                max_cell_id = max(physics.cells.keys())
-                daughter_ids = [max_cell_id + 1, max_cell_id + 2]
-                physics.divide(cell_id, daughter_ids)
-            else:
-                physics.update_cell(cell_id, length, width, mass)
-
-        physics.run_incremental(5)

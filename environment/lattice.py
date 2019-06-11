@@ -23,7 +23,7 @@ from scipy.ndimage import convolve
 
 from environment.condition.make_media import Media
 from agent.outer import EnvironmentSimulation
-from utils.physics import MultiCellPhysics
+from utils.multicell_physics import MultiCellPhysics
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -65,8 +65,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = 5.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 500.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = 1.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 50.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')

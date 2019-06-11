@@ -17,7 +17,7 @@ class Division(CellSimulation):
 
         self.environment_change = {}
         self.volume = 1.0
-        self.growth = 0.01
+        self.growth = 0.05
         self.division_volume = 2 * self.volume
 
         self.division = []
