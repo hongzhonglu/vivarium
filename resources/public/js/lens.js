@@ -52,8 +52,8 @@ function updateCell(cell, data, born) {
   // the cell's orientation.
   var originX = data.width * 0.5
   var originY = length * 0.5;
-  var sin = Math.sin(-data.orientation);
-  var cos = Math.cos(-data.orientation);
+  var sin = Math.sin(data.orientation);
+  var cos = Math.cos(data.orientation);
   var offsetX = originX * cos - originY * sin;
   var offsetY = originX * sin + originY * cos;
 

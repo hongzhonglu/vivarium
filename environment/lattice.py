@@ -89,9 +89,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.locations = {}     # map of agent_id to location and orientation
         self.motile_forces = {}	# map of agent_id to motile force, with magnitude and relative orientation
 
-        # make physics object by passing in bounds
+        # make physics object by passing in bounds and jitter
         bounds = [self.edge_length, self.edge_length]
-        self.physics = MultiCellPhysics(
+        self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
             self.rotation_jitter)
@@ -135,7 +135,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
-
         for agent_id, location in self.locations.iteritems():
 
             # shape
@@ -151,17 +150,16 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             direction = self.motile_forces[agent_id][1]
 
             # TODO -- add motile forces!
-            self.physics.update_cell(agent_id, length, width, mass)
+            self.multicell_physics.update_cell(agent_id, length, width, mass)
 
-        self.physics.run_incremental(5)  # TODO -- use run_for
-        # import ipdb; ipdb.set_trace()
+        self.multicell_physics.run_incremental(self.run_for)
 
         for agent_id, location in self.locations.iteritems():
             # update location
-            self.locations[agent_id] = self.physics.get_center(agent_id)
+            self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
 
 
-            # # enforce boundaries # TODO (Eran) -- let pymunk handle this
+            # enforce boundaries # TODO (Eran) -- make pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
 
@@ -274,9 +272,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if agent_id not in self.locations:
             # Place cell at either the provided or a random initial location
             location = simulation['agent_config'].get(
-                'location', np.random.uniform(0, self.edge_length, N_DIMS))
+                'location', np.random.uniform(2, 2, N_DIMS))
             orientation = simulation['agent_config'].get(
-                'orientation', np.random.uniform(0, 2*PI))
+                'orientation', PI/4)
+
+            # location = simulation['agent_config'].get(
+            #     'location', np.random.uniform(0, self.edge_length, N_DIMS))
+            # orientation = simulation['agent_config'].get(
+            #     'orientation', np.random.uniform(0, 2*PI))
 
             self.locations[agent_id] = np.hstack((location, orientation))
 
@@ -295,7 +298,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         length = self.volume_to_length(volume, self.cell_radius)
         mass = volume * self.cell_density   # TODO -- get units to work
 
-        self.physics.add_cell(
+        self.multicell_physics.add_cell_from_center(
             agent_id,
             width,
             length,
