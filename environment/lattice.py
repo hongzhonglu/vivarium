@@ -48,7 +48,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self._max_time = 10e6
 
         # constants
-        self.cell_density = CELL_DENSITY
+        self.cell_density = CELL_DENSITY  # TODO (Eran) -- get mass from cell sim rather than using density to convert volume to mass
 
         # configured parameters
         self.run_for = config.get('run_for', 5.0)

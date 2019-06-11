@@ -399,7 +399,6 @@ function updateLens(draw, lens, data) {
   var scale = VISUALIZATION_WIDTH / data.edge_length;
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
-    // simulation.width = data.cell_radius * 2;
     simulation.scale = scale
 
     if (!_.has(lens.cells, key)) {
