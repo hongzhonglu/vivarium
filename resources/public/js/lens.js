@@ -20,16 +20,6 @@ function uuid() {
   });
 }
 
-// given the volume of a cell and its radius, calculate the length of the cell.
-
-// TODO -- pass in shape directly to Lens
-function volumeToLength(radius, volume) {
-  var ratio = (4/3) * Math.PI * Math.pow(radius, 3);
-  var area = Math.PI * Math.pow(radius, 2);
-  var cylinder = (volume - ratio) / area;
-  return cylinder + 2 * radius;
-}
-
 // find the closest rotation between two points on a circle (0..TAU)
 function relativeRotation(before, after) {
   var above = after - before;
@@ -45,9 +35,9 @@ function rotationTransform(theta) {
 // given an object containing the various svg elements of a cell visualization, apply the new
 // data to each of its components
 function updateCell(cell, data, born) {
-  // calculate length from volume
-  var length = volumeToLength(data.width/2, data.volume);
 
+  var length = data.length;
+  var width = data.width;
   var cx = data.corner_location[1];
   var cy = data.corner_location[0];
 
@@ -74,7 +64,7 @@ function updateCell(cell, data, born) {
   function animateCapsule(group, data, offset, color) {
 	    animateExisting(group)
 	    .attr({
-	      width: data.scale * data.width * (1 - offset),
+	      width: data.scale * width * (1 - offset),
 	      height: data.scale * length * (1 - offset),
 	      x: data.scale * 0.5*offset,
 	      y: data.scale * 0.5*offset
@@ -176,7 +166,7 @@ function buildCell(lens, draw, id, data) {
 function capsuleShape(group, offset, data, color) {
 	  // create the rectangle representing the outer bounds of the capsule
 	  return group
-	      .rect(data.width * data.scale, data.scale)  // width, height
+	      .rect(data.width * data.scale, data.scale)  // width, length
 	      // .x(data.scale * offset)
 	      // .y(data.scale * offset)
 	      .rx(0.6 * data.scale)
@@ -409,7 +399,7 @@ function updateLens(draw, lens, data) {
   var scale = VISUALIZATION_WIDTH / data.edge_length;
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
-    simulation.width = data.cell_radius * 2;
+    // simulation.width = data.cell_radius * 2;
     simulation.scale = scale
 
     if (!_.has(lens.cells, key)) {

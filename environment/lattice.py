@@ -121,7 +121,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-
     def evolve(self):
         ''' Evolve environment '''
         self.update_locations()
@@ -145,6 +144,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             length = self.volume_to_length(volume, radius)
 
             mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
+
+            # update length, width
+            self.simulations[agent_id]['state']['length'] = length
+            self.simulations[agent_id]['state']['width'] = width
 
             # Motile forces
             magnitude = self.motile_forces[agent_id][0]
@@ -276,10 +279,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 'location', np.random.uniform(0, self.edge_length, N_DIMS))
             orientation = simulation['agent_config'].get(
                 'orientation', np.random.uniform(0, 2*PI))
-            # location = simulation['agent_config'].get(
-            #     'location', np.random.uniform(2, 2, N_DIMS))
-            # orientation = simulation['agent_config'].get(
-            #     'orientation', PI/4)
 
             self.locations[agent_id] = np.hstack((location, orientation))
 
@@ -298,6 +297,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         width = self.cell_radius * 2
         length = self.volume_to_length(volume, self.cell_radius)
         mass = volume * self.cell_density   # TODO -- get units to work
+
+        # add length, width to state, for use by visualization
+        self.simulations[agent_id]['state']['length'] = length
+        self.simulations[agent_id]['state']['width'] = width
 
         self.multicell_physics.add_cell_from_center(
             agent_id,

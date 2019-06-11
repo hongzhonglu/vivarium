@@ -26,6 +26,8 @@ class EnvironmentAgent(Outer):
         simulations = {
             agent_id: {
                 'volume': simulation['state']['volume'],
+                'width': simulation['state'].get('width', self.environment.cell_radius*2),
+                'length': simulation['state'].get('length', self.environment.cell_radius*2),  # TODO (Eran) initialize length, width in cellSimulation?
                 'color': simulation['state'].get('color', DEFAULT_COLOR),
                 'location': self.environment.locations[agent_id][0:2].tolist(),
                 'corner_location': self.environment.corner_locations[agent_id][0:2].tolist(),
@@ -39,7 +41,7 @@ class EnvironmentAgent(Outer):
             'running': not self.paused,
             'time': self.environment.time(),
             'edge_length': self.environment.edge_length,
-            'cell_radius': self.environment.cell_radius,
+            'cell_radius': self.environment.cell_radius,   # TODO (Eran) -- remove this, cell width and length should suffice for visualization
             'lattice': lattice,
             'simulations': simulations}
 
