@@ -101,21 +101,31 @@ class MultiCellPhysics(object):
             self._update_screen()
 
 
-    def add_cell(self, cell_id, radius, length, mass, position, angle, angular_velocity=None):
+    def add_cell(self, cell_id, width, length, mass, position, angle, angular_velocity=None):
 
         shape = pymunk.Poly(None, (
             (0, 0),
             (length * pymunk_scale, 0),
-            (length * pymunk_scale, radius * 2 * pymunk_scale),
-            (0, radius * 2 * pymunk_scale)))
+            (length * pymunk_scale, width * pymunk_scale),
+            (0, width * pymunk_scale)))
 
         inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
         body.position = (position[0] * pymunk_scale, position[1] * pymunk_scale)
+
+
+        # TODO -- go from position to corner....
+
+
+
+
+
+
+
         body.angle = angle
-        body.dimensions = (radius, length)
+        body.dimensions = (width, length)
         if angular_velocity:
             body.angular_velocity = angular_velocity
 
@@ -128,34 +138,41 @@ class MultiCellPhysics(object):
         # add cell
         self.cells[cell_id] = (body, shape)
 
+    def center_from_corner(self, cell_id):
+        pass
 
-    def update_cell(self, cell_id, length, radius, mass):
+
+    def corner_from_center(self, cell_id):
+        pass
+
+
+    def update_cell(self, cell_id, length, width, mass):
 
         body, shape = self.cells[cell_id]
 
-        radius_0, length_0 = body.dimensions
-        d_radius = radius - radius_0
+        width_0, length_0 = body.dimensions
+        d_width = width - width_0
         d_length = length - length_0
 
         # make shape, moment of inertia, and add a body
         new_shape = pymunk.Poly(None, (
             (0, 0),
             (length * pymunk_scale, 0),
-            (length * pymunk_scale, radius * 2 * pymunk_scale),
-            (0, radius * 2 * pymunk_scale)))
+            (length * pymunk_scale, width * pymunk_scale),
+            (0, width * pymunk_scale)))
 
         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
 
         # reposition on center
-        dx = -1 * d_radius/2 * math.cos(body.angle)
+        dx = -1 * d_width/2 * math.cos(body.angle)
         dy = -1 * d_length/2 * math.sin(body.angle)
 
         new_body.position = body.position + [dx * pymunk_scale, dy * pymunk_scale]
         new_body.angle = body.angle
         new_body.angular_velocity = body.angular_velocity
-        new_body.dimensions = (radius, length)
+        new_body.dimensions = (width, length)
 
         new_shape.elasticity = shape.elasticity
         new_shape.friction = shape.friction
@@ -172,7 +189,7 @@ class MultiCellPhysics(object):
 
         body, shape = self.cells[cell_id]
 
-        radius, length = body.dimensions
+        width, length = body.dimensions
         mass = body.mass # TODO -- divide mass?
 
         new_length = length / 2
@@ -186,7 +203,7 @@ class MultiCellPhysics(object):
 
             self.add_cell(
                 daughter_id,
-                radius,
+                width,
                 new_length,
                 mass,
                 position,
@@ -209,18 +226,25 @@ class MultiCellPhysics(object):
     def get_center(self, cell_id):
         body, shape = self.cells[cell_id]
 
-        radius, length = body.dimensions
+        width, length = body.dimensions
         half_length = length/2
+        half_width = width/2
         position = body.position
         angle = body.angle
 
         # get center
-        dx = half_length * math.sin(angle) + radius * math.sin(angle + PI/2)
-        dy = half_length * math.cos(angle) + radius * math.cos(angle + PI/2)
+        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
         center = position + [dx * pymunk_scale, dy * pymunk_scale]
 
         return np.array([center[0] / pymunk_scale, center[1] / pymunk_scale, angle])
 
+    def get_corner(self, cell_id):
+        body, shape = self.cells[cell_id]
+        position = body.position
+        angle = body.angle
+
+        return np.array([position[0] / pymunk_scale, position[1] / pymunk_scale, angle])
 
     def add_barriers(self, bounds):
         """ Create static barriers """
@@ -245,7 +269,11 @@ class MultiCellPhysics(object):
 
 
 
-# For testing.
+
+
+
+
+# For testing. Not used in object.
 
 def volume_to_length(volume, radius):
     '''
@@ -273,6 +301,7 @@ if __name__ == '__main__':
 
     volume = 1
     radius = 0.5
+    width = radius * 2
     length = volume_to_length(volume, radius)
     mass = volume * cell_density  # TODO -- get units to work
 
@@ -284,7 +313,7 @@ if __name__ == '__main__':
 
         physics.add_cell(
             cell_id,
-            radius,
+            width,
             length,
             mass,
             position,
@@ -299,7 +328,7 @@ if __name__ == '__main__':
 
         for cell_id in physics.cells.keys():
             body, shape = physics.cells[cell_id]
-            radius, length = body.dimensions
+            width, length = body.dimensions
             mass = body.mass  # TODO -- update mass
 
             # grow
@@ -310,6 +339,6 @@ if __name__ == '__main__':
                 daughter_ids = [max_cell_id + 1, max_cell_id + 2]
                 physics.divide(cell_id, daughter_ids)
             else:
-                physics.update_cell(cell_id, length, radius, mass)
+                physics.update_cell(cell_id, length, width, mass)
 
         physics.run_incremental(5)

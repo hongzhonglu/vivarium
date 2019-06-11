@@ -85,8 +85,8 @@ function updateCell(cell, data, born) {
 	    animateExisting(group)
 	    .attr({
 	      width: data.scale * data.width * (1 - offset),
-	      height: data.scale * length * (1 - 0.5 * offset),
-	      x: data.scale * 0.25*offset,
+	      height: data.scale * length * (1 - offset),
+	      x: data.scale * 0.5*offset,
 	      y: data.scale * 0.5*offset
 	    })
 	    .fill(rgbToHex(color));

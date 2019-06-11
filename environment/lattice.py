@@ -141,6 +141,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # shape
             volume = self.simulations[agent_id]['state']['volume']
             radius = self.cell_radius
+            width = 2 * radius
             length = self.volume_to_length(volume, radius)
 
             mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
@@ -150,7 +151,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             direction = self.motile_forces[agent_id][1]
 
             # TODO -- add motile forces!
-            self.physics.update_cell(agent_id, length, radius, mass)
+            self.physics.update_cell(agent_id, length, width, mass)
 
         self.physics.run_incremental(5)  # TODO -- use run_for
         # import ipdb; ipdb.set_trace()
@@ -159,7 +160,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # update location
             self.locations[agent_id] = self.physics.get_center(agent_id)
 
-            # enforce boundaries # TODO (Eran) -- let pymunk handle this
+
+            # # enforce boundaries # TODO (Eran) -- let pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
 
@@ -289,13 +291,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ''' Add body to physics simulation'''
 
         volume = self.simulations[agent_id]['state']['volume']
-        radius = self.cell_radius
+        width = self.cell_radius * 2
         length = self.volume_to_length(volume, self.cell_radius)
         mass = volume * self.cell_density   # TODO -- get units to work
 
         self.physics.add_cell(
             agent_id,
-            radius,
+            width,
             length,
             mass,
             position,
