@@ -48,18 +48,8 @@ function updateCell(cell, data, born) {
   // calculate length from volume
   var length = volumeToLength(data.width/2, data.volume);
 
-  // calculate the offset from the corner of the rectangle to the center, given
-  // the cell's orientation.
-  var originX = data.width * 0.5
-  var originY = length * 0.5;
-  var sin = Math.sin(data.orientation);
-  var cos = Math.cos(data.orientation);
-  var offsetX = originX * cos - originY * sin;
-  var offsetY = originX * sin + originY * cos;
-
-  // apply the offset
-  var cx = data.location[1] - offsetX;
-  var cy = data.location[0] - offsetY;
+  var cx = data.corner_location[1];
+  var cy = data.corner_location[0];
 
   var previousRotation = /r([^,]+)/.exec(cell.whole.transform()['string']);
   var orientation = data.orientation;

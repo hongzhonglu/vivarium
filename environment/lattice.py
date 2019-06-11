@@ -85,9 +85,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # upper limit on the time scale (go with at least 50% of this)
         self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
 
-        self.simulations = {}   # map of agent_id to simulation state
-        self.locations = {}     # map of agent_id to location and orientation
-        self.motile_forces = {}	# map of agent_id to motile force, with magnitude and relative orientation
+        self.simulations = {}       # map of agent_id to simulation state
+        self.locations = {}         # map of agent_id to center location and orientation
+        self.corner_locations = {}  # map of agent_id to corner location, for Lens visualization and multi-cell physics engine
+        self.motile_forces = {}	    # map of agent_id to motile force, with magnitude and relative orientation
 
         # make physics object by passing in bounds and jitter
         bounds = [self.edge_length, self.edge_length]
@@ -157,7 +158,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for agent_id, location in self.locations.iteritems():
             # update location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
-
+            self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
             # enforce boundaries # TODO (Eran) -- make pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
@@ -285,13 +286,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
             # add new cell to the physics simulation
             self.add_cell_to_physics(agent_id, location, orientation)
+            self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
 
     def add_cell_to_physics(self, agent_id, position, angle):
-        ''' Add body to physics simulation'''
+        ''' Add body to multi-cell physics simulation'''
 
         volume = self.simulations[agent_id]['state']['volume']
         width = self.cell_radius * 2
@@ -372,6 +374,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # print("=== parent: {} - daughter: {}".format(parent_location, location))
         self.locations[agent_id] = np.hstack((location, orientation))
+
+        # TODO -- inherit corner_locations?
 
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
