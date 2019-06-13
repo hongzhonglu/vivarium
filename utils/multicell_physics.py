@@ -103,7 +103,6 @@ class MultiCellPhysics(object):
             if self.pygame_viz:
                 self._update_screen()
 
-
     def add_cell_from_corner(self, cell_id, width, length, mass, corner_position, angle, angular_velocity=None):
 
         shape = pymunk.Poly(None, (
@@ -140,26 +139,7 @@ class MultiCellPhysics(object):
             mass,
             corner_position,
             angle,
-            angular_velocity,
-        )
-
-    def center_from_corner(self, width, length, corner_position, angle):
-        half_length = length/2
-        half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
-        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        center_position = [corner_position[0] + dx, corner_position[1] + dy]
-
-        return center_position
-
-    def corner_from_center(self, width, length, center_position, angle):
-        half_length = length/2
-        half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
-        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        corner_position = [center_position[0] - dx, center_position[1] - dy]
-
-        return corner_position
+            angular_velocity)
 
     def update_cell(self, cell_id, length, width, mass):
 
@@ -199,36 +179,6 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
-
-    def divide(self, cell_id, daughter_ids):
-
-        body, shape = self.cells[cell_id]
-        width, length = body.dimensions
-        mass = body.mass # TODO -- divide mass?
-        new_length = length / 2
-
-        pos_ratios = [0, 0.5]
-        for index, daughter_id in enumerate(daughter_ids):
-            dx = length * pos_ratios[index] * math.cos(body.angle)
-            dy = length * pos_ratios[index] * math.sin(body.angle)
-
-            position = body.position/self.pygame_scale + [dx, dy]
-
-            self.add_cell_from_corner(
-                daughter_id,
-                width,
-                new_length,
-                mass,
-                position,
-                body.angle,
-                body.angular_velocity,
-            )
-
-            self._update_screen()
-
-        self.remove_cell(cell_id)
-        # TODO -- return positions? new cell_ids?
-
     def remove_cell(self, cell_id):
         body, shape = self.cells[cell_id]
         self.space.remove(body, shape)
@@ -239,22 +189,33 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         corner_position = body.position
         angle = body.angle
-
-        # get center
         center_position = self.center_from_corner(width, length, corner_position, angle)
-
         return np.array([center_position[0] / self.pygame_scale, center_position[1] / self.pygame_scale, angle])
 
     def get_corner(self, cell_id):
         body, shape = self.cells[cell_id]
         corner_position = body.position
         angle = body.angle
-
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
+
+    def center_from_corner(self, width, length, corner_position, angle):
+        half_length = length/2
+        half_width = width/2
+        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+        center_position = [corner_position[0] + dx, corner_position[1] + dy]
+        return center_position
+
+    def corner_from_center(self, width, length, center_position, angle):
+        half_length = length/2
+        half_width = width/2
+        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+        corner_position = [center_position[0] - dx, center_position[1] - dy]
+        return corner_position
 
     def add_barriers(self, bounds):
         """ Create static barriers """
-
         x_bound = bounds[0] * self.pygame_scale
         y_bound = bounds[1] * self.pygame_scale
 

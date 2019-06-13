@@ -17,6 +17,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import math
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
@@ -27,7 +28,7 @@ from utils.multicell_physics import MultiCellPhysics
 
 # Constants
 N_AVOGADRO = constants.N_A
-PI = np.pi
+PI = math.pi
 
 CELL_DENSITY = 1100
 
@@ -95,7 +96,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
-            self.rotation_jitter)
+            self.rotation_jitter,
+            True)   # TODO -- disable pygame
 
         # make media
         media = config['concentrations']
@@ -145,6 +147,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
             mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
 
+            # TODO -- this simulation state needs to pass to daughters
             # update length, width
             self.simulations[agent_id]['state']['length'] = length
             self.simulations[agent_id]['state']['width'] = width
@@ -166,8 +169,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # enforce boundaries # TODO (Eran) -- make pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
-
-        print("self.locations " + str(self.locations))
 
 
     def update_media(self):
@@ -360,9 +361,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         return update
 
     def daughter_location(self, location, orientation, length, index):
-        offset = np.array([length * 0.75, 0])
-        rotation = self.rotation_matrix(-orientation + (index * np.pi))
-        translation = (offset * rotation).A1
+        quarter_length = length/4
+        dx = quarter_length * math.cos(orientation)
+        dy = quarter_length * math.sin(orientation)
+
+        if index == 0:
+            translation = [dx, dy]
+        elif index == 1:
+            translation = [-dx, -dy]
+
         return location + translation
 
     def apply_parent_state(self, agent_id, simulation):
@@ -370,15 +377,30 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         parent_location = simulation['location']
         index = simulation['index']
         orientation = parent_location[2]
-        volume = self.simulations[agent_id]['state']['volume'] * 0.5
-        length = self.volume_to_length(volume, self.cell_radius)
-        location = self.daughter_location(parent_location[0:2], orientation, length, index)
+
+        # TODO -- this volume is not correct. This uses agent_id, the daughter id
+        # parent_volume = self.simulations[agent_id]['state']['volume'] #* 0.5  # TODO -- get this from simulation state
+        parent_volume = simulation['state']['volume'] * 2
+        parent_length = self.volume_to_length(parent_volume, self.cell_radius)  # TODO -- get this from simulation state
+
+        # volume = simulation['state']['volume'] * 0.5
+        # length = simulation['state']['length']
+
+        print('parent volume: ' + str(parent_volume))
+        print('parent location: ' + str(parent_location[0:2]))
+        print('parent orientation: ' + str(orientation))
+        print('parent length: ' + str(parent_length))
+        print('index: ' + str(index))
+
+        location = self.daughter_location(parent_location[0:2], orientation, parent_length, index)
+
+        # TODO -- check if correct location
+        print('daughter location: ' + str(np.hstack((location, orientation))))
 
         # print("=== parent: {} - daughter: {}".format(parent_location, location))
         self.locations[agent_id] = np.hstack((location, orientation))
 
-        # TODO -- inherit corner_locations?
-
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
+        self.multicell_physics.remove_cell(agent_id)

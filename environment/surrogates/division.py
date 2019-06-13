@@ -7,20 +7,24 @@ from agent.inner import CellSimulation
 
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]
 
+INITIAL_VOLUME = 1.0
+
 class Division(CellSimulation):
     ''' '''
 
     def __init__(self, state):
         self.initial_time = state.get('time', 0.0)
+        self.volume = state.get('volume', INITIAL_VOLUME)
         self.local_time = 0.0
         self.timestep = 1.0
 
-        self.environment_change = {}
-        self.volume = 1.0
-        self.growth = 0.05
-        self.division_volume = 2 * self.volume
+        self.growth = 0.02
+        self.division_volume = 2 * INITIAL_VOLUME
 
+        self.environment_change = {}
         self.division = []
+
+        print('initial volume: ' + str(self.volume))
 
 
     def update_state(self):
@@ -30,7 +34,11 @@ class Division(CellSimulation):
     def check_division(self):
         # update division state based on time since initialization
         if self.volume >= self.division_volume:
-            self.division = [{'time': self.local_time}, {'time': self.local_time}]
+            daughter_config = {
+                'time': self.local_time,
+                'volume': self.volume/2}
+
+            self.division = [daughter_config, daughter_config]
 
         return self.division
 
@@ -48,6 +56,9 @@ class Division(CellSimulation):
             self.local_time += self.timestep
             self.update_state()
             self.check_division()
+
+            if self.division:
+                break
 
         time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
 
