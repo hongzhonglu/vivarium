@@ -12,9 +12,9 @@ INITIAL_VOLUME = 1.0
 class Division(CellSimulation):
     ''' '''
 
-    def __init__(self, state):
-        self.initial_time = state.get('time', 0.0)
-        self.volume = state.get('volume', INITIAL_VOLUME)
+    def __init__(self, boot_config):
+        self.initial_time = boot_config.get('time', 0.0)
+        self.volume = boot_config.get('volume', INITIAL_VOLUME)
         self.local_time = 0.0
         self.timestep = 1.0
 
@@ -27,12 +27,14 @@ class Division(CellSimulation):
         print('initial volume: ' + str(self.volume))
 
 
+        # import ipdb; ipdb.set_trace()
+
+
     def update_state(self):
         # update state based on internal and external concentrations
         self.volume += self.growth * self.timestep
 
     def check_division(self):
-        # update division state based on time since initialization
         if self.volume >= self.division_volume:
             daughter_config = {
                 'time': self.local_time,

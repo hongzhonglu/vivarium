@@ -243,7 +243,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             for agent_id, simulation
             in self.simulations.iteritems()])
         time = max(self._time, latest)
-        return {'time': time}
+
+
+        return {
+            'time': time,
+        }
 
     def simulation_state(self, agent_id):
         return dict(
@@ -284,7 +288,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.locations[agent_id] = np.hstack((location, orientation))
 
             # add new cell to the physics simulation
-            self.add_cell_to_physics(agent_id, location, orientation)
+            self.add_cell_to_physics(agent_id, location, orientation)  # is this adding daughters at the parents location?
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
         if agent_id not in self.motile_forces:

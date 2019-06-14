@@ -172,14 +172,14 @@ class Outer(Agent):
 
         self.environment.add_simulation(inner_id, simulation)
 
-        # lineage tracing
-        parent_id = simulation.get('parent_id', '')
-        if parent_id:
-            self.environment.apply_parent_state(inner_id, simulation)
-
-        if inner_id not in self.lineage:
-            self.lineage[inner_id] = parent_id
-            fp.write_json_file(self.lineage_filename, self.lineage, indent=2)
+        # # lineage tracing
+        # parent_id = simulation.get('parent_id', '')
+        # if parent_id:
+        #     self.environment.apply_parent_state(inner_id, simulation)
+        #
+        # if inner_id not in self.lineage:
+        #     self.lineage[inner_id] = parent_id
+        #     fp.write_json_file(self.lineage_filename, self.lineage, indent=2)
 
         self.update_state()
 
@@ -194,6 +194,16 @@ class Outer(Agent):
 
         self.synchronize_new_cell(message)
         inner_id = message['inner_id']
+
+        # lineage tracing
+        simulation = self.simulations[inner_id]
+        parent_id = simulation.get('parent_id', '')
+        if parent_id:
+            self.environment.apply_parent_state(inner_id, simulation)
+
+        if inner_id not in self.lineage:
+            self.lineage[inner_id] = parent_id
+            fp.write_json_file(self.lineage_filename, self.lineage, indent=2)
 
         # synchronize state of the new cell
         parameters = self.environment.simulation_parameters(inner_id)

@@ -302,18 +302,24 @@ def boot_division(agent_id, agent_type, agent_config):
     outer_id = agent_config['outer_id']
 
     # initialize state and options
-    state = {
-        'volume': 1.0,
+    volume = agent_config.get('volume', 1.0)
+
+    # state of the cell that gets sent to the environment
+    agent_config['state'] = {
+        'volume': volume,
         'environment_change': {}}
-    agent_config['state'] = state
-    options = {}
+
+    # boot_config previously called options, state sent to the cell upon boot
+    boot_config = {
+        'volume': volume
+        }
 
     inner = Inner(
         agent_id,
         outer_id,
         agent_type,
         agent_config,
-        options,
+        boot_config,
         initialize_division)
 
     return inner

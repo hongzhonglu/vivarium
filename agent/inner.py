@@ -179,8 +179,8 @@ class Inner(Agent):
                 outer_id=self.outer_id,
                 generation=generation)
 
-            print('agent_type: ' + str(agent_type))
-            print('divide_config: ' + str(agent_config))
+            print('inner.py agent_type: ' + str(agent_type))
+            print('inner.py divide_config: ' + str(agent_config))
 
             # Send the inherited state data as a blob instead of a file path.
             inherited_state_path = agent_config.pop('inherited_state_path', None)

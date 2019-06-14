@@ -90,6 +90,7 @@ class MultiCellPhysics(object):
             for x in range(self.physics_steps_per_frame * self.timestep):
                 for body in self.space.bodies:
                     # Add jitter to cells
+                    # TODO (Eran) -- do rotation and translation jitter map onto these variables? Rename them...
                     force = (
                         random.normalvariate(0, self.rotation_jitter) * self.physics_dt,
                         random.normalvariate(0, self.rotation_jitter) * self.physics_dt)
