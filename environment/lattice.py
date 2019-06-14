@@ -66,8 +66,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = 1.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 50.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = 2.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 100.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -219,7 +219,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         V = (4/3)*PI*r^3 + PI*r^2*a
         l = a + 2*r
         '''
-
         cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
         total_length = cylinder_length + 2 * radius
 
@@ -243,7 +242,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             for agent_id, simulation
             in self.simulations.iteritems()])
         time = max(self._time, latest)
-
 
         return {
             'time': time,
@@ -351,23 +349,27 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                 patch_site = tuple(np.floor(location).astype(int))
                 update[agent_id] = {}
-
                 try:
                     update[agent_id]['concentrations'] = dict(zip(
                         self._molecule_ids,
                         self.lattice[:, patch_site[0], patch_site[1]]))
                 except:
                     print('patch_site: ' + str(patch_site) + ', location: ' + str(location))
-                    import ipdb; ipdb.set_trace()
 
                 update[agent_id]['media_id'] = self.media_id
 
         return update
 
+    # def daughter_location(self, location, orientation, length, index):
+    #     offset = np.array([length * 0.75, 0])
+    #     rotation = self.rotation_matrix(-orientation + (index * np.pi))
+    #     translation = (offset * rotation).A1
+    #     return location + translation
+
     def daughter_location(self, location, orientation, length, index):
         quarter_length = length/4
-        dx = quarter_length * math.cos(orientation)
-        dy = quarter_length * math.sin(orientation)
+        dy = quarter_length * math.cos(orientation)
+        dx = quarter_length * math.sin(orientation)
 
         if index == 0:
             translation = [dx, dy]
@@ -381,28 +383,20 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         parent_location = simulation['location']
         index = simulation['index']
         orientation = parent_location[2]
+        parent_volume = self.simulations[agent_id]['state']['volume'] * 2 # * 0.5
+        parent_length = self.volume_to_length(parent_volume, self.cell_radius)
+        location = self.daughter_location(parent_location[0:2], orientation, parent_length, index)
 
-        # TODO -- this volume is not correct. This uses agent_id, the daughter id
-        # parent_volume = self.simulations[agent_id]['state']['volume'] #* 0.5  # TODO -- get this from simulation state
-        parent_volume = simulation['state']['volume'] * 2
-        parent_length = self.volume_to_length(parent_volume, self.cell_radius)  # TODO -- get this from simulation state
-
-        # volume = simulation['state']['volume'] * 0.5
-        # length = simulation['state']['length']
+        # print("=== parent: {} - daughter: {}".format(parent_location, location))
+        self.locations[agent_id] = np.hstack((location, orientation))
 
         print('parent volume: ' + str(parent_volume))
         print('parent location: ' + str(parent_location[0:2]))
         print('parent orientation: ' + str(orientation))
         print('parent length: ' + str(parent_length))
         print('index: ' + str(index))
-
-        location = self.daughter_location(parent_location[0:2], orientation, parent_length, index)
-
-        # TODO -- check if correct location
         print('daughter location: ' + str(np.hstack((location, orientation))))
 
-        # print("=== parent: {} - daughter: {}".format(parent_location, location))
-        self.locations[agent_id] = np.hstack((location, orientation))
 
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})

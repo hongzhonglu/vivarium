@@ -41,6 +41,7 @@ class ShepherdControl(AgentControl):
         media = make_media.make_recipe(media_id)
 
         lattice_config = {
+            'run_for': 2.0,
             'media_id': media_id,
             'media': media,
             'timeline': current_timeline}
@@ -72,7 +73,7 @@ class ShepherdControl(AgentControl):
                  'O2': 0.1}
 
         toy_config = {
-            'run_for': 2.0,
+            'run_for': 3.0,
             'media_id': media_id,
             'media': media}
 

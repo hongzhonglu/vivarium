@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import time
+import random
+import uuid
 
 from agent.inner import CellSimulation
 
@@ -15,33 +17,33 @@ class Division(CellSimulation):
     def __init__(self, boot_config):
         self.initial_time = boot_config.get('time', 0.0)
         self.volume = boot_config.get('volume', INITIAL_VOLUME)
-        self.local_time = 0.0
-        self.timestep = 1.0
+        self.local_time = self.initial_time
+        self.timestep = 0.5
 
         self.growth = 0.02
-        self.division_volume = 2 * INITIAL_VOLUME
+        self.division_volume = random.uniform(1.5 * INITIAL_VOLUME, 2.5 * INITIAL_VOLUME)
 
         self.environment_change = {}
         self.division = []
-
-        print('initial volume: ' + str(self.volume))
-
-
-        # import ipdb; ipdb.set_trace()
-
 
     def update_state(self):
         # update state based on internal and external concentrations
         self.volume += self.growth * self.timestep
 
+    def daughter_config(self):
+        config1 = {
+            'id': str(uuid.uuid4()),
+            'time': self.time(),
+            'volume': self.volume * 0.5}
+        config2 = {
+            'id': str(uuid.uuid4()),
+            'time': self.time(),
+            'volume': self.volume * 0.5}
+        return [config1, config2]
+
     def check_division(self):
         if self.volume >= self.division_volume:
-            daughter_config = {
-                'time': self.local_time,
-                'volume': self.volume/2}
-
-            self.division = [daughter_config, daughter_config]
-
+            self.division = self.daughter_config()
         return self.division
 
     def time(self):
@@ -58,11 +60,10 @@ class Division(CellSimulation):
             self.local_time += self.timestep
             self.update_state()
             self.check_division()
-
             if self.division:
                 break
 
-        time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
+        time.sleep(0.3)  # pause for better coordination with Lens visualization. TODO: remove this
 
     def generate_inner_update(self):
         return {
