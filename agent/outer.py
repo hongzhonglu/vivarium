@@ -9,7 +9,7 @@ import time
 
 import agent.event as event
 from agent.agent import Agent
-import wholecell.utils.filepath as fp
+import utils.filepath as fp
 
 
 class EnvironmentSimulation(object):
