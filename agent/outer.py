@@ -170,12 +170,15 @@ class Outer(Agent):
             'state': message['state'],
             'agent_config': message['agent_config']})
 
-        self.environment.add_simulation(inner_id, simulation)
-
         # lineage tracing
         parent_id = simulation.get('parent_id', '')
+        # TODO -- merge add simulation with apply_parent_state
         if parent_id:
+            # add simulation
             self.environment.apply_parent_state(inner_id, simulation)
+        else:
+            # add simulation
+            self.environment.add_simulation(inner_id, simulation)
 
         if inner_id not in self.lineage:
             self.lineage[inner_id] = parent_id
