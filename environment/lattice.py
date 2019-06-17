@@ -45,7 +45,7 @@ def gaussian(deviation, distance):
 class EnvironmentSpatialLattice(EnvironmentSimulation):
     def __init__(self, config):
         self._time = 0
-        self._timestep = 1.0 #DT
+        self._timestep = 1.0
         self._max_time = 10e6
 
         # constants
@@ -74,9 +74,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if self.timeline:
             self._times = [t[0] for t in self.timeline]
 
-        # make media object for making new media
-        self.make_media = Media()
-
         # derived parameters
         self.total_volume = (self.depth * self.edge_length ** 2) * (10 ** -15) # (L)
         self.patch_volume = self.total_volume / (self.patches_per_edge ** 2)
@@ -96,15 +93,17 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
-            self.rotation_jitter)
+            self.rotation_jitter,
+            True)
 
-        # make media
+        # make media object for making new media
+        self.make_media = Media()
+
+        # make media and fill lattice patches with media concentrations
         media = config['concentrations']
         self._molecule_ids = config['concentrations'].keys()
         self.concentrations = config['concentrations'].values()
         self.molecule_index = {molecule: index for index, molecule in enumerate(self._molecule_ids)}
-
-        # fill all lattice patches with concentrations from self.concentrations
         self.fill_lattice(media)
 
         # Add gradient
@@ -143,10 +142,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             radius = self.cell_radius
             width = 2 * radius
             length = self.volume_to_length(volume, radius)
-
             mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
 
-            # TODO -- this simulation state needs to pass to daughters
             # update length, width
             self.simulations[agent_id]['state']['length'] = length
             self.simulations[agent_id]['state']['width'] = width
@@ -226,13 +223,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def count_to_concentration(self, count):
         ''' Convert count to concentrations '''
         return count / (self.patch_volume * N_AVOGADRO)
-
-    def rotation_matrix(self, orientation):
-        sin = np.sin(orientation)
-        cos = np.cos(orientation)
-        return np.matrix([
-            [cos, -sin],
-            [sin, cos]])
 
     # functions for getting values
     def simulation_parameters(self, agent_id):
@@ -354,38 +344,60 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         self._molecule_ids,
                         self.lattice[:, patch_site[0], patch_site[1]]))
                 except:
-                    print('patch_site: ' + str(patch_site) + ', location: ' + str(location))
+                    print('invalid patch site: ' + str(patch_site) + ', location: ' + str(location))
 
                 update[agent_id]['media_id'] = self.media_id
 
         return update
 
-    def daughter_locations(self, parent_location, length, angle):
-        pos_ratios = [0.0, 1.0] #[-0.5, 0.5]
+    def daughter_locations(self, parent_location, parent_length, parent_angle):
+        pos_ratios = [-0.25, 0.25]
         daughter_locations = []
         for daughter in range(2):
-            dx = length * pos_ratios[daughter] * math.cos(angle)
-            dy = length * pos_ratios[daughter] * math.sin(angle)
+            dx = parent_length * pos_ratios[daughter] * math.cos(parent_angle)
+            dy = parent_length * pos_ratios[daughter] * math.sin(parent_angle)
             location = parent_location + [dx, dy]
+
+            print('parent location: ' + str(parent_location))
+            print('parent length: ' + str(parent_length))
+            print('parent angle: ' + str(parent_angle))
+            print('[dx, dy]: ' + str([dx, dy]))
+            print('daughter location: ' + str(location))
+
             daughter_locations.append(location)
 
         return daughter_locations
 
     def apply_parent_state(self, new_agent_id, simulation):
+        '''
+        function used by outer.py to synchronize new daughter cells with inherited state
+        '''
+
         # TODO(jerry): Merge this into add_simulation().
         if new_agent_id not in self.multicell_physics.cells:
             self.simulations.setdefault(new_agent_id, {}).update(simulation)
 
             index = simulation['index']
-            location = simulation['location']
-            angle = location[2]
-            parent_volume = self.simulations[new_agent_id]['state']['volume'] #* 2
+            parent_location = simulation['location'][0:2]
+            parent_angle = simulation['location'][2]
+
+            print('simulation state: ' + str(simulation['state']))
+
+            parent_volume = self.simulations[new_agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
             parent_length = self.volume_to_length(parent_volume, self.cell_radius)
 
-            daughter_locations = self.daughter_locations(location[0:2], parent_length, angle)
+            daughter_locations = self.daughter_locations(parent_location, parent_length, parent_angle)
             location = daughter_locations[index]
 
-            self.add_cell_to_physics(new_agent_id, location, angle)
+            # print('parent location: ' + str(parent_location))
+            # print('parent volume: ' + str(parent_volume))
+            # print('parent length: ' + str(parent_length))
+            # print('daughter location: ' + str(daughter_locations))
+            # self.simulations[new_agent_id]['state']['volume'] =
+
+
+
+            self.add_cell_to_physics(new_agent_id, location, parent_angle)
 
         # add to motile forces
         if new_agent_id not in self.motile_forces:

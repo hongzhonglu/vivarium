@@ -2,10 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 import time
+import math
 
 import agent.event as event
 from agent.agent import Agent
 
+PI = math.pi
 
 class CellSimulation(object):
     """Interface for the Inner agent's cell simulation."""
@@ -37,6 +39,21 @@ class CellSimulation(object):
 
     def finalize(self):
         """Release any resources and perform any final cleanup."""
+
+    # TODO (Eran) -- get length, width as attributes of cellSimulation. Remove from lattice.
+    def volume_to_length(self, volume, radius):
+        '''
+        get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
+        a=length of cylinder without rounded caps, l=total length:
+
+        V = (4/3)*PI*r^3 + PI*r^2*a
+        l = a + 2*r
+        '''
+
+        cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
+        length = cylinder_length + 2 * radius
+
+        return length
 
 
 class Inner(Agent):

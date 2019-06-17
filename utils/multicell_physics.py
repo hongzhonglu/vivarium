@@ -27,11 +27,6 @@ class MultiCellPhysics(object):
     ''''''
     def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
         self.pygame_scale = 60  # TODO (Eran) this influences jitter, should not have an effect.
-        # if self.pygame_viz:
-        #     self.pygame_scale = 60
-        # else:
-        #     self.pygame_scale = 1
-
         self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
@@ -105,7 +100,6 @@ class MultiCellPhysics(object):
                 self._update_screen()
 
     def add_cell_from_corner(self, cell_id, width, length, mass, corner_position, angle, angular_velocity=None):
-
         shape = pymunk.Poly(None, (
             (0, 0),
             (length * self.pygame_scale, 0),
@@ -179,6 +173,23 @@ class MultiCellPhysics(object):
 
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
+
+    # def daughter_positions(self, cell_id):
+    #     body, shape = self.cells[cell_id]
+    #     width, length = body.dimensions  # TODO -- scale length, width by pygame_scale
+    #     angle = body.angle
+    #
+    #     new_length = length / 2
+    #     daughter_positions = []
+    #     pos_ratios = [0, 0.5]
+    #     for pos_ratio in pos_ratios:
+    #         dx = length * pos_ratio * math.cos(body.angle)
+    #         dy = length * pos_ratio * math.sin(body.angle)
+    #         daughter_corner_position = body.position / self.pygame_scale + [dx, dy]
+    #         daughter_center_position = self.center_from_corner(width, new_length, daughter_corner_position, angle)
+    #         daughter_positions.append(daughter_center_position)
+    #
+    #     return daughter_positions
 
     def remove_cell(self, cell_id):
         body, shape = self.cells[cell_id]

@@ -9,7 +9,7 @@ RGB_SIZE = 255
 MEMBRANE_COLOR = [102/RGB_SIZE, 102/RGB_SIZE, 255/RGB_SIZE]
 COMPARTMENT_OFFSET = {
   periplasm : 0,
-  cytoplasm: 0.05
+  cytoplasm: 0.09
 }
 
 // generate a uuid
@@ -65,7 +65,7 @@ function updateCell(cell, data, born) {
 	    animateExisting(group)
 	    .attr({
 	      width: data.scale * width * (1 - offset),
-	      height: data.scale * length * (1 - offset),
+	      height: data.scale * length * (1 - 0.5*offset),  // why does 0.5*offset work here?
 	      x: data.scale * 0.5*offset,
 	      y: data.scale * 0.5*offset
 	    })
