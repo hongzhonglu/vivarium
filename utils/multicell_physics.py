@@ -121,7 +121,7 @@ class MultiCellPhysics(object):
                     if hasattr(body, 'motile_force'):  #body.motile_force:
                         magnitude, direction = body.motile_force
                         # TODO -- flagella location needs to be a function of direction
-                        flagella_location = (width/2, length/2)  # (length/2, width/2)  # (0, width/2)  # (length/2, width/2)  # (0, width/2)
+                        flagella_location = (0, width/2)  # (width/2, length/2)  # (length/2, width/2)  # (0, width/2)  # (length/2, width/2)  # (0, width/2)
                         x_motile = magnitude * math.cos(direction)
                         y_motile = magnitude * math.sin(direction)
                         motile_force = (x_motile, y_motile)
@@ -229,6 +229,14 @@ class MultiCellPhysics(object):
         self.space.remove(body, shape)
         del self.cells[cell_id]
 
+    def get_front(self, cell_id):
+        body, shape = self.cells[cell_id]
+        width, length = body.dimensions
+        corner_position = body.position
+        angle = body.angle
+        front_position = self.front_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
+        return np.array([front_position[0] / self.pygame_scale, front_position[1] / self.pygame_scale, angle])
+
     def get_center(self, cell_id):
         body, shape = self.cells[cell_id]
         width, length = body.dimensions
@@ -242,6 +250,13 @@ class MultiCellPhysics(object):
         corner_position = body.position
         angle = body.angle
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
+
+    def front_from_corner(self, width, length, corner_position, angle):
+        half_width = width/2
+        dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
+        dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+        front_position = [corner_position[0] + dx, corner_position[1] + dy]
+        return np.array([front_position[0], front_position[1], angle])
 
     def center_from_corner(self, width, length, corner_position, angle):
         half_length = length/2
@@ -284,21 +299,28 @@ def set_motile_force(physics, agent_id, object_id):
     body, shape = physics.cells[agent_id]
     obj_body, obj_shape = physics.cells[object_id]
 
-    # position = body.position
-    center_position = physics.get_center(agent_id)
 
+    obj_position = physics.get_center(object_id)  # obj_body.position
+    position = physics.get_front(agent_id)
     angle = body.angle
-    obj_position = obj_body.position
 
-    obj_distance = obj_position - center_position
+    obj_distance = obj_position - position
     obj_angle = math.atan2(obj_distance[1],obj_distance[0])
     obj_relative_angle = obj_angle - angle
 
-    # import ipdb; ipdb.set_trace()
-
     magnitude = 5000.0
     direction = obj_relative_angle
+
+    print(
+        'front: ' + '(%.2f,%.2f)'%(position[0],position[1]) +
+        ', object: ' + '(%.2f,%.2f)'%(obj_position[0],obj_position[1]) +
+        ', dist: ' + '(%.2f,%.2f)'%(obj_distance[0],obj_distance[1]) +
+        ', obj_angle: ' + '%.2f'%(obj_angle/PI*180) +
+        ', mag: ' + '%.2f'%magnitude +
+        ', dir: ' + '%.2f'%(direction/PI*180))
+
     physics.apply_motile_force(agent_id, magnitude, direction)
+
 
 
 # For testing with pygame
@@ -310,14 +332,14 @@ if __name__ == '__main__':
 
 
     agent_id = 1
-    volume = 1
+    volume = 1.0
     width = 0.5
-    length = 2  # volume_to_length(volume, radius)
+    length = 2.0  # volume_to_length(volume, radius)
     cell_density = 1100
     mass = volume * cell_density
     jitter = 5000.0 # * volume  # scale with mass ...
 
-    position = (1, 1)
+    position = (1.0, 1.0)
     angle = PI/2
 
     # make physics instance
@@ -339,11 +361,11 @@ if __name__ == '__main__':
     # add object
     object_id = 999
     physics.add_cell_from_center(
-        object_id,          # agent_id,
+        object_id,    # agent_id,
         0.5,          # width
         0.5,          # length
-        100000,       # mass
-        (10, 10),     # position
+        100000.0,       # mass
+        (10.0, 10.0),     # position
         0.0,          # angle
     )
 
