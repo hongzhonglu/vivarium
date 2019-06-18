@@ -66,7 +66,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.jitter = 1.0  # config.get('rotation_jitter', 0.05)
+        self.jitter = config.get('jitter', 5.0)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -92,7 +92,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.jitter,
-            True)
+            False)
 
         # make media object for making new media
         self.make_media = Media()
@@ -142,16 +142,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             length = self.volume_to_length(volume, radius)
             mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
 
-            # update length, width
+            # update length, width, update in multicell_physics
             self.simulations[agent_id]['state']['length'] = length
             self.simulations[agent_id]['state']['width'] = width
+            self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # Motile forces
             magnitude = self.motile_forces[agent_id][0]
             direction = self.motile_forces[agent_id][1]
-
-            # TODO -- add motile forces!
-            self.multicell_physics.update_cell(agent_id, length, width, mass)
+            self.multicell_physics.apply_motile_force(agent_id, magnitude, direction)
 
         self.multicell_physics.run_incremental(self.run_for)
 

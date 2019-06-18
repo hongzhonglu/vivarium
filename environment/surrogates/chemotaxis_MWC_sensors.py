@@ -139,7 +139,7 @@ class Chemotaxis(CellSimulation):
 
     def tumble(self):
         force = 0.05
-        torque = np.random.normal(scale=TUMBLE_JITTER)
+        torque = np.random.normal(scale=TUMBLE_JITTER)  # TODO (Eran) -- this should be direction, in same style as chemotaxis-minimal
         self.motile_force = [force, torque]
 
         print('TUMBLE!')
@@ -147,7 +147,7 @@ class Chemotaxis(CellSimulation):
 
     def run(self):
         force = 0.2
-        torque = 0.0
+        torque = 0.0  # TODO (Eran) -- this should be direction, in same style as chemotaxis-minimal
         self.motile_force = [force, torque]
 
         print('RUN!')

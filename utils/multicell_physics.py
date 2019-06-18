@@ -37,7 +37,7 @@ class MultiCellPhysics(object):
 
         # Physics
         self.timestep = 1
-        self.physics_steps_per_frame = 60
+        self.physics_steps_per_frame = 10
         self.physics_dt = self.timestep / self.physics_steps_per_frame
 
         if self.pygame_viz:
@@ -96,6 +96,9 @@ class MultiCellPhysics(object):
 
         return location
 
+    def apply_motile_force(self, cell_id, magnitude, direction):
+        body, shape = self.cells[cell_id]
+        body.motile_force = (magnitude, direction)
 
     def run_incremental(self, run_for):
         time = 0
@@ -105,15 +108,38 @@ class MultiCellPhysics(object):
             # Progress time forward
             for x in range(self.physics_steps_per_frame * self.timestep):
                 for body in self.space.bodies:
-                    force = (
+                    width, length = body.dimensions
+                    magnitude, direction = body.motile_force
+
+                    jitter_force = (
                         random.normalvariate(0, self.jitter),
                         random.normalvariate(0, self.jitter))
+                    jitter_location = self.random_body_position(body) #(length/2, width/2)  #
 
-                    location = self.random_body_position(body)
+                    # TODO -- flagella location needs to be a function of direction
+                    flagella_location = (length/2, width/2)  # (0, width/2)
+                    x_motile = magnitude * math.cos(direction)
+                    y_motile = magnitude * math.sin(direction)
+                    motile_force = (x_motile, y_motile)
+
+                    # TODO -- combine jitter and motility forces
+                    if magnitude > 0:
+                        force = motile_force
+                        location = flagella_location
+                    else:
+                        force = jitter_force
+                        location = jitter_location
+
                     body.apply_force_at_local_point(force, location)
-                    # body.angular_velocity = 0  # TODO -- remove this to allow angular velocity
 
                 self.space.step(self.physics_dt)
+
+            print('motile_force: ' + str(motile_force) + ', direction: ' + str(direction))
+
+            # Disable momentum at low Reynolds number
+            for body in self.space.bodies:
+                body.velocity *= 0.0
+                # body.angular_velocity *= 0
 
             if self.pygame_viz:
                 self._update_screen()

@@ -56,6 +56,46 @@ class ShepherdControl(AgentControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
+
+    def large_lattice_experiment(self, args):
+        time_stamp = filepath.timestamp()
+        lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            lattice_id, num_cells))
+
+        # make media
+        timeline = args.get('timeline')
+        media_id = args.get('media')
+        make_media = Media()
+        if timeline:
+            current_timeline = make_media.make_timeline(timeline)
+            media_id = current_timeline[0][1]
+        else:
+            timeline = '0 ' + media_id
+            current_timeline = make_media.make_timeline(timeline)
+        media = make_media.make_recipe(media_id)
+
+        lattice_config = {
+            'run_for': 4.0,
+            'media_id': media_id,
+            'media': media,
+            'timeline': current_timeline,
+            'jitter': 2.0,
+            'edge_length': 30.0,
+            'patches_per_edge': 30,
+        }
+
+        self.add_agent(lattice_id, 'lattice', lattice_config)
+
+        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'ecoli', {
+                'outer_id': lattice_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
     def toy_experiment(self, args):
         time_stamp = filepath.timestamp()
         lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
@@ -88,7 +128,8 @@ class ShepherdControl(AgentControl):
                 'seed': index})
 
     def chemotaxis_experiment(self, args):
-        lattice_id = str(uuid.uuid1())
+        time_stamp = filepath.timestamp()
+        lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             lattice_id, num_cells))
@@ -111,8 +152,7 @@ class ShepherdControl(AgentControl):
                         'deviation': 10.0}
                 }},
             'diffusion': 0.0,
-            'translation_jitter': 0.0,
-            'rotation_jitter': 0.05,
+            'jitter': 0.0,
             'edge_length': 20.0,
             'patches_per_edge': 30,
             'media_id': media_id,
@@ -128,7 +168,8 @@ class ShepherdControl(AgentControl):
                 'seed': index})
 
     def endocrine_experiment(self, args):
-        lattice_id = str(uuid.uuid1())
+        time_stamp = filepath.timestamp()
+        lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             lattice_id, num_cells))
@@ -141,8 +182,7 @@ class ShepherdControl(AgentControl):
             # 'static_concentrations': True,
             # 'gradient': {'seed': True},
             'diffusion': 0.05,
-            'translation_jitter': 0.01,
-            'rotation_jitter': 0.1,
+            'jitter': 5.0,
             'edge_length': 10.0,
             'patches_per_edge': 10,
             'media_id': media_id,
@@ -164,7 +204,8 @@ class EnvironmentCommand(AgentCommand):
     """
 
     def __init__(self):
-        choices = ['chemotaxis-experiment',
+        choices = ['large-experiment',
+                   'chemotaxis-experiment',
                    'endocrine-experiment',
                    'toy-experiment']
         description = '''
@@ -197,6 +238,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.lattice_experiment(args)
+        control.shutdown()
+
+    def large_experiment(self, args):
+        self.require(args, 'number', 'working_dir')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.large_lattice_experiment(args)
         control.shutdown()
 
     def toy_experiment(self, args):

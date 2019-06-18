@@ -1,12 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
 import time
+import math
+import random
 import numpy as np
 
 from agent.inner import CellSimulation
 
-
-TUMBLE_JITTER = 2.0 # (radians)
+PI = math.pi
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]
 
 class ChemotaxisMinimal(CellSimulation):
@@ -61,13 +62,13 @@ class ChemotaxisMinimal(CellSimulation):
     def update_behavior(self):
         # update behavior based on the current state of the system
         if self.state is 'run':
-            force = 0.2
-            torque = 0.0
-            self.motile_force = [force, torque]
+            force = 10  # 0.2
+            direction = 0.0
+            self.motile_force = [force, direction]
         elif self.state is 'tumble':
-            force = 0.05
-            torque = np.random.normal(scale=TUMBLE_JITTER)
-            self.motile_force = [force, torque]
+            force = 1  # 0.05
+            direction = random.uniform(0, 2*PI)
+            self.motile_force = [force, direction]
 
     def check_division(self):
         # update division state based on time since initialization
