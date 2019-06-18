@@ -20,7 +20,7 @@ class Division(CellSimulation):
         self.local_time = self.initial_time
         self.timestep = 0.5
 
-        self.growth = 0.01
+        self.growth = 0.05
         self.division_volume = random.uniform(1.5 * INITIAL_VOLUME, 2.5 * INITIAL_VOLUME)
 
         self.environment_change = {}

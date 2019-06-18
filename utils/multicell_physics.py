@@ -25,13 +25,12 @@ FRICTION = 0.9
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
+    def __init__(self, bounds, jitter, pygame_viz=False):
         self.pygame_scale = 60  # TODO (Eran) this influences jitter, should not have an effect.
         self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.translation_jitter = translation_jitter * self.pygame_scale
-        self.rotation_jitter = rotation_jitter
+        self.jitter = jitter
 
         # Space
         self.space = pymunk.Space()
@@ -75,6 +74,28 @@ class MultiCellPhysics(object):
         # Delay fixed time between frames
         self._clock.tick(5)
 
+    def random_body_position(self, body):
+        ''' pick a random point along the boundary'''
+        width, length = body.dimensions
+        if random.randint(0, 1) == 0:
+            # force along ends
+            if random.randint(0, 1) == 0:
+                # force on the left end
+                location = (0, random.uniform(0, width))
+            else:
+                # force on the right end
+                location = (length, random.uniform(0, width))
+        else:
+            # force along length
+            if random.randint(0, 1) == 0:
+                # force on the bottom end
+                location = (random.uniform(0, length), 0)
+            else:
+                # force on the top end
+                location = (random.uniform(0, length), width)
+
+        return location
+
 
     def run_incremental(self, run_for):
         time = 0
@@ -84,15 +105,13 @@ class MultiCellPhysics(object):
             # Progress time forward
             for x in range(self.physics_steps_per_frame * self.timestep):
                 for body in self.space.bodies:
-                    # Add jitter to cells
-                    # TODO (Eran) -- do rotation and translation jitter map onto these variables? Rename them...
                     force = (
-                        random.normalvariate(0, self.rotation_jitter) * self.physics_dt,
-                        random.normalvariate(0, self.rotation_jitter) * self.physics_dt)
-                    location = (
-                        random.normalvariate(0, self.translation_jitter) * self.physics_dt,
-                        random.normalvariate(0, self.translation_jitter) * self.physics_dt)
+                        random.normalvariate(0, self.jitter),
+                        random.normalvariate(0, self.jitter))
+
+                    location = self.random_body_position(body)
                     body.apply_force_at_local_point(force, location)
+                    # body.angular_velocity = 0  # TODO -- remove this to allow angular velocity
 
                 self.space.step(self.physics_dt)
 
@@ -139,7 +158,8 @@ class MultiCellPhysics(object):
     def update_cell(self, cell_id, length, width, mass):
 
         body, shape = self.cells[cell_id]
-
+        position = body.position
+        angle = body.angle
         width_0, length_0 = body.dimensions
         d_width = width - width_0
         d_length = length - length_0
@@ -156,11 +176,11 @@ class MultiCellPhysics(object):
         new_shape.body = new_body
 
         # reposition on center
-        dx = d_length/2 * math.cos(body.angle) + d_width/2 * math.cos(body.angle + PI/2)
-        dy = d_length/2 * math.sin(body.angle) + d_width/2 * math.sin(body.angle + PI/2)
+        dx = d_length/2 * math.cos(angle) + d_width/2 * math.cos(angle + PI/2)
+        dy = d_length/2 * math.sin(angle) + d_width/2 * math.sin(angle + PI/2)
 
-        new_body.position = body.position - [dx * self.pygame_scale, dy * self.pygame_scale]
-        new_body.angle = body.angle
+        new_body.position = position - [dx * self.pygame_scale, dy * self.pygame_scale]
+        new_body.angle = angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
 
@@ -252,22 +272,25 @@ if __name__ == '__main__':
     cell_density = 1100
 
     bounds = [10.0, 10.0]
-    translation_jitter = 0.0
-    rotation_jitter = 0.0
-    physics = MultiCellPhysics(
-        bounds,
-        translation_jitter,
-        rotation_jitter,
-        True)
+
+
 
     agent_id = 1
     volume = 1
     width = 0.5
     length = 2  # volume_to_length(volume, radius)
     mass = volume * cell_density  # TODO -- get units to work
+    jitter = 5000.0 * volume  # to scale with mass...
 
     position = (5, 5)
-    angle = PI/4
+    angle = PI/2
+
+
+    physics = MultiCellPhysics(
+        bounds,
+        jitter,
+        True)
+
     physics.add_cell_from_center(
         agent_id,
         width,
@@ -278,10 +301,10 @@ if __name__ == '__main__':
     )
 
     running = True
-    growth = 0.1
+    growth = 0.01
     while running:
         length += growth
-        width += growth/4
+        # width += growth/4
         physics.update_cell(agent_id, length, width, mass)
 
         # corner = physics.get_corner(agent_id)
