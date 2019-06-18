@@ -66,8 +66,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = 2.0  # .2  # 0.1  # config.get('translation_jitter', 0.001)
-        self.rotation_jitter = 100.0  # 1.0  # 0.5 # config.get('rotation_jitter', 0.05)
+        self.translation_jitter = 2.0  # config.get('translation_jitter', 0.001)
+        self.rotation_jitter = 100.0  # config.get('rotation_jitter', 0.05)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -237,6 +237,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         }
 
     def simulation_state(self, agent_id):
+        """
+        Return the state the environment is tracking about the simulation given by `agent_id`.
+        For use by a daughter cell.
+        """
         return dict(
             self.simulations[agent_id],
             location=self.locations[agent_id])
@@ -358,12 +362,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             dy = parent_length * pos_ratios[daughter] * math.sin(parent_angle)
             location = parent_location + [dx, dy]
 
-            print('parent location: ' + str(parent_location))
-            print('parent length: ' + str(parent_length))
-            print('parent angle: ' + str(parent_angle))
-            print('[dx, dy]: ' + str([dx, dy]))
-            print('daughter location: ' + str(location))
-
             daughter_locations.append(location)
 
         return daughter_locations
@@ -376,26 +374,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # TODO(jerry): Merge this into add_simulation().
         if new_agent_id not in self.multicell_physics.cells:
             self.simulations.setdefault(new_agent_id, {}).update(simulation)
-
             index = simulation['index']
             parent_location = simulation['location'][0:2]
             parent_angle = simulation['location'][2]
-
-            print('simulation state: ' + str(simulation['state']))
-
             parent_volume = self.simulations[new_agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
             parent_length = self.volume_to_length(parent_volume, self.cell_radius)
 
             daughter_locations = self.daughter_locations(parent_location, parent_length, parent_angle)
             location = daughter_locations[index]
-
-            # print('parent location: ' + str(parent_location))
-            # print('parent volume: ' + str(parent_volume))
-            # print('parent length: ' + str(parent_length))
-            # print('daughter location: ' + str(daughter_locations))
-            # self.simulations[new_agent_id]['state']['volume'] =
-
-
 
             self.add_cell_to_physics(new_agent_id, location, parent_angle)
 

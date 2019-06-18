@@ -26,9 +26,7 @@ class EnvironmentAgent(Outer):
         simulations = {
             agent_id: {
                 'volume': simulation['state']['volume'],
-                # 'width': simulation['state'].get('width', self.environment.cell_radius*2),
-                # 'length': simulation['state'].get('length', self.environment.cell_radius*4),  # TODO (Eran) initialize length, width in cellSimulation?
-                'width': self.environment.simulations[agent_id]['state'].get('width', self.environment.cell_radius*2),
+                'width': self.environment.simulations[agent_id]['state'].get('width', self.environment.cell_radius*2), # TODO (Eran) initialize length, width in cellSimulation
                 'length': self.environment.simulations[agent_id]['state'].get('length', self.environment.cell_radius*4),
                 'color': simulation['state'].get('color', DEFAULT_COLOR),
                 'location': self.environment.locations[agent_id][0:2].tolist(),

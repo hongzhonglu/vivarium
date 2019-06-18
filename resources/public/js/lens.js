@@ -38,8 +38,8 @@ function updateCell(cell, data, born) {
 
   var length = data.length;
   var width = data.width;
-  var cx = data.corner_location[1];
-  var cy = data.corner_location[0];
+  var cx_corner = data.corner_location[1];
+  var cy_corner = data.corner_location[0];
 
   var previousRotation = /r([^,]+)/.exec(cell.whole.transform()['string']);
   var orientation = data.orientation;
@@ -54,7 +54,7 @@ function updateCell(cell, data, born) {
 
   // create the matrix representing the successive application of rotation and translation
   var transform = new SVG.Matrix()
-      .translate(cx * data.scale, cy * data.scale)
+      .translate(cx_corner * data.scale, cy_corner * data.scale)
       .rotate(rotationTransform(data.orientation))
 
   function animateExisting(obj) {
@@ -82,8 +82,8 @@ function updateCell(cell, data, born) {
   animateCapsule(cell.cytoplasm, data, COMPARTMENT_OFFSET.cytoplasm, data.color)
 
   // heads up display
-  var hudX = data.location[1] - (0.4 * data.width);
-  var hudY = data.location[0] - (0.4 * data.width);
+  var hudX = data.location[1];  // - (0.4 * data.width);
+  var hudY = data.location[0];  // - (0.4 * data.length);
   var translate = new SVG.Matrix()
       .translate(hudX * data.scale, hudY * data.scale);
 

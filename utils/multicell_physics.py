@@ -156,10 +156,10 @@ class MultiCellPhysics(object):
         new_shape.body = new_body
 
         # reposition on center
-        dx = -1 * d_width/2 * math.cos(body.angle)
-        dy = -1 * d_length/2 * math.sin(body.angle)
+        dx = d_length/2 * math.cos(body.angle) + d_width/2 * math.cos(body.angle + PI/2)
+        dy = d_length/2 * math.sin(body.angle) + d_width/2 * math.sin(body.angle + PI/2)
 
-        new_body.position = body.position + [dx * self.pygame_scale, dy * self.pygame_scale]
+        new_body.position = body.position - [dx * self.pygame_scale, dy * self.pygame_scale]
         new_body.angle = body.angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
@@ -201,7 +201,7 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         corner_position = body.position
         angle = body.angle
-        center_position = self.center_from_corner(width, length, corner_position, angle)
+        center_position = self.center_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
         return np.array([center_position[0] / self.pygame_scale, center_position[1] / self.pygame_scale, angle])
 
     def get_corner(self, cell_id):
@@ -213,10 +213,11 @@ class MultiCellPhysics(object):
     def center_from_corner(self, width, length, corner_position, angle):
         half_length = length/2
         half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
         dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
         center_position = [corner_position[0] + dx, corner_position[1] + dy]
-        return center_position
+
+        return np.array([center_position[0], center_position[1], angle])
 
     def corner_from_center(self, width, length, center_position, angle):
         half_length = length/2
@@ -224,7 +225,8 @@ class MultiCellPhysics(object):
         dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
         dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
         corner_position = [center_position[0] - dx, center_position[1] - dy]
-        return corner_position
+
+        return np.array([corner_position[0], corner_position[1], angle])
 
     def add_barriers(self, bounds):
         """ Create static barriers """
@@ -242,3 +244,56 @@ class MultiCellPhysics(object):
             line.elasticity = 0.0  # no bounce
             line.friction = 0.9
         self.space.add(static_lines)
+
+
+
+# For testing with pygame
+if __name__ == '__main__':
+    cell_density = 1100
+
+    bounds = [10.0, 10.0]
+    translation_jitter = 0.0
+    rotation_jitter = 0.0
+    physics = MultiCellPhysics(
+        bounds,
+        translation_jitter,
+        rotation_jitter,
+        True)
+
+    agent_id = 1
+    volume = 1
+    width = 0.5
+    length = 2  # volume_to_length(volume, radius)
+    mass = volume * cell_density  # TODO -- get units to work
+
+    position = (5, 5)
+    angle = PI/4
+    physics.add_cell_from_center(
+        agent_id,
+        width,
+        length,
+        mass,
+        position,
+        angle,
+    )
+
+    running = True
+    growth = 0.1
+    while running:
+        length += growth
+        width += growth/4
+        physics.update_cell(agent_id, length, width, mass)
+
+        # corner = physics.get_corner(agent_id)
+        # center = physics.get_center(agent_id)
+        #
+        # print('corner: ' + str(corner))
+        # print('center: ' + str(center))
+        #
+        # get_center = physics.center_from_corner(width, length, corner, angle)
+        # get_corner = physics.corner_from_center(width, length, center, angle)
+        #
+        # print('get_corner: ' + str(get_corner))
+        # print('get_center: ' + str(get_center))
+
+        physics.run_incremental(5)
