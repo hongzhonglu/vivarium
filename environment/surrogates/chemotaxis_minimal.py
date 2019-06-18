@@ -51,7 +51,7 @@ class ChemotaxisMinimal(CellSimulation):
 
     def update_state(self):
         # update state based on internal and external concentrations
-        if self.external_concentrations['GLC'] >= self.internal_concentrations['CheY-P']:
+        if self.external_concentrations['GLC'] > self.internal_concentrations['CheY-P']:
             self.state = 'run'
         else:
             self.state = 'tumble'
@@ -62,11 +62,11 @@ class ChemotaxisMinimal(CellSimulation):
     def update_behavior(self):
         # update behavior based on the current state of the system
         if self.state is 'run':
-            force = 10  # 0.2
+            force = 20  # 0.2
             direction = 0.0
             self.motile_force = [force, direction]
         elif self.state is 'tumble':
-            force = 1  # 0.05
+            force = 5  # 0.05
             direction = random.uniform(0, 2*PI)
             self.motile_force = [force, direction]
 

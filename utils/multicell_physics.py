@@ -26,7 +26,7 @@ FRICTION = 0.9
 class MultiCellPhysics(object):
     ''''''
     def __init__(self, bounds, jitter, pygame_viz=False):
-        self.pygame_scale = 60  # TODO (Eran) this influences jitter, should not have an effect.
+        self.pygame_scale = 700 / bounds[0]  # TODO (Eran) this influences jitter, should not have an effect.
         self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
@@ -42,7 +42,7 @@ class MultiCellPhysics(object):
 
         if self.pygame_viz:
             pygame.init()
-            self._screen = pygame.display.set_mode((700, 700))
+            self._screen = pygame.display.set_mode((710, 710))
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
@@ -109,18 +109,22 @@ class MultiCellPhysics(object):
             for x in range(self.physics_steps_per_frame * self.timestep):
                 for body in self.space.bodies:
                     width, length = body.dimensions
-                    magnitude, direction = body.motile_force
 
                     jitter_force = (
                         random.normalvariate(0, self.jitter),
                         random.normalvariate(0, self.jitter))
                     jitter_location = self.random_body_position(body) #(length/2, width/2)  #
 
-                    # TODO -- flagella location needs to be a function of direction
-                    flagella_location = (length/2, width/2)  # (0, width/2)
-                    x_motile = magnitude * math.cos(direction)
-                    y_motile = magnitude * math.sin(direction)
-                    motile_force = (x_motile, y_motile)
+                    # motile_force = None
+                    magnitude = 0.0
+                    # direction = 0.0
+                    if hasattr(body, 'motile_force'):  #body.motile_force:
+                        magnitude, direction = body.motile_force
+                        # TODO -- flagella location needs to be a function of direction
+                        flagella_location = (width/2, length/2)  # (length/2, width/2)  # (0, width/2)  # (length/2, width/2)  # (0, width/2)
+                        x_motile = magnitude * math.cos(direction)
+                        y_motile = magnitude * math.sin(direction)
+                        motile_force = (x_motile, y_motile)
 
                     # TODO -- combine jitter and motility forces
                     if magnitude > 0:
@@ -134,12 +138,12 @@ class MultiCellPhysics(object):
 
                 self.space.step(self.physics_dt)
 
-            print('motile_force: ' + str(motile_force) + ', direction: ' + str(direction))
+            # print('motile_force: ' + str(motile_force) + ', magnitude: ' + str(magnitude) + ', direction: ' + str(direction))
 
             # Disable momentum at low Reynolds number
             for body in self.space.bodies:
                 body.velocity *= 0.0
-                # body.angular_velocity *= 0
+                body.angular_velocity *= 0.0  # 0.9
 
             if self.pygame_viz:
                 self._update_screen()
@@ -220,23 +224,6 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
-    # def daughter_positions(self, cell_id):
-    #     body, shape = self.cells[cell_id]
-    #     width, length = body.dimensions  # TODO -- scale length, width by pygame_scale
-    #     angle = body.angle
-    #
-    #     new_length = length / 2
-    #     daughter_positions = []
-    #     pos_ratios = [0, 0.5]
-    #     for pos_ratio in pos_ratios:
-    #         dx = length * pos_ratio * math.cos(body.angle)
-    #         dy = length * pos_ratio * math.sin(body.angle)
-    #         daughter_corner_position = body.position / self.pygame_scale + [dx, dy]
-    #         daughter_center_position = self.center_from_corner(width, new_length, daughter_corner_position, angle)
-    #         daughter_positions.append(daughter_center_position)
-    #
-    #     return daughter_positions
-
     def remove_cell(self, cell_id):
         body, shape = self.cells[cell_id]
         self.space.remove(body, shape)
@@ -293,30 +280,53 @@ class MultiCellPhysics(object):
 
 
 
+def set_motile_force(physics, agent_id, object_id):
+    body, shape = physics.cells[agent_id]
+    obj_body, obj_shape = physics.cells[object_id]
+
+    # position = body.position
+    center_position = physics.get_center(agent_id)
+
+    angle = body.angle
+    obj_position = obj_body.position
+
+    obj_distance = obj_position - center_position
+    obj_angle = math.atan2(obj_distance[1],obj_distance[0])
+    obj_relative_angle = obj_angle - angle
+
+    # import ipdb; ipdb.set_trace()
+
+    magnitude = 5000.0
+    direction = obj_relative_angle
+    physics.apply_motile_force(agent_id, magnitude, direction)
+
+
 # For testing with pygame
 if __name__ == '__main__':
-    cell_density = 1100
 
-    bounds = [10.0, 10.0]
 
+    # bounds = [10.0, 10.0]
+    bounds = [20.0, 20.0]
 
 
     agent_id = 1
     volume = 1
     width = 0.5
     length = 2  # volume_to_length(volume, radius)
-    mass = volume * cell_density  # TODO -- get units to work
-    jitter = 5000.0 * volume  # to scale with mass...
+    cell_density = 1100
+    mass = volume * cell_density
+    jitter = 5000.0 # * volume  # scale with mass ...
 
-    position = (5, 5)
+    position = (1, 1)
     angle = PI/2
 
-
+    # make physics instance
     physics = MultiCellPhysics(
         bounds,
         jitter,
         True)
 
+    # add cell
     physics.add_cell_from_center(
         agent_id,
         width,
@@ -326,23 +336,22 @@ if __name__ == '__main__':
         angle,
     )
 
+    # add object
+    object_id = 999
+    physics.add_cell_from_center(
+        object_id,          # agent_id,
+        0.5,          # width
+        0.5,          # length
+        100000,       # mass
+        (10, 10),     # position
+        0.0,          # angle
+    )
+
     running = True
-    growth = 0.01
+    growth = 0.0  # 0.02
     while running:
         length += growth
-        # width += growth/4
         physics.update_cell(agent_id, length, width, mass)
-
-        # corner = physics.get_corner(agent_id)
-        # center = physics.get_center(agent_id)
-        #
-        # print('corner: ' + str(corner))
-        # print('center: ' + str(center))
-        #
-        # get_center = physics.center_from_corner(width, length, corner, angle)
-        # get_corner = physics.corner_from_center(width, length, center, angle)
-        #
-        # print('get_corner: ' + str(get_corner))
-        # print('get_center: ' + str(get_center))
-
+        set_motile_force(physics, agent_id, object_id)
         physics.run_incremental(5)
+
