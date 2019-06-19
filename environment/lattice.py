@@ -148,9 +148,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # Motile forces
-            magnitude = self.motile_forces[agent_id][0]
-            direction = self.motile_forces[agent_id][1]
-            self.multicell_physics.apply_motile_force(agent_id, magnitude, direction)
+            force = self.motile_forces[agent_id][0]
+            torque = self.motile_forces[agent_id][1]
+            self.multicell_physics.apply_motile_force(agent_id, force, torque)
 
         self.multicell_physics.run_incremental(self.run_for)
 
