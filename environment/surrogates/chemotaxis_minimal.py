@@ -61,7 +61,7 @@ class ChemotaxisMinimal(CellSimulation):
     def update_behavior(self):
         # update behavior based on the current state of the system
         if self.state is 'run':
-            force = 20.0
+            force = 15.0
             torque = 0.0
             self.motile_force = [force, torque]
             print('RUN!')

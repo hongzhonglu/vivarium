@@ -41,7 +41,7 @@ class EnvironmentAgent(Outer):
             'running': not self.paused,
             'time': self.environment.time(),
             'edge_length': self.environment.edge_length,
-            'cell_radius': self.environment.cell_radius,   # TODO (Eran) -- remove this, cell width and length should suffice for visualization
+            'cell_radius': self.environment.cell_radius,   # TODO (Eran) -- remove this from environment config, should be an attribute of cellSimulations
             'lattice': lattice,
             'simulations': simulations}
 

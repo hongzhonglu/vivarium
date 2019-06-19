@@ -25,12 +25,13 @@ FRICTION = 0.9
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, jitter, pygame_viz=False):
+    def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
         self.pygame_scale = 700 / bounds[0]  # TODO (Eran) this influences jitter, should not have an effect.
         self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.jitter = jitter
+        self.translation_jitter = translation_jitter
+        self.rotation_jitter = rotation_jitter
 
         # Space
         self.space = pymunk.Space()
@@ -111,30 +112,27 @@ class MultiCellPhysics(object):
                 for body in self.space.bodies:
                     width, length = body.dimensions
 
+                    # random jitter
+                    jitter_torque = random.normalvariate(0, self.rotation_jitter)
                     jitter_force = [
-                        random.normalvariate(0, self.jitter),
-                        random.normalvariate(0, self.jitter)]
-                    location = (length/2, width/2)  #self.random_body_position(body) #(length/2, width/2)  #
+                        random.normalvariate(0, self.translation_jitter),
+                        random.normalvariate(0, self.translation_jitter)]
+                    location = (length/2, width/2)  #self.random_body_position(body)
 
+                    # motile forces
+                    motile_torque = 0.0
                     motile_force = [0.0, 0.0]
-                    torque = 0.0
                     if hasattr(body, 'motile_force'):
-                        force, torque = body.motile_force
-                        # # TODO --flagella location needs to be a function of direction
-                        # flagella_location = (width/2, length/2)  # (0, width/2)  # (width/2, length/2)  # (length/2, width/2)
-                        # x_motile = magnitude * math.cos(direction)
-                        # y_motile = magnitude * math.sin(direction)
-                        # motile_force = (x_motile, y_motile)
+                        force, motile_torque = body.motile_force
                         motile_force = [force, 0.0]
 
-                    # body.torque += torque
-                    body.angular_velocity += torque
+                    body.angular_velocity += (jitter_torque + motile_torque)
                     force = [a + b for a, b in zip(jitter_force, motile_force)]
                     body.apply_force_at_local_point(force, location)
 
                 self.space.step(self.physics_dt)
 
-            # Disable momentum at low Reynolds number
+            # Disable momentum at low Reynolds number (the ratio of inertial and viscous forces)
             for body in self.space.bodies:
                 body.velocity -= (0.5 * body.velocity * self.timestep)
                 body.angular_velocity -= (0.5 * body.angular_velocity * self.timestep)  # TODO (Eran) this should be function of viscosity
@@ -305,13 +303,13 @@ def set_motile_force(physics, agent_id, object_id):
     # run/tumble
     if abs(obj_relative_angle) < PI/4:
         # run
-        force = 10000.0
+        force = 15000.0
         torque = 0.0
         print('RUN!')
     else:
         # tumble
-        force = 4000.0
-        torque = random.normalvariate(0, 0.005)  #random.uniform(-0.005, 0.005)  #random.uniform(-50000.0, 50000.0)  # random.normalvariate(0, 5000.0) #5000.0 #random.uniform(0.0, 2*PI)
+        force = 5000.0
+        torque = random.normalvariate(0, 0.02)  #random.uniform(-0.005, 0.005)  #random.uniform(-50000.0, 50000.0)  # random.normalvariate(0, 5000.0) #5000.0 #random.uniform(0.0, 2*PI)
         print('TUMBLE!')
 
     physics.apply_motile_force(agent_id, force, torque)
@@ -320,18 +318,16 @@ def set_motile_force(physics, agent_id, object_id):
 # For testing with pygame
 if __name__ == '__main__':
 
-
-    # bounds = [10.0, 10.0]
     bounds = [20.0, 20.0]
-
 
     agent_id = 1
     volume = 1.0
     width = 0.5
-    length = 2.0  # volume_to_length(volume, radius)
+    length = 2.0
     cell_density = 1100
     mass = volume * cell_density
-    jitter = 5000.0 # * volume  # scale with mass ...
+    translation_jitter = 0.0 #0.5
+    rotation_jitter = 0.0 #0.005
 
     position = (2.0, 2.0)
     angle = PI/2
@@ -339,7 +335,8 @@ if __name__ == '__main__':
     # make physics instance
     physics = MultiCellPhysics(
         bounds,
-        jitter,
+        translation_jitter,
+        rotation_jitter,
         True)
 
     # add cell
@@ -370,4 +367,3 @@ if __name__ == '__main__':
         physics.update_cell(agent_id, length, width, mass)
         set_motile_force(physics, agent_id, object_id)
         physics.run_incremental(5)
-

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import numpy as np
 import math
+import random
 
 from agent.inner import CellSimulation
 
@@ -138,16 +139,16 @@ class Chemotaxis(CellSimulation):
                 self.tumble()
 
     def tumble(self):
-        force = 0.05
-        torque = np.random.normal(scale=TUMBLE_JITTER)  # TODO (Eran) -- this should be direction, in same style as chemotaxis-minimal
+        force = 5.0
+        torque = random.normalvariate(0, TUMBLE_JITTER)
         self.motile_force = [force, torque]
 
         print('TUMBLE!')
         time.sleep(1)
 
     def run(self):
-        force = 0.2
-        torque = 0.0  # TODO (Eran) -- this should be direction, in same style as chemotaxis-minimal
+        force = 15.0
+        torque = 0.0
         self.motile_force = [force, torque]
 
         print('RUN!')

@@ -65,7 +65,7 @@ class TransportLookup(CellSimulation):
         # initial state
         self.external_concentrations = {}
         self.internal_concentrations = {}
-        self.motile_force = [0.01, 0.01] # initial magnitude and relative orientation
+        self.motile_force = [0.0, 0.0] # initial magnitude and relative orientation
         self.division = []
 
         # load all reactions and

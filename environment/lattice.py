@@ -66,7 +66,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.jitter = config.get('jitter', 5.0)
+        self.translation_jitter = config.get('translation_jitter', 0.5)
+        self.rotation_jitter = config.get('rotation_jitter', 0.005)
         self.depth = config.get('depth', 3000.0)
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
@@ -91,7 +92,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         bounds = [self.edge_length, self.edge_length]
         self.multicell_physics = MultiCellPhysics(
             bounds,
-            self.jitter,
+            self.translation_jitter,
+            self.rotation_jitter,
             False)
 
         # make media object for making new media

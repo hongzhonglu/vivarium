@@ -44,7 +44,9 @@ class ShepherdControl(AgentControl):
             'run_for': 4.0,
             'media_id': media_id,
             'media': media,
-            'timeline': current_timeline}
+            'timeline': current_timeline,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005}
 
         self.add_agent(lattice_id, 'lattice', lattice_config)
 
@@ -81,9 +83,10 @@ class ShepherdControl(AgentControl):
             'media_id': media_id,
             'media': media,
             'timeline': current_timeline,
-            'jitter': 2.0,
-            'edge_length': 30.0,
-            'patches_per_edge': 30,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
+            'edge_length': 40.0,
+            'patches_per_edge': 20,
         }
 
         self.add_agent(lattice_id, 'lattice', lattice_config)
@@ -146,15 +149,16 @@ class ShepherdControl(AgentControl):
                 'molecules': {
                     'GLC':{
                         'center': [0.5, 0.5],
-                        'deviation': 10.0},
+                        'deviation': 30.0},
                     'MeAsp': {
                         'center': [0.25, 0.25],
-                        'deviation': 10.0}
+                        'deviation': 30.0}
                 }},
             'diffusion': 0.0,
-            'jitter': 0.0,
-            'edge_length': 20.0,
-            'patches_per_edge': 30,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
+            'edge_length': 100.0,
+            'patches_per_edge': 20,
             'media_id': media_id,
             'media': media}
         self.add_agent(lattice_id, 'lattice', chemotaxis_config)
@@ -182,7 +186,8 @@ class ShepherdControl(AgentControl):
             # 'static_concentrations': True,
             # 'gradient': {'seed': True},
             'diffusion': 0.05,
-            'jitter': 5.0,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
             'edge_length': 10.0,
             'patches_per_edge': 10,
             'media_id': media_id,

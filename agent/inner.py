@@ -128,6 +128,7 @@ class Inner(Agent):
         update = self.simulation.generate_inner_update()
         division = update.get('division', [])
 
+        # TODO (Eran) -- is this ever needed? has potential to set new ids untracked by simulation
         # for daughter in division:
         # 	if not 'id' in daughter:
         # 		daughter['id'] = str(uuid.uuid4())
