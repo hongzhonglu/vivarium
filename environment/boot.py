@@ -282,7 +282,6 @@ def boot_kinetic_transport(agent_id, agent_type, agent_config):
     return inner
 
 
-
 # division surrogate initialize and boot
 def initialize_division(boot_config, synchronize_config):
     '''
@@ -321,7 +320,6 @@ def boot_division(agent_id, agent_type, agent_config):
         initialize_division)
 
     return inner
-
 
 
 class BootEnvironment(BootAgent):
