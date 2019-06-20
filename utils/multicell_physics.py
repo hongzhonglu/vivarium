@@ -141,30 +141,26 @@ class MultiCellPhysics(object):
                 self._update_screen()
 
     def update_cell(self, cell_id, length, width, mass):
+        ''' create a new body and new shape at the cell's same center position and angle '''
 
         body, shape = self.cells[cell_id]
         position = body.position
         angle = body.angle
-        width_0, length_0 = body.dimensions
-        d_width = width - width_0
-        d_length = length - length_0
 
         # make shape, moment of inertia, and add a body
+        half_length = length/2 * self.pygame_scale
+        half_width = width/2 * self.pygame_scale
         new_shape = pymunk.Poly(None, (
-            (0, 0),
-            (length * self.pygame_scale, 0),
-            (length * self.pygame_scale, width * self.pygame_scale),
-            (0, width * self.pygame_scale)))
+            (-half_length, -half_width),
+            (half_length, -half_width),
+            (half_length, half_width),
+            (-half_length, half_width)))
 
         inertia = pymunk.moment_for_poly(mass, new_shape.get_vertices())
         new_body = pymunk.Body(mass, inertia)
         new_shape.body = new_body
 
-        # reposition on center
-        dx = d_length/2 * math.cos(angle) + d_width/2 * math.cos(angle + PI/2)
-        dy = d_length/2 * math.sin(angle) + d_width/2 * math.sin(angle + PI/2)
-
-        new_body.position = position - [dx * self.pygame_scale, dy * self.pygame_scale]
+        new_body.position = position
         new_body.angle = angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
@@ -179,19 +175,21 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
+    def add_cell_from_center(self, cell_id, width, length, mass, center_position, angle, angular_velocity=None):
+        half_length = length/2 * self.pygame_scale
+        half_width = width/2 * self.pygame_scale
 
-    def add_cell_from_corner(self, cell_id, width, length, mass, corner_position, angle, angular_velocity=None):
         shape = pymunk.Poly(None, (
-            (0, 0),
-            (length * self.pygame_scale, 0),
-            (length * self.pygame_scale, width * self.pygame_scale),
-            (0, width * self.pygame_scale)))
+            (-half_length, -half_width),
+            (half_length, -half_width),
+            (half_length, half_width),
+            (-half_length, half_width)))
 
         inertia = pymunk.moment_for_poly(mass, shape.get_vertices())
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
-        body.position = (corner_position[0] * self.pygame_scale, corner_position[1] * self.pygame_scale)
+        body.position = (center_position[0] * self.pygame_scale, center_position[1] * self.pygame_scale)
         body.angle = angle
         body.dimensions = (width, length)
         if angular_velocity:
@@ -205,17 +203,6 @@ class MultiCellPhysics(object):
 
         # add cell
         self.cells[cell_id] = (body, shape)
-
-    def add_cell_from_center(self, cell_id, width, length, mass, center_position, angle, angular_velocity=None):
-        corner_position = self.corner_from_center(width, length, center_position, angle)
-        self.add_cell_from_corner(
-            cell_id,
-            width,
-            length,
-            mass,
-            corner_position,
-            angle,
-            angular_velocity)
 
     def remove_cell(self, cell_id):
         body, shape = self.cells[cell_id]
@@ -232,16 +219,20 @@ class MultiCellPhysics(object):
 
     def get_center(self, cell_id):
         body, shape = self.cells[cell_id]
-        width, length = body.dimensions
-        corner_position = body.position
+        center_position = body.position
         angle = body.angle
-        center_position = self.center_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
         return np.array([center_position[0] / self.pygame_scale, center_position[1] / self.pygame_scale, angle])
 
     def get_corner(self, cell_id):
         body, shape = self.cells[cell_id]
-        corner_position = body.position
+        width, length = body.dimensions
+        center_position = body.position
         angle = body.angle
+        corner_position = self.corner_from_center(
+            width * self.pygame_scale,
+            length * self.pygame_scale,
+            center_position,
+            angle)
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
 
     def front_from_corner(self, width, length, corner_position, angle):
@@ -250,15 +241,6 @@ class MultiCellPhysics(object):
         dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
         front_position = [corner_position[0] + dx, corner_position[1] + dy]
         return np.array([front_position[0], front_position[1], angle])
-
-    def center_from_corner(self, width, length, corner_position, angle):
-        half_length = length/2
-        half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
-        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        center_position = [corner_position[0] + dx, corner_position[1] + dy]
-
-        return np.array([center_position[0], center_position[1], angle])
 
     def corner_from_center(self, width, length, center_position, angle):
         half_length = length/2
@@ -326,8 +308,8 @@ if __name__ == '__main__':
     length = 2.0
     cell_density = 1100
     mass = volume * cell_density
-    translation_jitter = 0.0 #0.5
-    rotation_jitter = 0.0 #0.005
+    translation_jitter = 0.5
+    rotation_jitter = 0.005
 
     position = (2.0, 2.0)
     angle = PI/2
@@ -361,9 +343,9 @@ if __name__ == '__main__':
     )
 
     running = True
-    growth = 0.0  # 0.02
+    growth = 0.1  # 0.02
     while running:
         length += growth
         physics.update_cell(agent_id, length, width, mass)
-        set_motile_force(physics, agent_id, object_id)
+        # set_motile_force(physics, agent_id, object_id)
         physics.run_incremental(5)
