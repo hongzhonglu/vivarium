@@ -26,7 +26,7 @@ FRICTION = 0.9
 class MultiCellPhysics(object):
     ''''''
     def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
-        self.pygame_scale = 700 / bounds[0]  # TODO (Eran) this influences jitter, should not have an effect.
+        self.pygame_scale = 700 / bounds[0]
         self.pygame_viz = pygame_viz
         self.elasticity = ELASTICITY
         self.friction = FRICTION
