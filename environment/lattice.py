@@ -93,8 +93,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
-            self.rotation_jitter,
-            False)
+            self.rotation_jitter)
 
         # make media object for making new media
         self.make_media = Media()
@@ -138,15 +137,16 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for agent_id, location in self.locations.iteritems():
 
             # shape
-            volume = self.simulations[agent_id]['state']['volume']
+            agent_state = self.simulations[agent_id]['state']
+            volume = agent_state['volume']
             radius = self.cell_radius
             width = 2 * radius
             length = self.volume_to_length(volume, radius)
-            mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
+            mass = agent_state.get('mass', 1.0)  # TODO -- pass mass through state message
 
             # update length, width, update in multicell_physics
-            self.simulations[agent_id]['state']['length'] = length
-            self.simulations[agent_id]['state']['width'] = width
+            agent_state['length'] = length
+            agent_state['width'] = width
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # Motile forces
@@ -296,14 +296,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''
 
-        volume = self.simulations[agent_id]['state']['volume']
+        agent_state = self.simulations[agent_id]['state']
+        volume = agent_state['volume']
         width = self.cell_radius * 2
         length = self.volume_to_length(volume, self.cell_radius)
         mass = volume * self.cell_density   # TODO -- get units to work
 
         # add length, width to state, for use by visualization
-        self.simulations[agent_id]['state']['length'] = length
-        self.simulations[agent_id]['state']['width'] = width
+        agent_state['length'] = length
+        agent_state['width'] = width
 
         self.multicell_physics.add_cell_from_center(
             agent_id,
@@ -352,13 +353,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 # get concentration from cell's given bin
                 location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                 patch_site = tuple(np.floor(location).astype(int))
+
+                assert (0 <= patch_site[0] < self.patches_per_edge)
+                assert (0 <= patch_site[1] < self.patches_per_edge)
+
                 update[agent_id] = {}
-                try:
-                    update[agent_id]['concentrations'] = dict(zip(
-                        self._molecule_ids,
-                        self.lattice[:, patch_site[0], patch_site[1]]))
-                except:
-                    print('invalid patch site: ' + str(patch_site) + ', location: ' + str(location))
+                update[agent_id]['concentrations'] = dict(zip(
+                    self._molecule_ids,
+                    self.lattice[:, patch_site[0], patch_site[1]]))
 
                 update[agent_id]['media_id'] = self.media_id
 
