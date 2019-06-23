@@ -4,6 +4,8 @@ __version__ = "$Id:$"
 __docformat__ = "reStructuredText"
 
 # Library imports
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from pygame.locals import *
 from pygame.color import *
@@ -14,6 +16,8 @@ import math
 import numpy as np
 
 # pymunk imports
+import pymunkoptions
+pymunkoptions.options["debug"] = False
 import pymunk
 import pymunk.pygame_util
 
@@ -46,7 +50,6 @@ class MultiCellPhysics(object):
             self._screen = pygame.display.set_mode((710, 710))
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
-            # self._draw_options.collision_point_color = (10, 20, 30, 40)
 
         # Static barriers
         self.add_barriers(bounds)
