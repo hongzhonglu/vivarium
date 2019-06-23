@@ -5,6 +5,8 @@ import os
 import csv
 import math
 from scipy import constants
+import uuid
+import random
 
 from agent.inner import CellSimulation
 from environment.condition.look_up_tables.look_up import LookUp
@@ -18,7 +20,7 @@ TRANSPORT_IDS_FILE = os.path.join("reconstruction", "flat", "transport_reactions
 
 TSV_DIALECT = csv.excel_tab
 TUMBLE_JITTER = 2.0 # (radians)
-DEFAULT_COLOR = [color/255 for color in [0, 0, 0]]
+DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]  # [color/255 for color in [0, 0, 0]]
 
 amino_acids = [
     'L-ALPHA-ALANINE',
@@ -48,17 +50,19 @@ aa_p_ids = [aa_id + "[p]" for aa_id in amino_acids]
 exchange_molecules = ["OXYGEN-MOLECULE[p]", "GLC[p]"]
 exchange_ids = exchange_molecules + aa_p_ids
 
+INITIAL_VOLUME = 1.0
+
 class TransportLookup(CellSimulation):
     ''''''
 
-    def __init__(self, state):
-        self.initial_time = state.get('time', 0.0)
-        self.local_time = state.get('time', 0.0)
-        self.media_id = state.get('media_id', 'minimal')
-        self.lookup_type = state.get('lookup', 'average')
+    def __init__(self, boot_config):
+        self.initial_time = boot_config.get('time', 0.0)
+        self.local_time = self.initial_time
+        self.media_id = boot_config.get('media_id', 'minimal')
+        self.lookup_type = boot_config.get('lookup', 'average')
         self.timestep = 1.0
         self.environment_change = {}
-        self.volume = 1.0  # (fL)
+        self.volume = boot_config.get('volume', INITIAL_VOLUME)
         self.division_time = 100
         self.nAvogadro = constants.N_A
 
@@ -67,6 +71,9 @@ class TransportLookup(CellSimulation):
         self.internal_concentrations = {}
         self.motile_force = [0.0, 0.0] # initial magnitude and relative orientation
         self.division = []
+
+        self.growth = 0.01
+        self.division_volume = random.uniform(1.9 * INITIAL_VOLUME, 2.1 * INITIAL_VOLUME)
 
         # load all reactions and
         self.load_data()
@@ -110,14 +117,27 @@ class TransportLookup(CellSimulation):
         # accumulate in environment_change
         self.accumulate_deltas(environment_deltas)
 
+        # update state based on internal and external concentrations
+        self.volume += self.growth * self.timestep
+
     def accumulate_deltas(self, environment_deltas):
         for molecule_id, count in environment_deltas.iteritems():
             self.environment_change[molecule_id] += count
 
+    def daughter_config(self):
+        config1 = {
+            'id': str(uuid.uuid4()),
+            'time': self.time(),
+            'volume': self.volume * 0.5}
+        config2 = {
+            'id': str(uuid.uuid4()),
+            'time': self.time(),
+            'volume': self.volume * 0.5}
+        return [config1, config2]
+
     def check_division(self):
-        # update division state based on time since initialization
-        if self.local_time >= self.initial_time + self.division_time:
-            self.division = [{'time': self.local_time}, {'time': self.local_time}]
+        if self.volume >= self.division_volume:
+            self.division = self.daughter_config()
         return self.division
 
     def time(self):
@@ -137,7 +157,7 @@ class TransportLookup(CellSimulation):
         while self.time() < run_until:
             self.local_time += self.timestep
             self.update_state()
-            # self.check_division()
+            self.check_division()
 
         time.sleep(1.0)  # pause for better coordination with Lens visualization. TODO: remove this
 

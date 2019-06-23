@@ -213,6 +213,8 @@ function buildLattice(lens, draw, m, n, width) {
           .x(i*width)
           .y(j*width)
           .fill(rgbToHex([i / m, 1 - (j / m), 1]))
+          .width(width*1.05)
+          .height(width*1.05)
           .click(function(patch) {
             return function(event) {
               var x = event.offsetY * lens.edgeLength / VISUALIZATION_WIDTH;

@@ -15,7 +15,7 @@ from environment.surrogates.division import Division
 from environment.condition.make_media import Media
 
 
-DEFAULT_COLOR = [0.6, 0.4, 0.3]
+DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]  # [0.6, 0.4, 0.3]
 
 class EnvironmentAgent(Outer):
     def build_state(self):

@@ -17,6 +17,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import csv
 import math
 import numpy as np
 from scipy import constants
@@ -121,6 +122,12 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
+        # output
+
+
+
+
+
     def evolve(self):
         ''' Evolve environment '''
         self.update_locations()
@@ -132,6 +139,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
+        self.save_output()
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -165,7 +173,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
 
-
     def update_media(self):
         if self.timeline:
             current_index = [i for i, t in enumerate(self._times) if self.time() >= t][-1]
@@ -178,14 +185,12 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 print('Media condition: ' + str(self.media_id))
 
-
     def fill_lattice(self, media):
         # Create lattice and fill each site with concentrations dictionary
         # Molecule identities are defined along the major axis, with spatial dimensions along the other two axes.
         self.lattice = np.empty([len(self._molecule_ids)] + [self.patches_per_edge for dim in xrange(N_DIMS)], dtype=np.float64)
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
-
 
     def run_diffusion(self):
         change_lattice = np.zeros(self.lattice.shape)
@@ -198,11 +203,48 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         self.lattice += change_lattice
 
-
     def diffusion_timestep(self, lattice):
         ''' calculate concentration changes cause by diffusion'''
         change_lattice = self.diffusion * self._timestep * convolve(lattice, LAPLACIAN_2D, mode='reflect') / self.dx2
         return change_lattice
+
+    def add_cell_to_physics(self, agent_id, position, angle):
+        ''' Add body to multi-cell physics simulation'''
+
+        volume = self.simulations[agent_id]['state']['volume']
+        width = self.cell_radius * 2
+        length = self.volume_to_length(volume, self.cell_radius)
+        mass = volume * self.cell_density   # TODO -- get units to work
+
+        # add length, width to state, for use by visualization
+        self.simulations[agent_id]['state']['length'] = length
+        self.simulations[agent_id]['state']['width'] = width
+
+        self.multicell_physics.add_cell_from_center(
+            agent_id,
+            width,
+            length,
+            mass,
+            position,
+            angle,
+        )
+
+        # add to lattice
+        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
+        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
+
+    def save_output(self):
+
+        # save all agent states
+        for agent_id, location in self.locations.iteritems():
+
+            location = self.locations[agent_id]
+            volume = self.simulations[agent_id]['state']['volume']
+            width = self.simulations[agent_id]['state']['width']
+            length = self.simulations[agent_id]['state']['length']
+
+        # save lattice state
+        self.lattice
 
 
     ## Conversion functions
@@ -280,32 +322,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
-
-
-    def add_cell_to_physics(self, agent_id, position, angle):
-        ''' Add body to multi-cell physics simulation'''
-
-        volume = self.simulations[agent_id]['state']['volume']
-        width = self.cell_radius * 2
-        length = self.volume_to_length(volume, self.cell_radius)
-        mass = volume * self.cell_density   # TODO -- get units to work
-
-        # add length, width to state, for use by visualization
-        self.simulations[agent_id]['state']['length'] = length
-        self.simulations[agent_id]['state']['width'] = width
-
-        self.multicell_physics.add_cell_from_center(
-            agent_id,
-            width,
-            length,
-            mass,
-            position,
-            angle,
-        )
-
-        # add to lattice
-        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
-        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
     def apply_inner_update(self, update, now):
         '''
