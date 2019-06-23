@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-__version__ = "$Id:$"
-__docformat__ = "reStructuredText"
+import os
 
-# Library imports
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from pygame.locals import *
 from pygame.color import *
@@ -14,6 +13,8 @@ import math
 import numpy as np
 
 # pymunk imports
+import pymunkoptions
+pymunkoptions.options["debug"] = False
 import pymunk
 import pymunk.pygame_util
 
@@ -25,9 +26,9 @@ FRICTION = 0.9
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter, pygame_viz=False):
+    def __init__(self, bounds, translation_jitter, rotation_jitter, debug=False):
         self.pygame_scale = 700 / bounds[0]
-        self.pygame_viz = pygame_viz
+        self.pygame_viz = debug
         self.elasticity = ELASTICITY
         self.friction = FRICTION
         self.translation_jitter = translation_jitter
@@ -46,7 +47,6 @@ class MultiCellPhysics(object):
             self._screen = pygame.display.set_mode((710, 710))
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
-            # self._draw_options.collision_point_color = (10, 20, 30, 40)
 
         # Static barriers
         self.add_barriers(bounds)

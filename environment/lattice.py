@@ -94,8 +94,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
-            self.rotation_jitter,
-            False)
+            self.rotation_jitter)
 
         # make media object for making new media
         self.make_media = Media()
@@ -125,9 +124,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # output
 
 
-
-
-
     def evolve(self):
         ''' Evolve environment '''
         self.update_locations()
@@ -146,15 +142,16 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for agent_id, location in self.locations.iteritems():
 
             # shape
-            volume = self.simulations[agent_id]['state']['volume']
+            agent_state = self.simulations[agent_id]['state']
+            volume = agent_state['volume']
             radius = self.cell_radius
             width = 2 * radius
             length = self.volume_to_length(volume, radius)
-            mass = self.simulations[agent_id]['state'].get('mass', 1.0)  # TODO -- pass mass through state message
+            mass = agent_state.get('mass', 1.0)  # TODO -- pass mass through state message
 
             # update length, width, update in multicell_physics
-            self.simulations[agent_id]['state']['length'] = length
-            self.simulations[agent_id]['state']['width'] = width
+            agent_state['length'] = length
+            agent_state['width'] = width
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # Motile forces
@@ -172,6 +169,31 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # enforce boundaries # TODO (Eran) -- make pymunk handle this
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
+
+    def add_cell_to_physics(self, agent_id, position, angle):
+        ''' Add body to multi-cell physics simulation'''
+
+        volume = self.simulations[agent_id]['state']['volume']
+        width = self.cell_radius * 2
+        length = self.volume_to_length(volume, self.cell_radius)
+        mass = volume * self.cell_density  # TODO -- get units to work
+
+        # add length, width to state, for use by visualization
+        self.simulations[agent_id]['state']['length'] = length
+        self.simulations[agent_id]['state']['width'] = width
+
+        self.multicell_physics.add_cell_from_center(
+            agent_id,
+            width,
+            length,
+            mass,
+            position,
+            angle,
+        )
+
+        # add to lattice
+        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
+        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
     def update_media(self):
         if self.timeline:
@@ -208,31 +230,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         change_lattice = self.diffusion * self._timestep * convolve(lattice, LAPLACIAN_2D, mode='reflect') / self.dx2
         return change_lattice
 
-    def add_cell_to_physics(self, agent_id, position, angle):
-        ''' Add body to multi-cell physics simulation'''
-
-        volume = self.simulations[agent_id]['state']['volume']
-        width = self.cell_radius * 2
-        length = self.volume_to_length(volume, self.cell_radius)
-        mass = volume * self.cell_density   # TODO -- get units to work
-
-        # add length, width to state, for use by visualization
-        self.simulations[agent_id]['state']['length'] = length
-        self.simulations[agent_id]['state']['width'] = width
-
-        self.multicell_physics.add_cell_from_center(
-            agent_id,
-            width,
-            length,
-            mass,
-            position,
-            angle,
-        )
-
-        # add to lattice
-        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
-        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
-
     def save_output(self):
 
         # save all agent states
@@ -264,6 +261,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def count_to_concentration(self, count):
         ''' Convert count to concentrations '''
         return count / (self.patch_volume * N_AVOGADRO)
+
 
     # functions for getting values
     def simulation_parameters(self, agent_id):
@@ -311,15 +309,26 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.simulations.setdefault(agent_id, {}).update(simulation)
 
         if agent_id not in self.multicell_physics.cells:
-            # Place cell at either the provided or a random initial location
-            location = simulation['agent_config'].get(
-                'location', np.random.uniform(0, self.edge_length, N_DIMS))
-            orientation = simulation['agent_config'].get(
-                'orientation', np.random.uniform(0, 2*PI))
 
-            # add new cell to the physics simulation
-            self.add_cell_to_physics(agent_id, location, orientation)  # is this adding daughters at the parents location?
+            if simulation.get('parent_id', ''):
+                index = simulation['index']
+                parent_location = simulation['location'][0:2]
+                orientation = simulation['location'][2]
+                parent_volume = self.simulations[agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
+                parent_length = self.volume_to_length(parent_volume, self.cell_radius)
 
+                daughter_locations = self.daughter_locations(parent_location, parent_length, orientation)
+                location = daughter_locations[index]
+            else:
+                # Place cell at either the provided or a random initial location
+                location = simulation['agent_config'].get(
+                    'location', np.random.uniform(0, self.edge_length, N_DIMS))
+                orientation = simulation['agent_config'].get(
+                    'orientation', np.random.uniform(0, 2 * PI))
+
+            self.add_cell_to_physics(agent_id, location, orientation)
+
+        # add to motile forces
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
@@ -357,13 +366,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 # get concentration from cell's given bin
                 location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                 patch_site = tuple(np.floor(location).astype(int))
+
+                assert (0 <= patch_site[0] < self.patches_per_edge)
+                assert (0 <= patch_site[1] < self.patches_per_edge)
+
                 update[agent_id] = {}
-                try:
-                    update[agent_id]['concentrations'] = dict(zip(
-                        self._molecule_ids,
-                        self.lattice[:, patch_site[0], patch_site[1]]))
-                except:
-                    print('invalid patch site: ' + str(patch_site) + ', location: ' + str(location))
+                update[agent_id]['concentrations'] = dict(zip(
+                    self._molecule_ids,
+                    self.lattice[:, patch_site[0], patch_site[1]]))
 
                 update[agent_id]['media_id'] = self.media_id
 
@@ -380,29 +390,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             daughter_locations.append(location)
 
         return daughter_locations
-
-    def apply_parent_state(self, new_agent_id, simulation):
-        '''
-        function used by outer.py to synchronize new daughter cells with inherited state
-        '''
-
-        # TODO(jerry): Merge this into add_simulation().
-        if new_agent_id not in self.multicell_physics.cells:
-            self.simulations.setdefault(new_agent_id, {}).update(simulation)
-            index = simulation['index']
-            parent_location = simulation['location'][0:2]
-            parent_angle = simulation['location'][2]
-            parent_volume = self.simulations[new_agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
-            parent_length = self.volume_to_length(parent_volume, self.cell_radius)
-
-            daughter_locations = self.daughter_locations(parent_location, parent_length, parent_angle)
-            location = daughter_locations[index]
-
-            self.add_cell_to_physics(new_agent_id, location, parent_angle)
-
-        # add to motile forces
-        if new_agent_id not in self.motile_forces:
-            self.motile_forces[new_agent_id] = [0.0, 0.0]
 
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})

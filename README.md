@@ -1,6 +1,6 @@
 # Lens
 
-manage a flock of distributed agents
+manage a colony of distributed whole-cell agents
 
 ## Usage
 

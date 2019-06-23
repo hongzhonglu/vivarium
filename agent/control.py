@@ -9,6 +9,7 @@ import argparse
 
 import agent.event as event
 from agent.agent import Agent
+from utils import filepath
 
 DEFAULT_KAFKA_CONFIG = {
     'host': '127.0.0.1:9092',
@@ -28,6 +29,10 @@ class AgentControl(Agent):
             agent_config['kafka_config'] = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
 
         super(AgentControl, self).__init__(agent_id, 'control', agent_config)
+
+    def get_experiment_id(self, name='lattice'):
+        time_stamp = filepath.timestamp()
+        return time_stamp + '_' + name + '_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
 
     def trigger_execution(self, agent_id=''):
         """Start or resume simulation."""
