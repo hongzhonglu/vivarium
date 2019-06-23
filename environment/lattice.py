@@ -269,15 +269,26 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.simulations.setdefault(agent_id, {}).update(simulation)
 
         if agent_id not in self.multicell_physics.cells:
-            # Place cell at either the provided or a random initial location
-            location = simulation['agent_config'].get(
-                'location', np.random.uniform(0, self.edge_length, N_DIMS))
-            orientation = simulation['agent_config'].get(
-                'orientation', np.random.uniform(0, 2*PI))
 
-            # add new cell to the physics simulation
-            self.add_cell_to_physics(agent_id, location, orientation)  # is this adding daughters at the parents location?
+            if simulation.get('parent_id', ''):
+                index = simulation['index']
+                parent_location = simulation['location'][0:2]
+                orientation = simulation['location'][2]
+                parent_volume = self.simulations[agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
+                parent_length = self.volume_to_length(parent_volume, self.cell_radius)
 
+                daughter_locations = self.daughter_locations(parent_location, parent_length, orientation)
+                location = daughter_locations[index]
+            else:
+                # Place cell at either the provided or a random initial location
+                location = simulation['agent_config'].get(
+                    'location', np.random.uniform(0, self.edge_length, N_DIMS))
+                orientation = simulation['agent_config'].get(
+                    'orientation', np.random.uniform(0, 2 * PI))
+
+            self.add_cell_to_physics(agent_id, location, orientation)
+
+        # add to motile forces
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
@@ -364,29 +375,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             daughter_locations.append(location)
 
         return daughter_locations
-
-    def apply_parent_state(self, new_agent_id, simulation):
-        '''
-        function used by outer.py to synchronize new daughter cells with inherited state
-        '''
-
-        # TODO(jerry): Merge this into add_simulation().
-        if new_agent_id not in self.multicell_physics.cells:
-            self.simulations.setdefault(new_agent_id, {}).update(simulation)
-            index = simulation['index']
-            parent_location = simulation['location'][0:2]
-            parent_angle = simulation['location'][2]
-            parent_volume = self.simulations[new_agent_id]['state']['volume'] * 2  # TODO -- get parent volume from other source
-            parent_length = self.volume_to_length(parent_volume, self.cell_radius)
-
-            daughter_locations = self.daughter_locations(parent_location, parent_length, parent_angle)
-            location = daughter_locations[index]
-
-            self.add_cell_to_physics(new_agent_id, location, parent_angle)
-
-        # add to motile forces
-        if new_agent_id not in self.motile_forces:
-            self.motile_forces[new_agent_id] = [0.0, 0.0]
 
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
