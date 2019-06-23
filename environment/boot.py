@@ -11,6 +11,7 @@ from environment.surrogates.chemotaxis_MWC_sensors import Chemotaxis
 from environment.surrogates.endocrine import Endocrine
 from environment.surrogates.transport_kinetics import TransportKinetics
 from environment.surrogates.transport_lookup import TransportLookup
+from environment.surrogates.division import Division
 from environment.condition.make_media import Media
 
 
@@ -25,8 +26,11 @@ class EnvironmentAgent(Outer):
         simulations = {
             agent_id: {
                 'volume': simulation['state']['volume'],
+                'width': self.environment.simulations[agent_id]['state'].get('width', self.environment.cell_radius*2), # TODO (Eran) initialize length, width in cellSimulation
+                'length': self.environment.simulations[agent_id]['state'].get('length', self.environment.cell_radius*4),
                 'color': simulation['state'].get('color', DEFAULT_COLOR),
                 'location': self.environment.locations[agent_id][0:2].tolist(),
+                'corner_location': self.environment.corner_locations[agent_id][0:2].tolist(),
                 'orientation': self.environment.locations[agent_id][2],
                 'parent_id': simulation.get('parent_id', '')}
             for agent_id, simulation in self.environment.simulations.iteritems()}
@@ -37,7 +41,7 @@ class EnvironmentAgent(Outer):
             'running': not self.paused,
             'time': self.environment.time(),
             'edge_length': self.environment.edge_length,
-            'cell_radius': self.environment.cell_radius,
+            'cell_radius': self.environment.cell_radius,   # TODO (Eran) -- remove this from environment config, should be an attribute of cellSimulations
             'lattice': lattice,
             'simulations': simulations}
 
@@ -278,6 +282,46 @@ def boot_kinetic_transport(agent_id, agent_type, agent_config):
     return inner
 
 
+# division surrogate initialize and boot
+def initialize_division(boot_config, synchronize_config):
+    '''
+    Args:
+        boot_config (dict): options for initializing a simulation
+        synchronize_config (dict): additional options that can be passed in for initialization
+    Returns:
+        simulation (CellSimulation): The actual simulation which will perform the calculations.
+    '''
+    boot_config.update(synchronize_config)
+    return Division(boot_config)
+
+def boot_division(agent_id, agent_type, agent_config):
+    agent_id = agent_id
+    outer_id = agent_config['outer_id']
+
+    # initialize state and options
+    volume = agent_config.get('volume', 1.0)
+
+    # state of the cell that gets sent to the environment
+    agent_config['state'] = {
+        'volume': volume,
+        'environment_change': {}}
+
+    # boot_config previously called options, state sent to the cell upon boot
+    boot_config = {
+        'volume': volume
+        }
+
+    inner = Inner(
+        agent_id,
+        outer_id,
+        agent_type,
+        agent_config,
+        boot_config,
+        initialize_division)
+
+    return inner
+
+
 class BootEnvironment(BootAgent):
     def __init__(self):
         super(BootEnvironment, self).__init__()
@@ -289,6 +333,7 @@ class BootEnvironment(BootAgent):
             'endocrine': boot_endocrine,
             'kinetics': boot_kinetic_transport,
             'lookup': boot_lookup_transport,
+            'division': boot_division,
             }
 
 if __name__ == '__main__':

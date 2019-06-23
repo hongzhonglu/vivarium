@@ -14,6 +14,11 @@ out/
 .idea/
 *.iml
 
+# User files #
+################
+user/*
+!user/user.txt
+
 # Compiled source #
 ###################
 *.pyc

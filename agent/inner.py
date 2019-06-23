@@ -129,8 +129,7 @@ class Inner(Agent):
         division = update.get('division', [])
 
         for daughter in division:
-            if not 'id' in daughter:
-                daughter['id'] = str(uuid.uuid1())
+            assert daughter.get('id')
 
         self.send(self.topics['environment_receive'], {
             'event': event.CELL_EXCHANGE,
@@ -165,7 +164,7 @@ class Inner(Agent):
 
         generation = self.generation + 1
         for daughter in division:
-            agent_id = daughter.get('id', str(uuid.uuid1()))
+            agent_id = daughter['id']
 
             agent_type = daughter.get(
                 'type',
@@ -178,9 +177,6 @@ class Inner(Agent):
                 parent_id=self.agent_id,
                 outer_id=self.outer_id,
                 generation=generation)
-
-            print('agent_type: ' + str(agent_type))
-            print('divide_config: ' + str(agent_config))
 
             # Send the inherited state data as a blob instead of a file path.
             inherited_state_path = agent_config.pop('inherited_state_path', None)

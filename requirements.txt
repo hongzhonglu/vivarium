@@ -1,0 +1,8 @@
+numpy==1.14.6
+scipy==1.0.1
+pymunk==5.5.0
+Unum==4.1.4
+confluent-kafka==0.11.5
+matplotlib==2.2.2
+cvxopt==1.1.7
+cvxpy==1.0.6

@@ -9,7 +9,7 @@ RGB_SIZE = 255
 MEMBRANE_COLOR = [102/RGB_SIZE, 102/RGB_SIZE, 255/RGB_SIZE]
 COMPARTMENT_OFFSET = {
   periplasm : 0,
-  cytoplasm: 0.05
+  cytoplasm: 0.09
 }
 
 // generate a uuid
@@ -18,14 +18,6 @@ function uuid() {
     var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
-}
-
-// given the volume of a cell and its radius, calculate the length of the cell.
-function volumeToLength(radius, volume) {
-  var ratio = (4/3) * Math.PI * Math.pow(radius, 3);
-  var area = Math.PI * Math.pow(radius, 2);
-  var cylinder = (volume - ratio) / area;
-  return cylinder + 2 * radius;
 }
 
 // find the closest rotation between two points on a circle (0..TAU)
@@ -43,21 +35,11 @@ function rotationTransform(theta) {
 // given an object containing the various svg elements of a cell visualization, apply the new
 // data to each of its components
 function updateCell(cell, data, born) {
-  // calculate length from volume
-  var length = volumeToLength(data.width, data.volume);
 
-  // calculate the offset from the corner of the rectangle to the center, given
-  // the cell's orientation.
-  var originX = data.width * 0.5
-  var originY = length * 0.5;
-  var sin = Math.sin(-data.orientation);
-  var cos = Math.cos(-data.orientation);
-  var offsetX = originX * cos - originY * sin;
-  var offsetY = originX * sin + originY * cos;
-
-  // apply the offset
-  var cx = data.location[1] - offsetX;
-  var cy = data.location[0] - offsetY;
+  var length = data.length;
+  var width = data.width;
+  var cx_corner = data.corner_location[1];
+  var cy_corner = data.corner_location[0];
 
   var previousRotation = /r([^,]+)/.exec(cell.whole.transform()['string']);
   var orientation = data.orientation;
@@ -72,7 +54,7 @@ function updateCell(cell, data, born) {
 
   // create the matrix representing the successive application of rotation and translation
   var transform = new SVG.Matrix()
-      .translate(cx * data.scale, cy * data.scale)
+      .translate(cx_corner * data.scale, cy_corner * data.scale)
       .rotate(rotationTransform(data.orientation))
 
   function animateExisting(obj) {
@@ -82,9 +64,9 @@ function updateCell(cell, data, born) {
   function animateCapsule(group, data, offset, color) {
 	    animateExisting(group)
 	    .attr({
-	      width: data.scale * data.width * (1 - offset),
-	      height: data.scale * length * (1 - 0.5 * offset),
-	      x: data.scale * 0.25*offset,
+	      width: data.scale * width * (1 - offset),
+	      height: data.scale * length * (1 - 0.5*offset),  // why does 0.5*offset work here?
+	      x: data.scale * 0.5*offset,
 	      y: data.scale * 0.5*offset
 	    })
 	    .fill(rgbToHex(color));
@@ -99,19 +81,15 @@ function updateCell(cell, data, born) {
   animateCapsule(cell.periplasm, data, COMPARTMENT_OFFSET.periplasm, data.color)
   animateCapsule(cell.cytoplasm, data, COMPARTMENT_OFFSET.cytoplasm, data.color)
 
-  var hudX = data.location[1] - (0.4 * data.width);
-  var hudY = data.location[0] - (0.4 * data.width);
+  // heads up display
+  var hudX = data.location[1];  // - (0.4 * data.width);
+  var hudY = data.location[0];  // - (0.4 * data.length);
   var translate = new SVG.Matrix()
       .translate(hudX * data.scale, hudY * data.scale);
 
   cell.hud.text(data.volume.toPrecision(DISPLAY_PRECISION));
   animateExisting(cell.hud)
     .transform(translate);
-
-  // // translate the center point to the center of the membrane
-  // animateExisting(cell.nucleoid)
-  //   .cx(originX * PATCH_WIDTH)
-  //   .cy(originY * PATCH_WIDTH)
 }
 
 // build a cell from data, initializing the svg group and passing the result to updateCell
@@ -188,11 +166,11 @@ function buildCell(lens, draw, id, data) {
 function capsuleShape(group, offset, data, color) {
 	  // create the rectangle representing the outer bounds of the capsule
 	  return group
-	      .rect(data.width * data.scale, data.scale)  // width, height  TODO -- these values don't seem to matter
+	      .rect(data.width * data.scale, data.scale)  // width, length
 	      // .x(data.scale * offset)
 	      // .y(data.scale * offset)
-	      .rx(0.3 * data.scale)
-	      .ry(0.3 * data.scale)
+	      .rx(0.6 * data.scale)
+	      .ry(0.6 * data.scale)
 	      .attr({
 	          fill: rgbToHex(color || DEFAULT_COLOR),
 	          stroke: rgbToHex(MEMBRANE_COLOR),
@@ -421,7 +399,6 @@ function updateLens(draw, lens, data) {
   var scale = VISUALIZATION_WIDTH / data.edge_length;
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
-    simulation.width = data.cell_radius;
     simulation.scale = scale
 
     if (!_.has(lens.cells, key)) {

@@ -5,7 +5,6 @@ import uuid
 
 from environment.condition.make_media import Media
 from agent.control import AgentControl, AgentCommand
-from utils import filepath
 
 
 class ShepherdControl(AgentControl):
@@ -22,8 +21,7 @@ class ShepherdControl(AgentControl):
             agent_config)
 
     def lattice_experiment(self, args):
-        time_stamp = filepath.timestamp()
-        lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
+        lattice_id = self.get_experiment_id()
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             lattice_id, num_cells))
@@ -41,9 +39,12 @@ class ShepherdControl(AgentControl):
         media = make_media.make_recipe(media_id)
 
         lattice_config = {
+            'run_for': 4.0,
             'media_id': media_id,
             'media': media,
-            'timeline': current_timeline}
+            'timeline': current_timeline,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005}
 
         self.add_agent(lattice_id, 'lattice', lattice_config)
 
@@ -55,12 +56,50 @@ class ShepherdControl(AgentControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
-    def toy_experiment(self, args):
-        time_stamp = filepath.timestamp()
-        lattice_id = time_stamp + '_lattice_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
+    def large_lattice_experiment(self, args):
+        experiment_id = self.get_experiment_id('large_lattice')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            lattice_id, num_cells))
+            experiment_id, num_cells))
+
+        # make media
+        timeline = args.get('timeline')
+        media_id = args.get('media')
+        make_media = Media()
+        if timeline:
+            current_timeline = make_media.make_timeline(timeline)
+            media_id = current_timeline[0][1]
+        else:
+            timeline = '0 ' + media_id
+            current_timeline = make_media.make_timeline(timeline)
+        media = make_media.make_recipe(media_id)
+
+        lattice_config = {
+            'run_for': 4.0,
+            'media_id': media_id,
+            'media': media,
+            'timeline': current_timeline,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
+            'edge_length': 40.0,
+            'patches_per_edge': 20,
+        }
+
+        self.add_agent(experiment_id, 'lattice', lattice_config)
+
+        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'ecoli', {
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
+    def toy_experiment(self, args):
+        experiment_id = self.get_experiment_id('toy')
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
 
         # make media
         media_id = 'toy'
@@ -76,21 +115,21 @@ class ShepherdControl(AgentControl):
             'media_id': media_id,
             'media': media}
 
-        self.add_agent(lattice_id, 'lattice', toy_config)
+        self.add_agent(experiment_id, 'lattice', toy_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'metabolism', {
-                'outer_id': lattice_id,
+                'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
 
     def chemotaxis_experiment(self, args):
-        lattice_id = str(uuid.uuid1())
+        experiment_id = self.get_experiment_id('chemotaxis')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            lattice_id, num_cells))
+            experiment_id, num_cells))
 
         media_id = 'MeAsp'
         media = {'GLC': 20.0,
@@ -104,33 +143,33 @@ class ShepherdControl(AgentControl):
                 'molecules': {
                     'GLC':{
                         'center': [0.5, 0.5],
-                        'deviation': 10.0},
+                        'deviation': 30.0},
                     'MeAsp': {
                         'center': [0.25, 0.25],
-                        'deviation': 10.0}
+                        'deviation': 30.0}
                 }},
             'diffusion': 0.0,
-            'translation_jitter': 0.0,
-            'rotation_jitter': 0.05,
-            'edge_length': 20.0,
-            'patches_per_edge': 30,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
+            'edge_length': 100.0,
+            'patches_per_edge': 20,
             'media_id': media_id,
             'media': media}
-        self.add_agent(lattice_id, 'lattice', chemotaxis_config)
+        self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'chemotaxis_minimal', {  # TODO (Eran) default type does not seem to be working
-                'outer_id': lattice_id,
+                'outer_id': experiment_id,
                 'seed': index})
 
     def endocrine_experiment(self, args):
-        lattice_id = str(uuid.uuid1())
+        experiment_id = self.get_experiment_id('endocrine')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            lattice_id, num_cells))
+            experiment_id, num_cells))
 
         media_id = 'endocrine_signal'
         media = {'signal': 0.0}
@@ -140,20 +179,20 @@ class ShepherdControl(AgentControl):
             # 'static_concentrations': True,
             # 'gradient': {'seed': True},
             'diffusion': 0.05,
-            'translation_jitter': 0.01,
-            'rotation_jitter': 0.1,
+            'translation_jitter': 0.5,
+            'rotation_jitter': 0.005,
             'edge_length': 10.0,
             'patches_per_edge': 10,
             'media_id': media_id,
             'media': media}
-        self.add_agent(lattice_id, 'lattice', endocrine_config)
+        self.add_agent(experiment_id, 'lattice', endocrine_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'endocrine', {  # TODO (Eran) default type does not seem to be working
-                'outer_id': lattice_id,
+                'outer_id': experiment_id,
                 'seed': index})
 
 
@@ -163,7 +202,8 @@ class EnvironmentCommand(AgentCommand):
     """
 
     def __init__(self):
-        choices = ['chemotaxis-experiment',
+        choices = ['large-experiment',
+                   'chemotaxis-experiment',
                    'endocrine-experiment',
                    'toy-experiment']
         description = '''
@@ -196,6 +236,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.lattice_experiment(args)
+        control.shutdown()
+
+    def large_experiment(self, args):
+        self.require(args, 'number', 'working_dir')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.large_lattice_experiment(args)
         control.shutdown()
 
     def toy_experiment(self, args):

@@ -52,14 +52,6 @@ class EnvironmentSimulation(object):
         """
         return {}
 
-    def apply_parent_state(self, agent_id, simulation):
-        """
-        After cell division, this function is called when a new daughter cell is initialized
-        by the environment in order to apply any state the environment was tracking about the
-        parent cell (like location and orientation etc). `simulation` is a dict describing
-        the new daughter but here, some fields are just copied from the parent.
-        """
-
     def run_for_time(self):
         """Return the length of time simulations should run for this time period."""
         return 0
@@ -174,9 +166,6 @@ class Outer(Agent):
 
         # lineage tracing
         parent_id = simulation.get('parent_id', '')
-        if parent_id:
-            self.environment.apply_parent_state(inner_id, simulation)
-
         if inner_id not in self.lineage:
             self.lineage[inner_id] = parent_id
             fp.write_json_file(self.lineage_filename, self.lineage, indent=2)
@@ -281,7 +270,7 @@ class Outer(Agent):
                 if state.get('division'):
                     parent = self.environment.simulation_state(agent_id)
                     for index, daughter in enumerate(state['division']):
-                        daughter_id = daughter.get('id', str(uuid.uuid1()))
+                        daughter_id = daughter.get('id')
                         self.simulations[daughter_id] = dict(
                             parent,
                             time=simulation['time'],
