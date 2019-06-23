@@ -121,8 +121,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-        # output
-
+        # analysis output
+        self.table_create(self, tableWriterFile)  # TODO -- get tableWriter path
 
     def evolve(self):
         ''' Evolve environment '''
@@ -135,7 +135,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        self.save_output()
+        self.table_append()
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -230,19 +230,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         change_lattice = self.diffusion * self._timestep * convolve(lattice, LAPLACIAN_2D, mode='reflect') / self.dx2
         return change_lattice
 
-    def save_output(self):
-
-        # save all agent states
-        for agent_id, location in self.locations.iteritems():
-
-            location = self.locations[agent_id]
-            volume = self.simulations[agent_id]['state']['volume']
-            width = self.simulations[agent_id]['state']['width']
-            length = self.simulations[agent_id]['state']['length']
-
-        # save lattice state
-        self.lattice
-
 
     ## Conversion functions
     def volume_to_length(self, volume, radius):
@@ -298,7 +285,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         return self._max_time
 
 
-    ## Agent interface
+    # Agent interface
     def run_incremental(self, run_until):
         ''' Simulate until run_until '''
         while self._time < run_until:
@@ -395,3 +382,33 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
+
+
+    # Analysis
+
+    # TODO -- each agent needs a table to write to.  It can use its agent_id as the directory name.
+    def table_create(self, tableWriter):
+        # self.container.tableCreate(tableWriter)   # The listeners define tableCreate
+        tableWriter.writeAttributes(
+            # nutrientTimeSeriesLabel = self.current_timeline_id,
+        )
+
+    def table_append(self, tableWriter):
+        tableWriter.append(
+            # media_id=self.current_media_id.ljust(self._media_id_max_length),
+            # media_concentrations=self._concentrations,
+        )
+
+    # def listener(self):
+    #
+    #     # save all agent states
+    #     for agent_id, location in self.locations.iteritems():
+    #
+    #         location = self.locations[agent_id]
+    #         agent_state = self.simulations[agent_id]['state']
+    #         volume = agent_state['volume']
+    #         width = agent_state['width']
+    #         length = agent_state['length']
+    #
+    #     # save lattice state
+    #     self.lattice
