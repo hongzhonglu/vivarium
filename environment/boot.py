@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 from agent.outer import Outer
 from agent.inner import Inner
 from agent.boot import BootAgent
@@ -14,8 +16,10 @@ from environment.surrogates.transport_lookup import TransportLookup
 from environment.surrogates.division import Division
 from environment.condition.make_media import Media
 
+import utils.filepath as fp
 
-DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]  # [0.6, 0.4, 0.3]
+
+DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 class EnvironmentAgent(Outer):
     def build_state(self):
@@ -52,6 +56,7 @@ class EnvironmentAgent(Outer):
             print_send=False)
 
 def boot_lattice(agent_id, agent_type, agent_config):
+    working_dir = agent_config.get('working_dir', os.getcwd())
     media_id = agent_config.get('media_id', 'minimal')
     media = agent_config.get('media', {})
     print("Media condition: {}".format(media_id))
@@ -59,18 +64,13 @@ def boot_lattice(agent_id, agent_type, agent_config):
         make_media = Media()
         media = make_media.make_recipe(media_id)
 
-    # # TODO (Eran) -- easier passing of medias to lattice. Put them in recipes?
-    # media_id = 'toy'
-    # media = {'A': 20.0,
-    # 		 'E': 0.1,
-    # 		 'D': 0.1,
-    # 		 'F': 0.1,
-    # 		 'H': 0.1,
-    # 		 'O2': 0.1,
-    # 		 }
+    output_dir = os.path.join(working_dir, 'out', agent_id)
+    boot_config = {
+        'output_dir': output_dir,
+        'concentrations': media,
+    }
 
-    agent_config['concentrations'] = media
-    environment = EnvironmentSpatialLattice(agent_config)
+    environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
 

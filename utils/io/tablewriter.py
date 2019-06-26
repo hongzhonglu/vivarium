@@ -7,7 +7,7 @@ import numpy as np
 import struct
 import zlib
 
-from wholecell.utils import filepath
+from utils import filepath
 
 
 __all__ = [

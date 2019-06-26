@@ -17,7 +17,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
-import csv
+import os
 import math
 import numpy as np
 from scipy import constants
@@ -53,6 +53,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.cell_density = CELL_DENSITY  # TODO (Eran) -- get mass from cell sim rather than using density to convert volume to mass
 
         # configured parameters
+        self.output_dir = config.get('output_dir')
         self.run_for = config.get('run_for', 5.0)
         self.edge_length = config.get('edge_length', 10.0)
         self.patches_per_edge = config.get('patches_per_edge', 10)
@@ -121,8 +122,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-        # analysis output
-        self.table_create(self, tableWriterFile)  # TODO -- get tableWriter path
 
     def evolve(self):
         ''' Evolve environment '''
@@ -319,6 +318,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
+        # create output file for each cell to log location data
+        table_writer_file = os.path.join(self.output_dir, agent_id)
+        self.create_agent_table(table_writer_file)  # TODO -- get tableWriter path
+
     def apply_inner_update(self, update, now):
         '''
         Use change counts from all the inner simulations, convert them to concentrations,
@@ -387,13 +390,19 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     # Analysis
 
     # TODO -- each agent needs a table to write to.  It can use its agent_id as the directory name.
-    def table_create(self, tableWriter):
-        # self.container.tableCreate(tableWriter)   # The listeners define tableCreate
+    def create_agent_table(self, tableWriter):
+        import ipdb; ipdb.set_trace()
+
         tableWriter.writeAttributes(
             # nutrientTimeSeriesLabel = self.current_timeline_id,
         )
 
+
+
     def table_append(self, tableWriter):
+
+        # TODO -- for all agents.
+
         tableWriter.append(
             # media_id=self.current_media_id.ljust(self._media_id_max_length),
             # media_concentrations=self._concentrations,
