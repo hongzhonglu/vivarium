@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from agent.inner import CellSimulation
+from lens.agent import CellSimulation
 
 DEFAULT_COLOR = [color/255 for color in [0, 128, 255]]
 

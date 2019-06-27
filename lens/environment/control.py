@@ -4,7 +4,7 @@ import time
 import uuid
 
 from environment.condition.make_media import Media
-from agent.control import AgentControl, AgentCommand
+from lens.agent import AgentControl, AgentCommand
 
 
 class ShepherdControl(AgentControl):

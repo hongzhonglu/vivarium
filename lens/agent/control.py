@@ -7,9 +7,9 @@ import json
 import uuid
 import argparse
 
-import agent.event as event
-from agent.agent import Agent
-from utils import filepath
+from lens import agent as event
+from lens.agent import Agent
+from lens.utils import filepath
 
 DEFAULT_KAFKA_CONFIG = {
     'host': '127.0.0.1:9092',

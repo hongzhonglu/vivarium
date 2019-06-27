@@ -31,7 +31,7 @@ from reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
 from environment.condition.look_up_tables.look_up import LookUp
-import utils.kinetic_rate_laws as rate_laws
+import lens.utils.kinetic_rate_laws as rate_laws
 
 
 TSV_DIALECT = csv.excel_tab

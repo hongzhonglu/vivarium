@@ -7,7 +7,7 @@ and `environment.control` for sending commands to agents.
 ## Setup
 
 See the top-level [README.md](../README.md) for general setup instructions, and the
-[agent README.md](../agent/README.md) for multi-agent simulation setup.
+[agent README.md](../lens/agent/README.md) for multi-agent simulation setup.
 
 1. To run Whole Cell E.coli simulations, you need to have the sim_data files. You can generate them via the
 runFitter manual runscript. In the wcEcoli directory:
@@ -16,7 +16,7 @@ runFitter manual runscript. In the wcEcoli directory:
 
 ## Zookeeper and Kafka
 
-2. See [agent/README.md](../agent/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
+2. See [agent/README.md](../lens/agent/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
 
    1. Start Zookeeper in the directory where you untarred the Kafka and Zookeeper software:
 

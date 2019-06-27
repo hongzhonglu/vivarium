@@ -2,9 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import time
 import random
-import numpy as np
 
-from agent.inner import CellSimulation
+from lens.agent import CellSimulation
 
 TUMBLE_JITTER = 0.02  # 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]

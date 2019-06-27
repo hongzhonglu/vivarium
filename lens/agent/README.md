@@ -67,5 +67,5 @@ and pasting the checksum into [the verification page](https://www.apache.org/inf
    If it refuses to stop, use a `kill -9` command to do it.
 
 You _can_ run stub agents using the command line tools `agent.boot` and `agent.control`, but
-in practice we use the commands in [environment/README.md](../environment/README.md) to run
+in practice we use the commands in [environment/README.md](../../environment/README.md) to run
 _E. coli_ cell agents and their environment.

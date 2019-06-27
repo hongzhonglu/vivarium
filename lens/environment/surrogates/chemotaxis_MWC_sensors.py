@@ -6,7 +6,7 @@ import numpy as np
 import math
 import random
 
-from agent.inner import CellSimulation
+from lens.agent import CellSimulation
 
 
 TUMBLE_JITTER = 2.0 # (radians)

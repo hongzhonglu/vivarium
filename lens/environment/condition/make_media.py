@@ -5,7 +5,7 @@ Functions for making media
 
 from __future__ import absolute_import, division, print_function
 
-from utils import units
+from lens.utils import units
 
 # Raw data class
 from reconstruction.knowledge_base import KnowledgeBase

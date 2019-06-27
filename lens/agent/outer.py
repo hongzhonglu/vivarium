@@ -1,15 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
-from collections import defaultdict
 import math
-import uuid
 import numpy as np
 import os
-import time
 
-import agent.event as event
-from agent.agent import Agent
-import utils.filepath as fp
+from lens import agent as event
+from lens.agent import Agent
+import lens.utils.filepath as fp
 
 
 class EnvironmentSimulation(object):

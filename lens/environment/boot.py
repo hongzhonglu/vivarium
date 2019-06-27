@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from agent.outer import Outer
-from agent.inner import Inner
-from agent.boot import BootAgent
+from lens.agent import Outer
+from lens.agent import Inner
+from lens.agent import BootAgent
 
 from environment.lattice import EnvironmentSpatialLattice
 from environment.surrogates.metabolism import Metabolism
