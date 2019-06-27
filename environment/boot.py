@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import shutil
 
 from agent.outer import Outer
 from agent.inner import Inner
@@ -15,8 +16,6 @@ from environment.surrogates.transport_kinetics import TransportKinetics
 from environment.surrogates.transport_lookup import TransportLookup
 from environment.surrogates.division import Division
 from environment.condition.make_media import Media
-
-import utils.filepath as fp
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -65,6 +64,9 @@ def boot_lattice(agent_id, agent_type, agent_config):
         media = make_media.make_recipe(media_id)
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
+    if os.path.exists(output_dir) and os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
+
     boot_config = {
         'output_dir': output_dir,
         'concentrations': media,

@@ -26,6 +26,7 @@ from scipy.ndimage import convolve
 from environment.condition.make_media import Media
 from agent.outer import EnvironmentSimulation
 from utils.multicell_physics import MultiCellPhysics
+from utils.io.tablewriter import TableWriter
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -122,6 +123,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
+        # Track agent tables
+        self.agent_tables = {}
 
     def evolve(self):
         ''' Evolve environment '''
@@ -134,7 +137,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        self.table_append()
+        self.append_agent_tables()
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -319,8 +322,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.motile_forces[agent_id] = [0.0, 0.0]
 
         # create output file for each cell to log location data
-        table_writer_file = os.path.join(self.output_dir, agent_id)
-        self.create_agent_table(table_writer_file)  # TODO -- get tableWriter path
+        self.create_agent_table(agent_id)  # TODO -- get tableWriter path
 
     def apply_inner_update(self, update, now):
         '''
@@ -384,40 +386,32 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
+        self.agent_tables.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
 
 
-    # Analysis
+    # TableWriter for agents
+    def create_agent_table(self, agent_id):
+        if agent_id not in self.agent_tables:
+            table_writer_file = os.path.join(self.output_dir, agent_id)
+            table = TableWriter(table_writer_file)
+            table.writeAttributes(
+                start_time = self.time(),
+            )
+            self.agent_tables[agent_id] = table
 
-    # TODO -- each agent needs a table to write to.  It can use its agent_id as the directory name.
-    def create_agent_table(self, tableWriter):
-        import ipdb; ipdb.set_trace()
+    def append_agent_tables(self):
+        for agent_id, table in self.agent_tables.iteritems():
+            agent_location = self.locations[agent_id]
 
-        tableWriter.writeAttributes(
-            # nutrientTimeSeriesLabel = self.current_timeline_id,
-        )
+            agent_state = self.simulations[agent_id]['state']
+            agent_volume = agent_state['volume']
+            agent_width = agent_state['width']
+            agent_length = agent_state['length']
 
-
-
-    def table_append(self, tableWriter):
-
-        # TODO -- for all agents.
-
-        tableWriter.append(
-            # media_id=self.current_media_id.ljust(self._media_id_max_length),
-            # media_concentrations=self._concentrations,
-        )
-
-    # def listener(self):
-    #
-    #     # save all agent states
-    #     for agent_id, location in self.locations.iteritems():
-    #
-    #         location = self.locations[agent_id]
-    #         agent_state = self.simulations[agent_id]['state']
-    #         volume = agent_state['volume']
-    #         width = agent_state['width']
-    #         length = agent_state['length']
-    #
-    #     # save lattice state
-    #     self.lattice
+            table.append(
+                location=agent_location,
+                volume=agent_volume,
+                width=agent_width,
+                length=agent_length
+            )
