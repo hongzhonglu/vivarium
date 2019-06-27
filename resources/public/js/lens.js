@@ -213,7 +213,7 @@ function buildLattice(lens, draw, m, n, width) {
           .x(i*width)
           .y(j*width)
           .fill(rgbToHex([i / m, 1 - (j / m), 1]))
-          .width(width*1.05)
+          .width(width*1.05)  // Helps reduce grid-like artifact for certain lattice size
           .height(width*1.05)
           .click(function(patch) {
             return function(event) {

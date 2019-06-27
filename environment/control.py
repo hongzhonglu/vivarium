@@ -80,9 +80,9 @@ class ShepherdControl(AgentControl):
             'media': media,
             'timeline': current_timeline,
             'translation_jitter': 0.5,
-            'rotation_jitter': 0.01,
+            'rotation_jitter': 0.005,
             'edge_length': 40.0,
-            'patches_per_edge': 40,
+            'patches_per_edge': 20,
         }
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
