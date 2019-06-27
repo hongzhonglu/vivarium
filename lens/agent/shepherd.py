@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import multiprocessing as mp
-from lens import agent as event
-from lens.agent import Agent
+import lens.agent.event as event
+from lens.agent.agent import Agent
 
 class AgentShepherd(Agent):
 

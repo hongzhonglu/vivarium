@@ -4,7 +4,7 @@ import os
 import csv
 import random
 from itertools import ifilter
-from reconstruction.spreadsheets import JsonReader
+from lens.reconstruction.spreadsheets import JsonReader
 
 LOOKUP_DIR = os.path.join('environment', 'condition', 'look_up_tables')
 

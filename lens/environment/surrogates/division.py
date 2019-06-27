@@ -4,7 +4,7 @@ import time
 import random
 import uuid
 
-from lens.agent import CellSimulation
+from lens.agent.inner import CellSimulation
 
 
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]

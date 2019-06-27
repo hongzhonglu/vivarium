@@ -7,7 +7,7 @@ import csv
 import json
 import re
 import numpy as np
-
+from lens.utils import units
 
 def array_to_list(value):
     if isinstance(value, np.ndarray):

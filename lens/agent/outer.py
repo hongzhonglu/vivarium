@@ -4,8 +4,8 @@ import math
 import numpy as np
 import os
 
-from lens import agent as event
-from lens.agent import Agent
+import lens.agent.event as event
+from lens.agent.agent import Agent
 import lens.utils.filepath as fp
 
 

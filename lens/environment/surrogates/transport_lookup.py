@@ -6,11 +6,11 @@ import csv
 import math
 from scipy import constants
 
-from lens.agent import CellSimulation
-from environment.condition.look_up_tables.look_up import LookUp
-from reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
-from reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactions_from_exchange
-from reconstruction.spreadsheets import JsonReader
+from lens.agent.inner import CellSimulation
+from lens.environment.condition.look_up_tables.look_up import LookUp
+from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
+from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactions_from_exchange
+from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
 EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')

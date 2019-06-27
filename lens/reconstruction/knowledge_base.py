@@ -2,12 +2,13 @@
 import os
 import csv
 
-from reconstruction.spreadsheets import JsonReader
+from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
+# from lens.utils import units  # used by eval()
 
 CSV_DIALECT = csv.excel_tab
 
-ENV_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "environment")
+ENV_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "lens", "environment")
 
 LIST_OF_ENV_FILENAMES = (
     os.path.join("condition", "environment_molecules.tsv"),

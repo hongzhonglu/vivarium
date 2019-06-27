@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import time
 
-from lens import agent as event
-from lens.agent import Agent
+import lens.agent.event as event
+from lens.agent.agent import Agent
 
 
 class CellSimulation(object):

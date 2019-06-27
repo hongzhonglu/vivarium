@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import time
 import uuid
 
-from environment.condition.make_media import Media
-from lens.agent import AgentControl, AgentCommand
+from lens.environment.condition.make_media import Media
+from lens.agent.control import AgentControl, AgentCommand
 
 
 class ShepherdControl(AgentControl):

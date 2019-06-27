@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import time
 import random
 
-from .inner import CellSimulation
-from .outer import EnvironmentSimulation
+from lens.agent.inner import CellSimulation
+from lens.agent.outer import EnvironmentSimulation
 
 class SimulationStub(CellSimulation):
 

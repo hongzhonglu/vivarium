@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 from lens.utils import units
 
 # Raw data class
-from reconstruction.knowledge_base import KnowledgeBase
+from lens.reconstruction.knowledge_base import KnowledgeBase
 
 
 INF = float("inf")

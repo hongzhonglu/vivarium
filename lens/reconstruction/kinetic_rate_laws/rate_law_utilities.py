@@ -27,10 +27,10 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from reconstruction.spreadsheets import JsonReader
+from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
-from environment.condition.look_up_tables.look_up import LookUp
+from lens.environment.condition.look_up_tables.look_up import LookUp
 import lens.utils.kinetic_rate_laws as rate_laws
 
 

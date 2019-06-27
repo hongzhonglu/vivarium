@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import random
 
-from lens.agent import CellSimulation
+from lens.agent.inner import CellSimulation
 
 TUMBLE_JITTER = 0.02  # 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]

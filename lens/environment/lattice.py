@@ -22,9 +22,9 @@ import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
 
-from environment.condition.make_media import Media
-from lens.agent import EnvironmentSimulation
-from lens.utils import MultiCellPhysics
+from lens.environment.condition.make_media import Media
+from lens.agent.outer import EnvironmentSimulation
+from lens.utils.multicell_physics import MultiCellPhysics
 
 # Constants
 N_AVOGADRO = constants.N_A

@@ -15,13 +15,13 @@ import time
 from scipy import constants
 import json
 
-from reconstruction.spreadsheets import JsonReader
+from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
-from lens.agent import CellSimulation
-from environment.condition.look_up_tables.look_up import LookUp
+from lens.agent.inner import CellSimulation
+from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.utils.kinetic_rate_laws import KineticFluxModel
-from reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
+from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
 
 TUMBLE_JITTER = 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 51, 51]]

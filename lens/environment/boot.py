@@ -1,18 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.agent import Outer
-from lens.agent import Inner
-from lens.agent import BootAgent
+from lens.agent.outer import Outer
+from lens.agent.inner import Inner
+from lens.agent.boot import BootAgent
 
-from environment.lattice import EnvironmentSpatialLattice
-from environment.surrogates.metabolism import Metabolism
-from environment.surrogates.chemotaxis_minimal import ChemotaxisMinimal
-from environment.surrogates.chemotaxis_MWC_sensors import Chemotaxis
-from environment.surrogates.endocrine import Endocrine
-from environment.surrogates.transport_kinetics import TransportKinetics
-from environment.surrogates.transport_lookup import TransportLookup
-from environment.surrogates.division import Division
-from environment.condition.make_media import Media
+from lens.environment.lattice import EnvironmentSpatialLattice
+from lens.environment.surrogates.metabolism import Metabolism
+from lens.environment.surrogates.chemotaxis_minimal import ChemotaxisMinimal
+from lens.environment.surrogates.chemotaxis_MWC_sensors import Chemotaxis
+from lens.environment.surrogates.endocrine import Endocrine
+from lens.environment.surrogates.transport_kinetics import TransportKinetics
+from lens.environment.surrogates.transport_lookup import TransportLookup
+from lens.environment.surrogates.division import Division
+from lens.environment.condition.make_media import Media
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
