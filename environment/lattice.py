@@ -123,6 +123,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
+        # Output
+        self.create_lattice_table()
         # Track agent tables
         self.agent_tables = {}
 
@@ -390,7 +392,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.remove_cell(agent_id)
 
 
-    # TableWriter for agents
+    # TableWriter functions
+    def create_lattice_table(self):
+        table = TableWriter(self.output_dir)
+        table.writeAttributes(
+            edge_length=self.edge_length,
+        )
+
     def create_agent_table(self, agent_id):
         # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
         if agent_id not in self.agent_tables:
