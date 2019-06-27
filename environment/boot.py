@@ -64,7 +64,7 @@ def boot_lattice(agent_id, agent_type, agent_config):
         media = make_media.make_recipe(media_id)
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.exists(output_dir) and os.path.isdir(output_dir):
+    if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
 
     boot_config = {

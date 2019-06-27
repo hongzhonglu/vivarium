@@ -175,7 +175,25 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
-    def add_cell_from_center(self, cell_id, width, length, mass, center_position, angle, angular_velocity=None):
+    def add_cell_from_center(self, **values):
+        '''
+        add a cell to the physics engine by specifying a dictionary with values:
+            - cell_id (str): the cell's id
+            - width (float)
+            - length (float)
+            - mass (float)
+            - center_position (float)
+            - angle (float)
+            - angular_velocity (float) -- this value is optional, if it is not given, it is set to 0.
+        '''
+        cell_id = values.get('cell_id')
+        width = values.get('width')
+        length = values.get('length')
+        mass = values.get('mass')
+        center_position = values.get('center_position')
+        angle = values.get('angle')
+        angular_velocity = values.get('angular_velocity', 0.0)
+
         half_length = length/2 * self.pygame_scale
         half_width = width/2 * self.pygame_scale
 
@@ -192,8 +210,7 @@ class MultiCellPhysics(object):
         body.position = (center_position[0] * self.pygame_scale, center_position[1] * self.pygame_scale)
         body.angle = angle
         body.dimensions = (width, length)
-        if angular_velocity:
-            body.angular_velocity = angular_velocity
+        body.angular_velocity = angular_velocity
 
         shape.elasticity = self.elasticity
         shape.friction = self.friction
@@ -323,23 +340,23 @@ if __name__ == '__main__':
 
     # add cell
     physics.add_cell_from_center(
-        agent_id,
-        width,
-        length,
-        mass,
-        position,
-        angle,
+        cell_id = agent_id,
+        width = width,
+        length = length,
+        mass = mass,
+        position = position,
+        angle = angle,
     )
 
     # add object
     object_id = 999
     physics.add_cell_from_center(
-        object_id,    # agent_id,
-        0.5,          # width
-        0.5,          # length
-        100000.0,       # mass
-        (14.0, 14.0),     # position
-        0.0,          # angle
+        cell_id=object_id,    # agent_id,
+        width=0.5,          # width
+        length=0.5,          # length
+        mass=100000.0,       # mass
+        position=(14.0, 14.0),     # position
+        angle=0.0,          # angle
     )
 
     running = True

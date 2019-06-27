@@ -7,7 +7,7 @@ import json
 import numpy as np
 import zlib
 
-from wholecell.utils import filepath
+from utils import filepath
 from . import tablewriter as tw
 
 __all__ = [
@@ -73,12 +73,6 @@ class TableReader(object):
 	Parameters:
 		path (str): Path to the input location (a directory).
 
-	See also
-	--------
-	wholecell.io.tablewriter.TableWriter
-	wholecell.tests.io.measure_bulk_reader
-	wholecell.tests.io.measure_zlib
-	"docs/misc/byte_strings_to_2D_arrays.md"
 	"""
 
 	def __init__(self, path):

@@ -185,12 +185,12 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.simulations[agent_id]['state']['width'] = width
 
         self.multicell_physics.add_cell_from_center(
-            agent_id,
-            width,
-            length,
-            mass,
-            position,
-            angle,
+            cell_id = agent_id,
+            width = width,
+            length = length,
+            mass = mass,
+            center_position = position,
+            angle = angle,
         )
 
         # add to lattice
