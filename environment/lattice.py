@@ -392,6 +392,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     # TableWriter for agents
     def create_agent_table(self, agent_id):
+        # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
         if agent_id not in self.agent_tables:
             table_writer_file = os.path.join(self.output_dir, agent_id)
             table = TableWriter(table_writer_file)
