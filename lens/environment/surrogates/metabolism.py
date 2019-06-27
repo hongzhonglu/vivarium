@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import os
 import csv
+import numpy as np
 from scipy import constants
 
 from lens.utils import units
@@ -111,7 +112,7 @@ class Metabolism(CellSimulation):
 
         # convert transport limits from mmol/gDCW/hr to mol/L
         coefficient = self.dry_mass / self.cell_mass * self.cell_density * (self.timestep * units.s)  # coeff is in g*s/L
-        transport_limits_molar = {mol_id: (limit * coefficient).asNumber(units.mol / units.L)
+        transport_limits_molar = {mol_id: (limit * coefficient).asNumber(units.mol/units.L)
                                   for mol_id, limit in transport_limits.iteritems()}
 
         fba = FluxBalanceAnalysis(

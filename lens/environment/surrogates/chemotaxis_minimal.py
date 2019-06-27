@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import time
 import random
+import numpy as np
 
 from lens.agent.inner import CellSimulation
 
