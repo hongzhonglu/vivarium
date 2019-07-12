@@ -6,11 +6,11 @@ from distutils.core import setup
 with open("README.md", 'r') as readme:
 	long_description = readme.read()
 
-current_dir = os.getcwd()
-lens_dir = os.path.join(current_dir, 'lens')
+with open("requirements.txt", 'r') as requirements:
+	install_requires = list(requirements.read().splitlines())
 
 setup(
-	name='lens',
+	name='wholecell-lens',
 	version='0.0.1',
 	packages=['lens'],
 	author='Eran Agmon',
@@ -18,4 +18,6 @@ setup(
 	url='https://github.com/CovertLab/Lens',
 	license='MIT',
 	long_description=long_description,
-	long_description_content_type='text/markdown')
+	long_description_content_type='text/markdown',
+	install_requires=install_requires
+	)
