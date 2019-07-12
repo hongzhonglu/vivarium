@@ -175,7 +175,7 @@ class MultiCellPhysics(object):
         # update cell
         self.cells[cell_id] = (new_body, new_shape)
 
-    def add_cell_from_center(self, **values):
+    def add_cell_from_center(self, cell_id, width, length, mass, center_position, angle, angular_velocity=0.0):
         '''
         add a cell to the physics engine by specifying a dictionary with values:
             - cell_id (str): the cell's id
@@ -186,13 +186,6 @@ class MultiCellPhysics(object):
             - angle (float)
             - angular_velocity (float) -- this value is optional, if it is not given, it is set to 0.
         '''
-        cell_id = values.get('cell_id')
-        width = values.get('width')
-        length = values.get('length')
-        mass = values.get('mass')
-        center_position = values.get('center_position')
-        angle = values.get('angle')
-        angular_velocity = values.get('angular_velocity', 0.0)
 
         half_length = length/2 * self.pygame_scale
         half_width = width/2 * self.pygame_scale

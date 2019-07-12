@@ -1,5 +1,8 @@
 '''
 Analysis plot
+
+run by passing path to the output directory:
+> python analysis/location_trace.py -p 'out/out_dir'
 '''
 from __future__ import absolute_import
 
@@ -11,6 +14,7 @@ matplotlib.use('TkAgg')  # solves "RuntimeError: Python is not installed as a fr
 import matplotlib.pyplot as plt
 
 from utils.io.tablereader import TableReader
+import utils.filepath as fp
 
 
 class TraceLocationPlot(object):
@@ -24,8 +28,6 @@ class TraceLocationPlot(object):
         self.plot(path)
 
     def add_arguments(self, parser):
-
-        # TODO -- make this a relative path, which can take just the first digits of the experiment
         parser.add_argument(
             '-p', '--path',
             type=str,
@@ -65,11 +67,8 @@ class TraceLocationPlot(object):
         plt.ylim((0, edge_length))
 
         # save figure
-        output_dir = os.path.join(path, 'plot_out')
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
+        output_dir = fp.makedirs(path, 'plot_out')
         plt.savefig(os.path.join(output_dir, 'location_trace'), bbox_inches='tight')
-
 
 if __name__ == '__main__':
     command = TraceLocationPlot()
