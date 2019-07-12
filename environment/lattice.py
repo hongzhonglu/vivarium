@@ -17,6 +17,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import os
 import math
 import numpy as np
 from scipy import constants
@@ -25,6 +26,7 @@ from scipy.ndimage import convolve
 from environment.condition.make_media import Media
 from agent.outer import EnvironmentSimulation
 from utils.multicell_physics import MultiCellPhysics
+from utils.io.tablewriter import TableWriter
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -52,6 +54,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.cell_density = CELL_DENSITY  # TODO (Eran) -- get mass from cell sim rather than using density to convert volume to mass
 
         # configured parameters
+        self.output_dir = config.get('output_dir')
         self.run_for = config.get('run_for', 5.0)
         self.edge_length = config.get('edge_length', 10.0)
         self.patches_per_edge = config.get('patches_per_edge', 10)
@@ -120,6 +123,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
+        # Output
+        self.create_lattice_table()
+        # Track agent tables
+        self.agent_tables = {}
+
     def evolve(self):
         ''' Evolve environment '''
         self.update_locations()
@@ -131,6 +139,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
+        self.append_agent_tables()
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -165,6 +174,30 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
 
+    def add_cell_to_physics(self, agent_id, position, angle):
+        ''' Add body to multi-cell physics simulation'''
+
+        volume = self.simulations[agent_id]['state']['volume']
+        width = self.cell_radius * 2
+        length = self.volume_to_length(volume, self.cell_radius)
+        mass = volume * self.cell_density  # TODO -- get units to work
+
+        # add length, width to state, for use by visualization
+        self.simulations[agent_id]['state']['length'] = length
+        self.simulations[agent_id]['state']['width'] = width
+
+        self.multicell_physics.add_cell_from_center(
+            cell_id = agent_id,
+            width = width,
+            length = length,
+            mass = mass,
+            center_position = position,
+            angle = angle,
+        )
+
+        # add to lattice
+        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
+        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
     def update_media(self):
         if self.timeline:
@@ -178,14 +211,12 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 print('Media condition: ' + str(self.media_id))
 
-
     def fill_lattice(self, media):
         # Create lattice and fill each site with concentrations dictionary
         # Molecule identities are defined along the major axis, with spatial dimensions along the other two axes.
         self.lattice = np.empty([len(self._molecule_ids)] + [self.patches_per_edge for dim in xrange(N_DIMS)], dtype=np.float64)
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
-
 
     def run_diffusion(self):
         change_lattice = np.zeros(self.lattice.shape)
@@ -197,7 +228,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 change_lattice[index] = self.diffusion_timestep(molecule)
 
         self.lattice += change_lattice
-
 
     def diffusion_timestep(self, lattice):
         ''' calculate concentration changes cause by diffusion'''
@@ -222,6 +252,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def count_to_concentration(self, count):
         ''' Convert count to concentrations '''
         return count / (self.patch_volume * N_AVOGADRO)
+
 
     # functions for getting values
     def simulation_parameters(self, agent_id):
@@ -258,7 +289,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         return self._max_time
 
 
-    ## Agent interface
+    # Agent interface
     def run_incremental(self, run_until):
         ''' Simulate until run_until '''
         while self._time < run_until:
@@ -292,32 +323,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
-
-    def add_cell_to_physics(self, agent_id, position, angle):
-        ''' Add body to multi-cell physics simulation'''
-
-        agent_state = self.simulations[agent_id]['state']
-        volume = agent_state['volume']
-        width = self.cell_radius * 2
-        length = self.volume_to_length(volume, self.cell_radius)
-        mass = volume * self.cell_density   # TODO -- get units to work
-
-        # add length, width to state, for use by visualization
-        agent_state['length'] = length
-        agent_state['width'] = width
-
-        self.multicell_physics.add_cell_from_center(
-            agent_id,
-            width,
-            length,
-            mass,
-            position,
-            angle,
-        )
-
-        # add to lattice
-        self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
-        self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
+        # create output file for each cell to log location data
+        self.create_agent_table(agent_id)  # TODO -- get tableWriter path
 
     def apply_inner_update(self, update, now):
         '''
@@ -381,4 +388,39 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
+        self.agent_tables.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
+
+
+    # TableWriter functions
+    def create_lattice_table(self):
+        table = TableWriter(self.output_dir)
+        table.writeAttributes(
+            edge_length=self.edge_length,
+        )
+
+    def create_agent_table(self, agent_id):
+        # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
+        if agent_id not in self.agent_tables:
+            table_writer_file = os.path.join(self.output_dir, agent_id)
+            table = TableWriter(table_writer_file)
+            table.writeAttributes(
+                start_time = self.time(),
+            )
+            self.agent_tables[agent_id] = table
+
+    def append_agent_tables(self):
+        for agent_id, table in self.agent_tables.iteritems():
+            agent_location = self.locations[agent_id]
+
+            agent_state = self.simulations[agent_id]['state']
+            agent_volume = agent_state['volume']
+            agent_width = agent_state['width']
+            agent_length = agent_state['length']
+
+            table.append(
+                location=agent_location,
+                volume=agent_volume,
+                width=agent_width,
+                length=agent_length
+            )
