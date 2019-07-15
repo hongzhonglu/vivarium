@@ -11,7 +11,7 @@ with open("requirements.txt", 'r') as requirements:
 
 setup(
 	name='wholecell-lens',
-	version='0.0.1',
+	version='0.0.2',
 	packages=['lens'],
 	author='Eran Agmon',
 	author_email='eagmon@stanford.edu',
