@@ -71,7 +71,7 @@ def boot_lattice(agent_id, agent_type, agent_config):
         'output_dir': output_dir,
         'concentrations': media,
     }
-
+    boot_config.update(agent_config)
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
