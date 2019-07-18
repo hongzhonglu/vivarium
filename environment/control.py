@@ -142,8 +142,8 @@ class ShepherdControl(AgentControl):
                 'seed': True,
                 'molecules': {
                     'GLC':{
-                        'center': [0.5, 0.5],
-                        'deviation': 30.0},
+                        'center': [0.0, 1.0],
+                        'deviation': 50.0},
                     'MeAsp': {
                         'center': [0.25, 0.25],
                         'deviation': 30.0}
@@ -152,7 +152,7 @@ class ShepherdControl(AgentControl):
             'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
             'edge_length': 100.0,
-            'patches_per_edge': 20,
+            'patches_per_edge': 50,
             'media_id': media_id,
             'media': media}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)

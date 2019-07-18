@@ -6,7 +6,7 @@ import numpy as np
 
 from agent.inner import CellSimulation
 
-TUMBLE_JITTER = 0.02  # 2.0 # (radians)
+TUMBLE_JITTER = 0.5  # (radians)
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]
 
 class ChemotaxisMinimal(CellSimulation):
@@ -27,6 +27,7 @@ class ChemotaxisMinimal(CellSimulation):
         self.environment_change = {}
         self.volume = 1.0
         self.division_time = 100
+        self.color = DEFAULT_COLOR
 
         # initial state
         self.state = ['tumble']
@@ -103,5 +104,5 @@ class ChemotaxisMinimal(CellSimulation):
             'motile_force': self.motile_force,
             'environment_change': self.environment_change,
             'division': self.division,
-            'color': DEFAULT_COLOR,
+            'color': self.color,
             }
