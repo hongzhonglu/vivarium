@@ -9,7 +9,7 @@ import random
 from agent.inner import CellSimulation
 
 
-TUMBLE_JITTER = 2.0 # (radians)
+TUMBLE_JITTER = 0.5  # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 127]]
 
 # MeAsp is an attractant
@@ -53,6 +53,7 @@ class Chemotaxis(CellSimulation):
         self.environment_change = {}
         self.volume = 1.0
         self.division_time = 100
+        self.color = DEFAULT_COLOR
 
         # initial state
         self.motor_state = 'tumble'
@@ -187,7 +188,7 @@ class Chemotaxis(CellSimulation):
             'motile_force': self.motile_force,
             'environment_change': self.environment_change,
             'division': self.division,
-            'color': DEFAULT_COLOR,
+            'color': self.color,
             }
 
     def synchronize_state(self, state):

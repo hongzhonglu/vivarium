@@ -124,11 +124,11 @@ class MultiCellPhysics(object):
                     motile_force = [0.0, 0.0]
                     if hasattr(body, 'motile_force'):
                         force, motile_torque = body.motile_force
-                        motile_force = [force, 0.0]
+                        motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
 
-                    body.angular_velocity += (jitter_torque + motile_torque)
-                    force = [a + b for a, b in zip(jitter_force, motile_force)]
-                    body.apply_force_at_local_point(force, location)
+                    body.angular_velocity = (jitter_torque + motile_torque)  # TODO (eran) add to angular velocity rather than replace it. Needs better damping first
+                    total_force = [a + b for a, b in zip(jitter_force, motile_force)]
+                    body.apply_force_at_local_point(total_force, location)
 
                 self.space.step(self.physics_dt)
 
