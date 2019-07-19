@@ -266,6 +266,7 @@ def analyze_rate_laws(kinetic_rate_laws, baseline_concentrations, output_filenam
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     plt.savefig(os.path.join(OUTPUT_DIR, output_filename), bbox_inches='tight')
+    plt.savefig(os.path.join(OUTPUT_DIR, output_filename + '.pdf'), bbox_inches='tight')
 
     print('rate law analysis plot saved')
 
