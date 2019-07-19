@@ -39,11 +39,11 @@ class LookUp(object):
         values = {}
         if lookup_type == 'average':
             values = {
-                key: self.lookup_avg[media][key]
+                key: self.lookup_avg[media].get(key, None)
                 for key in keys}
         if lookup_type == 'distribution':
             values = {
-                key: random.choice(self.lookup_avg[media][key])
+                key: random.choice(self.lookup_avg[media].get(key, None))
                 for key in keys}
 
         return values

@@ -213,7 +213,8 @@ def construct_convenience_rate_law(stoichiometry, transporter, cofactors_sets, p
                     parameters[molecule]  # km of molecule
                 )() for molecule in cofactors
             ])
-            numerator += kcat * term
+            numerator += kcat * term  # TODO (if there is no kcat, need an exception)
+
         numerator *= transporter_concentration
 
         # construct denominator, with all competing terms in the partition

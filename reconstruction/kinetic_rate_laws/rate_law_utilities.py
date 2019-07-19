@@ -32,6 +32,7 @@ from itertools import ifilter
 
 from environment.condition.look_up_tables.look_up import LookUp
 import utils.kinetic_rate_laws as rate_laws
+from utils import filepath
 
 
 TSV_DIALECT = csv.excel_tab
@@ -407,6 +408,10 @@ class RateLawUtilities(object):
         # make look up object and get saved concentrations from wcm (mmol/L)
         self.look_up = LookUp()
         self.concentrations = self.look_up.look_up('average', args.media, self.molecule_ids)
+        for mol_id, conc in self.concentrations.iteritems():
+            if conc is None:
+                print('{} concentration is not available in look up table, setting to 1 mmol/L'.format(mol_id))
+                self.concentrations[mol_id] = 1.0
 
         if args.analyze:
             self.run_analysis()
@@ -480,8 +485,10 @@ class RateLawUtilities(object):
         # make a parameter template
         parameter_template = self.get_parameter_template(reactions)
 
-        output_name = os.path.join(OUTPUT_DIR, 'parameter_template.json')
-        with open(output_name, 'w') as fp:
+        time_stamp = filepath.timestamp()
+        output_name = 'parameter_template_' + time_stamp +'.json'
+        output_file = os.path.join(OUTPUT_DIR, output_name)
+        with open(output_file, 'w') as fp:
             json.dump(parameter_template, fp, sort_keys=True, indent=2)
 
         print('rate law parameter template saved')
