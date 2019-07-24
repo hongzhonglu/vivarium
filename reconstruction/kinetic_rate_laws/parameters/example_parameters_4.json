@@ -1,0 +1,14 @@
+{
+  "TRANS-RXN-157": {
+    "CPLX-157[i]": {
+      "GLC[p]": 5.0,
+      "PTSH-PHOSPHORYLATED[c]": null,
+      "kcat_f": 25611.2
+    },
+    "CPLX-165[i]": {
+      "GLC[p]": 0.005,
+      "PTSH-PHOSPHORYLATED[c]": null,
+      "kcat_f": 25611.2
+    }
+  }
+}

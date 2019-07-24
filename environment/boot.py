@@ -174,7 +174,7 @@ def boot_chemotaxis(agent_id, agent_type, agent_config):
         agent_type,
         agent_config,
         options,
-        initialize_chemotaxis_minimal)
+        initialize_chemotaxis)
 
     return inner
 

@@ -48,6 +48,8 @@ class ChemotaxisMinimal(CellSimulation):
         self.motile_force = [0.0, 0.0] # initial magnitude and relative orientation
         self.division = []
 
+        import ipdb; ipdb.set_trace()
+
 
     def update_state(self):
         # update state based on internal and external concentrations

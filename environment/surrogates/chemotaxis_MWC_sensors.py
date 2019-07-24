@@ -14,7 +14,7 @@ DEFAULT_COLOR = [color/255 for color in [255, 0 , 127]]
 
 # MeAsp is an attractant
 # TODO (Eran) -- add NiCl2, a repellent
-LIGAND = 'MeAsp'
+LIGAND = 'GLC'  # in the original model the ligand is 'MeAsp'
 
 ## Parameters
 k_A = 5.0  #
@@ -46,8 +46,8 @@ class Chemotaxis(CellSimulation):
     - http://www.rapidcell.net
     '''
 
-    def __init__(self):
-        self.initial_time = 0.0
+    def __init__(self, state):
+        self.initial_time = state.get('time', 0.0)
         self.local_time = 0.0
         self.timestep = 1.0
         self.environment_change = {}
@@ -57,7 +57,7 @@ class Chemotaxis(CellSimulation):
 
         # initial state
         self.motor_state = 'tumble'
-        self.external = {'MeAsp': 0.0}
+        self.external = {'GLC': 0.0}
 
         ## Initial state
         # receptor-activated kinase
@@ -138,6 +138,10 @@ class Chemotaxis(CellSimulation):
                 self.run()
             else:
                 self.tumble()
+
+
+        import ipdb; ipdb.set_trace()
+
 
     def tumble(self):
         force = 5.0
