@@ -140,16 +140,12 @@ class Chemotaxis(CellSimulation):
                 self.tumble()
 
 
-        import ipdb; ipdb.set_trace()
-
-
     def tumble(self):
         force = 5.0
         torque = random.normalvariate(0, TUMBLE_JITTER)
         self.motile_force = [force, torque]
 
         print('TUMBLE!')
-        time.sleep(1)
 
     def run(self):
         force = 15.0
@@ -157,7 +153,6 @@ class Chemotaxis(CellSimulation):
         self.motile_force = [force, torque]
 
         print('RUN!')
-        time.sleep(1)
 
     def check_division(self):
         # update division state based on time since initialization
@@ -184,7 +179,7 @@ class Chemotaxis(CellSimulation):
             # self.check_division()
             self.local_time += self.timestep
 
-        # time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
+        time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
 
     def generate_inner_update(self):
         return {

@@ -69,6 +69,7 @@ class TraceLocationPlot(object):
         # save figure
         output_dir = fp.makedirs(path, 'plot_out')
         plt.savefig(os.path.join(output_dir, 'location_trace'), bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, 'location_trace.pdf'), bbox_inches='tight')
 
 if __name__ == '__main__':
     command = TraceLocationPlot()
