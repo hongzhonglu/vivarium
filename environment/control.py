@@ -142,7 +142,7 @@ class ShepherdControl(AgentControl):
                 'seed': True,
                 'molecules': {
                     'GLC':{
-                        'center': [0.0, 1.0],
+                        'center': [0.5, 1.0],
                         'deviation': 50.0},
                     'MeAsp': {
                         'center': [0.25, 0.25],
@@ -261,7 +261,6 @@ class EnvironmentCommand(AgentCommand):
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.endocrine_experiment(args)
         control.shutdown()
-
 
     def add_arguments(self, parser):
         parser = super(EnvironmentCommand, self).add_arguments(parser)

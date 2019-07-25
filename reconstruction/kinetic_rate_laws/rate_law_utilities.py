@@ -10,7 +10,7 @@ Functions include:
     - get_molecules_from_reactions: given a dict of reactions, returns all the relevant molecules -- substrates and enzymes
 
 The RateLawUtilities module can be called with:
-> python -m wholecell.kinetic_rate_laws.rate_law_utilities
+> python -m reconstruction.kinetic_rate_laws.rate_law_utilities
 
 '''
 

@@ -14,7 +14,7 @@ DEFAULT_COLOR = [color/255 for color in [255, 0 , 127]]
 
 # MeAsp is an attractant
 # TODO (Eran) -- add NiCl2, a repellent
-LIGAND = 'MeAsp'
+LIGAND = 'GLC'  # in the original model the ligand is 'MeAsp'
 
 ## Parameters
 k_A = 5.0  #
@@ -46,8 +46,8 @@ class Chemotaxis(CellSimulation):
     - http://www.rapidcell.net
     '''
 
-    def __init__(self):
-        self.initial_time = 0.0
+    def __init__(self, state):
+        self.initial_time = state.get('time', 0.0)
         self.local_time = 0.0
         self.timestep = 1.0
         self.environment_change = {}
@@ -57,7 +57,7 @@ class Chemotaxis(CellSimulation):
 
         # initial state
         self.motor_state = 'tumble'
-        self.external = {'MeAsp': 0.0}
+        self.external = {'GLC': 0.0}
 
         ## Initial state
         # receptor-activated kinase
@@ -139,13 +139,13 @@ class Chemotaxis(CellSimulation):
             else:
                 self.tumble()
 
+
     def tumble(self):
         force = 5.0
         torque = random.normalvariate(0, TUMBLE_JITTER)
         self.motile_force = [force, torque]
 
         print('TUMBLE!')
-        time.sleep(1)
 
     def run(self):
         force = 15.0
@@ -153,7 +153,6 @@ class Chemotaxis(CellSimulation):
         self.motile_force = [force, torque]
 
         print('RUN!')
-        time.sleep(1)
 
     def check_division(self):
         # update division state based on time since initialization
@@ -180,7 +179,7 @@ class Chemotaxis(CellSimulation):
             # self.check_division()
             self.local_time += self.timestep
 
-        # time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
+        time.sleep(0.2)  # pause for better coordination with Lens visualization. TODO: remove this
 
     def generate_inner_update(self):
         return {
