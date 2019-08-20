@@ -13,8 +13,8 @@ from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactio
 from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
-EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
-TRANSPORT_IDS_FILE = os.path.join("reconstruction", "flat", "transport_reactions.tsv")
+EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
+TRANSPORT_IDS_FILE = os.path.join('lens', 'reconstruction', 'flat', 'transport_reactions.tsv')
 
 TSV_DIALECT = csv.excel_tab
 TUMBLE_JITTER = 2.0 # (radians)
@@ -44,8 +44,8 @@ amino_acids = [
     'VAL'
 ]
 
-aa_p_ids = [aa_id + "[p]" for aa_id in amino_acids]
-exchange_molecules = ["OXYGEN-MOLECULE[p]", "GLC[p]"]
+aa_p_ids = [aa_id + '[p]' for aa_id in amino_acids]
+exchange_molecules = ['OXYGEN-MOLECULE[p]', 'GLC[p]']
 exchange_ids = exchange_molecules + aa_p_ids
 
 class TransportLookup(CellSimulation):
@@ -194,18 +194,18 @@ class TransportLookup(CellSimulation):
         self.all_transport_reactions = {}
         with open(TRANSPORT_IDS_FILE, 'rU') as tsvfile:
             reader = JsonReader(
-                ifilter(lambda x: x.lstrip()[0] != "#", tsvfile), # Strip comments
+                ifilter(lambda x: x.lstrip()[0] != '#', tsvfile), # Strip comments
                 dialect = TSV_DIALECT)
             for row in reader:
-                reaction_id = row["reaction id"]
-                stoichiometry = all_reactions[reaction_id]["stoichiometry"]
-                reversible = all_reactions[reaction_id]["is reversible"]
-                transporters_loc = all_reactions[reaction_id]["catalyzed by"]
+                reaction_id = row['reaction id']
+                stoichiometry = all_reactions[reaction_id]['stoichiometry']
+                reversible = all_reactions[reaction_id]['is reversible']
+                transporters_loc = all_reactions[reaction_id]['catalyzed by']
 
                 self.all_transport_reactions[reaction_id] = {
-                    "stoichiometry": stoichiometry,
-                    "is reversible": reversible,
-                    "catalyzed by": transporters_loc,
+                    'stoichiometry': stoichiometry,
+                    'is reversible': reversible,
+                    'catalyzed by': transporters_loc,
                 }
 
         # Make map of external molecule_ids with a location tag (as used in reaction stoichiometry) to molecule_ids in the environment
@@ -213,7 +213,7 @@ class TransportLookup(CellSimulation):
         self.external_to_molecule_map = {}
         with open(EXTERNAL_MOLECULES_FILE, 'rU') as tsvfile:
             reader = JsonReader(
-                ifilter(lambda x: x.lstrip()[0] != "#", tsvfile), # Strip comments
+                ifilter(lambda x: x.lstrip()[0] != '#', tsvfile), # Strip comments
                 dialect = TSV_DIALECT)
             for row in reader:
                 molecule_id = row['molecule id']

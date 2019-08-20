@@ -13,8 +13,8 @@ import matplotlib
 matplotlib.use('TkAgg')  # solves "RuntimeError: Python is not installed as a framework."
 import matplotlib.pyplot as plt
 
-from utils.io.tablereader import TableReader
-import utils.filepath as fp
+from lens.utils.io.tablereader import TableReader
+import lens.utils.filepath as fp
 
 
 class TraceLocationPlot(object):

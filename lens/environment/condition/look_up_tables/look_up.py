@@ -6,16 +6,16 @@ import random
 from itertools import ifilter
 from lens.reconstruction.spreadsheets import JsonReader
 
-LOOKUP_DIR = os.path.join('environment', 'condition', 'look_up_tables')
+LOOKUP_DIR = os.path.join('lens', 'environment', 'condition', 'look_up_tables')
 
-MEDIA_IDS = ["minimal", "minimal_minus_oxygen", "minimal_plus_amino_acids"]
+MEDIA_IDS = ['minimal', 'minimal_minus_oxygen', 'minimal_plus_amino_acids']
 
 CONC_LOOKUP_FILES = [
-    os.path.join(LOOKUP_DIR, "transport_concentrations", media_id + ".tsv")
+    os.path.join(LOOKUP_DIR, 'transport_concentrations', media_id + '.tsv')
     for media_id in MEDIA_IDS]
 
 FLUX_LOOKUP_FILES = [
-    os.path.join(LOOKUP_DIR, "transport_fluxes", media_id + ".tsv")
+    os.path.join(LOOKUP_DIR, 'transport_fluxes', media_id + '.tsv')
     for media_id in MEDIA_IDS]
 
 TSV_DIALECT = csv.excel_tab
@@ -28,7 +28,7 @@ class LookUp(object):
         self.lookup_dist = {media_id: {} for media_id in MEDIA_IDS}
 
         for filename in (CONC_LOOKUP_FILES + FLUX_LOOKUP_FILES):
-            media_id = filename.split(os.path.sep)[-1].split(".")[0]
+            media_id = filename.split(os.path.sep)[-1].split('.')[0]
             avg, dist = load_lookup(filename)
             self.lookup_avg[media_id].update(avg)
             self.lookup_dist[media_id].update(dist)
@@ -55,12 +55,12 @@ def load_lookup(filename):
     lookup_dist = {}
     with open(filename, 'rU') as tsvfile:
         reader = JsonReader(
-            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile),  # Strip comments
+            ifilter(lambda x: x.lstrip()[0] != '#', tsvfile),  # Strip comments
             dialect=TSV_DIALECT)
         for row in reader:
-            key = row.get("id")
-            avg = row.get("average")
-            dist = row.get("distribution")
+            key = row.get('id')
+            avg = row.get('average')
+            dist = row.get('distribution')
 
             # convert to list of floats
             dist = dist.replace('[', '').replace(']', '').split(', ')

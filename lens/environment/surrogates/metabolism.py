@@ -11,7 +11,7 @@ from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.agent.inner import CellSimulation
 
 TSV_DIALECT = csv.excel_tab
-EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
+EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
 
 COUNTS_UNITS = units.mmol
 VOLUME_UNITS = units.L
@@ -26,59 +26,59 @@ DEFAULT_COLOR = [color/255 for color in [255, 128, 0]]
 KCAT_MAX = 1.4e6
 
 stoichiometry = {
-    "R1": {"A":-1, "ATP":-1, "B":1},
-    "R2a": {"B":-1, "ATP":2, "NADH":2, "C":1},
-    "R2b": {"C":-1, "ATP":-2, "NADH":-2, "B":1},
-    "R3": {"B":-1, "F":1},
-    "R4": {"C":-1, "G":1},
-    "R5": {"G":-1, "C":0.8, "NADH":2},
-    "R6": {"C":-1, "ATP":2, "D":3},
-    "R7": {"C":-1, "NADH":-4, "E":3},
-    "R8a": {"G":-1, "ATP":-1, "NADH":-2, "H":1},
-    "R8b": {"G":1, "ATP":1, "NADH":2, "H":-1},
-    "Rres": {"NADH":-1, "O2":-1, "ATP":1},
+    'R1': {'A':-1, 'ATP':-1, 'B':1},
+    'R2a': {'B':-1, 'ATP':2, 'NADH':2, 'C':1},
+    'R2b': {'C':-1, 'ATP':-2, 'NADH':-2, 'B':1},
+    'R3': {'B':-1, 'F':1},
+    'R4': {'C':-1, 'G':1},
+    'R5': {'G':-1, 'C':0.8, 'NADH':2},
+    'R6': {'C':-1, 'ATP':2, 'D':3},
+    'R7': {'C':-1, 'NADH':-4, 'E':3},
+    'R8a': {'G':-1, 'ATP':-1, 'NADH':-2, 'H':1},
+    'R8b': {'G':1, 'ATP':1, 'NADH':2, 'H':-1},
+    'Rres': {'NADH':-1, 'O2':-1, 'ATP':1},
 }
 
 biomass_stoichiometry = {
-    "v_biomass": {"C":1, "F":1, "H":1, "ATP":10}
+    'v_biomass': {'C':1, 'F':1, 'H':1, 'ATP':10}
 }
 
 # in mmol/gDCW/hr
 transport_limits = {
-    "A": 21.0 * (units.mmol / units.g / units.h),
-    "F": 5.0 * (units.mmol / units.g / units.h),
-    "D": -12.0 * (units.mmol / units.g / units.h),
-    "E": -12.0 * (units.mmol / units.g / units.h),
-    "H": 5.0 * (units.mmol / units.g / units.h),
-    "O2": 15.0 * (units.mmol / units.g / units.h),
+    'A': 21.0 * (units.mmol / units.g / units.h),
+    'F': 5.0 * (units.mmol / units.g / units.h),
+    'D': -12.0 * (units.mmol / units.g / units.h),
+    'E': -12.0 * (units.mmol / units.g / units.h),
+    'H': 5.0 * (units.mmol / units.g / units.h),
+    'O2': 15.0 * (units.mmol / units.g / units.h),
 }
 
 enzymes = {
-    "R1":"E1",
-    "R2a":"E2a",
-    "R2b":"E2b",
-    "R3":"E3",
-    "R4":"E4",
-    "R5":"E5",
-    "R6":"E6",
-    "R7":"E7",
-    "R8a":"E8a",
-    "R8b":"E8b",
-    "Rres":"Eres",
+    'R1':'E1',
+    'R2a':'E2a',
+    'R2b':'E2b',
+    'R3':'E3',
+    'R4':'E4',
+    'R5':'E5',
+    'R6':'E6',
+    'R7':'E7',
+    'R8a':'E8a',
+    'R8b':'E8b',
+    'Rres':'Eres',
 }
 
 initial_concentrations = {
-    "E1":10.0,
-    "E2a":10.0,
-    "E2b":10.0,
-    "E3":10.0,
-    "E4":10.0,
-    "E5":10.0,
-    "E6":10.0,
-    "E7":10.0,
-    "E8a":10.0,
-    "E8b":10.0,
-    "Eres":10.0,
+    'E1':10.0,
+    'E2a':10.0,
+    'E2b':10.0,
+    'E3':10.0,
+    'E4':10.0,
+    'E5':10.0,
+    'E6':10.0,
+    'E7':10.0,
+    'E8a':10.0,
+    'E8b':10.0,
+    'Eres':10.0,
 }
 
 
@@ -118,9 +118,9 @@ class Metabolism(CellSimulation):
         fba = FluxBalanceAnalysis(
             reactionStoich=self.stoichiometry,
             externalExchangedMolecules=transport_limits.keys(),
-            objective=self.biomass_stoichiometry["v_biomass"],
-            objectiveType="standard",
-            solver="glpk-linear",
+            objective=self.biomass_stoichiometry['v_biomass'],
+            objectiveType='standard',
+            solver='glpk-linear',
         )
 
         fba.setExternalMoleculeLevels([transport_limits_molar[molID] for molID in self.exchange_molecules])
