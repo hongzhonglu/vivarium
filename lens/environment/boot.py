@@ -8,13 +8,13 @@ from lens.agent.inner import Inner
 from lens.agent.boot import BootAgent
 
 from lens.environment.lattice import EnvironmentSpatialLattice
-from lens.environment.surrogates.metabolism import Metabolism
-from lens.environment.surrogates.chemotaxis_minimal import ChemotaxisMinimal
-from lens.environment.surrogates.chemotaxis_MWC_sensors import Chemotaxis
-from lens.environment.surrogates.endocrine import Endocrine
-from lens.environment.surrogates.transport_kinetics import TransportKinetics
-from lens.environment.surrogates.transport_lookup import TransportLookup
-from lens.environment.surrogates.division import Division
+from lens.processes.metabolism import Metabolism
+from lens.processes.chemotaxis_minimal import ChemotaxisMinimal
+from lens.processes.chemotaxis_MWC_sensors import Chemotaxis
+from lens.processes.endocrine import Endocrine
+from lens.processes.transport_kinetics import TransportKinetics
+from lens.processes.transport_lookup import TransportLookup
+from lens.processes.division import Division
 from lens.environment.condition.make_media import Media
 
 

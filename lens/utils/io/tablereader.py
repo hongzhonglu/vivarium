@@ -7,8 +7,8 @@ import json
 import numpy as np
 import zlib
 
-from utils import filepath
-from . import tablewriter as tw
+from lens.utils import filepath
+from lens.utils.io import tablewriter as tw
 
 __all__ = [
 	"TableReader",

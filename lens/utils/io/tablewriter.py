@@ -7,7 +7,7 @@ import numpy as np
 import struct
 import zlib
 
-from utils import filepath
+from lens.utils import filepath
 
 
 __all__ = [
