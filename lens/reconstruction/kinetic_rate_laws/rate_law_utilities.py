@@ -10,7 +10,7 @@ Functions include:
     - get_molecules_from_reactions: given a dict of reactions, returns all the relevant molecules -- substrates and enzymes
 
 The RateLawUtilities module can be called with:
-> python -m wholecell.kinetic_rate_laws.rate_law_utilities
+> python -m reconstruction.kinetic_rate_laws.rate_law_utilities
 
 '''
 
@@ -27,12 +27,13 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
+
+from lens.reconstruction.spreadsheets import JsonReader
+from lens.utils import filepath
 
 from lens.environment.condition.look_up_tables.look_up import LookUp
 import lens.utils.kinetic_rate_laws as rate_laws
-
 
 TSV_DIALECT = csv.excel_tab
 
@@ -265,6 +266,7 @@ def analyze_rate_laws(kinetic_rate_laws, baseline_concentrations, output_filenam
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     plt.savefig(os.path.join(OUTPUT_DIR, output_filename), bbox_inches='tight')
+    plt.savefig(os.path.join(OUTPUT_DIR, output_filename + '.pdf'), bbox_inches='tight')
 
     print('rate law analysis plot saved')
 
@@ -407,6 +409,10 @@ class RateLawUtilities(object):
         # make look up object and get saved concentrations from wcm (mmol/L)
         self.look_up = LookUp()
         self.concentrations = self.look_up.look_up('average', args.media, self.molecule_ids)
+        for mol_id, conc in self.concentrations.iteritems():
+            if conc is None:
+                print('{} concentration is not available in look up table, setting to 1 mmol/L'.format(mol_id))
+                self.concentrations[mol_id] = 1.0
 
         if args.analyze:
             self.run_analysis()
@@ -480,8 +486,10 @@ class RateLawUtilities(object):
         # make a parameter template
         parameter_template = self.get_parameter_template(reactions)
 
-        output_name = os.path.join(OUTPUT_DIR, 'parameter_template.json')
-        with open(output_name, 'w') as fp:
+        time_stamp = filepath.timestamp()
+        output_name = 'parameter_template_' + time_stamp +'.json'
+        output_file = os.path.join(OUTPUT_DIR, output_name)
+        with open(output_file, 'w') as fp:
             json.dump(parameter_template, fp, sort_keys=True, indent=2)
 
         print('rate law parameter template saved')
