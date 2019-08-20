@@ -18,6 +18,10 @@ Only one of 'weights' (in units.g) or 'counts' (in units.mmol) is required; if b
 If weight or counts is Infinity, it sets the final concentration to inf.
 If weight or counts is -Infinity, it sets the final concentration to 0.
 
+
+# TODO -- re-write example for new make_media with timelines and recipes
+
+
 Example:
 > ingredients = {
 	'L-ALPHA-ALANINE': {'weight': 1.78 * units.g, 'volume': 0.025 * units.L},
@@ -32,3 +36,9 @@ Example:
 
 ### Combine two medias
 > new_media2 = media_obj.combine_media(base_media, 0.8 * units.L, base_media2, 0.2 * units.L)
+
+### Make timelines from strings
+> timeline_str = '0 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L, ' \
+				   '10 minimal_minus_oxygen 1 L + GLT 0.2 mmol 1 L,' \
+				   '100 minimal 1 L + GLT 0.2 mmol 1 L'
+> timeline = make_timeline(timeline_str)

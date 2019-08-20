@@ -61,7 +61,7 @@ def boot_lattice(agent_id, agent_type, agent_config):
     print("Media condition: {}".format(media_id))
     if not media:
         make_media = Media()
-        media = make_media.make_recipe(media_id)
+        media = make_media.get_saved_media(media_id)
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
     if os.path.isdir(output_dir):

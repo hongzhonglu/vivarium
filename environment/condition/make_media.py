@@ -1,15 +1,16 @@
 '''
 Functions for making media
-
 '''
 
 from __future__ import absolute_import, division, print_function
 
+import uuid
 from utils import units
+from parsimonious.grammar import Grammar
+from parsimonious.nodes import NodeVisitor
 
 # Raw data class
 from reconstruction.knowledge_base import KnowledgeBase
-
 
 INF = float("inf")
 NEG_INF = float("-inf")
@@ -19,281 +20,332 @@ VOLUME_UNITS = units.L
 MASS_UNITS = units.g
 CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 
+grammar = Grammar("""
+	timeline = one_event*
+	one_event = numeric? ws? recipe break?
+	recipe = one_ingredient*
+	one_ingredient = add? subtract? ingredient
+	ingredient = media_id counts? volume? inf?
+	counts = ws numeric count_key
+	volume = ws numeric vol_key
+	count_key = ws "mmol" ws?
+	vol_key = ws "L" ws?
+	inf = ws "Infinity" ws?
+	media_id = ~"[A-Za-z0-9_][^,\s]+"i
+	numeric = ~"[0-9.]+"i
+	add = ws? "+" ws?
+	subtract = ws? "-" ws?
+	break = ws? "," ws?
+	ws  = ~"\s*"
+	""")
 
 class AddIngredientsError(Exception):
-    pass
+	pass
 
 class Media(object):
-    '''
-    A media object is a factory for making new media by either combining
-    two saved media at different volumes (with self.combine_media(), or
-    adding ingredients to a saved media (with self.add_ingredients()).
-    Ingredients can be added by either specifying their weight (in grams)
-    or the counts (in mmol) in addition to the volume. The new media dicts
-    are returned to the caller, and are not saved in this object. A media
-    object holds dicts about stock media in ```self.stock_media``` and the
-    formula weight of environmental molecules in
-    ```self.environment_molecules_fw```, which is needed for mixing in
-    ingredients at weights.
-    '''
+	'''
+	A media object is a factory for making new media by combining
+	media and ingredients at different volumes (with self.make_recipe().
+	Ingredients can be added by either specifying their weight (in grams)
+	or the counts (in mmol) in addition to the volume. The new media dicts
+	are returned to the caller, and are not saved in this object. A media
+	object holds dicts about stock media in ```self.stock_media``` and the
+	formula weight of environmental molecules in
+	```self.environment_molecules_fw```, which is needed for mixing in
+	ingredients at weights.
+	'''
 
-    def __init__(self):
+	def __init__(self):
+
+		raw_data = KnowledgeBase()
+
+		# get dicts from knowledge base
+		self.environment_molecules_fw = self._get_environment_molecules_fw(raw_data)
+
+		self.recipes = self._get_recipes(raw_data)
+		self.recipe_constructor = RecipeConstructor()
+		self._get_stock_media(raw_data)
 
 
-        raw_data = KnowledgeBase()
+	def _get_environment_molecules_fw(self, raw_data):
+		'''get formula weight (units.g / units.mol) for all environmental molecules'''
 
-        # get dicts from knowledge base
-        self.environment_molecules_fw = self._get_environment_molecules_fw(raw_data)
-        self.stock_media = self._get_stock_media(raw_data)
-        self.recipes = self._get_recipes(raw_data)
+		environment_molecules_fw = {}
+		for row in raw_data.condition.environment_molecules:
+			mol = row["molecule id"]
+			fw = row["formula weight"]
+			if fw == 'None':
+				environment_molecules_fw[mol] = None
+			else:
+				environment_molecules_fw[mol] = float(fw) * (units.g / units.mol)
 
-    def _get_environment_molecules_fw(self, raw_data):
-        '''get formula weight (units.g / units.mol) for all environmental molecules'''
+		return environment_molecules_fw
 
-        environment_molecules_fw = {}
-        for row in raw_data.condition.environment_molecules:
-            mol = row["molecule id"]
-            fw = row["formula weight"]
-            if fw == 'None':
-                environment_molecules_fw[mol] = None
-            else:
-                environment_molecules_fw[mol] = float(fw) * (units.g / units.mol)
+	def _get_stock_media(self, raw_data):
+		'''load all stock media'''
 
-        return environment_molecules_fw
+		self.stock_media = {}
+		for label in vars(raw_data.condition.media):
+			# initiate all molecules with 0 concentrations
+			self.stock_media[label] = {
+				row["molecule id"]: 0.0 * CONC_UNITS
+				for row in raw_data.condition.environment_molecules}
 
-    def _get_stock_media(self, raw_data):
-        '''load all stock media'''
+			# get non-zero concentrations (assuming units.mmol / units.L)
+			molecule_concentrations = getattr(raw_data.condition.media, label)
 
-        stock_media = {}
-        for label in vars(raw_data.condition.media):
-            # initiate all molecules with 0 concentrations
-            stock_media[label] = {
-                row["molecule id"]: 0.0 * CONC_UNITS
-                for row in raw_data.condition.environment_molecules}
+			environment_non_zero_dict = {
+				row["molecule id"]: row["concentration"]
+				for row in molecule_concentrations}
 
-            # get non-zero concentrations (assuming units.mmol / units.L)
-            molecule_concentrations = getattr(raw_data.condition.media, label)
+			# update saved_media with non zero concentrations
+			self.stock_media[label].update(environment_non_zero_dict)
 
-            environment_non_zero_dict = {
-                row["molecule id"]: row["concentration"]
-                for row in molecule_concentrations}
+		# add recipes to stock_media
+		for media_id, recipe_raw in self.recipes.iteritems():
+			recipe_parsed = grammar.parse(recipe_raw)
+			recipe = self.recipe_constructor.visit(recipe_parsed)
+			media = self.make_recipe(recipe[0], False) # list only contains one recipe
+			self.stock_media[media_id] = media
 
-            # update saved_media with non zero concentrations
-            stock_media[label].update(environment_non_zero_dict)
 
-        return stock_media
+	def _get_recipes(self, raw_data):
+		recipes = {}
+		for row in raw_data.condition.media_recipes:
+			new_media_id = row["media id"]
+			recipe = row["recipe"]
+			recipes[new_media_id] = recipe
+		return recipes
 
-    def _get_recipes(self, raw_data):
-        '''load recipes'''
+	def get_saved_media(self, media_id, unitless=True):
+		media = self.stock_media.get(media_id)
+		if unitless:
+			media = {mol: conc.asNumber(CONC_UNITS) for mol, conc in media.iteritems()}
+		return media
 
-        recipes = {}
-        for row in raw_data.condition.media_recipes:
-            new_media_id = row["media id"]
+	def make_recipe(self, recipe, unitless=True):
+		'''make a single media recipe'''
 
-            recipe = {}
-            recipe["base media"] = row["base media"]
-            recipe["added media"] = row.get("added media", None)
-            recipe["ingredients"] = row.get("ingredients", None)
+		new_media = {}
+		total_volume = 0.0 * VOLUME_UNITS
+		for ingredient, amount in recipe.iteritems():
 
-            # TODO -- with units placed on Infinity, it makes entries return TypeError: can't multiply sequence by non-int of type 'float'
-            # TODO -- This still works for making media, but you can't read the recipes
-            recipe["base media volume"] = row.get("base media volume", 0 * units.L)
-            recipe["added media volume"] = row.get("added media volume", 0 * units.L)
-            recipe["ingredients weight"] = row.get("ingredients weight", None)
-            recipe["ingredients counts"] = row.get("ingredients counts", None)
-            recipe["ingredients volume"] = row.get("ingredients volume", 0 * units.L)
+			added_volume = amount.get('volume', 0.0 * VOLUME_UNITS)
+			added_counts = amount.get('counts')
+			added_weight = amount.get('weight')
+			operation = amount.get('operation', 'add')
 
-            recipes[new_media_id] = recipe
+			added_media = {}
+			if ingredient in self.stock_media:
+				added_media = self.stock_media[ingredient]
 
-        return recipes
+			# if it is not an existing media, it needs weight or counts to add
+			elif added_weight is not None:
+				# added_weight takes priority over added_counts
+				if added_weight.asNumber() == INF:
+					added_conc = INF * CONC_UNITS
+				elif added_counts.asNumber() >= 0:
+					if self.environment_molecules_fw[ingredient] is not None:
+						fw = self.environment_molecules_fw[ingredient]
+						added_counts = added_weight / fw
+						added_conc = added_counts / added_volume
+					else:
+						raise AddIngredientsError(
+							"No fw defined for {} in environment_molecules.tsv".format(ingredient))
+				else:
+					raise AddIngredientsError(
+						"Negative weight given for {}".format(ingredient))
 
-    def make_saved_media(self):
-        '''make all the media recipes in self.recipes'''
+				# save concentration
+				added_media[ingredient] = added_conc
 
-        self.saved_media = {}
-        for new_media_id in self.recipes.iterkeys():
-            new_media = self.make_recipe(new_media_id)
-            self.saved_media[new_media_id] = new_media
+			elif added_counts is not None:
+				# get new concentration
+				# make infinite concentration of ingredient if mix_counts is Infinity
+				if added_counts.asNumber() == INF:
+					added_conc = INF * CONC_UNITS
+				else:
+					added_conc = added_counts / added_volume
 
-        return self.saved_media
+				added_media[ingredient] = added_conc
 
-    def make_recipe(self, media_id):
-        '''make a single media recipe from self.recipes'''
+			else:
+				raise AddIngredientsError(
+					"No added added weight or counts for {}".format(ingredient))
 
-        recipe = self.recipes[media_id]
-        base_id = recipe["base media"]
-        added_media_id = recipe["added media"]
-        ingredient_ids = recipe["ingredients"]
-        base_media = self.stock_media[base_id]
-        base_vol = recipe["base media volume"]
+			if total_volume.asNumber() == 0.0 and added_volume.asNumber() == 0.0:
+				# no volume, just merge media dicts. This is likely due to a call to a stock_media.
+				new_media.update(added_media)
+			else:
+				new_media = self.combine_media(new_media, total_volume, added_media, added_volume, operation)
 
-        if added_media_id:
-            added_media = self.stock_media[added_media_id]
-            added_vol = recipe["added media volume"]
-            new_media = self.combine_media(base_media, base_vol, added_media, added_vol)
-            base_media = new_media
-            base_vol += added_vol
+			total_volume += added_volume
 
-        if ingredient_ids:
-            added_weight = recipe.get("ingredients weight", None)
-            added_counts = recipe.get("ingredients counts", None)
-            added_vol = recipe.get("ingredients volume")  # the row is a list with units.L, even an empty list is read.
-            ingredients = {ingred_id: {} for ingred_id in ingredient_ids}
-            for index, ingred_id in enumerate(ingredient_ids):
-                if added_weight:
-                    ingredients[ingred_id]['weight'] = added_weight[index]
-                if added_counts:
-                    ingredients[ingred_id]['counts'] = added_counts[index]
-                if added_vol:
-                    ingredients[ingred_id]['volume'] = added_vol[index]
-                else:
-                    ingredients[ingred_id]['volume'] = 0 * units.L
-            new_media = self.add_ingredients(base_media, base_vol, ingredients)
+		if unitless:
+			new_media = {mol: conc.asNumber(CONC_UNITS) for mol, conc in new_media.iteritems()}
 
-        if not added_media_id and not ingredient_ids:
-            new_media = base_media
+		return new_media
 
-        # remove concentration units, setting at CONC_UNITS
-        unitless_new_media = {mol: conc.asNumber(CONC_UNITS) for mol, conc in new_media.iteritems()}
+	def combine_media(self, media_1, volume_1, media_2, volume_2, operation='add'):
 
-        return unitless_new_media
+		# intialize new_media
+		new_media = {mol_id: 0.0 * CONC_UNITS for mol_id in set(media_1.keys() + media_2.keys())}
 
-    def combine_media(self, base_media, base_media_volume, mix_media, mix_media_volume):
-        '''
-        Combines two medias and returns a new media
+		# get new_media volume
+		new_volume = volume_1 + volume_2
 
-        Args:
-            base_media, mix_media (dict): dicts with {molecule_id: concentration}
-            base_media_volume, mix_media_volume (unum): the volumes of base_media and mix_media (floats) with a volume units (i.e. units.L)
+		for mol_id in new_media.iterkeys():
+			conc_1 = media_1.get(mol_id, 0 * CONC_UNITS)
+			conc_2 = media_2.get(mol_id, 0 * CONC_UNITS)
 
-        Returns:
-            new_media (dict): {molecule_id: concentrations}
-        '''
+			if conc_1.asNumber() == INF or conc_2.asNumber() == INF:
+				new_conc = INF * CONC_UNITS
+				if operation == 'subtract':
+					new_conc = 0.0 * CONC_UNITS
+			else:
+				counts_1 = conc_1 * volume_1
+				counts_2 = conc_2 * volume_2
+				new_counts = counts_1 + counts_2
 
-        # intialize new_media
-        new_media = {mol_id: 0.0 * CONC_UNITS for mol_id, conc in base_media.iteritems()}
+				if operation == 'subtract':
+					new_counts = counts_1 - counts_2
+				if new_counts.asNumber() < 0:
+					raise AddIngredientsError(
+						"subtracting {} goes negative".format(mol_id))
 
-        # get new_media volume
-        new_volume = base_media_volume + mix_media_volume
+				new_conc = new_counts / new_volume
 
-        for mol_id, base_conc in base_media.iteritems():
-            mix_conc = mix_media[mol_id]
+			# update media
+			new_media[mol_id] = new_conc
 
-            if base_conc.asNumber() == INF or mix_conc.asNumber() == INF:
-                new_media[mol_id] = INF * CONC_UNITS
-            else:
-                base_counts = base_conc * base_media_volume
-                mix_counts = mix_conc * mix_media_volume
-                new_counts = base_counts + mix_counts
-                new_conc = new_counts / new_volume
+		return new_media
 
-                # update media
-                new_media[mol_id] = new_conc
+	def make_timeline(self, timeline_str):
+		'''
+		Make a timeline from a string
+		Args:
+			timeline_str (str): 'time1 recipe1, time2 recipe2'
+		Returns:
+			timeline (list[tuple]): a list of tuples with (time (float), recipe (dict))
+		'''
 
-        return new_media
+		timeline_parsed = grammar.parse(timeline_str)
+		rc = RecipeConstructor()
+		timeline_recipes = rc.visit(timeline_parsed)
+		timeline = []
+		for time, recipe in timeline_recipes:
+			media = self.make_recipe(recipe, False)
+			new_media_id = str(uuid.uuid1())
 
-    def add_ingredients(self, base_media, base_media_volume, ingredients):
-        '''
-        Combines ingredients to existing media to make new media.
+			# determine if this is an existing media
+			for media_id, concentrations in self.stock_media.iteritems():
+				if cmp(concentrations, media) == 0:
+					new_media_id = media_id
+					break
 
-        Args:
-            base_media (dict): {molecule_id: concentrations}
-            base_media_volume:
-            ingredients (dict): keys are ingredient ids, values are dicts with weight, counts, volume.
-                Only one of weights (in g) or counts (in mmol) is needed; if both are specified, it will use weight.
-                If weight or counts is Infinity, the new concentration is set to inf. If the weight or counts is -Infinity,
-                the new concentration is set to 0.
-                Example format of ingredients:
-                    {mol_id_1: {'weight': 1.78 * units.g, 'volume': 0.025 * units.L),
-                    mol_id_2: {'counts': 0.2 * units.mmol, 'volume': 0.1 * units.L),
-                    }
+			self.stock_media[new_media_id] = media
+			timeline.append((float(time), new_media_id))
 
-        Returns:
-            new_media (dict): {molecule_id: concentrations}
-        '''
+		return timeline
 
-        # intialize new_media
-        new_media = {mol_id: 0.0 * CONC_UNITS for mol_id, conc in base_media.iteritems()}
 
-        # get new_media volume
-        ingredients_volume = 0 * VOLUME_UNITS
-        for quantities in ingredients.itervalues():
-            ingredients_volume += quantities['volume']
-        new_volume = base_media_volume + ingredients_volume
+class RecipeConstructor(NodeVisitor):
+	'''
+	Args:
+		- node: The node we're visiting
+        - visited_children: The results of visiting the children of that node, in a list
+	'''
+	def visit_timeline(self, node, visited_children):
+		timeline = []
+		for child in visited_children:
+			if child:
+				timeline.append(child)
+		return timeline
 
-        # get new_media concentrations from mixing ingredients
-        for mol_id, base_conc in base_media.iteritems():
+	def visit_one_event(self, node, visited_children):
+		time, _, recipes, _ = visited_children
 
-            if mol_id in ingredients:
-                base_counts = base_conc * base_media_volume
-                quantities = ingredients[mol_id]
-                weight = quantities.get('weight', None)
-                mix_counts = quantities.get('counts', None)
+		if isinstance(time, list):
+			event = (time[0], recipes)
+		else:
+			event = (recipes)
+		return event
 
-                # calculate mix_counts from weight.
-                # This will overwrite added counts if those were specified
-                if weight is not None:
-                    if weight.asNumber() == INF:
-                        mix_counts = INF * COUNTS_UNITS
-                    elif weight.asNumber() == NEG_INF:
-                        mix_counts = NEG_INF * COUNTS_UNITS
-                    elif weight.asNumber() >= 0:
-                        if self.environment_molecules_fw[mol_id] is not None:
-                            fw = self.environment_molecules_fw[mol_id]
-                            mix_counts = weight / fw
-                        else:
-                            raise AddIngredientsError(
-                                "No fw defined for {} in environment_molecules.tsv".format(mol_id)
-                            )
-                    else:
-                        raise AddIngredientsError(
-                            "Negative weight given for {}".format(mol_id)
-                        )
-                elif mix_counts is None:
-                    raise AddIngredientsError(
-                        "No added added weight or counts for {}".format(mol_id)
-                    )
+	def visit_recipe(self, node, visited_children):
+		# put all added ingredients into a recipe dictionary
+		recipe = {}
+		for child in visited_children:
+			recipe.update(child)
+		return recipe
 
-                # get new concentration
-                # make infinite concentration of ingredient if mix_counts is Infinity
-                if mix_counts.asNumber() == INF:
-                    new_media[mol_id] = INF * CONC_UNITS
+	def visit_one_ingredient(self, node, visited_children):
+		add, subtract, ingredients = visited_children
+		if isinstance(add, list):
+			for amount in ingredients.itervalues():
+				amount['operation'] = 'add'
+		elif isinstance(subtract, list):
+			for amount in ingredients.itervalues():
+				amount['operation'] = 'subtract'
+		return ingredients
 
-                # remove ingredient from media if mix_counts is -Infinity
-                # this will override infinite concentrations in base_media
-                elif mix_counts.asNumber() == NEG_INF:
-                    new_media[mol_id] = 0.0 * CONC_UNITS
+	def visit_ingredient(self, node, visited_children):
+		# put ingredients into small dicts, with their counts and volumes
+		ingredient, counts, volume, infinity = visited_children
+		if isinstance(counts, list) and isinstance(volume, list):
+			recipe = {ingredient: {'counts': counts[0] * units.mmol, 'volume': volume[0] * units.L}}
+		elif isinstance(volume, list):
+			recipe = {ingredient: {'volume': volume[0] * units.L}}
+		elif isinstance(infinity, list):
+			recipe = {ingredient: {'counts': INF * units.L}}
+		else:
+			recipe = {ingredient: {}}
+		return recipe
 
-                else:
-                    new_counts = base_counts + mix_counts
-                    new_conc = new_counts / new_volume
-                    new_media[mol_id] = new_conc
+	def visit_counts(self, node, visited_children):
+		return visited_children[1]
 
-            # if mol_id is not in ingredients, dilute its concentration in new_media
-            else:
-                base_counts = base_conc * base_media_volume
-                new_conc = base_counts / new_volume
-                new_media[mol_id] = new_conc
+	def visit_volume(self, node, visited_children):
+		return visited_children[1]
 
-        return new_media
+	def visit_media_id(self, node, visited_children):
+		return (node.text)
 
-    def make_timeline(self, timeline_str):
-        '''
-        Make a timeline from a string
+	def visit_inf(self, node, visited_children):
+		return INF
 
-        Args:
-            timeline_str (str): 'time1 media_id1, time2 media_id2'
-        Returns:
-            timeline (list[tuple]): a list of tuples with (time (float), media_id (str))
+	def visit_numeric(self, node, visited_children):
+		return float(node.text)
 
-        TODO (Eran) make a parsing expression grammar for this: https://github.com/erikrose/parsimonious
-        TODO (Eran) expand capabilities to also pass in ingredients to be added from the prior event
-        '''
+	def visit_add(self, node, visited_children):
+		pass
 
-        timeline = []
-        events_str = timeline_str.split(', ')
-        for event in events_str:
-            time, media = event.split()
-            timeline.append((float(time),media))
+	def visit_break(self, node, visited_children):
+		pass
 
-        return timeline
+	def visit_ws(self, node, visited_children):
+		pass
+
+	def generic_visit(self, node, visited_children):
+		# The generic visit method.
+		return visited_children or node
+
+
+
+# timeline_str = '0 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L, ' \
+# 				   '10 minimal_minus_oxygen 1 L + GLT 0.2 mmol 1 L, ' \
+# 				   '100 minimal 1 L + GLT 0.2 mmol 1 L'
+#
+# timeline_str = '0 minimal, ' \
+# 			   '10 minimal_minus_oxygen,' \
+# 			   '100 minimal'
+#
+# timeline_str = "0 M9_GLC 0.8 L + 5X_supplement_EZ 0.2 L, " \
+# 			   "10 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L,"
+#
+# timeline_str = 'M9_GLC 1.0 L - ARABINOSE Infinity'
+#
+# make_media = Media()
+#
+# timeline = make_media.make_timeline(timeline_str)
+#
+# import ipdb; ipdb.set_trace()
