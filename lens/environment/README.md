@@ -45,14 +45,14 @@ agents together with others running under a shepherd.
 
 4. In the first terminal tab, launch an Environment agent:
 
-      `> python -m environment.boot --type lattice --id lattice`
+      `> python -m lens.environment.boot --type lattice --id lattice`
 
       The Environment agent will wait for Cell simulation agents to register.
       You can optionally pass in a JSON `--config '{...}'` dictionary.
 
 5. Now start a Cell agent in a new tab:
 
-   `> python -m environment.boot --outer-id lattice --type ecoli --id 1`
+   `> python -m lens.environment.boot --outer-id lattice --type ecoli --id 1`
 
    Vary the agent type and other parameters as needed. Each agent needs an `id` that's unique among the
    currently running agents.
@@ -88,13 +88,13 @@ separate terminal tab or PyCharm run/debug tab.
 
 7. Finally, use another terminal tab to start the simulation running:
 
-   `> python -m environment.control run --id lattice`
+   `> python -m lens.environment.control run --id lattice`
 
    You can `pause` and `run` it whenever you want.
 
 8. To shut down the simulation, run `shutdown` in the command tab:
 
-   `> python -m environment.control shutdown`
+   `> python -m lens.environment.control shutdown`
 
 ## Agent Shepherd
 
@@ -118,29 +118,29 @@ then open a browser window onto [http://localhost:33332/](http://localhost:33332
 
 Now you can start a virtual microscope experiment in a "command" terminal tab:
 
-   `> python -m environment.control experiment --number 3`
+   `> python -m lens.environment.control experiment --number 3`
 
 This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ agent and three for the _cell simulation_ agents. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
 
 You can `run`/`pause` the simulation at will:
 
-   `> python -m environment.control run`
+   `> python -m lens.environment.control run`
 
-   `> python -m environment.control pause`
+   `> python -m lens.environment.control pause`
 
 You can add another cell agent:
 
-   `> python -m environment.control add`
+   `> python -m lens.environment.control add`
 
 (If you're running multiple environment agents, you can specify a lattice environment agent id via the `--id` option.)
 
 You can remove a cell agent using the prefix of the agent's id (you don't have to type the whole id):
 
-   `> python -m environment.control remove --id dgaf`
+   `> python -m lens.environment.control remove --id dgaf`
 
 Finally, to shut down the experiment, run `shutdown`:
 
-   `> python -m environment.control shutdown`
+   `> python -m lens.environment.control shutdown`
 
 Notice this just shuts down the agents. The Shepherd is still running and ready for a new experiment.
 Use `Ctrl-C` to stop the Shepherd and Lens processes.
