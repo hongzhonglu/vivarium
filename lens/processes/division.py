@@ -4,14 +4,14 @@ import time
 import random
 import uuid
 
-from lens.agent.inner import CellSimulation
+from lens.agent.inner import Process
 
 
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]
 
 INITIAL_VOLUME = 1.0
 
-class Division(CellSimulation):
+class Division(Process):
     ''' '''
 
     def __init__(self, boot_config):

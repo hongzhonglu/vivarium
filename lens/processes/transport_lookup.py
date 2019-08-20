@@ -6,7 +6,7 @@ import csv
 import math
 from scipy import constants
 
-from lens.agent.inner import CellSimulation
+from lens.agent.inner import Process
 from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
 from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactions_from_exchange
@@ -48,7 +48,7 @@ aa_p_ids = [aa_id + '[p]' for aa_id in amino_acids]
 exchange_molecules = ['OXYGEN-MOLECULE[p]', 'GLC[p]']
 exchange_ids = exchange_molecules + aa_p_ids
 
-class TransportLookup(CellSimulation):
+class TransportLookup(Process):
     ''''''
 
     def __init__(self, state):

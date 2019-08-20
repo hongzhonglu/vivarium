@@ -7,7 +7,7 @@ import lens.agent.event as event
 from lens.agent.agent import Agent
 
 
-class CellSimulation(object):
+class Process(object):
     """Interface for the Inner agent's cell simulation."""
 
     def time(self):

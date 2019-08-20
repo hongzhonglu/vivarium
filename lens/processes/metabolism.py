@@ -8,7 +8,7 @@ from scipy import constants
 
 from lens.utils import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
-from lens.agent.inner import CellSimulation
+from lens.agent.inner import Process
 
 TSV_DIALECT = csv.excel_tab
 EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
@@ -82,7 +82,7 @@ initial_concentrations = {
 }
 
 
-class Metabolism(CellSimulation):
+class Metabolism(Process):
     ''' Metabolism surrogate '''
 
     def __init__(self, state):

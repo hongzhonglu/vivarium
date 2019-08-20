@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import time
 import random
 
-from lens.agent.inner import CellSimulation
+from lens.agent.inner import Process
 from lens.agent.outer import EnvironmentSimulation
 
-class SimulationStub(CellSimulation):
+class SimulationStub(Process):
 
     """
     Provide a stub for the simulation.
