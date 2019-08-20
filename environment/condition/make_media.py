@@ -60,10 +60,9 @@ class Media(object):
         raw_data = KnowledgeBase()
 
         # get dicts from knowledge base
-        self.environment_molecules_fw = self._get_environment_molecules_fw(raw_data)
-
-        self.recipes = self._get_recipes(raw_data)
+        self.environment_molecules_fw = self._get_environment_molecules_fw(raw_data)  # TODO (Eran) -- this assumes wcEcoli environment
         self.recipe_constructor = RecipeConstructor()
+        self.recipes = self._get_recipes(raw_data)
         self._get_stock_media(raw_data)
 
 
@@ -83,7 +82,6 @@ class Media(object):
 
     def _get_stock_media(self, raw_data):
         '''load all stock media'''
-
         self.stock_media = {}
         for label in vars(raw_data.condition.media):
             # initiate all molecules with 0 concentrations
@@ -108,7 +106,6 @@ class Media(object):
             media = self.make_recipe(recipe[0], False) # list only contains one recipe
             self.stock_media[media_id] = media
 
-
     def _get_recipes(self, raw_data):
         recipes = {}
         for row in raw_data.condition.media_recipes:
@@ -117,10 +114,13 @@ class Media(object):
             recipes[new_media_id] = recipe
         return recipes
 
+    def remove_units(self, media):
+        return {mol: conc.asNumber(CONC_UNITS) for mol, conc in media.iteritems()}
+
     def get_saved_media(self, media_id, unitless=True):
         media = self.stock_media.get(media_id)
         if unitless:
-            media = {mol: conc.asNumber(CONC_UNITS) for mol, conc in media.iteritems()}
+            media = self.remove_units(media)
         return media
 
     def make_recipe(self, recipe, unitless=True):
@@ -144,17 +144,18 @@ class Media(object):
                 # added_weight takes priority over added_counts
                 if added_weight.asNumber() == INF:
                     added_conc = INF * CONC_UNITS
-                elif added_counts.asNumber() >= 0:
-                    if self.environment_molecules_fw[ingredient] is not None:
-                        fw = self.environment_molecules_fw[ingredient]
-                        added_counts = added_weight / fw
-                        added_conc = added_counts / added_volume
-                    else:
-                        raise AddIngredientsError(
-                            "No fw defined for {} in environment_molecules.tsv".format(ingredient))
-                else:
+                elif added_weight.asNumber() == 0.0:
+                    added_conc = 0.0 * CONC_UNITS
+                elif added_weight.asNumber() < 0:
                     raise AddIngredientsError(
                         "Negative weight given for {}".format(ingredient))
+                elif self.environment_molecules_fw[ingredient] is not None:
+                    fw = self.environment_molecules_fw[ingredient]
+                    added_counts = added_weight / fw
+                    added_conc = added_counts / added_volume
+                else:
+                    raise AddIngredientsError(
+                        "No fw defined for {} in environment_molecules.tsv".format(ingredient))
 
                 # save concentration
                 added_media[ingredient] = added_conc
@@ -164,9 +165,15 @@ class Media(object):
                 # make infinite concentration of ingredient if mix_counts is Infinity
                 if added_counts.asNumber() == INF:
                     added_conc = INF * CONC_UNITS
+                elif added_counts.asNumber() == 0.0:
+                    added_conc = 0.0 * CONC_UNITS
+                elif added_counts.asNumber() < 0:
+                    raise AddIngredientsError(
+                        "Negative counts given for {}".format(ingredient))
                 else:
                     added_conc = added_counts / added_volume
 
+                # save concentration
                 added_media[ingredient] = added_conc
 
             else:
@@ -177,16 +184,16 @@ class Media(object):
                 # no volume, just merge media dicts. This is likely due to a call to a stock_media.
                 new_media.update(added_media)
             else:
-                new_media = self.combine_media(new_media, total_volume, added_media, added_volume, operation)
+                new_media = self.combine_media(new_media, total_volume, added_media, added_volume, False, operation)
 
             total_volume += added_volume
 
         if unitless:
-            new_media = {mol: conc.asNumber(CONC_UNITS) for mol, conc in new_media.iteritems()}
+            new_media = self.remove_units(new_media)
 
         return new_media
 
-    def combine_media(self, media_1, volume_1, media_2, volume_2, operation='add'):
+    def combine_media(self, media_1, volume_1, media_2, volume_2, unitless=True, operation='add'):
 
         # intialize new_media
         new_media = {mol_id: 0.0 * CONC_UNITS for mol_id in set(media_1.keys() + media_2.keys())}
@@ -217,6 +224,9 @@ class Media(object):
 
             # update media
             new_media[mol_id] = new_conc
+
+        if unitless:
+            new_media = self.remove_units(new_media)
 
         return new_media
 
@@ -329,25 +339,3 @@ class RecipeConstructor(NodeVisitor):
     def generic_visit(self, node, visited_children):
         # The generic visit method.
         return visited_children or node
-
-
-## Examples
-
-timeline_str = '0 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L, ' \
-                   '10 minimal_minus_oxygen 1 L + GLT 0.2 mmol 1 L, ' \
-                   '100 minimal 1 L + GLT 0.2 mmol 1 L'
-#
-# timeline_str = '0 minimal, ' \
-#                '10 minimal_minus_oxygen,' \
-#                '100 minimal'
-#
-# timeline_str = "0 M9_GLC 0.8 L + 5X_supplement_EZ 0.2 L, " \
-#                "10 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L,"
-#
-# timeline_str = '0 M9_GLC 1.0 L - ARABINOSE Infinity'
-
-make_media = Media()
-
-timeline = make_media.make_timeline(timeline_str)
-
-# import ipdb; ipdb.set_trace()
