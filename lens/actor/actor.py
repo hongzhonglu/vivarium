@@ -28,16 +28,16 @@ def delivery_report(err, msg):
         print('message delivery failed: {}'.format(msg))
         print('failed message: {}'.format(err))
 
-class Agent(object):
+class Actor(object):
 
     """
-    Agent: a process with the ability to send and receive messages through Kafka.
+    Actor: a process with the ability to send and receive messages through Kafka.
 
     This is a base class that handles all of the details of connecting to Kafka and the
     initialization and configuration of a Producer (to send messages) and Consumer
     (to receive messages).
 
-    To subclass Agent:
+    To subclass Actor:
 
     * First, a call to super must be made in the `__init__` method of the overriding class.
       `agent_id` is any unique string and identifies this agent with other agents in the system.

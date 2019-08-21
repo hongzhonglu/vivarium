@@ -4,10 +4,10 @@ import time
 import uuid
 
 from lens.environment.condition.make_media import Media
-from lens.actor.control import AgentControl, AgentCommand
+from lens.actor.control import ActorControl, AgentCommand
 
 
-class ShepherdControl(AgentControl):
+class ShepherdControl(ActorControl):
     """Send messages to agents in the system to control execution."""
 
     def __init__(self, agent_config):

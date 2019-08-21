@@ -1,6 +1,6 @@
-# Agent
+# Actor
 
-Distributed simulation of whole cell agents relative to a shared environment.
+Distributed simulation of agents with cell processes in a shared environment.
 
 ## Setup
 

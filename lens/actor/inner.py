@@ -4,7 +4,7 @@ import uuid
 import time
 
 import lens.actor.event as event
-from lens.actor.agent import Agent
+from lens.actor.actor import Actor
 
 
 class Process(object):
@@ -39,7 +39,7 @@ class Process(object):
         """Release any resources and perform any final cleanup."""
 
 
-class Inner(Agent):
+class Inner(Actor):
 
     """
     Inner: an independent cell simulation in a larger environmental context.

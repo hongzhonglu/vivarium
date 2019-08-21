@@ -2,18 +2,18 @@ from __future__ import absolute_import, division, print_function
 
 import multiprocessing as mp
 import lens.actor.event as event
-from lens.actor.agent import Agent
+from lens.actor.actor import Actor
 
-class AgentShepherd(Agent):
+class ActorShepherd(Actor):
 
     """
-    AgentShepherd is an agent that spawns, tracks and removes other agent processes in
-    a multiprocessing environment. The type of agents it is able to spawn is mediated by
+    ActorShepherd is an actor that spawns, tracks and removes agent processes in
+    a multiprocessing environment. The type of agent it is able to spawn is mediated by
     a dictionary of "initializers" that is passed to it on init. Each key is the name of an agent
     type and each value is a function that takes two arguments, an `agent_id` and an `agent_config`
     dictionary. Each time an agent is added, it is done so by calling one of these initializers.
 
-    AgentShepherd responds to two agent lifecycle messages, ADD_AGENT and REMOVE_AGENT, as well as
+    ActorShepherd responds to two agent lifecycle messages, ADD_AGENT and REMOVE_AGENT, as well as
     three control messages, TRIGGER_ALL, PAUSE_ALL, and SHUTDOWN_ALL, which apply these messages to
     every agent in its process pool.
 
@@ -29,7 +29,7 @@ class AgentShepherd(Agent):
 
     def __init__(self, agent_id, agent_config, agent_initializers):
         """
-        Initialize the AgentShepherd with its id, kafka config and a dictionary of initializers,
+        Initialize the ActorShepherd with its id, kafka config and a dictionary of initializers,
         which determine what kind of agents the shepherd is able to spawn.
 
         Args:
@@ -56,7 +56,7 @@ class AgentShepherd(Agent):
         kafka_config['subscribe'].append(
             kafka_config['topics']['shepherd_receive'])
 
-        super(AgentShepherd, self).__init__(agent_id, 'shepherd', agent_config)
+        super(ActorShepherd, self).__init__(agent_id, 'shepherd', agent_config)
 
         self.agents = {}
         self.agent_initializers = agent_initializers

@@ -8,7 +8,7 @@ import uuid
 import argparse
 
 import lens.actor.event as event
-from lens.actor.agent import Agent
+from lens.actor.actor import Actor
 from lens.utils import filepath
 
 DEFAULT_KAFKA_CONFIG = {
@@ -21,14 +21,14 @@ DEFAULT_KAFKA_CONFIG = {
         'visualization_receive': 'environment-state'},
     'subscribe': []}
 
-class AgentControl(Agent):
+class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
     def __init__(self, agent_id, agent_config=None):
         if 'kafka_config' not in agent_config:
             agent_config['kafka_config'] = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
 
-        super(AgentControl, self).__init__(agent_id, 'control', agent_config)
+        super(ActorControl, self).__init__(agent_id, 'control', agent_config)
 
     def get_experiment_id(self, name='lattice'):
         time_stamp = filepath.timestamp()
@@ -214,24 +214,24 @@ class AgentCommand(object):
                 raise ValueError('--{} needed'.format(name))
 
     def run(self, args):
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         control.trigger_execution(args['id'])
         control.shutdown()
 
     def pause(self, args):
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         control.pause_execution(args['id'])
         control.shutdown()
 
     def add(self, args):
         self.require(args, 'id', 'type')
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         config = dict(args['config'], outer_id=args['id'])
         control.add_agent(str(uuid.uuid1()), args['type'] or 'ecoli', config)
         control.shutdown()
 
     def remove(self, args):
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         if args['id']:
             control.remove_agent({'agent_id': args['id']})
         elif args['prefix']:
@@ -242,18 +242,18 @@ class AgentCommand(object):
 
     def divide(self, args):
         self.require(args, 'id')
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         control.divide_cell(args['id'])
         control.shutdown()
 
     def experiment(self, args):
         self.require(args, 'number')
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         control.stub_experiment(args['number'])
         control.shutdown()
 
     def shutdown(self, args):
-        control = AgentControl('control', self.kafka_config)
+        control = ActorControl('control', self.kafka_config)
         control.shutdown_agent(args['id'])
         control.shutdown()
 

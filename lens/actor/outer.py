@@ -8,7 +8,7 @@ import os
 import time
 
 import lens.actor.event as event
-from lens.actor.agent import Agent
+from lens.actor.actor import Actor
 import lens.utils.filepath as fp
 
 
@@ -64,7 +64,7 @@ class EnvironmentSimulation(object):
         """Run the environment's own simulation until the given time."""
 
 
-class Outer(Agent):
+class Outer(Actor):
 
     """
     Outer: coordinate the communication between inner agents running their individual simulations
