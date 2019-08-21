@@ -104,9 +104,9 @@ class Chemotaxis(Process):
         # CheB phosphorylation
         # TODO!
 
-        print('P_on: ' + str(P_on))
-        print('CheY_P: ' + str(self.CheY_P))
-        print('CheY_tot: ' + str(self.CheY_tot))
+        # print('P_on: ' + str(P_on))
+        # print('CheY_P: ' + str(self.CheY_P))
+        # print('CheY_tot: ' + str(self.CheY_tot))
 
     def motor_switching(self):
 
@@ -114,10 +114,10 @@ class Chemotaxis(Process):
         ccw_motor_bias = mb_0 / (self.CheY_P/self.CheY_tot * (1 - mb_0) + mb_0)
         cww_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)
 
-        print("current state: " + str(self.motor_state))
-        print("ccw_motor_bias: " + str(ccw_motor_bias))
-        print("cw_to_ccw: " + str(cw_to_ccw))
-        print("cww_to_cw: " + str(cww_to_cw))
+        # print("current state: " + str(self.motor_state))
+        # print("ccw_motor_bias: " + str(ccw_motor_bias))
+        # print("cw_to_ccw: " + str(cw_to_ccw))
+        # print("cww_to_cw: " + str(cww_to_cw))
 
         if self.motor_state is 'run':
             # switch to tumble?
@@ -144,15 +144,13 @@ class Chemotaxis(Process):
         force = 5.0
         torque = random.normalvariate(0, TUMBLE_JITTER)
         self.motile_force = [force, torque]
-
-        print('TUMBLE!')
+        # print('TUMBLE!')
 
     def run(self):
         force = 15.0
         torque = 0.0
         self.motile_force = [force, torque]
-
-        print('RUN!')
+        # print('RUN!')
 
     def check_division(self):
         # update division state based on time since initialization

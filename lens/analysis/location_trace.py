@@ -2,7 +2,7 @@
 Analysis plot
 
 run by passing path to the output directory:
-> python analysis/location_trace.py -p 'out/out_dir'
+> python lens/analysis/location_trace.py -p 'out/out_dir'
 '''
 from __future__ import absolute_import
 
