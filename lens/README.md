@@ -52,11 +52,7 @@ agents together with others running under a shepherd.
 
 5. Now start a Cell agent in a new tab:
 
-<<<<<<< HEAD:environment/README.md
-   `> python -m environment.boot --outer-id lattice --type lookup --id 1`
-=======
    `> python -m lens.environment.boot --outer-id lattice --type lookup --id 1`
->>>>>>> master:lens/README.md
 
    Vary the agent type and other parameters as needed. Each agent needs an `id` that's unique among the
    currently running agents.
