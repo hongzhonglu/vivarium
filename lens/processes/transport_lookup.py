@@ -6,7 +6,7 @@ import csv
 import math
 from scipy import constants
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
 from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import get_reactions_from_exchange

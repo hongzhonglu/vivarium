@@ -25,7 +25,7 @@ from scipy.ndimage import convolve
 
 from lens.utils.io.tablewriter import TableWriter
 from lens.environment.condition.make_media import Media
-from lens.agent.outer import EnvironmentSimulation
+from lens.actor.outer import EnvironmentSimulation
 from lens.utils.multicell_physics import MultiCellPhysics
 
 # Constants

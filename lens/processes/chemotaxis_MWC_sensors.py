@@ -6,7 +6,7 @@ import numpy as np
 import math
 import random
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 
 
 TUMBLE_JITTER = 0.5  # (radians)

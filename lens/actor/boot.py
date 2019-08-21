@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import json
 import argparse
 
-from lens.agent.control import DEFAULT_KAFKA_CONFIG
-from lens.agent.outer import Outer
-from lens.agent.inner import Inner
-from lens.agent.stub import SimulationStub, EnvironmentStub
+from lens.actor.control import DEFAULT_KAFKA_CONFIG
+from lens.actor.outer import Outer
+from lens.actor.inner import Inner
+from lens.actor.stub import SimulationStub, EnvironmentStub
 
 
 def boot_outer(agent_id, agent_type, agent_config):

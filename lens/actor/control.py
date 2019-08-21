@@ -7,8 +7,8 @@ import json
 import uuid
 import argparse
 
-import lens.agent.event as event
-from lens.agent.agent import Agent
+import lens.actor.event as event
+from lens.actor.agent import Agent
 from lens.utils import filepath
 
 DEFAULT_KAFKA_CONFIG = {

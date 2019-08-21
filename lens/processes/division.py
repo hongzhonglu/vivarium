@@ -4,7 +4,7 @@ import time
 import random
 import uuid
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 
 
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]

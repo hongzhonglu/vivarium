@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import os
 import shutil
 
-from lens.agent.outer import Outer
-from lens.agent.inner import Inner
-from lens.agent.boot import BootAgent
+from lens.actor.outer import Outer
+from lens.actor.inner import Inner
+from lens.actor.boot import BootAgent
 
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.processes.metabolism import Metabolism

@@ -18,7 +18,7 @@ import json
 from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.utils.kinetic_rate_laws import KineticFluxModel
 from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions

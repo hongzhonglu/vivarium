@@ -6,7 +6,7 @@ import json
 import struct
 from confluent_kafka import Producer, Consumer, KafkaError
 
-import lens.agent.event as event
+import lens.actor.event as event
 
 # Chunk header: type and size.
 # TODO(jerry): Move CHUNK_HEADER to a shared module.

@@ -8,7 +8,7 @@ from scipy import constants
 
 from lens.utils import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 
 TSV_DIALECT = csv.excel_tab
 EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')

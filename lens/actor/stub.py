@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import time
 import random
 
-from lens.agent.inner import Process
-from lens.agent.outer import EnvironmentSimulation
+from lens.actor.inner import Process
+from lens.actor.outer import EnvironmentSimulation
 
 class SimulationStub(Process):
 
@@ -72,11 +72,11 @@ class EnvironmentStub(EnvironmentSimulation):
     Provide a stub for the environmental context.
 
     Like the stub above for simulations, this class is meant to demonstrate the
-    EnvironmentSimulation interface defined in `agent/outer.py` that any environmental
+    EnvironmentSimulation interface defined in `actor/outer.py` that any environmental
     simulation must implement to fulfill the conditions of being a coordinating
     external context for integrating the changes of each simulation.
 
-    Full interface described in `agent/outer.py`.
+    Full interface described in `actor/outer.py`.
     """
 
     def __init__(self, volume, concentrations):

@@ -1,3 +1,3 @@
-from agent.outer import Outer
-from agent.inner import Inner
-from agent.boot import BootAgent
+from actor.outer import Outer
+from actor.inner import Inner
+from actor.boot import BootAgent

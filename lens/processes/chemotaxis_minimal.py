@@ -4,7 +4,7 @@ import time
 import random
 import numpy as np
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 
 TUMBLE_JITTER = 0.5  # (radians)
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]

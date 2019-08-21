@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-from lens.agent.inner import Process
+from lens.actor.inner import Process
 
 
 TUMBLE_JITTER = 2.0 # (radians)

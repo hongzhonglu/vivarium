@@ -7,8 +7,8 @@ import numpy as np
 import os
 import time
 
-import lens.agent.event as event
-from lens.agent.agent import Agent
+import lens.actor.event as event
+from lens.actor.agent import Agent
 import lens.utils.filepath as fp
 
 
