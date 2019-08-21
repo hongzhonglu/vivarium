@@ -14,7 +14,7 @@
 
  :launch
  {:dir "."
-  :boot "environment.boot"}
+  :boot "lens.environment.boot"}
 
  :kafka
  {:host "localhost:9092"
