@@ -103,7 +103,7 @@ class Media(object):
         for media_id, recipe_raw in self.recipes.iteritems():
             recipe_parsed = grammar.parse(recipe_raw)
             recipe = self.recipe_constructor.visit(recipe_parsed)
-            media = self.make_recipe(recipe[0], False) # list only contains one recipe
+            media = self.make_recipe(recipe[0], True) # list only contains one recipe. Use first element.
             self.stock_media[media_id] = media
 
     def _get_recipes(self, raw_data):
@@ -117,13 +117,13 @@ class Media(object):
     def remove_units(self, media):
         return {mol: conc.asNumber(CONC_UNITS) for mol, conc in media.iteritems()}
 
-    def get_saved_media(self, media_id, unitless=True):
+    def get_saved_media(self, media_id, units=False):
         media = self.stock_media.get(media_id)
-        if unitless:
+        if not units:
             media = self.remove_units(media)
         return media
 
-    def make_recipe(self, recipe, unitless=True):
+    def make_recipe(self, recipe, units=False):
         '''make a single media recipe'''
 
         new_media = {}
@@ -184,16 +184,16 @@ class Media(object):
                 # no volume, just merge media dicts. This is likely due to a call to a stock_media.
                 new_media.update(added_media)
             else:
-                new_media = self.combine_media(new_media, total_volume, added_media, added_volume, False, operation)
+                new_media = self.combine_media(new_media, total_volume, added_media, added_volume, True, operation)
 
             total_volume += added_volume
 
-        if unitless:
+        if not units:
             new_media = self.remove_units(new_media)
 
         return new_media
 
-    def combine_media(self, media_1, volume_1, media_2, volume_2, unitless=True, operation='add'):
+    def combine_media(self, media_1, volume_1, media_2, volume_2, units=False, operation='add'):
 
         # intialize new_media
         new_media = {mol_id: 0.0 * CONC_UNITS for mol_id in set(media_1.keys() + media_2.keys())}
@@ -225,7 +225,7 @@ class Media(object):
             # update media
             new_media[mol_id] = new_conc
 
-        if unitless:
+        if not units:
             new_media = self.remove_units(new_media)
 
         return new_media
@@ -245,7 +245,7 @@ class Media(object):
         timeline = []
 
         for time, recipe in timeline_recipes:
-            media = self.make_recipe(recipe, False)
+            media = self.make_recipe(recipe, True)
             new_media_id = str(uuid.uuid1())
 
             # determine if this is an existing media
@@ -262,6 +262,7 @@ class Media(object):
 
 class RecipeConstructor(NodeVisitor):
     '''
+    Make a recipe from a parsed recipe expression.
     Args:
         - node: The node we're visiting
         - visited_children: The results of visiting the children of that node, in a list

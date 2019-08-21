@@ -8,7 +8,7 @@ from itertools import ifilter
 
 CSV_DIALECT = csv.excel_tab
 
-ENV_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lens", "environment")
+ENV_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "environment")
 
 
 LIST_OF_ENV_FILENAMES = (

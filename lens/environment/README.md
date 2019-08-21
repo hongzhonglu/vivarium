@@ -24,16 +24,28 @@ If weight or counts is 0, it sets the final concentration to 0.
 	'UREA': {'counts': 102.0 * units.mmol, 'volume': 1.0 * units.L},
 	'LEU': {'weight': float("inf") * units.g, 'volume': 0 * units.L},
 	'OXYGEN-MOLECULE': {'counts': 0 * units.g, 'volume': 0 * units.L},
-    }
+    }  
 > media2 = media_obj.make_recipe(ingredients)
 
 ### Combine two medias
 > media3 = media_obj.combine_media(media1, 0.8 * units.L, media2, 0.2 * units.L)
 
 ### Media with units
-By default, ```get_saved_media```, ```make_recipe``` and ```combine_media``` return a media dictionary without units.
-To retrieve units, set unitless=False
-> media3_units = media_obj.combine_media(media1, 0.8 * units.L, media2, 0.2 * units.L, False)
+By default, ```get_saved_media```, ```make_recipe``` and ```combine_media``` return a media dictionary without units (unit=False).
+To retrieve units, set units=True. 
+> media1_units = media_obj.get_saved_media('M9_GLC', True)  
+> media2_units = media_obj.make_recipe(ingredients, True)  
+> media3_units = media_obj.combine_media(media1_units, 0.8 * units.L, media2_units, 0.2 * units.L, True)  
+
+### Recipes with parsing expression grammer
+Recipes can also be specified more simply with a string, and made into media with a parsing expression grammar:
+> recipe_str = 'GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L + ARG 0.1 mmol .5 L'  
+> recipe_parsed = grammar.parse(recipe_str)  
+
+Make a recipe constructor object and pass the parsed recipe in. Note: use the first element of the recipe list
+> rc = RecipeConstructor()  
+> recipe = rc.visit(recipe_parsed)  
+> media4 = media_obj.make_recipe(recipe[0])  
 
 
 # Make timelines
@@ -42,13 +54,13 @@ Timelines are lists of events with times and media, with [(time1, media1_id), (t
 ### timeline strings
 Timelines can be specified by a string, with events separated by commas, and each event given a time (in seconds) and media.
 
-Timeline strings can simply specifying stock media:
+Timeline strings can specifying stock media:
 > timeline_str = '0 minimal, 10 minimal_minus_oxygen, 100 minimal'
 
-Combine media with + operation, specifying volumes of each media
+New media can combine existing media with + operation, specifying volumes of each:
 > timeline_str = '0 M9_GLC 0.8 L + 5X_supplement_EZ 0.2 L, 100 M9_GLC 0.5 L + 5X_supplement_EZ 0.5 L'
 
-Add ingredients to existing media with +/- operations
+New media can be specified by adding ingredients to existing media with +/- operations:
 > timeline_str = '0 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L, 10 minimal_minus_oxygen 1 L + GLT 0.2 mmol 1 L, 100 minimal 1 L + GLT 0.2 mmol 1 L' 
 
 Ingredients can be removed from existing media, with Infinity removing all of the ingredient:

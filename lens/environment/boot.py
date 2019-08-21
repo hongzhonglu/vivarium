@@ -15,7 +15,7 @@ from lens.processes.endocrine import Endocrine
 from lens.processes.transport_kinetics import TransportKinetics
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.division import Division
-from lens.environment.condition.make_media import Media
+from lens.environment.make_media import Media
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
