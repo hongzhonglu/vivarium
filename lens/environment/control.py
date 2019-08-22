@@ -95,27 +95,36 @@ class ShepherdControl(ActorControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
-    def toy_experiment(self, args):
-        experiment_id = self.get_experiment_id('toy')
+    def glc_g6p_experiment(self, args):
+        experiment_id = self.get_experiment_id('glc-g6p')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
         # make media
-        media_id = 'toy'
-        media = {'A': 20.0,
-                 'E': 0.1,
-                 'D': 0.1,
-                 'F': 0.1,
-                 'H': 0.1,
-                 'O2': 0.1}
+        media_id = 'glc-g6p'
+        media = {
+            'ACxt': 0.0,
+            'CO2xt': 100.0,  # "units.mmol / units.L"
+            'ETHxt': 0.0,
+            'FORxt': 0.0,
+            'GLCxt': 1.2209,  # "units.mmol / units.L"
+            'GLxt': 0.0,
+            'LACxt': 0.0,
+            'LCTSxt': 0.0,
+            'O2xt': 100.0,  # "units.mmol / units.L"
+            'PIxt': 100.0,  # "units.mmol / units.L"
+            'PYRxt': 0.0,
+            'RIBxt': 0.0,
+            'SUCCxt': 0.0,
+        }
 
-        toy_config = {
+        experiment_config = {
             'run_for': 2.0,
             'media_id': media_id,
             'media': media}
 
-        self.add_agent(experiment_id, 'lattice', toy_config)
+        self.add_agent(experiment_id, 'lattice', experiment_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -205,14 +214,14 @@ class EnvironmentCommand(AgentCommand):
         choices = ['large-experiment',
                    'chemotaxis-experiment',
                    'endocrine-experiment',
-                   'toy-experiment']
+                   'glc-g6p-experiment']
         description = '''
     Run an agent for the environmental context simulation.
     
     The commands are:
     `experiment [--number N] [--type T] [--working-dir D]` ask the Shepherd to run
         a lattice environment with N agents of type T,
-    'toy-experiment [--number N] [--type T]` ask the Shepherd to run a
+    'glc-g6p-experiment [--number N] [--type T]` ask the Shepherd to run a
         chemotaxis environment with N agents of type T
     'chemotaxis-experiment [--number N] [--type T]` ask the Shepherd to run a
         chemotaxis environment with N agents of type T
@@ -244,10 +253,10 @@ class EnvironmentCommand(AgentCommand):
         control.large_lattice_experiment(args)
         control.shutdown()
 
-    def toy_experiment(self, args):
+    def glc_g6p_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config})
-        control.toy_experiment(args)
+        control.glc_g6p_experiment(args)
         control.shutdown()
 
     def chemotaxis_experiment(self, args):

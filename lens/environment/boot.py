@@ -63,6 +63,27 @@ def boot_lattice(agent_id, agent_type, agent_config):
         make_media = Media()
         media = make_media.get_saved_media(media_id)
 
+    # TODO (Eran) -- remove this. Make easier passing of medias to lattice.
+    # TODO -- should not have 'xt' -- locations will be managed
+    # TODO -- units management.
+    # TODO -- load from GLC_G6P_initial.tsv
+    media_id = 'GLC_G6P'
+    media = {
+        'ACxt': 0.0,
+        'CO2xt': 100.0,	# "units.mmol / units.L"
+        'ETHxt': 0.0,
+        'FORxt': 0.0,
+        'GLCxt': 1.2209,	# "units.mmol / units.L"
+        'GLxt': 0.0,
+        'LACxt': 0.0,
+        'LCTSxt': 0.0,
+        'O2xt': 100.0,	# "units.mmol / units.L"
+        'PIxt': 100.0,	# "units.mmol / units.L"
+        'PYRxt': 0.0,
+        'RIBxt': 0.0,
+        'SUCCxt': 0.0,
+    }
+
     output_dir = os.path.join(working_dir, 'out', agent_id)
     if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
