@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import uuid
 
-from lens.environment.condition.make_media import Media
+from lens.environment.make_media import Media
 from lens.actor.control import ActorControl, AgentCommand
 
 

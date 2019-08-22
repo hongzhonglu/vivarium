@@ -24,7 +24,7 @@ from scipy import constants
 from scipy.ndimage import convolve
 
 from lens.utils.io.tablewriter import TableWriter
-from lens.environment.condition.make_media import Media
+from lens.environment.make_media import Media
 from lens.actor.outer import EnvironmentSimulation
 from lens.utils.multicell_physics import MultiCellPhysics
 
@@ -99,7 +99,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.rotation_jitter)
 
         # make media object for making new media
-        self.make_media = Media()
+        self.make_media = Media()  # TODO (Eran) -- pass in make_media through config to include media from all timelines!
 
         # make media and fill lattice patches with media concentrations
         media = config['concentrations']
@@ -204,9 +204,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             current_index = [i for i, t in enumerate(self._times) if self.time() >= t][-1]
             if self.media_id != self.timeline[current_index][1]:
                 self.media_id = self.timeline[current_index][1]
-
-                # make new_media, update the lattice with new concentrations
-                new_media = self.make_media.make_recipe(self.media_id)
+                new_media = self.make_media.get_saved_media(self.media_id)
                 self.fill_lattice(new_media)
 
                 print('Media condition: ' + str(self.media_id))

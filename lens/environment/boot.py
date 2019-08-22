@@ -15,7 +15,7 @@ from lens.processes.endocrine import Endocrine
 from lens.processes.transport_kinetics import TransportKinetics
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.division import Division
-from lens.environment.condition.make_media import Media
+from lens.environment.make_media import Media
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -61,7 +61,7 @@ def boot_lattice(agent_id, agent_type, agent_config):
     print("Media condition: {}".format(media_id))
     if not media:
         make_media = Media()
-        media = make_media.make_recipe(media_id)
+        media = make_media.get_saved_media(media_id)
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
     if os.path.isdir(output_dir):
