@@ -52,7 +52,7 @@ agents together with others running under a shepherd.
 
 5. Now start a Cell agent in a new tab:
 
-   `> python -m lens.environment.boot --outer-id lattice --type lookup --id 1`
+   `> python -m lens.composites --outer-id lattice --type lookup --id 1`
 
    Vary the agent type and other parameters as needed. Each agent needs an `id` that's unique among the
    currently running agents.

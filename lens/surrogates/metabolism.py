@@ -9,7 +9,7 @@ from itertools import ifilter
 from lens.reconstruction.spreadsheets import JsonReader
 from lens.utils import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 TSV_DIALECT = csv.excel_tab
 
@@ -33,7 +33,7 @@ CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 
 DEFAULT_COLOR = [color/255 for color in [255, 128, 0]]
 
-class Metabolism(Process):
+class Metabolism(Simulation):
     '''
     Metabolism process based on "Covert & Palsson (2002) Transcription Regulation in
     Constraints-based Metabolic Models of Escherichia coli."

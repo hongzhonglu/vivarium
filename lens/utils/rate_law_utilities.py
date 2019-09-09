@@ -7,10 +7,10 @@ that are generated in wholecell.kinetic_rate_laws.kinetic_rate_laws.
 Functions include:
     - load_reactions(): returns a dict of all_reactions, with location tags added to the enzymes
     - get_reactions_from_exchange: provided a dict of reactions and exchange molecules, this returns a list of all reactions for those exchange molecules
-    - get_molecules_from_reactions: given a dict of reactions, returns all the relevant molecules -- substrates and enzymes
+    - get_molecules_from_reactions: given a list of desired reactions and dict of all reactions with stoichiometry, returns all the relevant molecules -- substrates and enzymes
 
 The RateLawUtilities module can be called with:
-> python -m reconstruction.kinetic_rate_laws.rate_law_utilities
+> python -m lens.utils.rate_law_utilities
 
 '''
 
@@ -358,15 +358,19 @@ def get_reactions_from_exchange(all_reactions, include_exchanges):
                 include_reactions.append(reaction_id)
     return include_reactions
 
-def get_molecules_from_reactions(reactions):
+def get_molecules_from_reactions(reaction_ids, all_reactions):
     '''
     Inputs:
-           reaction_ids - a list of all reaction ids that will be used by transport
+           reaction_ids (list) -- reaction ids of interest
+           all_reactions (dict): all reactions with stoichiometry, reversibility, enzymes
     Returns:
            self.molecule_ids - a list of all molecules used by these reactions
     '''
     molecule_ids = []
-    for reaction_id, specs in reactions.iteritems():
+
+    # for reaction_id, specs in all_reactions.iteritems():
+    for reaction_id in reaction_ids:
+        specs = all_reactions[reaction_id]
         stoichiometry = specs['stoichiometry']
         substrates = stoichiometry.keys()
         enzymes = specs['catalyzed by']

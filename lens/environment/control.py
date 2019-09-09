@@ -36,7 +36,7 @@ class ShepherdControl(ActorControl):
         else:
             timeline = '0 ' + media_id
             current_timeline = make_media.make_timeline(timeline)
-        media = make_media.make_recipe(media_id)
+        media = make_media.get_saved_media(media_id)
 
         lattice_config = {
             'run_for': 4.0,

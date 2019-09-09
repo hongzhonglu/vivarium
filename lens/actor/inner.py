@@ -7,22 +7,22 @@ import lens.actor.event as event
 from lens.actor.actor import Actor
 
 
-class Process(object):
+class Simulation(object):
     """Interface for the Inner agent's cell simulation."""
 
     def time(self):
-        """Return the current time according to this CellSimulation."""
+        """Return the current time according to this Simulation."""
 
     def apply_outer_update(self, update):
         """Apply the update received from the environment to this simulation."""
 
     def run_incremental(self, run_until):
-        """Run this CellSimulation until the given time."""
+        """Run this Simulation until the given time."""
 
     def generate_inner_update(self):
         """
         Generate the update that will be sent to the environment based on changes calculated
-        by the CellSimulation during `run_incremental(run_until)`.
+        by the Simulation during `run_incremental(run_until)`.
 
         If the dictionary returned by this function contains a `division` key it will trigger
         preparations for cell division in the environment. The value for this key is a pair of
@@ -44,63 +44,67 @@ class Inner(Actor):
     """
     Inner: an independent cell simulation in a larger environmental context.
 
-    This class wraps an instance of CellSimulation into an Agent and mediates
+    This class wraps an instance of Simulation into an Agent and mediates
     the message passing communication with the coordinating Outer agent running
     an environmental simulation.
     """
 
-    def __init__(self, agent_id, outer_id, agent_type, agent_config, boot_config, sim_initialize):
+    def __init__(self, agent_id, agent_type, agent_config, sim_initialize):
         """
         Construct the agent.
 
         Args:
             agent_id (str): Unique identifier for this agent.
-                This agent will only respond to messages addressed to its inner agent_id.
-            outer_id (str): Unique identifier for the outer agent this agent belongs to.
-                All messages to an outer agent will be addressed to this id.
+              This agent will only respond to messages addressed to its inner agent_id.
             agent_type (str): The type of this agent, for coordination with the agent shepherd.
             agent_config (dict): A dictionary containing any information needed to run this
-                outer agent. The only required key is `kafka_config` containing Kafka configuration
-                information with the following keys:
-
-                * `host`: the Kafka server host address.
-                * `topics`: a dictionary mapping topic roles to specific topics used by the agent
-                    to communicate with other agents. The relevant ones to this agent are:
-
-                    * `cell_receive`: The topic this agent will receive messages on from the
-                        environment or relevant control processes.
-                    * `environment_receive`: The topic this agent will send messages to its
-                        associated outer agent (given by `outer_id`) and environmental simulation.
-                    * `shepherd_receive`: The topic this agent will send messages on for
-                        adding agents to and removing agents from the environment.
-            boot_config (dict): a dictionary of options for initializing the simulation
-            sim_initialize: the function for initializing a simulation. Requires boot_config and synchronize_config to run
+              inner agent. The only required keys are `outer_id`, `boot` and `kafka_config`
+                * `outer_id`: the id of the outer this inner is embedded in.
+                * `declare`: dict of values to pass to outer in CELL_DECLARE message.
+                * `boot`: dict of options to pass in to the simulation during initialization.
+                * `kafka_config`: anything this agent needs to know about kafka, including:
+                    * `host`: the Kafka server host address.
+                    * `topics`: a dictionary mapping topic roles to specific topics used by the agent
+                        to communicate with other agents. The relevant ones to this agent are:
+                        * `cell_receive`: The topic this agent will receive messages on from the
+                            environment or relevant control processes.
+                        * `environment_receive`: The topic this agent will send messages to its
+                            associated outer agent (given by `outer_id`) and environmental simulation
+                        * `shepherd_receive`: The topic this agent will send messages on for
+                            adding agents to and removing agents from the environment.
+            sim_initialize: the function for initializing a simulation. agent_config['boot'] and the
+              response from the environment accompanying the CELL_SYNCHRONIZE message will be
+              passed in.
         """
 
-        self.sim_initialize = sim_initialize
-        self.boot_config = boot_config
+        self.outer_id = agent_config['outer_id']
+        self.declare = agent_config.get('declare', {})
+        self.boot = agent_config.get('boot', {})
         self.generation = agent_config.get('generation', 0)
 
+        # mutating in place
         kafka_config = agent_config['kafka_config']
         kafka_config['subscribe'].append(
             kafka_config['topics']['cell_receive'])
 
+        self.sim_initialize = sim_initialize
+
         super(Inner, self).__init__(agent_id, agent_type, agent_config)
 
-        self.outer_id = outer_id
-
     def preinitialize(self):
-
         time.sleep(1.0)
 
-        kafka_config = self.agent_config['kafka_config']
-        state = self.agent_config['state']
-        self.send(kafka_config['topics']['environment_receive'], {
+        self.send(self.kafka_config['topics']['environment_receive'], {
             'event': event.CELL_DECLARE,
             'agent_id': self.outer_id,
             'inner_id': self.agent_id,
             'agent_config': self.agent_config,
-            'state': state})
+            'state': self.declare})
+
+    def initialize_simulation(self, message):
+        self.boot.update(message['state'])
+        self.simulation = self.sim_initialize(self.boot)
+        self.send_initialize()
 
     def send_initialize(self):
         """
@@ -237,8 +241,7 @@ class Inner(Actor):
             message_event = message['event']
 
             if message_event == event.ENVIRONMENT_SYNCHRONIZE:
-                self.simulation = self.sim_initialize(self.boot_config, message['state'])
-                self.send_initialize()
+                self.initialize_simulation(message)
 
             elif message_event == event.ENVIRONMENT_UPDATE:
                 self.environment_update(message)

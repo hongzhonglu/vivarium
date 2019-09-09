@@ -4,12 +4,12 @@ import time
 import random
 import numpy as np
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 TUMBLE_JITTER = 0.5  # (radians)
 DEFAULT_COLOR = [color/255 for color in [76, 0 , 153]]
 
-class ChemotaxisMinimal(Process):
+class ChemotaxisMinimal(Simulation):
     '''
     Simple chemotaxis surrogate that can move up glucose gradients. It can take on two states 'run' and 'tumble'.
     State is a function of the current glucose concentrations, and internal CheY concentrations -- the 'memory' of

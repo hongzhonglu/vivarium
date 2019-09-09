@@ -1,23 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
+import time
 import os
 import csv
+import math
 from scipy import constants
 
-from lens.actor.process import Process
-from lens.environment.make_media import Media
+from lens.actor.inner import Simulation
 from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.utils.rate_law_utilities import load_reactions
 from lens.utils.rate_law_utilities import get_reactions_from_exchange
-from lens.utils.rate_law_utilities import get_molecules_from_reactions
 from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
-
 
 EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
 TRANSPORT_IDS_FILE = os.path.join('lens', 'reconstruction', 'flat', 'transport_reactions.tsv')
 
 TSV_DIALECT = csv.excel_tab
+TUMBLE_JITTER = 2.0 # (radians)
+DEFAULT_COLOR = [color/255 for color in [0, 0, 0]]
 
 amino_acids = [
     'L-ALPHA-ALANINE',
@@ -42,79 +43,62 @@ amino_acids = [
     'L-SELENOCYSTEINE',
     'VAL'
 ]
-additional_exchange = ['OXYGEN-MOLECULE', 'GLC']
-external_molecule_ids = additional_exchange + amino_acids
 
-# add [p] label. TODO (Eran) -- fix this
-external_molecule_ids_p = [mol_id + '[p]' for mol_id in external_molecule_ids]
+aa_p_ids = [aa_id + '[p]' for aa_id in amino_acids]
+exchange_molecules = ['OXYGEN-MOLECULE[p]', 'GLC[p]']
+exchange_ids = exchange_molecules + aa_p_ids
 
+class TransportLookup(Simulation):
+    ''''''
 
-class TransportLookup(Process):
-    def __init__(self, initial_parameters={}):
-        self.media_id = 'minimal' # state.get('media_id', 'minimal')
-        self.lookup_type = 'average' #state.get('lookup', 'average')
+    def __init__(self, state):
+        self.initial_time = state.get('time', 0.0)
+        self.local_time = state.get('time', 0.0)
+        self.media_id = state.get('media_id', 'minimal')
+        self.lookup_type = state.get('lookup', 'average')
+        self.timestep = 1.0
+        self.environment_change = {}
+        self.volume = 1.0  # (fL)
+        self.division_time = 100
         self.nAvogadro = constants.N_A
-        self.external_molecule_ids = external_molecule_ids
 
-        # load all reactions and maps
+        # initial state
+        self.external_concentrations = {}
+        self.internal_concentrations = {}
+        self.motile_force = [0.0, 0.0] # initial magnitude and relative orientation
+        self.division = []
+
+        # load all reactions and
         self.load_data()
 
-        # external_molecule_ids declares which molecules' exchange will be applied
-        self.transport_reaction_ids = get_reactions_from_exchange(self.all_transport_reactions, external_molecule_ids_p)
-        all_molecule_ids = get_molecules_from_reactions(self.transport_reaction_ids, self.all_transport_reactions)
-        internal_molecule_ids = [mol_id for mol_id in all_molecule_ids if mol_id not in external_molecule_ids_p]
+        # exchange_ids declares which molecules' exchange will be applied
+        self.transport_reaction_ids = get_reactions_from_exchange(self.all_transport_reactions, exchange_ids)
 
         # make look up object
         self.look_up = LookUp()
 
-        # get initial fluxes
+        # get the fluxes
         self.transport_fluxes = self.look_up.look_up(
             self.lookup_type,
             self.media_id,
             self.transport_reaction_ids)
 
-        roles = {
-            'external': external_molecule_ids,
-            'internal': internal_molecule_ids + ['volume']}
-        parameters = {}
-        parameters.update(initial_parameters)
+        # adjust the fluxes
+        # self.transport_fluxes = self.adjust_fluxes(self.transport_fluxes)
 
-        super(TransportLookup, self).__init__(roles, parameters)
-
-    def default_state(self):
-        media_id = 'minimal_plus_amino_acids'
-        make_media = Media()
-        media = make_media.get_saved_media(media_id)
-
-        external_molecules_changes = [key + '_change' for key in media.keys()]  # TODO (Eran) -- pass in '_change' string
-
-        # declare the states
-        environment_state = media
-        environment_state.update({key: 0 for key in external_molecules_changes})
-        environment_state['volume'] = 10
-
-        cell_state = {'volume': 1}
-
-        return {
-            'external_molecules': external_molecules_changes,
-            'external': environment_state,
-            'internal': cell_state}
-
-    def next_update(self, timestep, states):
-
-        volume = states['internal']['volume']
-
+    def update_state(self):
         # nAvogadro is in 1/mol --> convert to 1/mmol. volume is in fL --> convert to L
-        self.molar_to_counts = (self.nAvogadro * 1e-3) * (volume * 1e-15)
+        self.molar_to_counts = (self.nAvogadro * 1e-3) * (self.volume * 1e-15)
 
         # get transport fluxes
         self.transport_fluxes = self.look_up.look_up(
             self.lookup_type,
             self.media_id,
             self.transport_reaction_ids)
+        # self.transport_fluxes = self.adjust_fluxes(self.transport_fluxes)
 
         # convert to counts
-        delta_counts = self.flux_to_counts(self.transport_fluxes)  # TODO * timestep
+        delta_counts = self.flux_to_counts(self.transport_fluxes)
 
         # Get the deltas for environmental molecules
         environment_deltas = {}
@@ -123,11 +107,59 @@ class TransportLookup(Process):
                 external_molecule_id = self.molecule_to_external_map[molecule_id]
                 environment_deltas[external_molecule_id] = delta_counts[molecule_id]
 
-        update = {
-            'external': {mol_id + '_change': delta for mol_id, delta in environment_deltas.iteritems()}, # TODO (Eran) -- pass in this '_change' substring
-        }
+        # accumulate in environment_change
+        self.accumulate_deltas(environment_deltas)
 
-        return update
+    def accumulate_deltas(self, environment_deltas):
+        for molecule_id, count in environment_deltas.iteritems():
+            self.environment_change[molecule_id] += count
+
+    def check_division(self):
+        # update division state based on time since initialization
+        if self.local_time >= self.initial_time + self.division_time:
+            self.division = [{'time': self.local_time}, {'time': self.local_time}]
+        return self.division
+
+    def time(self):
+        return self.local_time
+
+    def apply_outer_update(self, update):
+        self.external_concentrations = update['concentrations']
+        self.media_id = update['media_id']
+
+        # reset environment change
+        self.environment_change = {}
+        for molecule in self.external_concentrations.iterkeys():
+            self.environment_change[molecule] = 0
+
+    def run_incremental(self, run_until):
+        '''run until run_until'''
+        while self.time() < run_until:
+            self.local_time += self.timestep
+            self.update_state()
+            # self.check_division()
+
+        time.sleep(1.0)  # pause for better coordination with Lens visualization. TODO: remove this
+
+    def generate_inner_update(self):
+        return {
+            'volume': self.volume,
+            'motile_force': self.motile_force,
+            'environment_change': self.environment_change,
+            'division': self.division,
+            'color': DEFAULT_COLOR,
+            'transport_fluxes': self.transport_fluxes,
+            }
+
+    def adjust_fluxes(self, transport_fluxes):
+        '''adjust fluxes found by look up table'''
+
+        time_constant = 10
+        adjusted_transport_fluxes = {
+            transport_id: max(flux(1 + math.sin(time_constant * self.local_time)), 0.0)
+            for transport_id, flux in transport_fluxes.iteritems()}
+
+        return adjusted_transport_fluxes
 
     def flux_to_counts(self, fluxes):
         rxn_counts = {

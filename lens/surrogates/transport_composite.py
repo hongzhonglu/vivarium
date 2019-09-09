@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 DEFAULT_COLOR = [color/255 for color in [0, 128, 255]]
 
 
-class TransportComposite(Process):
+class TransportComposite(Simulation):
     '''
     This CellSimulation class is a composite agent, which coordinates the function of multiple sub-agents.
 

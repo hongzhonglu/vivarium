@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 
 TUMBLE_JITTER = 2.0 # (radians)
@@ -18,7 +18,7 @@ def subtract_lists(list1, list2):
     list3 = [x1 - x2 for (x1, x2) in zip(list1, list2)]
     return list3
 
-class Endocrine(Process):
+class Endocrine(Simulation):
     ''' Endocrine Surrogate '''
 
     def __init__(self, state):

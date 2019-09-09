@@ -4,14 +4,14 @@ import time
 import random
 import uuid
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 
 DEFAULT_COLOR = [color/255 for color in [255, 0 , 0]]
 
 INITIAL_VOLUME = 1.0
 
-class Division(Process):
+class Division(Simulation):
     ''' '''
 
     def __init__(self, boot_config):

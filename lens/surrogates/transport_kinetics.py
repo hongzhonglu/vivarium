@@ -18,10 +18,10 @@ import json
 from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 from lens.environment.condition.look_up_tables.look_up import LookUp
 from lens.utils.kinetic_rate_laws import KineticFluxModel
-from lens.reconstruction.kinetic_rate_laws.rate_law_utilities import load_reactions
+from lens.utils.rate_law_utilities import load_reactions
 
 TUMBLE_JITTER = 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 51, 51]]
@@ -31,7 +31,7 @@ TRANSPORT_IDS_FILE = os.path.join("reconstruction", "ecoli", "flat", "transport_
 EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
 KINETIC_PARAMETERS_FILE = os.path.join('wholecell', 'kinetic_rate_laws', 'parameters', 'example_parameters.json')
 
-class TransportKinetics(Process):
+class TransportKinetics(Simulation):
     '''
     A surrogate that uses kinetic rate laws to determine transport flux
 

@@ -139,7 +139,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        self.append_agent_tables()
+        self.append_agent_tables()  # TODO (Eran) -- use emitter
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -344,7 +344,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                     patch_site = tuple(np.floor(location).astype(int))
 
-                    for molecule, count in state['environment_change'].iteritems():
+                    for molecule_change, count in state['environment_change'].iteritems():
+                        molecule = molecule_change.replace('_change', '')  # TODO (Eran) -- pass in this substring
                         concentration = self.count_to_concentration(count)
                         index = self.molecule_index[molecule]
                         self.lattice[index, patch_site[0], patch_site[1]] += concentration
@@ -391,6 +392,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
     # TableWriter functions
+    # TODO (Eran) -- do all logging through emitters
     def create_lattice_table(self):
         table = TableWriter(self.output_dir)
         table.writeAttributes(

@@ -8,13 +8,13 @@ from lens.actor.inner import Inner
 from lens.actor.boot import BootAgent
 
 from lens.environment.lattice import EnvironmentSpatialLattice
-from lens.processes.metabolism import Metabolism
-from lens.processes.chemotaxis_minimal import ChemotaxisMinimal
-from lens.processes.chemotaxis_MWC_sensors import Chemotaxis
-from lens.processes.endocrine import Endocrine
-from lens.processes.transport_kinetics import TransportKinetics
-from lens.processes.transport_lookup import TransportLookup
-from lens.processes.division import Division
+from lens.surrogates.metabolism import Metabolism
+from lens.surrogates.chemotaxis_minimal import ChemotaxisMinimal
+from lens.surrogates.chemotaxis_MWC_sensors import Chemotaxis
+from lens.surrogates.endocrine import Endocrine
+from lens.surrogates.transport_kinetics import TransportKinetics
+from lens.surrogates.transport_lookup import TransportLookup
+from lens.surrogates.division import Division
 from lens.environment.make_media import Media
 
 
@@ -63,26 +63,30 @@ def boot_lattice(agent_id, agent_type, agent_config):
         make_media = Media()
         media = make_media.get_saved_media(media_id)
 
-    # TODO (Eran) -- remove this. Make easier passing of medias to lattice.
-    # TODO -- should not have 'xt' -- locations will be managed
-    # TODO -- units management.
-    # TODO -- load from GLC_G6P_initial.tsv
-    media_id = 'GLC_G6P'
-    media = {
-        'ACxt': 0.0,
-        'CO2xt': 100.0,	# "units.mmol / units.L"
-        'ETHxt': 0.0,
-        'FORxt': 0.0,
-        'GLCxt': 1.2209,	# "units.mmol / units.L"
-        'GLxt': 0.0,
-        'LACxt': 0.0,
-        'LCTSxt': 0.0,
-        'O2xt': 100.0,	# "units.mmol / units.L"
-        'PIxt': 100.0,	# "units.mmol / units.L"
-        'PYRxt': 0.0,
-        'RIBxt': 0.0,
-        'SUCCxt': 0.0,
-    }
+    # # TODO (Eran) -- remove this. Make easier passing of medias to lattice.
+    # # TODO -- should not have 'xt' -- locations will be managed
+    # # TODO -- units management.
+    # # TODO -- load from GLC_G6P_initial.tsv
+    # media_id = 'GLC_G6P'
+    # media = {
+    #     # covert2002
+    #     'ACxt': 0.0,
+    #     'CO2xt': 100.0, # "units.mmol / units.L"
+    #     'ETHxt': 0.0,
+    #     'FORxt': 0.0,
+    #     # 'GLCxt': 1.2209,    # "units.mmol / units.L" TODO (Eran) -- kremling has a different GLCxt state
+    #     'GLxt': 0.0,
+    #     'LACxt': 0.0,
+    #     'LCTSxt': 0.0,
+    #     'O2xt': 100.0,  # "units.mmol / units.L"
+    #     'PIxt': 100.0,  # "units.mmol / units.L"
+    #     'PYRxt': 0.0,
+    #     'RIBxt': 0.0,
+    #     'SUCCxt': 0.0,
+    #     # kremling2007
+    #     'G6Pxt': 1.3451,  # [m mol/L]
+    #     'GLCxt': 12.2087,  # [m mol/L]
+    # }
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
     if os.path.isdir(output_dir):

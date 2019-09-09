@@ -6,7 +6,7 @@ import numpy as np
 import math
 import random
 
-from lens.actor.inner import Process
+from lens.actor.inner import Simulation
 
 
 TUMBLE_JITTER = 0.5  # (radians)
@@ -36,7 +36,7 @@ n_motors = 5
 cw_to_ccw = 0.83  # 1/s (Block1983) motor bias, assumed to be constant
 
 
-class Chemotaxis(Process):
+class Chemotaxis(Simulation):
     '''
     Simple chemotaxis surrogate that can move up glucose gradients. It can take on two states 'run' and 'tumble'.
     State is a function of the current glucose concentrations, and internal CheY concentrations -- the 'memory' of
