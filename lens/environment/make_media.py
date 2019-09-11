@@ -84,10 +84,7 @@ class Media(object):
         '''load all stock media'''
         self.stock_media = {}
         for label in vars(raw_data.condition.media):
-            # initiate all molecules with 0 concentrations
-            self.stock_media[label] = {
-                row["molecule id"]: 0.0 * CONC_UNITS
-                for row in raw_data.condition.environment_molecules}
+            self.stock_media[label] = {}
 
             # get non-zero concentrations (assuming units.mmol / units.L)
             molecule_concentrations = getattr(raw_data.condition.media, label)

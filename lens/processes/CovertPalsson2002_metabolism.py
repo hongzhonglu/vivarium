@@ -13,7 +13,6 @@ from lens.utils.modular_fba import FluxBalanceAnalysis
 TSV_DIALECT = csv.excel_tab
 
 DATA_DIR = os.path.join('lens', 'reconstruction', 'CovertPalsson2002')
-
 LIST_OF_FILENAMES = (
     "reactions.tsv",
     "regulatory_proteins.tsv",
@@ -24,12 +23,49 @@ LIST_OF_FILENAMES = (
     "GLC_G6P_flux_bounds.tsv",
     )
 
-
 COUNTS_UNITS = units.mmol
 VOLUME_UNITS = units.L
 MASS_UNITS = units.g
 TIME_UNITS = units.s
 CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
+
+## Default States
+# GLC-G6P media
+GLC_G6P_EXTERNAL = {
+    'ACET': 0.0,
+    'CO+2': 100.0,  # "units.mmol / units.L"
+    'ETOH': 0.0,
+    'FORMATE': 0.0,
+    'GLC': 1.2209,  # "units.mmol / units.L"
+    'GLYCEROL': 0.0,
+    'LAC': 0.0,
+    'LCTS': 0.0,
+    'OXYGEN-MOLECULE': 100.0,  # "units.mmol / units.L"
+    'PI': 100.0,  # "units.mmol / units.L"
+    'PYR': 0.0,
+    'RIB': 0.0,
+    'SUC': 0.0,
+}
+
+# GLC-LCT media
+GLC_LCT_EXTERNAL = {
+    'G6P': 0,  # [m mol / L]
+    'GLC': 1.2209,  # [m mol / L]
+    'RIB': 0,  # [m mol / L]
+    'GLYCEROL': 0,  # [m mol / L]
+    'SUC': 0,  # [m mol / L]
+    'PYR': 0,  # [m mol / L]
+    'LAC': 0,  # [m mol / L]
+    'LCTS': 3.4034,  # [m mol / L]
+    'FORMATE': 0,  # [m mol / L]
+    'ETOH': 0,  # [m mol / L]
+    'ACET': 0,  # [m mol / L]
+    'PI': 100,  # [m mol / L]
+    'CO+2': 100,  # [m mol / L]
+    'OXYGEN-MOLECULE': 100,  # [m mol / L]
+}
+
+INTERNAL = {'Biomass': 0.032}
 
 # helper functions
 def get_reverse(reactions):
@@ -37,7 +73,8 @@ def get_reverse(reactions):
     for reaction in reactions:
         if reaction['Reversible']:
             reaction_id = reaction['Reaction']
-            stoich = {mol_id: -1 * coeff for mol_id, coeff in reaction['Stoichiometry'].iteritems()}
+            stoich = {mol_id: -1 * coeff
+                      for mol_id, coeff in reaction['Stoichiometry'].iteritems()}
             reverse_stoichiometry[reaction_id + '_reverse'] = stoich
     return reverse_stoichiometry
 
@@ -61,9 +98,16 @@ def load_tsv(dir_name, file_name):
             attr_list.append({field: row[field] for field in fieldnames})
     return attr_list
 
+def merge_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
+
 
 class Metabolism(Process):
     def __init__(self, initial_parameters={}):
+
+        self.exchange_key = initial_parameters['exchange_key']
 
         # parameters  # TODO -- pass paramters in?
         self.nAvogadro = constants.N_A
@@ -75,8 +119,8 @@ class Metabolism(Process):
 
         self.load_data()
         all_molecule_ids = get_molecules_from_reactions(self.stoichiometry)
-        self.internal_molecule_ids = [mol_id for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['Biomass']]
-        # TODO -- what about Biomass?
+        self.internal_molecule_ids = [mol_id
+            for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['Biomass']]
 
         # initialize FBA
         self.fba = FluxBalanceAnalysis(
@@ -96,62 +140,26 @@ class Metabolism(Process):
         super(Metabolism, self).__init__(roles, parameters)
 
     def default_state(self):
+        # TODO -- reconcile these with environment
         glc_g6p = True
         glc_lct = False
 
         if glc_g6p:
-            # GLC-G6P media
-            media = {
-                # Biomass = 0.032,    # [g / l]
-                'ACxt': 0.0,
-                'CO2xt': 100.0,  # "units.mmol / units.L"
-                'ETHxt': 0.0,
-                'FORxt': 0.0,
-                'GLCxt': 1.2209,  # "units.mmol / units.L"
-                'GLxt': 0.0,
-                'LACxt': 0.0,
-                'LCTSxt': 0.0,
-                'O2xt': 100.0,  # "units.mmol / units.L"
-                'PIxt': 100.0,  # "units.mmol / units.L"
-                'PYRxt': 0.0,
-                'RIBxt': 0.0,
-                'SUCCxt': 0.0,
-            }
+            external = GLC_G6P_EXTERNAL
         elif glc_lct:
-            # GLC-LCT media
-            media = {
-                # Biomass: 0.032,    # [g / l]
-                'G6Pxt': 0,  # [m mol / L]
-                'GLCxt': 1.2209,  # [m mol / L]
-                'RIBxt': 0,  # [m mol / L]
-                'GLxt': 0,  # [m mol / L]
-                'SUCCxt': 0,  # [m mol / L]
-                'PYRxt': 0,  # [m mol / L]
-                'LACxt': 0,  # [m mol / L]
-                'LCTSxt': 3.4034,  # [m mol / L]
-                'FORxt': 0,  # [m mol / L]
-                'ETHxt': 0,  # [m mol / L]
-                'ACxt': 0,  # [m mol / L]
-                'PIxt': 100,  # [m mol / L]
-                'CO2xt': 100,  # [m mol / L]
-                'O2xt': 100,  # [m mol / L]
-            }
+            external = GLC_LCT_EXTERNAL
 
-        external_molecules_changes = [key + '_change' for key in media.keys()]
+        internal = INTERNAL
+        environment_deltas = [key + self.exchange_key for key in external.keys()]
 
         # declare the states
-        environment_state = media
-        environment_state.update({key: 0 for key in external_molecules_changes})
-        environment_state['volume'] = 10
-        cell_state = {
-            'volume': 1,
-            'Biomass': 0.032,  # [g / l]
-        }
+        external_molecules = merge_dicts(external,{key: 0 for key in environment_deltas})
+        internal_molecules = merge_dicts(internal, {'volume': 1})  # fL TODO -- get volume with deriver?
 
         return {
-            'external_molecules': external_molecules_changes,
-            'external': environment_state,
-            'internal': cell_state}
+            'environment_deltas': environment_deltas,
+            'external': external_molecules,
+            'internal': internal_molecules}
 
     def next_update(self, timestep, states):
 
@@ -163,19 +171,20 @@ class Metabolism(Process):
         external_concentrations = [external_state.get(molID, 0.0) for molID in exchange_molecules]
         self.fba.setExternalMoleculeLevels(external_concentrations)
 
+        # TODO -- check units on exchange flux
         exchange_fluxes = self.fba.getExternalExchangeFluxes() # TODO * timestep
 
         # update state based on internal and external concentrations
-        # TODO -- should this be millimolar? Get units in environment
-        countsToMolar = 1 / (self.nAvogadro * volume * 1e-15)  # convert volume, fL to L
+        countsToMolar = 1 / (self.nAvogadro * volume * 1e-15)  # convert volume fL to L
 
         # Get the delta counts for environmental molecules
         delta_exchange_counts = ((1 / countsToMolar) * exchange_fluxes).astype(int)
         environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))
 
-        # TODO -- update internal state -- Biomass/volume?
+        # TODO -- update internal state Biomass
         update = {
-            'external': {mol_id + '_change': delta for mol_id, delta in environment_deltas.iteritems()}, # TODO (Eran) -- pass in this '_change' substring
+            'external': {mol_id + self.exchange_key: delta
+                for mol_id, delta in environment_deltas.iteritems()},
         }
 
         return update

@@ -1,9 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
+from pymongo import MongoClient
 from confluent_kafka import Producer
 import json
 
 from lens.actor.actor import delivery_report
+
+INDEX_COLUMNS = [
+    'time',
+    'simulation_id',
+    'experiment_id']
+
+def create_indexes(table):
+    '''Create all of the necessary indexes for the given table name.'''
+    for column in INDEX_COLUMNS:
+        table.create_index(column)
+
 
 class Emitter(object):
     '''
@@ -20,6 +32,7 @@ class KafkaEmitter(Emitter):
     '''
     Emit data to kafka
 
+    example:
     config = {
         'host': 'localhost:9092',
         'topic': 'EMIT'}
@@ -39,6 +52,29 @@ class KafkaEmitter(Emitter):
 
         self.producer.flush(timeout=0.1)
 
+
+class DatabaseEmitter(Emitter):
+    '''
+    Emit data to a mongoDB database
+    '''
+    def __init__(self, config):
+        self.config = config
+        self.simulation_id = config.get('simulation_id')
+        self.experiment_id = config.get('experiment_id')
+
+        client = MongoClient(config['url'])
+        self.db = getattr(client, config.get('database', 'simulations'))
+        self.table = getattr(self.db, 'output')
+        create_indexes(self.table)
+
+
+    def emit(self, data):
+        data.update({
+            'simulation_id': self.simulation_id,
+            'experiment_id': self.experiment_id})
+
+        self.table.insert_one(data)
+
 def get_emitter(config):
     '''
     Get an emitter based on the provided config.
@@ -49,13 +85,14 @@ def get_emitter(config):
     * keys: A list of state keys to emit for each state label.
     '''
 
-    emitter_config = config.get('emitter', {})
     emitter_type = config.get('type', 'print')
 
     if emitter_type == 'kafka':
-        emitter = KafkaEmitter(config['emitter'])
+        emitter = KafkaEmitter(config)
+    elif emitter_type == 'database':
+        emitter = DatabaseEmitter(config)
     else:
-        emitter = Emitter(emitter_config)
+        emitter = Emitter(config)
 
     return {
         'object': emitter,

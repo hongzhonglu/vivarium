@@ -51,6 +51,7 @@ external_molecule_ids_p = [mol_id + '[p]' for mol_id in external_molecule_ids]
 
 class TransportLookup(Process):
     def __init__(self, initial_parameters={}):
+        self.exchange_key = initial_parameters['exchange_key']
         self.media_id = 'minimal' # state.get('media_id', 'minimal')
         self.lookup_type = 'average' #state.get('lookup', 'average')
         self.nAvogadro = constants.N_A
@@ -86,19 +87,26 @@ class TransportLookup(Process):
         make_media = Media()
         media = make_media.get_saved_media(media_id)
 
-        external_molecules_changes = [key + '_change' for key in media.keys()]  # TODO (Eran) -- pass in '_change' string
+        environment_deltas = [key + self.exchange_key for key in media.keys()]  # TODO (Eran) -- pass in '_change' string
 
         # declare the states
         environment_state = media
-        environment_state.update({key: 0 for key in external_molecules_changes})
+        environment_state.update({key: 0 for key in environment_deltas})
         environment_state['volume'] = 10
 
         cell_state = {'volume': 1}
 
         return {
-            'external_molecules': external_molecules_changes,
+            'environment_deltas': environment_deltas,
             'external': environment_state,
             'internal': cell_state}
+
+    def default_emitter_keys(self):
+        keys = {
+            'internal': [],
+            'external': external_molecule_ids
+        }
+        return keys
 
     def next_update(self, timestep, states):
 
@@ -124,11 +132,12 @@ class TransportLookup(Process):
                 environment_deltas[external_molecule_id] = delta_counts[molecule_id]
 
         update = {
-            'external': {mol_id + '_change': delta for mol_id, delta in environment_deltas.iteritems()}, # TODO (Eran) -- pass in this '_change' substring
+            'external': {mol_id + self.exchange_key: delta for mol_id, delta in environment_deltas.iteritems()}, # TODO (Eran) -- pass in this '_change' substring
         }
 
         return update
 
+    # TODO (Eran) -- make this a util
     def flux_to_counts(self, fluxes):
         rxn_counts = {
             reaction_id: int(self.molar_to_counts * flux)

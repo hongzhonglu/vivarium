@@ -15,9 +15,12 @@ LIST_OF_ENV_FILENAMES = (
     os.path.join("condition", "environment_molecules.tsv"),
     os.path.join("condition", "timelines_def.tsv"),
     os.path.join("condition", "media_recipes.tsv"),
+    os.path.join("condition", "media", "wcEcoli_base.tsv"),
     os.path.join("condition", "media", "M9.tsv"),
     os.path.join("condition", "media", "M9_GLC.tsv"),
     os.path.join("condition", "media", "5X_supplement_EZ.tsv"),
+    os.path.join("condition", "media", "GLC_G6P.tsv"),
+    os.path.join("condition", "media", "GLC_LCT.tsv"),
     )
 
 class DataStore(object):

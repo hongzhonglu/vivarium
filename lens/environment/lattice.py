@@ -344,11 +344,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
                     patch_site = tuple(np.floor(location).astype(int))
 
-                    for molecule_change, count in state['environment_change'].iteritems():
-                        molecule = molecule_change.replace('_change', '')  # TODO (Eran) -- pass in this substring
+                    for molecule, count in state['environment_change'].iteritems():
                         concentration = self.count_to_concentration(count)
                         index = self.molecule_index[molecule]
                         self.lattice[index, patch_site[0], patch_site[1]] += concentration
+                        # TODO (Eran) -- check if patch concentration drops below 0
 
     def generate_outer_update(self, now):
         '''Return a dict with {molecule_id: conc} for each sim at its current location'''

@@ -9,7 +9,7 @@ from lens.environment.lattice_compartment import LatticeCompartment, generate_la
 # processes
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.CovertPalsson2002_metabolism import Metabolism
-# from lens.processes.Kremling2007_transport import Transport
+from lens.processes.Kremling2007 import Transport
 
 ## example composition for one process:
 # def initialize_lookup_transport(config):
@@ -61,6 +61,14 @@ def wrap_boot(initialize, initial_state):
 
 def wrap_initialize(make_process):
     def initialize(config):
+        config.update({
+            'exchange_key': '__exchange',  # key for counting exchange with lattice
+            'emitter': {
+                'type': 'database',
+                'url': 'localhost:27017',
+                'database': 'simulations',
+                }
+            })
         process = make_process(config)
         return generate_lattice_compartment(process, config)
 
@@ -73,7 +81,7 @@ class BootEnvironment(BootAgent):
         self.agent_types = {
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_initialize(Metabolism), {'volume': 1.0}),
-            # 'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0})
+            'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0})
         }
 
 if __name__ == '__main__':

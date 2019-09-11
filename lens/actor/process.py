@@ -16,7 +16,7 @@ KEY_TYPE = 'U31'
 
 
 class State(object):
-    ''' Represents a set of named positive integer values. '''
+    ''' Represents a set of named values. '''
 
     def __init__(self, initial_state={}):
         ''' Keys and state initialize empty, with a maximum key length of 31. '''
@@ -98,6 +98,12 @@ class Process(object):
     def default_state(self):
         return {}
 
+    def default_emitter_keys(self):
+        return {'external': [], 'internal': []}
+
+    # def default_parameters(self):
+    #     return {}
+
     def assign_roles(self, states):
         '''
         Provide States for some or all of the roles this Process expects.
@@ -149,6 +155,7 @@ class Compartment(object):
             connections, perform those connections. '''
 
         self.local_time = 0
+        self.time_step = 1.0
 
         self.derivers = {
             name: process
@@ -221,6 +228,7 @@ class Compartment(object):
         data = {}
         for role_key, emit_keys in self.emitter_keys.iteritems():
             data[role_key] = self.states[role_key].state_for(emit_keys)
+        data['time'] = self.time()
 
         self.emitter.emit(data)
 

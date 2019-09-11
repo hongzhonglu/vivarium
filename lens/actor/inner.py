@@ -103,6 +103,9 @@ class Inner(Actor):
 
     def initialize_simulation(self, message):
         self.boot.update(message['state'])
+        self.boot.update({
+            'simulation_id': message['inner_id'],
+            'experiment_id': message['outer_id']})
         self.simulation = self.sim_initialize(self.boot)
         self.send_initialize()
 
