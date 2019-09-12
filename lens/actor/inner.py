@@ -61,7 +61,7 @@ class Inner(Actor):
               inner agent. The only required keys are `outer_id`, `boot` and `kafka_config`
                 * `outer_id`: the id of the outer this inner is embedded in.
                 * `declare`: dict of values to pass to outer in CELL_DECLARE message.
-                * `boot`: dict of options to pass in to the simulation during initialization.
+                * `boot_config`: dict of options to pass in to the simulation during initialization.
                 * `kafka_config`: anything this agent needs to know about kafka, including:
                     * `host`: the Kafka server host address.
                     * `topics`: a dictionary mapping topic roles to specific topics used by the agent
@@ -72,14 +72,14 @@ class Inner(Actor):
                             associated outer agent (given by `outer_id`) and environmental simulation
                         * `shepherd_receive`: The topic this agent will send messages on for
                             adding agents to and removing agents from the environment.
-            sim_initialize: the function for initializing a simulation. agent_config['boot'] and the
+            sim_initialize: the function for initializing a simulation. agent_config['boot_config'] and the
               response from the environment accompanying the CELL_SYNCHRONIZE message will be
               passed in.
         """
 
         self.outer_id = agent_config['outer_id']
         self.declare = agent_config.get('declare', {})
-        self.boot = agent_config.get('boot', {})
+        self.boot_config = agent_config.get('boot_config', {})
         self.generation = agent_config.get('generation', 0)
 
         # mutating in place
@@ -102,11 +102,12 @@ class Inner(Actor):
             'state': self.declare})
 
     def initialize_simulation(self, message):
-        self.boot.update(message['state'])
-        self.boot.update({
+
+        self.boot_config.update(message['state'])
+        self.boot_config.update({
             'simulation_id': message['inner_id'],
             'experiment_id': message['outer_id']})
-        self.simulation = self.sim_initialize(self.boot)
+        self.simulation = self.sim_initialize(self.boot_config)
         self.send_initialize()
 
     def send_initialize(self):

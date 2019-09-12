@@ -49,7 +49,7 @@ from lens.processes.Kremling2007 import Transport
 def wrap_boot(initialize, initial_state):
     def boot(agent_id, agent_type, agent_config):
         initial_state.update(agent_config.get('declare', {}))
-        agent_config['declare'] = initial_state
+        agent_config['declare'] = initial_state  # 'declare' is for the environment
 
         return Inner(
             agent_id,
@@ -60,30 +60,33 @@ def wrap_boot(initialize, initial_state):
     return boot
 
 def wrap_initialize(make_process):
-    def initialize(config):
-        config.update({
-            'exchange_key': '__exchange',  # key for counting exchange with lattice
+    def initialize(boot_config):
+        boot_config.update({
+            'exchange_key': '__exchange',
             'emitter': {
                 'type': 'database',
                 'url': 'localhost:27017',
                 'database': 'simulations',
                 }
             })
-        process = make_process(config)
-        return generate_lattice_compartment(process, config)
+        process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
+        return generate_lattice_compartment(process, boot_config)
 
     return initialize
 
 
-class BootEnvironment(BootAgent):
+class BootCompartment(BootAgent):
     def __init__(self):
-        super(BootEnvironment, self).__init__()
+        super(BootCompartment, self).__init__()
         self.agent_types = {
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_initialize(Metabolism), {'volume': 1.0}),
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0})
         }
 
-if __name__ == '__main__':
-    boot = BootEnvironment()
+def run():
+    boot = BootCompartment()
     boot.execute()
+
+if __name__ == '__main__':
+    run()

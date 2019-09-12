@@ -14,15 +14,20 @@
      spec - a map containing any information necessary to boot the agent.
        :agent_id - a unique id for the new agent.
        :agent_type - the type of the new agent to be invoked.
-       :agent_config - a configuration map containing any values needed by the python script
-          to boot the new agent.
+       :agent_config - a configuration map containing any values needed by the python
+          script to boot the new agent.
      config - system configuration.
        :boot - which python file to use when booting agents."
   [spec config]
-  (let [serial (json/generate-string (:agent_config spec))]
+  (let [agent-config (:agent_config spec)
+        boot (or
+              (:boot agent-config)
+              (get config :boot "agent.boot"))
+        serial (json/generate-string agent-config)]
     (process/launch!
-     ["python" "-u"
-      "-m" (get config :boot "agent.boot")
+     ["python"
+      "-u"
+      "-m" boot
       "--id" (:agent_id spec)
       "--type" (:agent_type spec)
       "--config" serial]

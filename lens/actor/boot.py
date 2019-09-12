@@ -102,6 +102,9 @@ class BootAgent(object):
         agent = boot(args['id'], args['type'], agent_config)
         agent.start()
 
-if __name__ == '__main__':
+def run():
     boot = BootAgent()
     boot.execute()
+
+if __name__ == '__main__':
+	run()

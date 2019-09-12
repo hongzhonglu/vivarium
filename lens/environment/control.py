@@ -39,6 +39,7 @@ class ShepherdControl(ActorControl):
         media = make_media.get_saved_media(media_id)
 
         lattice_config = {
+            'boot': 'lens.environment.boot',
             'run_for': 4.0,
             'media_id': media_id,
             'media': media,
@@ -51,7 +52,9 @@ class ShepherdControl(ActorControl):
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'ecoli', {
+            self.add_cell(args['type'] or 'lookup', {
+                'boot': 'lens.composites',
+                'boot_config': {},
                 'outer_id': lattice_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
@@ -288,6 +291,9 @@ class EnvironmentCommand(AgentCommand):
 
         return parser
 
-if __name__ == '__main__':
+def run():
     command = EnvironmentCommand()
     command.execute()
+
+if __name__ == '__main__':
+    run()

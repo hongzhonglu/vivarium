@@ -1,6 +1,8 @@
 /target
 /classes
 /checkouts
+/build
+/dist
 pom.xml
 pom.xml.asc
 *.jar
@@ -9,6 +11,7 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
+/wholecell_lens.egg-info
 
 out/
 .idea/

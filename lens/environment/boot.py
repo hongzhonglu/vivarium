@@ -119,6 +119,9 @@ class BootEnvironment(BootAgent):
             'sugar2': boot_glc_lct,
             }
 
-if __name__ == '__main__':
+def run():
     boot = BootEnvironment()
     boot.execute()
+
+if __name__ == '__main__':
+    run()

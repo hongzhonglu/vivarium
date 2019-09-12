@@ -267,6 +267,9 @@ class AgentCommand(object):
         else:
             raise ValueError("unrecognized command: {}".format(command))
 
-if __name__ == '__main__':
+def run():
     command = AgentCommand([])
     command.execute()
+
+if __name__ == '__main__':
+    run()

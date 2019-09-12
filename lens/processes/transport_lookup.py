@@ -52,8 +52,8 @@ external_molecule_ids_p = [mol_id + '[p]' for mol_id in external_molecule_ids]
 class TransportLookup(Process):
     def __init__(self, initial_parameters={}):
         self.exchange_key = initial_parameters['exchange_key']
-        self.media_id = 'minimal' # state.get('media_id', 'minimal')
-        self.lookup_type = 'average' #state.get('lookup', 'average')
+        self.media_id = 'minimal' # initial_parameters.get('media_id', 'minimal')
+        self.lookup_type = 'average' # initial_parameters.get('lookup', 'average')
         self.nAvogadro = constants.N_A
         self.external_molecule_ids = external_molecule_ids
 

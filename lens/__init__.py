@@ -1,3 +1,3 @@
-from actor.outer import Outer
-from actor.inner import Inner
-from actor.boot import BootAgent
+from lens.actor.outer import Outer
+from lens.actor.inner import Inner
+from lens.actor.boot import BootAgent
