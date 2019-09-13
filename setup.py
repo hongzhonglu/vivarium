@@ -11,7 +11,7 @@ with open("requirements.txt", 'r') as requirements:
 
 setup(
     name='wholecell-lens',
-    version='0.0.10',
+    version='0.0.12',
     packages=[
         'lens',
         'lens.actor',

@@ -53,7 +53,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'lookup', {
-                'boot': 'lens.composites',
+                'boot': args.get('agent_boot', 'lens.composites'),
                 'boot_config': {},
                 'outer_id': lattice_id,
                 'working_dir': args['working_dir'],

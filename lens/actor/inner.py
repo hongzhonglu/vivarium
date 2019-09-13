@@ -72,9 +72,9 @@ class Inner(Actor):
                             associated outer agent (given by `outer_id`) and environmental simulation
                         * `shepherd_receive`: The topic this agent will send messages on for
                             adding agents to and removing agents from the environment.
-            sim_initialize: the function for initializing a simulation. agent_config['boot_config'] and the
-              response from the environment accompanying the CELL_SYNCHRONIZE message will be
-              passed in.
+            sim_initialize: the function for initializing a simulation. agent_config['boot_config']
+              and the response from the environment accompanying the CELL_SYNCHRONIZE message will
+              be passed in.
         """
 
         self.outer_id = agent_config['outer_id']
