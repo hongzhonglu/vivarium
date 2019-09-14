@@ -213,23 +213,11 @@ class EnvironmentCommand(AgentCommand):
     Extend `AgentCommand` with new commands related to the lattice and ecoli experiments
     """
 
-    def __init__(self):
-        choices = ['large-experiment',
-                   'chemotaxis-experiment',
-                   'endocrine-experiment',
-                   'glc-g6p-experiment']
-        description = '''
+    def __init__(self, choices=[], description=''):
+        full_description = '''
     Run an agent for the environmental context simulation.
     
     The commands are:
-    `experiment [--number N] [--type T] [--working-dir D]` ask the Shepherd to run
-        a lattice environment with N agents of type T,
-    'glc-g6p-experiment [--number N] [--type T]` ask the Shepherd to run a
-        chemotaxis environment with N agents of type T
-    'chemotaxis-experiment [--number N] [--type T]` ask the Shepherd to run a
-        chemotaxis environment with N agents of type T
-    'endocrine-experiment [--number N] [--type T]` ask the Shepherd to run a
-        endocrine environment with N agents of type T
     `add --id OUTER_ID [--type T] [--config C]` ask the Shepherd to add an agent of
         type T with JSON configuration C to the environment OUTER_ID,
     `remove --id AGENT_ID` ask all Shepherds to remove agent AGENT_ID,
@@ -239,10 +227,25 @@ class EnvironmentCommand(AgentCommand):
     `divide --id AGENT_ID` ask a cell agent to divide,
     `shutdown [--id OUTER_ID]` shut down one or all environment agents and their
          connected agents,
+    `experiment [--number N] [--type T] [--working-dir D]` ask the Shepherd to run
+        a lattice environment with N agents of type T,
+    'glc-g6p-experiment [--number N] [--type T]` ask the Shepherd to run a
+        chemotaxis environment with N agents of type T
+    'chemotaxis-experiment [--number N] [--type T]` ask the Shepherd to run a
+        chemotaxis environment with N agents of type T
+    'endocrine-experiment [--number N] [--type T]` ask the Shepherd to run a
+        endocrine environment with N agents of type T
+    ''' + description
 
-    '''
+        full_choices = [
+			'large-experiment',
+            'chemotaxis-experiment',
+            'endocrine-experiment',
+            'glc-g6p-experiment'] + choices
 
-        super(EnvironmentCommand, self).__init__(choices, description)
+        super(EnvironmentCommand, self).__init__(
+			full_choices,
+			full_description)
 
     def experiment(self, args):
         self.require(args, 'number', 'working_dir')

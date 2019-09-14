@@ -23,7 +23,6 @@ import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
 
-from lens.utils.io.tablewriter import TableWriter
 from lens.environment.make_media import Media
 from lens.actor.outer import EnvironmentSimulation
 from lens.utils.multicell_physics import MultiCellPhysics
@@ -123,10 +122,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         # multiply glucose gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-        # Output
-        self.create_lattice_table()
-        # Track agent tables
-        self.agent_tables = {}
+        # # Output
+        # self.create_lattice_table()
+        # # Track agent tables
+        # self.agent_tables = {}
 
     def evolve(self):
         ''' Evolve environment '''
@@ -139,7 +138,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        self.append_agent_tables()  # TODO (Eran) -- use emitter
+        # self.append_agent_tables()  # TODO (Eran) -- use emitter
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -322,7 +321,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.motile_forces[agent_id] = [0.0, 0.0]
 
         # create output file for each cell to log location data
-        self.create_agent_table(agent_id)  # TODO -- get tableWriter path
+        # self.create_agent_table(agent_id)  # TODO -- get tableWriter path
 
     def apply_inner_update(self, update, now):
         '''
@@ -390,37 +389,36 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.agent_tables.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
 
-
-    # TableWriter functions
     # TODO (Eran) -- do all logging through emitters
-    def create_lattice_table(self):
-        table = TableWriter(self.output_dir)
-        table.writeAttributes(
-            edge_length=self.edge_length,
-        )
-
-    def create_agent_table(self, agent_id):
-        # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
-        if agent_id not in self.agent_tables:
-            table_writer_file = os.path.join(self.output_dir, agent_id)
-            table = TableWriter(table_writer_file)
-            table.writeAttributes(
-                start_time = self.time(),
-            )
-            self.agent_tables[agent_id] = table
-
-    def append_agent_tables(self):
-        for agent_id, table in self.agent_tables.iteritems():
-            agent_location = self.locations[agent_id]
-
-            agent_state = self.simulations[agent_id]['state']
-            agent_volume = agent_state['volume']
-            agent_width = agent_state['width']
-            agent_length = agent_state['length']
-
-            table.append(
-                location=agent_location,
-                volume=agent_volume,
-                width=agent_width,
-                length=agent_length
-            )
+    # # TableWriter functions
+    # def create_lattice_table(self):
+    #     table = TableWriter(self.output_dir)
+    #     table.writeAttributes(
+    #         edge_length=self.edge_length,
+    #     )
+    #
+    # def create_agent_table(self, agent_id):
+    #     # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
+    #     if agent_id not in self.agent_tables:
+    #         table_writer_file = os.path.join(self.output_dir, agent_id)
+    #         table = TableWriter(table_writer_file)
+    #         table.writeAttributes(
+    #             start_time = self.time(),
+    #         )
+    #         self.agent_tables[agent_id] = table
+    #
+    # def append_agent_tables(self):
+    #     for agent_id, table in self.agent_tables.iteritems():
+    #         agent_location = self.locations[agent_id]
+    #
+    #         agent_state = self.simulations[agent_id]['state']
+    #         agent_volume = agent_state['volume']
+    #         agent_width = agent_state['width']
+    #         agent_length = agent_state['length']
+    #
+    #         table.append(
+    #             location=agent_location,
+    #             volume=agent_volume,
+    #             width=agent_width,
+    #             length=agent_length
+    #         )

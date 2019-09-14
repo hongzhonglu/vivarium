@@ -24,7 +24,7 @@ DEFAULT_KAFKA_CONFIG = {
 class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
-    def __init__(self, agent_id, agent_config=None):
+    def __init__(self, agent_id, agent_config={}):
         if 'kafka_config' not in agent_config:
             agent_config['kafka_config'] = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
 

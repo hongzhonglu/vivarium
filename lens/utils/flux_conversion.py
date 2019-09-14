@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.utils import units
+from lens.utils.units import units
 
 from scipy import constants
 
@@ -63,4 +63,4 @@ def molar_to_molDCWhr(fluxes, dry_mass, cell_mass, density, timestep):
     '''
     # Coefficient to convert between flux (mol/g DCW/hr) basis and concentration (M) basis
     coefficient = dry_mass / cell_mass * density * timestep
-    return (fluxes / coefficient).asNumber(units.mmol / units.g / units.h)
+    return (fluxes / coefficient).m_as(units.mmol / units.g / units.h)

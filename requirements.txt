@@ -2,10 +2,10 @@ numpy==1.14.6
 scipy==1.0.1
 pygame==1.9.6
 pymunk==5.5.0
-Unum==4.1.4
 confluent-kafka==0.11.5
 matplotlib==2.2.2
 cvxopt==1.1.7
 cvxpy==1.0.6
 parsimonious==0.8.1
 pymongo==3.6.1
+Pint==0.9

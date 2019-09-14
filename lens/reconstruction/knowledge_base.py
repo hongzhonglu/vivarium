@@ -4,7 +4,6 @@ import csv
 
 from lens.reconstruction.spreadsheets import JsonReader
 from itertools import ifilter
-# from lens.utils import units  # used by eval()
 
 CSV_DIALECT = csv.excel_tab
 

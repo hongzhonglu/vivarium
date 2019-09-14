@@ -7,7 +7,7 @@ from scipy import constants
 
 from itertools import ifilter
 from lens.reconstruction.spreadsheets import JsonReader
-from lens.utils import units
+from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.actor.inner import Simulation
 

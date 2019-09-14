@@ -5,9 +5,10 @@ Functions for making media
 from __future__ import absolute_import, division, print_function
 
 import uuid
-from lens.utils import units
+
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
+from lens.utils.units import units
 
 # Raw data class
 from lens.reconstruction.knowledge_base import KnowledgeBase
@@ -112,7 +113,7 @@ class Media(object):
         return recipes
 
     def remove_units(self, media):
-        return {mol: conc.asNumber(CONC_UNITS) for mol, conc in media.iteritems()}
+        return {mol: conc.m_as(CONC_UNITS) for mol, conc in media.iteritems()}
 
     def get_saved_media(self, media_id, units=False):
         media = self.stock_media.get(media_id)
@@ -139,11 +140,11 @@ class Media(object):
             # if it is not an existing media, it needs weight or counts to add
             elif added_weight is not None:
                 # added_weight takes priority over added_counts
-                if added_weight.asNumber() == INF:
+                if added_weight.magnitude == INF:
                     added_conc = INF * CONC_UNITS
-                elif added_weight.asNumber() == 0.0:
+                elif added_weight.magnitude == 0.0:
                     added_conc = 0.0 * CONC_UNITS
-                elif added_weight.asNumber() < 0:
+                elif added_weight.magnitude < 0:
                     raise AddIngredientsError(
                         "Negative weight given for {}".format(ingredient))
                 elif self.environment_molecules_fw[ingredient] is not None:
@@ -160,11 +161,11 @@ class Media(object):
             elif added_counts is not None:
                 # get new concentration
                 # make infinite concentration of ingredient if mix_counts is Infinity
-                if added_counts.asNumber() == INF:
+                if added_counts.magnitude == INF:
                     added_conc = INF * CONC_UNITS
-                elif added_counts.asNumber() == 0.0:
+                elif added_counts.magnitude == 0.0:
                     added_conc = 0.0 * CONC_UNITS
-                elif added_counts.asNumber() < 0:
+                elif added_counts.magnitude < 0:
                     raise AddIngredientsError(
                         "Negative counts given for {}".format(ingredient))
                 else:
@@ -177,7 +178,7 @@ class Media(object):
                 raise AddIngredientsError(
                     "No added added weight or counts for {}".format(ingredient))
 
-            if total_volume.asNumber() == 0.0 and added_volume.asNumber() == 0.0:
+            if total_volume.magnitude == 0.0 and added_volume.magnitude == 0.0:
                 # no volume, just merge media dicts. This is likely due to a call to a stock_media.
                 new_media.update(added_media)
             else:
@@ -202,7 +203,7 @@ class Media(object):
             conc_1 = media_1.get(mol_id, 0 * CONC_UNITS)
             conc_2 = media_2.get(mol_id, 0 * CONC_UNITS)
 
-            if conc_1.asNumber() == INF or conc_2.asNumber() == INF:
+            if conc_1.magnitude == INF or conc_2.magnitude == INF:
                 new_conc = INF * CONC_UNITS
                 if operation == 'subtract':
                     new_conc = 0.0 * CONC_UNITS
@@ -213,7 +214,7 @@ class Media(object):
 
                 if operation == 'subtract':
                     new_counts = counts_1 - counts_2
-                if new_counts.asNumber() < 0:
+                if new_counts.magnitude < 0:
                     raise AddIngredientsError(
                         "subtracting {} goes negative".format(mol_id))
 

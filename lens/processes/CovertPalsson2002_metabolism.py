@@ -7,7 +7,7 @@ from itertools import ifilter
 
 from lens.actor.process import Process
 from lens.reconstruction.spreadsheets import JsonReader
-from lens.utils import units
+from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 
 TSV_DIALECT = csv.excel_tab

@@ -6,7 +6,7 @@ import csv
 import numpy as np
 from scipy import constants
 
-from lens.utils import units
+from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.actor.inner import Simulation
 
