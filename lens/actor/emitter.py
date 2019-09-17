@@ -67,7 +67,6 @@ class DatabaseEmitter(Emitter):
         self.table = getattr(self.db, 'output')
         create_indexes(self.table)
 
-
     def emit(self, data):
         data.update({
             'simulation_id': self.simulation_id,

@@ -83,7 +83,12 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
     boot_config = {
         'output_dir': output_dir,
         'concentrations': media,
+        'run_for': 10.0,
+        'depth': 0.0001,  # 3000 um is default
+        'edge_length': 10.0,
+        'patches_per_edge': 1,
     }
+
     boot_config.update(agent_config)
     environment = EnvironmentSpatialLattice(boot_config)
 

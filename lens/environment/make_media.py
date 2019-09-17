@@ -11,7 +11,7 @@ from parsimonious.nodes import NodeVisitor
 from lens.utils.units import units
 
 # Raw data class
-from lens.reconstruction.knowledge_base import KnowledgeBase
+from lens.data.knowledge_base import KnowledgeBase
 
 INF = float("inf")
 NEG_INF = float("-inf")
@@ -71,7 +71,7 @@ class Media(object):
         '''get formula weight (units.g / units.mol) for all environmental molecules'''
 
         environment_molecules_fw = {}
-        for row in raw_data.condition.environment_molecules:
+        for row in raw_data.environment_molecules:
             mol = row["molecule id"]
             fw = row["formula weight"]
             if fw == 'None':
@@ -84,11 +84,11 @@ class Media(object):
     def _get_stock_media(self, raw_data):
         '''load all stock media'''
         self.stock_media = {}
-        for label in vars(raw_data.condition.media):
+        for label in vars(raw_data.media):
             self.stock_media[label] = {}
 
             # get non-zero concentrations (assuming units.mmol / units.L)
-            molecule_concentrations = getattr(raw_data.condition.media, label)
+            molecule_concentrations = getattr(raw_data.media, label)
 
             environment_non_zero_dict = {
                 row["molecule id"]: row["concentration"]
@@ -106,7 +106,7 @@ class Media(object):
 
     def _get_recipes(self, raw_data):
         recipes = {}
-        for row in raw_data.condition.media_recipes:
+        for row in raw_data.media_recipes:
             new_media_id = row["media id"]
             recipe = row["recipe"]
             recipes[new_media_id] = recipe

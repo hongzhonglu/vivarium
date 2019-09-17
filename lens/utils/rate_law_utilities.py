@@ -29,18 +29,18 @@ import matplotlib.pyplot as plt
 
 from itertools import ifilter
 
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from lens.utils import filepath
 
-from lens.environment.condition.look_up_tables.look_up import LookUp
+from lens.environment.look_up import LookUp
 import lens.utils.kinetic_rate_laws as rate_laws
 
 TSV_DIALECT = csv.excel_tab
 
-REACTIONS_FILE = os.path.join("lens", "reconstruction", "flat", "reactions.tsv")
-PROTEINS_FILE = os.path.join("lens", "reconstruction", "flat", "proteins.tsv")
-COMPLEXATION_FILE = os.path.join("lens", "reconstruction", "flat", "complexationReactions.tsv")
-KINETIC_PARAMETERS_PATH = os.path.join("lens", 'reconstruction', 'kinetic_rate_laws', 'parameters')
+REACTIONS_FILE = os.path.join("lens", "data", "flat", "reactions.tsv")
+PROTEINS_FILE = os.path.join("lens", "data", "flat", "proteins.tsv")
+COMPLEXATION_FILE = os.path.join("lens", "data", "flat", "complexationReactions.tsv")
+KINETIC_PARAMETERS_PATH = os.path.join("lens", 'data', 'kinetic_rate_laws', 'parameters')
 OUTPUT_DIR = os.path.join('out', 'kinetic_rate_laws')
 
 

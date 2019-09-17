@@ -15,11 +15,11 @@ import time
 from scipy import constants
 import json
 
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
 
 from lens.actor.inner import Simulation
-from lens.environment.condition.look_up_tables.look_up import LookUp
+from lens.environment.look_up import LookUp
 from lens.utils.kinetic_rate_laws import KineticFluxModel
 from lens.utils.rate_law_utilities import load_reactions
 
@@ -27,7 +27,7 @@ TUMBLE_JITTER = 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 51, 51]]
 
 TSV_DIALECT = csv.excel_tab
-TRANSPORT_IDS_FILE = os.path.join("reconstruction", "ecoli", "flat", "transport_reactions.tsv")
+TRANSPORT_IDS_FILE = os.path.join("data", "ecoli", "flat", "transport_reactions.tsv")
 EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
 KINETIC_PARAMETERS_FILE = os.path.join('wholecell', 'kinetic_rate_laws', 'parameters', 'example_parameters.json')
 

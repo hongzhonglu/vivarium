@@ -6,16 +6,16 @@ from scipy import constants
 
 from lens.actor.process import Process
 from lens.environment.make_media import Media
-from lens.environment.condition.look_up_tables.look_up import LookUp
+from lens.environment.look_up import LookUp
 from lens.utils.rate_law_utilities import load_reactions
 from lens.utils.rate_law_utilities import get_reactions_from_exchange
 from lens.utils.rate_law_utilities import get_molecules_from_reactions
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
 
 
-EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
-TRANSPORT_IDS_FILE = os.path.join('lens', 'reconstruction', 'flat', 'transport_reactions.tsv')
+EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'data', 'flat', 'environment_molecules.tsv')
+TRANSPORT_IDS_FILE = os.path.join('lens', 'data', 'flat', 'transport_reactions.tsv')
 
 TSV_DIALECT = csv.excel_tab
 

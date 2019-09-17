@@ -6,14 +6,14 @@ import csv
 from scipy import constants
 
 from itertools import ifilter
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.actor.inner import Simulation
 
 TSV_DIALECT = csv.excel_tab
 
-DATA_DIR = os.path.join('lens', 'reconstruction', 'CovertPalsson2002')
+DATA_DIR = os.path.join('lens', 'data', 'CovertPalsson2002')
 
 LIST_OF_FILENAMES = (
     "reactions.tsv",
@@ -129,7 +129,7 @@ class Metabolism(Simulation):
                 reverse_stoichiometry[reaction_id + '_reverse'] = stoich
         return reverse_stoichiometry
 
-    # TODO -- use load_tsv from utils/reconstruction/knowledge_base
+    # TODO -- use load_tsv from utils/data/knowledge_base
     def load_tsv(self, dir_name, file_name):
         file_path = os.path.join(dir_name, file_name)
         with open(file_path, 'rU') as tsvfile:

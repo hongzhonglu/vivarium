@@ -70,7 +70,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.gradient.update(config.get('gradient', {}))
         self.translation_jitter = config.get('translation_jitter', 0.5)
         self.rotation_jitter = config.get('rotation_jitter', 0.005)
-        self.depth = config.get('depth', 3000.0)
+        self.depth = config.get('depth', 3000.0)  # um
         self.timeline = config.get('timeline')
         self.media_id = config.get('media_id', 'minimal')
         if self.timeline:
@@ -347,7 +347,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         concentration = self.count_to_concentration(count)
                         index = self.molecule_index[molecule]
                         self.lattice[index, patch_site[0], patch_site[1]] += concentration
-                        # TODO (Eran) -- check if patch concentration drops below 0
 
     def generate_outer_update(self, now):
         '''Return a dict with {molecule_id: conc} for each sim at its current location'''
@@ -386,7 +385,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
-        self.agent_tables.pop(agent_id, {})
+        # self.agent_tables.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
 
     # TODO (Eran) -- do all logging through emitters

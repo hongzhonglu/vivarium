@@ -154,8 +154,8 @@ class Compartment(object):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
-        self.local_time = 0
-        self.time_step = 1.0
+        self.local_time = 0.0
+        self.time_step = configuration.get('time_step', 1.0)
 
         self.derivers = {
             name: process

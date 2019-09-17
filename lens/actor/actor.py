@@ -62,7 +62,7 @@ class Actor(object):
 
     def __init__(self, agent_id, agent_type, agent_config):
         """
-        Initialize the Agent object with a unique id and kafka configuration.
+        Initialize the Actor object with a unique id and kafka configuration.
 
         Args:
             agent_id (str): A unique identifier which distinguishes this agent from

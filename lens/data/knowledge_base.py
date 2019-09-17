@@ -2,25 +2,24 @@
 import os
 import csv
 
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
 
 CSV_DIALECT = csv.excel_tab
 
-ENV_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "environment")
+FLAT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "flat")
 
-
-LIST_OF_ENV_FILENAMES = (
-    os.path.join("condition", "environment_molecules.tsv"),
-    os.path.join("condition", "timelines_def.tsv"),
-    os.path.join("condition", "media_recipes.tsv"),
-    os.path.join("condition", "media", "wcEcoli_base.tsv"),
-    os.path.join("condition", "media", "M9.tsv"),
-    os.path.join("condition", "media", "M9_GLC.tsv"),
-    os.path.join("condition", "media", "5X_supplement_EZ.tsv"),
-    os.path.join("condition", "media", "GLC_G6P.tsv"),
-    os.path.join("condition", "media", "GLC_LCT.tsv"),
-    )
+LIST_OF_FLAT_FILENAMES = (
+    os.path.join("environment_molecules.tsv"),
+    os.path.join("timelines_def.tsv"),
+    os.path.join("media_recipes.tsv"),
+    os.path.join("media", "wcEcoli_base.tsv"),
+    os.path.join("media", "M9.tsv"),
+    os.path.join("media", "M9_GLC.tsv"),
+    os.path.join("media", "5X_supplement_EZ.tsv"),
+    os.path.join("media", "GLC_G6P.tsv"),
+    os.path.join("media", "GLC_LCT.tsv"),
+)
 
 class DataStore(object):
     def __init__(self):
@@ -32,8 +31,8 @@ class KnowledgeBase(object):
     def __init__(self):
         # Load raw data from TSV files
 
-        for filename in LIST_OF_ENV_FILENAMES:
-            self._load_tsv(ENV_DIR, os.path.join(ENV_DIR, filename))
+        for filename in LIST_OF_FLAT_FILENAMES:
+            self._load_tsv(FLAT_DIR, os.path.join(FLAT_DIR, filename))
 
     def _load_tsv(self, dir_name, file_name):
         path = self

@@ -4,19 +4,12 @@ import os
 import csv
 import random
 from itertools import ifilter
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 
-LOOKUP_DIR = os.path.join('lens', 'environment', 'condition', 'look_up_tables')
-
+FLAT_DIR = os.path.join('lens', 'data', 'flat')
 MEDIA_IDS = ['minimal', 'minimal_minus_oxygen', 'minimal_plus_amino_acids']
-
-CONC_LOOKUP_FILES = [
-    os.path.join(LOOKUP_DIR, 'transport_concentrations', media_id + '.tsv')
-    for media_id in MEDIA_IDS]
-
-FLUX_LOOKUP_FILES = [
-    os.path.join(LOOKUP_DIR, 'transport_fluxes', media_id + '.tsv')
-    for media_id in MEDIA_IDS]
+# CONC_STR = 'lookup_conc_'  # TODO -- load concentration lookup flat files.
+FLUX_STR = 'lookup_flux_'
 
 TSV_DIALECT = csv.excel_tab
 
@@ -27,8 +20,8 @@ class LookUp(object):
         self.lookup_avg = {media_id: {} for media_id in MEDIA_IDS}
         self.lookup_dist = {media_id: {} for media_id in MEDIA_IDS}
 
-        for filename in (CONC_LOOKUP_FILES + FLUX_LOOKUP_FILES):
-            media_id = filename.split(os.path.sep)[-1].split('.')[0]
+        for media_id in MEDIA_IDS:
+            filename=os.path.join(FLAT_DIR, FLUX_STR + media_id + '.tsv')
             avg, dist = load_lookup(filename)
             self.lookup_avg[media_id].update(avg)
             self.lookup_dist[media_id].update(dist)

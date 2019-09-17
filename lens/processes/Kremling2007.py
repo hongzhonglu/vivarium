@@ -55,27 +55,26 @@ DEFAULT_PARAMETERS = {
     'KI': 1 / 8000,  # K_I: Glc 6P transporter inhibits Glc transp.syn.[\mu mol / gDW]
 }
 
-# GLC-G6P media
+# GLC-G6P media (mmol/L) TODO -- get these from recipes?
 GLC_G6P_EXTERNAL = {
-    # from covert2002
     'ACET': 0.0,
-    'CO+2': 100.0,  # "units.mmol / units.L"
+    'CO+2': 100.0,
     'ETOH': 0.0,
     'FORMATE': 0.0,
     'GLYCEROL': 0.0,
     'LAC': 0.0,
     'LCTS': 0.0,
-    'OXYGEN-MOLECULE': 100.0,  # "units.mmol / units.L"
-    'PI': 100.0,  # "units.mmol / units.L"
+    'OXYGEN-MOLECULE': 100.0,
+    'PI': 100.0,
     'PYR': 0.0,
     'RIB': 0.0,
     'SUC': 0.0,
-    # from kremling2007
-    'G6P': 1.3451,  # [m mol/L]
-    'GLC': 12.2087,  # [m mol/L]
+    'G6P': 1.3451,
+    'GLC': 12.2087,
 }
 GLC_G6P_INTERNAL = {
-    'Biomass': 0.032,  # [g / l]
+    'mass': 0.032,  # [g / l]  #1.339e-12,  # g
+    'LACZ': 0.0,  # absent in GLC_G6P condition
     'UHPT': 0.0003,  # [\mu mol gDCW] enz g6p
     'PTSG': 0.007,  # [\mu mol gDCW] enz glc
     'G6P': 0.2057,  # [\mu mol gDCW]
@@ -84,32 +83,52 @@ GLC_G6P_INTERNAL = {
     'XP': 0.0038,  # [fraction phosphorylation]
 }
 
-# GLC-LCT media
+# GLC-LCT media (mmol/L)
 GLC_LCT_EXTERNAL = {
-    'G6P': 0,  # [m mol / L]
-    'GLC': 1.2209,  # [m mol / L]
-    'RIB': 0,  # [m mol / L]
-    'GLYCEROL': 0,  # [m mol / L]
-    'SUC': 0,  # [m mol / L]
-    'PYR': 0,  # [m mol / L]
-    'LAC': 0,  # [m mol / L]
-    'LCTS': 3.4034,  # [m mol / L]
-    'FORMATE': 0,  # [m mol / L]
-    'ETOH': 0,  # [m mol / L]
-    'ACET': 0,  # [m mol / L]
-    'PI': 100,  # [m mol / L]
-    'CO+2': 100,  # [m mol / L]
-    'OXYGEN-MOLECULE': 100,  # [m mol / L]
+    'ACET': 0.0,
+    'CO+2': 100.0,
+    'ETOH': 0.0,
+    'FORMATE': 0.0,
+    'GLYCEROL': 0.0,
+    'LAC': 0.0,
+    'LCTS': 3.4034,
+    'OXYGEN-MOLECULE': 100.0,
+    'PI': 100.0,
+    'PYR': 0.0,
+    'RIB': 0.0,
+    'SUC': 0.0,
+    'G6P': 0.0,
+    'GLC': 1.2209,
 }
 GLC_LCT_INTERNAL = {
-    'Biomass': 0.032,  # [g / l]
+    'mass': 0.032,  # [g / l]
     'LACZ': 1e-5,  # [\mu mol gDCW] enz g6p
+    'UHPT': 0.0,  # absent in GLC_G6P condition
     'PTSG': 0.001,  # [\mu mol gDCW] enz glc
     'G6P': 0.1,  # [\mu mol gDCW]
     'PEP': 0.05,  # [\mu mol gDCW]
     'PYR': 0.1,  # [\mu mol gDCW]
     'XP': 0.01,  # [fraction phosphorylation]
 }
+
+
+MOLECULAR_WEIGHTS = {
+    'ACET': 60.05,
+    'CO+2': 44.0095,
+    'ETOH': 46.06844,
+    'FORMATE': 46.0254,
+    'GLYCEROL': 92.09382,
+    'LAC': 90.08,
+    'LCTS': 342.3,
+    'OXYGEN-MOLECULE': 31.9988,
+    'PI': 94.973,
+    'PYR': 88.06,
+    'RIB': 150.13,
+    'SUC': 118.09,
+    'G6P': 260.136,
+    'GLC': 180.16,
+}
+
 
 
 def merge_dicts(x, y):
@@ -121,7 +140,7 @@ def merge_dicts(x, y):
 class Transport(Process):
     def __init__(self, initial_parameters={}):
         self.exchange_key = initial_parameters['exchange_key']
-        self.dt = 0.01  # timestep for ode integration
+        self.dt = 0.001  # timestep for ode integration (seconds)
 
         default_state = self.default_state()
         internal_state = default_state['internal']
@@ -162,11 +181,10 @@ class Transport(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['Biomass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP'],
-            'external': ['G6P','GLC']
+            'internal': ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP'],
+            'external': ['G6P', 'GLC', 'LAC']
         }
         return keys
-
 
     def next_update(self, timestep, states):
 
@@ -176,146 +194,173 @@ class Transport(Process):
             Analysis of global control of Escherichia coli carbohydrate uptake
             '''
 
-            G6Pext_present = state[state_keys.index('G6Pext_present')]
-            XX = state[state_keys.index('Biomass')]  # biomass
-            S1 = state[state_keys.index('S1')]  # G6P or LCTS, depending on environment
-            S2 = state[state_keys.index('GLC[e]')]  # GLC external
-            E1 = state[state_keys.index('E1')]  # UHPT or LACZ, depending on environment
-            E2 = state[state_keys.index('PTSG')]  # transporter GLC
-            M1 = state[state_keys.index('G6P')]  # Glc6P
-            M2 = state[state_keys.index('PEP')]  # PEP
-            M3 = state[state_keys.index('PYR')]  # Pyruvate
-            XP = state[state_keys.index('XP')]  # EIIAP (Pts Protein)
+            biomass = state[state_keys.index('mass')]  # biomass
+            sugar2 = state[state_keys.index('GLC[e]')]  # GLC external
+            transporter2 = state[state_keys.index('PTSG')]  # transporter GLC
+            metabolite1 = state[state_keys.index('G6P')]  # Glc6P
+            metabolite2 = state[state_keys.index('PEP')]  # PEP
+            metabolite3 = state[state_keys.index('PYR')]  # Pyruvate
+            protein_p = state[state_keys.index('XP')]  # EIIAP (Pts Protein)
 
-            ## Original rates. kremling_rates.m
-            if G6Pext_present:
+            g6pext_present = state[state_keys.index('G6P')] > 0.01
+            if g6pext_present:
+                sugar1 = state[state_keys.index('G6P[e]')]  # G6P external
+                transporter1 = state[state_keys.index('UHPT')]  # transporter for G6P
+            else:
+                sugar1 = state[state_keys.index('LCTS[e]')]  # LCTS external
+                transporter1 = state[state_keys.index('LACZ')]  # transporter for LCTS
+
+            ## Original rates.
+            if g6pext_present:
                 # G6P uptake
-                rup1 = p['kg6p'] * (E1 * S1) / (p['Kg6p'] + S1)
+                rup1 = p['kg6p'] * (transporter1 * sugar1) / (p['Kg6p'] + sugar1)
             else:
                 # Lactose uptake
-                rup1 = p['klac'] * (E1 * S1) / (p['Klac'] + S1 * (1 + ((p['x0'] - XP) / p['x0']) / p['Kieiia']))
+                rup1 = p['klac'] * (transporter1 * sugar1) / (p['Klac'] + sugar1 * (1 + ((p['x0'] - protein_p) / p['x0']) / p['Kieiia']))
 
-            rup2 = p['kptsup'] * XP * (E2 * S2) / (p['Kglc'] * p['Keiiap'] * p['x0'] + S2 * p['Keiiap'] * p['x0'] + XP * p['Kglc'] + XP * S2)
+            # PTS uptake. eqn 38
+            rup2 = p['kptsup'] * protein_p * (transporter2 * sugar2) / (p['Kglc'] * p['Keiiap'] * p['x0'] + sugar2 * p['Keiiap'] * p['x0'] + protein_p * p['Kglc'] + protein_p * sugar2)
 
             # enzyme syn 1 / 2
-            if G6Pext_present:
+            if g6pext_present:
                 rsyn1 = p['k1'] * (
-                        p['kb'] + p['ksyn'] * (XP)**6. / (XP**6 + p['K'] ** 6)) * rup1 / (p['K1'] + rup1)
-                rsyn2 = p['k2'] * (p['KI'] / (E1 + p['KI'])) * (p['kb'] + p['ksyn'] * (XP)**6. / (XP**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
+                        p['kb'] + p['ksyn'] * protein_p**6. / (protein_p**6 + p['K'] ** 6)) * rup1 / (p['K1'] + rup1)
+                rsyn2 = p['k2'] * (p['KI'] / (transporter1 + p['KI'])) * (p['kb'] + p['ksyn'] * protein_p**6. / (protein_p**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
             else:
-                rsyn1 = p['k3'] * (p['kb'] + p['ksyn'] * (XP)**6. / (XP**6 + p['K']**6)) * rup1 / (p['K3'] + rup1)
-                rsyn2 = p['k2'] * (p['kb'] + p['ksyn'] * (XP)**6. / (XP**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
+                rsyn1 = p['k3'] * (p['kb'] + p['ksyn'] * (protein_p)**6. / (protein_p**6 + p['K']**6)) * rup1 / (p['K3'] + rup1)
+                rsyn2 = p['k2'] * (p['kb'] + p['ksyn'] * (protein_p)**6. / (protein_p**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
 
-            ## Rates. kremling_rates.m
-            rgly = p['kgly'] * M1  # Glycolyse
-            f = (M1**p['n']) * M2**p['m']  #
-            rpyk = p['kpyk'] * M2 * f  # Pyk
-            rpts = p['kpts'] * M2 * (p['x0'] - XP) - p['km_pts'] * M3 * XP  # PTS rate
-            rpdh = p['kpdh'] * M3  # Pdh
+            ## Rates
+            rgly = p['kgly'] * metabolite1  # Glycolyse
+            f = (metabolite1**p['n']) * metabolite2**p['m']  #
+            rpyk = p['kpyk'] * metabolite2 * f  # Pyk
+            rpts = p['kpts'] * metabolite2 * (p['x0'] - protein_p) - p['km_pts'] * metabolite3 * protein_p  # PTS rate
+            rpdh = p['kpdh'] * metabolite3  # Pdh
 
-            # additional rates for iFBA
-            if G6Pext_present:
-                mu = p['Y1_sim'] * rup1 + p['Y2_sim'] * rup2  # growth rate
+            # growth rate. eqn 44
+            if g6pext_present:
+                mu = p['Y1_sim'] * rup1 + p['Y2_sim'] * rup2
             else:
-                mu = p['Y3_sim'] * rup1 + p['Y2_sim'] * rup2  # growth rate
+                mu = p['Y3_sim'] * rup1 + p['Y2_sim'] * rup2
 
-            ppcRate = 0  # TODO -- figure out code below
+            ppc_rate = 0  # TODO -- figure out code below
             # if (nargin >= 7 & & ~isempty(varargin{1}) & & ~isempty(varargin{2})):
             #     FBA_primal = varargin{1}
             #     FBA_rxnInd = varargin{2}
             #     options = varargin{3}
-            #     ppcRate = (FBA_primal(FBA_rxnInd.PPC) - FBA_primal(FBA_rxnInd.PCKA)) * 1e3;
+            #     ppc_rate = (FBA_primal(FBA_rxnInd.PPC) - FBA_primal(FBA_rxnInd.PCKA)) * 1e3;
             #     if (nargin == 7 | | (nargin == 8 & & varargin{4}~=0))
             #         mu = options.iFBA_growRateScale * FBA_primal(FBA_rxnInd.VGRO);
             # else:
-            #     ppcRate = 0;
+            #     ppc_rate = 0;
 
-            ## ODE model. kremling_ode_model.m
-            if G6Pext_present:
-                carbo1 = -p['mw1'] * rup1 * XX
+            # initialize sugar1, transporter1
+            dG6P_e = 0.0
+            dLCTS_e = 0.0
+            dUHPT = 0.0
+            dLACZ = 0.0
+
+            if g6pext_present:
+                dG6P_e = -p['mw1'] * rup1 * biomass
+                dUHPT = rsyn1 - (p['kd'] + mu) * transporter1  # transporter. eqn 46
             else:
-                carbo1 = -p['mw3'] * rup1 * XX
-            carbo2 = -p['mw2'] * rup2 * XX
+                dLCTS_e = -p['mw3'] * rup1 * biomass
+                dLACZ = rsyn1 - (p['kd'] + mu) * transporter1  # transporter. eqn 46
 
-            dBiomass = mu * XX  # biomass
-            dS1 = carbo1 # G6P[e] / LCTS[e] TODO -- in LCTS, this is dLCTS[e]
-            dS2 = carbo2 # GLC[e]
-            dE1 = rsyn1 - (p['kd'] + mu) * E1  # transporter. eqn 46
-            dE2 = rsyn2 - (p['kd'] + mu) * E2  # transporter. eqn 46
+            dbiomass = mu * biomass  # mass
+            dGLC_e = -p['mw2'] * rup2 * biomass  # GLC[e]
+            dPTSG = rsyn2 - (p['kd'] + mu) * transporter2  # transporter. eqn 46
             dG6Pdt = rup1 + rup2 - rgly # eqn 2
-            dPEPdt = 2 * rgly - rpyk - rpts - ppcRate  # eqn 3
+            dPEPdt = 2 * rgly - rpyk - rpts - ppc_rate  # eqn 3
             dPYRdt = rpyk + rpts - rpdh   # eqn 4
-            dXP = rpts - rup2  # eqn 5 EIIAP (Pts Protein)
+            dprotein_p = rpts - rup2  # eqn 5 EIIAP (Pts Protein)
 
             # save to numpy array
             dx = np.zeros_like(state)
-            dx[state_keys.index('Biomass')] = dBiomass
-            dx[state_keys.index('S1')] = dS1  # S1_key changes with condition
-            dx[state_keys.index('GLC[e]')] = dS2
-            dx[state_keys.index('E1')] = dE1  # E1_key changes with condition
-            dx[state_keys.index('PTSG')] = dE2
+            dx[state_keys.index('mass')] = dbiomass
+            dx[state_keys.index('UHPT')] = dUHPT  # transporter1 changes with condition
+            dx[state_keys.index('LACZ')] = dLACZ  # transporter1 changes with condition
+            dx[state_keys.index('PTSG')] = dPTSG
             dx[state_keys.index('G6P')] = dG6Pdt
             dx[state_keys.index('PEP')] = dPEPdt
             dx[state_keys.index('PYR')] = dPYRdt
-            dx[state_keys.index('XP')] = dXP
+            dx[state_keys.index('XP')] = dprotein_p
+            dx[state_keys.index('GLC[e]')] = dGLC_e
+            dx[state_keys.index('G6P[e]')] = dG6P_e    # sugar1 changes with condition
+            dx[state_keys.index('LCTS[e]')] = dLCTS_e  # sugar1 changes with condition
 
             return dx
 
-
+        # set up state and parameters for odeint
+        timestep_hours = timestep / 3600
+        dt_hours = self.dt / 3600
         p = self.parameters
-        t = np.arange(0, timestep, self.dt)
+        t = np.arange(0, timestep_hours, dt_hours)
 
         # get states
-        # s1, e1 keys depend on G6P[e] presence
-        G6Pext_present = states['external'].get('G6P',0)>0.01
-        if G6Pext_present:
-            s1_key = 'G6P'  # Glc 6P external
-            e1_key = 'UHPT'  # transporter Glc 6P
-        else:
-            s1_key = 'LCTS'  # LCTS external
-            e1_key = 'LACZ'  # transporter LCTS
-
+        volume = states['internal']['volume'] * 1e-15  # convert volume fL to L
         combined_state = {
-            'G6Pext_present': G6Pext_present,
-            'Biomass': states['internal']['Biomass'],  # biomass
-            'E1': states['internal'][e1_key],
+            'mass': states['internal']['mass'],  # mass
+            'UHPT': states['internal']['UHPT'],
+            'LACZ': states['internal']['LACZ'],
             'PTSG': states['internal']['PTSG'],  # transporter Glc
             'G6P': states['internal']['G6P'],  # Glc 6P
             'PEP': states['internal']['PEP'],  # Pep
             'PYR': states['internal']['PYR'],  # Pyruvate
             'XP': states['internal']['XP'],  # EIIAP(Pts Protein)
-            'S1': states['external'][s1_key],
             'GLC[e]': states['external']['GLC'],  # Glc external
+            'G6P[e]': states['external']['G6P'],
+            'LCTS[e]': states['external']['LCTS'],
         }
         state_keys = combined_state.keys()
         state_init = np.asarray(combined_state.values())
+
+
+
+        # t = np.arange(0, 7.5, 0.01)
+
 
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
 
 
-        environment_delta_counts = {}
-        internal_update = {}
+        # import matplotlib
+        # matplotlib.use('Agg')
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure(figsize=(15, 10))
+        # for state_idx, state_id in enumerate(state_keys):
+        #     series = solution[:, state_idx]
+        #     ax = fig.add_subplot(8, 2, state_idx + 1)
+        #     ax.plot(series)
+        #     ax.title.set_text(state_id)
+        # plt.tight_layout()
+        # plt.savefig('user/kremling2007/out/test_processes_3.png')
+        # plt.clf()
+        #
+        # import ipdb; ipdb.set_trace()
 
-        # TODO -- get difference between initial and final state
 
+        # get differences between final and initial state
+        delta_concs = {}
+        delta_counts = {}
         for state_idx, state_id in enumerate(state_keys):
-            series = solution[:, state_idx]
+            delta_conc = solution[-1, state_idx] - solution[0, state_idx]
+            delta_concs[state_id] = delta_conc
+            delta_counts[state_id] = millimolar_to_counts(delta_conc, volume)  # TODO -- this does not apply to all states (such as mass)
 
-            import ipdb; ipdb.set_trace()
+        # environment update gets delta counts
+        environment_delta_counts = {
+            'G6P': delta_counts['G6P[e]'],
+            'LCTS': delta_counts['LCTS[e]'],
+            'GLC': delta_counts['GLC[e]'],
+        }
 
-        # for env_id in self.environment_ids:
-        #     flux = dx['external'].get(env_id, 0.) * timestep_hrs # flux is in mmol/L/hr
-        #
-        #     if np.isnan(flux):
-        #         environment_delta_counts[env_id] = 0.0
-        #     else:
-        #         # TODO -- should this be an accumulate_deltas?
-        #         environment_delta_counts[env_id] = millimolar_to_counts(flux, volume)
-        #
-        # internal_update = {mol_id: dx['internal'].get(mol_id,0.) * timestep_hrs for mol_id in states['internal'].iterkeys()}
-
-        # TODO -- 1 sec timestep too high -- values drop to (-)
+        # internal update gets delta concentration
+        internal_update = {}
+        for state_id in states['internal'].iterkeys():
+            if state_id is 'volume':
+                continue
+            internal_update[state_id] = delta_concs[state_id]
 
         return {
             'external': {mol_id + self.exchange_key: delta for mol_id, delta in environment_delta_counts.iteritems()},

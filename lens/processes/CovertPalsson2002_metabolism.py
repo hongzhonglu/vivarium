@@ -6,20 +6,20 @@ from scipy import constants
 from itertools import ifilter
 
 from lens.actor.process import Process
-from lens.reconstruction.spreadsheets import JsonReader
+from lens.data.spreadsheets import JsonReader
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 
 TSV_DIALECT = csv.excel_tab
 
-DATA_DIR = os.path.join('lens', 'reconstruction', 'CovertPalsson2002')
+DATA_DIR = os.path.join('lens', 'data', 'flat')
+FILENAME_STR = 'covert2002_'
 LIST_OF_FILENAMES = (
     "reactions.tsv",
-    "regulatory_proteins.tsv",
     "maintenance_biomass_fluxes.tsv",
     "transport.tsv",
     "exchange_fluxes.tsv",
-    "GLC_G6P_initial.tsv",
+    # "GLC_G6P_initial.tsv",
     "GLC_G6P_flux_bounds.tsv",
     )
 
@@ -65,7 +65,7 @@ GLC_LCT_EXTERNAL = {
     'OXYGEN-MOLECULE': 100,  # [m mol / L]
 }
 
-INTERNAL = {'Biomass': 0.032}
+INTERNAL = {'mass': 0.032}
 
 # helper functions
 def get_reverse(reactions):
@@ -86,7 +86,7 @@ def get_molecules_from_reactions(stoichiometry):
     return list(molecules)
 
 def load_tsv(dir_name, file_name):
-    # TODO -- use load_tsv from utils/reconstruction/knowledge_base
+    # TODO -- use load_tsv from utils/data/knowledge_base
     file_path = os.path.join(dir_name, file_name)
     with open(file_path, 'rU') as tsvfile:
         reader = JsonReader(
@@ -113,14 +113,14 @@ class Metabolism(Process):
         self.nAvogadro = constants.N_A
         self.cell_density = 1100.0 * (units.g / units.L)
 
-        # initialize mass
-        self.dry_mass = 403.0 * units.fg
-        self.cell_mass = 1339.0 * units.fg
+        # # initialize mass
+        # self.dry_mass = 403.0 * units.fg
+        # self.cell_mass = 1339.0 * units.fg
 
         self.load_data()
         all_molecule_ids = get_molecules_from_reactions(self.stoichiometry)
         self.internal_molecule_ids = [mol_id
-            for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['Biomass']]
+            for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['mass']]
 
         # initialize FBA
         self.fba = FluxBalanceAnalysis(
@@ -181,7 +181,7 @@ class Metabolism(Process):
         delta_exchange_counts = ((1 / countsToMolar) * exchange_fluxes).astype(int)
         environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))
 
-        # TODO -- update internal state Biomass
+        # TODO -- update internal state mass
         update = {
             'external': {mol_id + self.exchange_key: delta
                 for mol_id, delta in environment_deltas.iteritems()},
@@ -194,7 +194,8 @@ class Metabolism(Process):
         data = {}
         for filename in LIST_OF_FILENAMES:
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
-            data[attrName] = load_tsv(DATA_DIR, filename)
+            full_filename = FILENAME_STR + filename
+            data[attrName] = load_tsv(DATA_DIR, full_filename)
 
         self.stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['reactions']}
@@ -214,7 +215,7 @@ class Metabolism(Process):
         self.external_molecule_ids = [reaction['Stoichiometry'].keys()[0]
             for reaction in data['exchange_fluxes'] if reaction['Reaction'] != 'Growth']
 
-        self.objective = {"Biomass": 1.0}
+        self.objective = {"mass": 1.0}
 
         self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
             for mol_id in self.external_molecule_ids}

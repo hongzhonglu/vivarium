@@ -94,6 +94,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'ecoli', {
+                'boot': 'lens.composites',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
@@ -105,27 +106,23 @@ class ShepherdControl(ActorControl):
             experiment_id, num_cells))
 
         # make media
-        media_id = 'glc-g6p'
-        media = {
-            'ACxt': 0.0,
-            'CO2xt': 100.0,  # "units.mmol / units.L"
-            'ETHxt': 0.0,
-            'FORxt': 0.0,
-            'GLCxt': 1.2209,  # "units.mmol / units.L"
-            'GLxt': 0.0,
-            'LACxt': 0.0,
-            'LCTSxt': 0.0,
-            'O2xt': 100.0,  # "units.mmol / units.L"
-            'PIxt': 100.0,  # "units.mmol / units.L"
-            'PYRxt': 0.0,
-            'RIBxt': 0.0,
-            'SUCCxt': 0.0,
-        }
+        media_id = 'GLC_G6P'
+        make_media = Media()
+        media = make_media.get_saved_media(media_id)
 
         experiment_config = {
             'run_for': 2.0,
             'media_id': media_id,
-            'media': media}
+            'media': media,
+            # 'static_concentrations': True,
+            # 'gradient': {
+            #     'seed': True,
+            #     'molecules': {
+            #         'GLC': {
+            #             'center': [0.5, 0.5],
+            #             'deviation': 5.0},
+            #     }},
+        }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
@@ -133,6 +130,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'metabolism', {
+                'boot': 'lens.composites',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
@@ -173,7 +171,8 @@ class ShepherdControl(ActorControl):
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis_minimal', {  # TODO (Eran) default type does not seem to be working
+            self.add_cell(args['type'] or 'chemotaxis_minimal', {
+                'boot': 'lens.composites',
                 'outer_id': experiment_id,
                 'seed': index})
 
@@ -203,7 +202,8 @@ class ShepherdControl(ActorControl):
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'endocrine', {  # TODO (Eran) default type does not seem to be working
+            self.add_cell(args['type'] or 'endocrine', {
+                'boot': 'lens.composites',
                 'outer_id': experiment_id,
                 'seed': index})
 

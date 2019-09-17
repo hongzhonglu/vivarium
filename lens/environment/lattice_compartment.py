@@ -77,5 +77,7 @@ def generate_lattice_compartment(process, config):
         'exchange_key': config['exchange_key'],
         'environment_deltas': defaults['environment_deltas']}
 
+    options.update(config['compartment_options'])
+
     # create the compartment
     return LatticeCompartment(processes, states, options)
