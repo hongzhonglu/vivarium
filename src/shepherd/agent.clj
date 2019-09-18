@@ -9,6 +9,23 @@
    [java.nio.file Files OpenOption]
    [java.nio.file.attribute FileAttribute]))
 
+(def default-invocation
+  ["python" "-u" "-m"])
+
+(defn assemble-boot
+  "If boot is a string, append it to the default python invocation.
+   If it is a seq, use it as the invocation (this allows boot to be any arbitrary program)."
+  [boot]
+  (if (string? boot)
+    (conj default-invocation boot)
+    boot))
+
+(defn assemble-args
+  [id type config]
+  ["--id" id
+   "--type" type
+   "--config" config])
+
 (defn launch-agent!
   "Launch a python process based on the given agent spec.
      spec - a map containing any information necessary to boot the agent.
@@ -17,21 +34,18 @@
        :agent_config - a configuration map containing any values needed by the python
           script to boot the new agent.
      config - system configuration.
-       :boot - which python file to use when booting agents."
+       :boot - either a string containing a python module to run, or a list containing
+          the initial components of the invocation."
   [spec config]
   (let [agent-config (:agent_config spec)
-        boot (or
-              (:boot agent-config)
-              (get config :boot "agent.boot"))
-        serial (json/generate-string agent-config)]
-    (process/launch!
-     ["python"
-      "-u"
-      "-m" boot
-      "--id" (:agent_id spec)
-      "--type" (:agent_type spec)
-      "--config" serial]
-     config)))
+        boot-arg (or
+                  (:boot agent-config)
+                  (get config :boot "agent.boot"))
+        boot (assemble-boot boot-arg)
+        serial (json/generate-string agent-config)
+        args (assemble-args (:agent_id spec) (:agent_type spec) serial)
+        command (mapv identity (concat boot args))]
+    (process/launch! command config)))
 
 (defn ensure-kafka-config
   "Enforce the presence of a kafka config if not present based on this system's kafka config."

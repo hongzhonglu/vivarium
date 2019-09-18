@@ -193,10 +193,10 @@ class Actor(object):
 
             print_send (bool): Whether or not to print the message that is sent.
         """
-        payload = self.encode_payload(message)
-
         if print_send:
             self.print_message(topic, message, False)
+
+        payload = self.encode_payload(message)
 
         self.producer.produce(
             topic,

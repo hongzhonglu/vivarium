@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 import time
+import copy
 
 import lens.actor.event as event
 from lens.actor.actor import Actor
@@ -136,6 +137,9 @@ class Inner(Actor):
         update = self.simulation.generate_inner_update()
         division = update.get('division', [])
 
+        for index, daughter in enumerate(division):
+            print('daughter {}: {}'.format(index+1, daughter))
+
         for daughter in division:
             assert daughter.get('id')
 
@@ -171,17 +175,20 @@ class Inner(Actor):
         """
 
         generation = self.generation + 1
-        for daughter in division:
-            agent_id = daughter['id']
-
-            agent_type = daughter.get(
+        for index, daughter in enumerate(division):
+            daughter_id = daughter['id']
+            daughter_type = daughter.get(
                 'type',
                 message.get(
                     'daughter_type',
                     self.agent_type))
 
+            daughter_config = copy.deepcopy(self.agent_config)
+            daughter_config.update(daughter)
+
             agent_config = dict(
-                daughter,
+                daughter_config,
+                index=index,
                 parent_id=self.agent_id,
                 outer_id=self.outer_id,
                 generation=generation)
@@ -190,8 +197,8 @@ class Inner(Actor):
             inherited_state_path = agent_config.pop('inherited_state_path', None)
             add_agent_message = {
                 'event': event.ADD_AGENT,
-                'agent_id': agent_id,
-                'agent_type': agent_type,
+                'agent_id': daughter_id,
+                'agent_type': daughter_type,
                 'agent_config': agent_config}
 
             if inherited_state_path:

@@ -269,6 +269,7 @@ class Outer(Actor):
                 # contains info dictionaries for the `EnvironmentSimulation`.
                 if state.get('division'):
                     parent = self.environment.simulation_state(agent_id)
+
                     for index, daughter in enumerate(state['division']):
                         daughter_id = daughter.get('id')
                         self.simulations[daughter_id] = dict(
