@@ -23,17 +23,21 @@ class LatticeCompartment(Compartment, Simulation):
 
     def apply_outer_update(self, update):
         self.last_update = update
-        environment = self.states[self.environment]
-        environment.assign_values(update['concentrations'])
-        environment.assign_values({key: 0 for key in self.environment_deltas})  # reset delta counts to 0
+        environment = self.states.get(self.environment)
+        if environment:
+            environment.assign_values(update['concentrations'])
+            environment.assign_values({key: 0 for key in self.environment_deltas})  # reset delta counts to 0
 
     def generate_inner_update(self):
-        environment = self.states[self.environment]
-        changes = environment.state_for(self.environment_deltas)
-        compartment = self.states[self.compartment]
-        environment_change = {mol_id.replace(self.exchange_key, ''): value
-            for mol_id, value in changes.iteritems()}
+        environment = self.states.get(self.environment)
+        if environment:
+            changes = environment.state_for(self.environment_deltas)
+            environment_change = {mol_id.replace(self.exchange_key, ''): value
+                                  for mol_id, value in changes.iteritems()}
+        else:
+            environment_change = {}
 
+        compartment = self.states[self.compartment]
         values = compartment.state_for(['volume'])
         values.update({
             'motile_force': [0,0], # TODO -- get motile_force from compartment state

@@ -50,18 +50,22 @@ class State(object):
         self.sort_keys()
 
     def index_for(self, keys):
+        if self.keys.size == 0:
+            return np.array([])
         return np.searchsorted(self.keys, keys)
 
-    def assign_values(self, values):
+    def assign_values(self, values_dict):
         ''' Assign a dict of keys and values to the state. '''
-
-        keys, values = npize(values)
+        if self.keys.size == 0:
+            return
+        keys, values = npize(values_dict)
         index = self.index_for(keys)
         self.state[index] = values
 
     def apply_delta(self, delta):
         ''' Apply a dict of keys and deltas to the state. '''
-
+        if self.keys.size == 0:
+            return
         keys, values = npize(delta)
         index = self.index_for(keys)
         self.state[index] += values
@@ -75,6 +79,8 @@ class State(object):
     def state_for(self, keys):
         ''' Get the current state of these keys as a dict of values. '''
 
+        if self.keys.size == 0:
+            return {}
         index = self.index_for(keys)
         return dict(zip(keys, self.state[index]))
 
@@ -99,7 +105,7 @@ class Process(object):
         return {}
 
     def default_emitter_keys(self):
-        return {'external': [], 'internal': []}
+        return {}
 
     # def default_parameters(self):
     #     return {}

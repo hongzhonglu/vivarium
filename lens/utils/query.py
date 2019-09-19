@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 def get_sims_from_exp(client, experiment_id):
     # given a database client and experiment id, return a list of simulation ids
     simulation_ids = set()
-    query_dict = {'experiment_id': experiment_id, 'time': 1.0}
+    query_dict = {'experiment_id': experiment_id}  # TODO -- narrow query further. {'time': 1.0} not sufficient
     data = client.find(query_dict)
     for row in data:
         simulation_id = row['simulation_id']
@@ -24,8 +24,6 @@ def db_to_dict(data):
             # get data for this key
             key_row = row[key]
             for mol_id, value in key_row.iteritems():
-
-
                 if mol_id in data_dict[key].keys():
                     data_dict[key][mol_id].append(value)
                 else:

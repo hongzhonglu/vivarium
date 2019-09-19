@@ -33,6 +33,7 @@ class AnalyzeState(object):
         experiment_id = args.experiment
         simulation_id = args.simulation
 
+        # TODO -- print available sim_ids, and warning if there are none
         if not simulation_id:
             simulation_ids = get_sims_from_exp(self.client.simulations.output, experiment_id)
             for simulation_id in simulation_ids:
@@ -57,7 +58,6 @@ class AnalyzeState(object):
         plot_idx = 1
 
         for key in data_keys:
-
             for mol_id, series in data_dict[key].iteritems():
                 ax = fig.add_subplot(n_rows, 1, plot_idx)
                 ax.plot(time_vec, series)
@@ -71,7 +71,10 @@ class AnalyzeState(object):
         fig_path = os.path.join(output_dir, experiment_id, simulation_id)
         if not os.path.isdir(fig_path):
             os.makedirs(fig_path)
-        plt.tight_layout()
+        try:
+            plt.tight_layout()
+        except:
+            pass
         plt.savefig(fig_path + '/analyze_compartment')
         plt.clf()
 
