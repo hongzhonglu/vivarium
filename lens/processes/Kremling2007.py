@@ -5,6 +5,7 @@ from scipy.integrate import odeint
 
 from lens.actor.process import Process
 from lens.utils.flux_conversion import millimolar_to_counts
+from lens.environment.make_media import Media
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
@@ -55,63 +56,6 @@ DEFAULT_PARAMETERS = {
     'KI': 1 / 8000,  # K_I: Glc 6P transporter inhibits Glc transp.syn.[\mu mol / gDW]
 }
 
-# GLC-G6P media (mmol/L) TODO -- get these from recipes?
-GLC_G6P_EXTERNAL = {
-    'ACET': 0.0,
-    'CO+2': 100.0,
-    'ETOH': 0.0,
-    'FORMATE': 0.0,
-    'GLYCEROL': 0.0,
-    'LAC': 0.0,
-    'LCTS': 0.0,
-    'OXYGEN-MOLECULE': 100.0,
-    'PI': 100.0,
-    'PYR': 0.0,
-    'RIB': 0.0,
-    'SUC': 0.0,
-    'G6P': 1.3451,
-    'GLC': 12.2087,
-}
-GLC_G6P_INTERNAL = {
-    'mass': 0.032,  # [g / l]  #1.339e-12,  # g
-    'LACZ': 0.0,  # absent in GLC_G6P condition
-    'UHPT': 0.0003,  # [\mu mol gDCW] enz g6p
-    'PTSG': 0.007,  # [\mu mol gDCW] enz glc
-    'G6P': 0.2057,  # [\mu mol gDCW]
-    'PEP': 2.0949,  # [\mu mol gDCW]
-    'PYR': 2.0949,  # [\mu mol gDCW]
-    'XP': 0.0038,  # [fraction phosphorylation]
-}
-
-# GLC-LCT media (mmol/L)
-GLC_LCT_EXTERNAL = {
-    'ACET': 0.0,
-    'CO+2': 100.0,
-    'ETOH': 0.0,
-    'FORMATE': 0.0,
-    'GLYCEROL': 0.0,
-    'LAC': 0.0,
-    'LCTS': 3.4034,
-    'OXYGEN-MOLECULE': 100.0,
-    'PI': 100.0,
-    'PYR': 0.0,
-    'RIB': 0.0,
-    'SUC': 0.0,
-    'G6P': 0.0,
-    'GLC': 1.2209,
-}
-GLC_LCT_INTERNAL = {
-    'mass': 0.032,  # [g / l]
-    'LACZ': 1e-5,  # [\mu mol gDCW] enz g6p
-    'UHPT': 0.0,  # absent in GLC_G6P condition
-    'PTSG': 0.001,  # [\mu mol gDCW] enz glc
-    'G6P': 0.1,  # [\mu mol gDCW]
-    'PEP': 0.05,  # [\mu mol gDCW]
-    'PYR': 0.1,  # [\mu mol gDCW]
-    'XP': 0.01,  # [fraction phosphorylation]
-}
-
-
 MOLECULAR_WEIGHTS = {
     'ACET': 60.05,
     'CO+2': 44.0095,
@@ -128,7 +72,6 @@ MOLECULAR_WEIGHTS = {
     'G6P': 260.136,
     'GLC': 180.16,
 }
-
 
 
 def merge_dicts(x, y):
@@ -156,15 +99,42 @@ class Transport(Process):
         super(Transport, self).__init__(roles, parameters)
 
     def default_state(self):
+        '''
+        returns dictionary with:
+            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
+            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
+            - external (dict) -- external states with default initial values, will be overwritten by environment
+            - internal (dict) -- internal states with default initial values
+        '''
+        # TODO -- select state based on media
         glc_g6p = True
         glc_lct = False
 
+        make_media = Media()
         if glc_g6p:
-            external = GLC_G6P_EXTERNAL
-            internal = GLC_G6P_INTERNAL
+            external = make_media.get_saved_media('GLC_G6P')
+            internal = {
+                'mass': 0.032,  # [g / l]  #1.339e-12,  # g
+                'LACZ': 0.0,  # absent in GLC_G6P condition
+                'UHPT': 0.0003,  # [\mu mol gDCW] enz g6p
+                'PTSG': 0.007,  # [\mu mol gDCW] enz glc
+                'G6P': 0.2057,  # [\mu mol gDCW]
+                'PEP': 2.0949,  # [\mu mol gDCW]
+                'PYR': 2.0949,  # [\mu mol gDCW]
+                'XP': 0.0038,  # [fraction phosphorylation]
+            }
         elif glc_lct:
-            external = GLC_LCT_EXTERNAL
-            internal = GLC_LCT_INTERNAL
+            external = make_media.get_saved_media('GLC_LCT')
+            internal = {
+                'mass': 0.032,  # [g / l]
+                'LACZ': 1e-5,  # [\mu mol gDCW] enz g6p
+                'UHPT': 0.0,  # absent in GLC_G6P condition
+                'PTSG': 0.001,  # [\mu mol gDCW] enz glc
+                'G6P': 0.1,  # [\mu mol gDCW]
+                'PEP': 0.05,  # [\mu mol gDCW]
+                'PYR': 0.1,  # [\mu mol gDCW]
+                'XP': 0.01,  # [fraction phosphorylation]
+            }
 
         environment_ids = external.keys()
         external_changes = [key + self.exchange_key for key in environment_ids]
@@ -315,30 +285,8 @@ class Transport(Process):
         state_keys = combined_state.keys()
         state_init = np.asarray(combined_state.values())
 
-
-
-        # t = np.arange(0, 7.5, 0.01)
-
-
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
-
-
-        # import matplotlib
-        # matplotlib.use('Agg')
-        # import matplotlib.pyplot as plt
-        # fig = plt.figure(figsize=(15, 10))
-        # for state_idx, state_id in enumerate(state_keys):
-        #     series = solution[:, state_idx]
-        #     ax = fig.add_subplot(8, 2, state_idx + 1)
-        #     ax.plot(series)
-        #     ax.title.set_text(state_id)
-        # plt.tight_layout()
-        # plt.savefig('user/kremling2007/out/test_processes_3.png')
-        # plt.clf()
-        #
-        # import ipdb; ipdb.set_trace()
-
 
         # get differences between final and initial state
         delta_concs = {}

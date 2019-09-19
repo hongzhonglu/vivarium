@@ -46,9 +46,11 @@ def initialize_covert2008(config):
 
     # declare the processes
     transport = Transport(config)
+    metabolism = Metabolism(config)
     deriver = DeriveVolume(config)
     processes = {
         'transport': transport,
+        'metabolism': metabolism,
         'deriver': deriver}
 
     # initialize the states
@@ -60,6 +62,9 @@ def initialize_covert2008(config):
     # configure the states to the roles for each process
     topology = {
         'transport': {
+            'external': 'environment',
+            'internal': 'cell'},
+        'metabolism': {
             'external': 'environment',
             'internal': 'cell'},
         'deriver': {
