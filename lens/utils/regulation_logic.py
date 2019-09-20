@@ -7,12 +7,12 @@ grammar = Grammar(
     """
     rule = if set_mols*
     set_mols = operation? open? one_molecule* close?
-    one_molecule = operation? text
+    one_molecule = operation? operation? text
     text = ~"[A-Za-z0-9]*"i
     if = "IF" ws
     open  = "("
     close = ")"
-    operation = or? and? not?
+    operation = or / and / not
     or = ws "or" ws?
     and = ws "and" ws?
     not = ws "not" ws?
@@ -48,21 +48,30 @@ class LogicConstructor(NodeVisitor):
             set_mols = logic_set[1]
             in_set = logic_set[2]
 
-            rule_string = rule_string + ' ' + set_operation
+            rule_string = rule_string + ' ' + set_operation + ' '
             if in_set:
-                rule_string = rule_string + ' ('
+                rule_string = rule_string + '('
             for mol_operation in set_mols:
-                operation, mol = mol_operation
-                if operation:
-                    mol_dict = '{} {}'.format(operation, mol)
-                    # mol_dict = '{} dict.get({}, False)'.format(operation, mol)
+                operations, mol = mol_operation
+                operation1, operation2 = operations
+
+                if operation1 and operation2:
+                    # mol_dict = '{} {} {}'.format(operation1, operation2, mol)
+                    mol_dict = '{} {} dict.get({}, False)'.format(operation1, operation2, mol)
+                elif operation1:
+                    # mol_dict = '{} {}'.format(operation1,  mol)
+                    mol_dict = '{} dict.get({}, False)'.format(operation1, mol)
                 else:
-                    mol_dict = '{}'.format(mol)
-                    # mol_dict = 'dict.get({}, False)'.format(mol)
+                    # mol_dict = '{}'.format(mol)
+                    mol_dict = 'dict.get({}, False)'.format(mol)
                 rule_string = rule_string + mol_dict + ' '
             rule_string = rule_string[:-1]
             if in_set:
                 rule_string = rule_string + ')'
+
+
+
+
         return rule_string
 
     def visit_set_mols(self, node, visited_children):
@@ -74,28 +83,30 @@ class LogicConstructor(NodeVisitor):
         return (operation, molecules, in_set)
 
     def visit_one_molecule(self, node, visited_children):
-        operation_list, mol_id = visited_children
-        operation = operation_list[0]
-        return (operation, mol_id)
+        operation_list1, operation_list2, mol_id = visited_children
+
+        operation1 = ''
+        operation2 = ''
+        if isinstance(operation_list1, list):
+            operation1 = operation_list1[0]
+        if isinstance(operation_list2, list):
+            operation2 = operation_list2[0]
+        return ([operation1, operation2], mol_id)
 
     def visit_text(self, node, visited_children):
         return (node.text)
 
     def visit_operation(self, node, visited_children):
-        or_oper, and_oper, not_oper = visited_children
-        if isinstance(or_oper, list):
-            return ('or')
-        elif isinstance(and_oper, list):
-            return ('and')
-        elif isinstance(not_oper, list):
-            return ('not')
+        oper_list = visited_children
+        if isinstance(oper_list, list):
+            return oper_list[0]
 
     def visit_or(self, node, visited_children):
-        return True
+        return ('or')
     def visit_and(self, node, visited_children):
-        return True
+        return ('and')
     def visit_not(self, node, visited_children):
-        return True
+        return ('not')
     def visit_if(self, node, visited_children):
         pass
     def visit_open(self, node, visited_children):
@@ -113,7 +124,7 @@ class LogicConstructor(NodeVisitor):
 # str = "IF GLCxt or LCTSxt"
 # str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
 str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
-
+# str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
 
 str_parsed = grammar.parse(str)
 lc = LogicConstructor()
