@@ -6,7 +6,7 @@ from parsimonious.nodes import NodeVisitor
 grammar = Grammar(
     """
     rule = if set_mols*
-    set_mols = open? one_molecule* close?
+    set_mols = operation? open? one_molecule* close?
     one_molecule = operation? text
     text = ~"[A-Za-z0-9]*"i
     if = "IF" ws
@@ -42,30 +42,45 @@ class LogicConstructor(NodeVisitor):
     '''
     def visit_rule(self, node, visited_children):
         if_statement, sets_mols, = visited_children
-        rule_string = 'if '
-        for set_mols in sets_mols:
+        rule_string = ''
+        for logic_set in sets_mols:
+            set_operation = logic_set[0][0]
+            set_mols = logic_set[1]
+            in_set = logic_set[2]
+
+            rule_string = rule_string + ' ' + set_operation
+            if in_set:
+                rule_string = rule_string + ' ('
             for mol_operation in set_mols:
                 operation, mol = mol_operation
                 if operation:
-                    mol_dict = '{} dict.get({}, False)'.format(operation, mol)
+                    mol_dict = '{} {}'.format(operation, mol)
+                    # mol_dict = '{} dict.get({}, False)'.format(operation, mol)
                 else:
-                    mol_dict = 'dict.get({}, False)'.format(operation, mol)
+                    mol_dict = '{}'.format(mol)
+                    # mol_dict = 'dict.get({}, False)'.format(mol)
                 rule_string = rule_string + mol_dict + ' '
+            rule_string = rule_string[:-1]
+            if in_set:
+                rule_string = rule_string + ')'
         return rule_string
+
     def visit_set_mols(self, node, visited_children):
-        open, molecules, close = visited_children
+        operation, open_set, molecules, close_set = visited_children
+        in_set = False
+        if isinstance(open_set, list) or isinstance(close_set, list):
+            assert (isinstance(open_set, list) and isinstance(close_set, list))
+            in_set = True
+        return (operation, molecules, in_set)
 
-        # import ipdb;
-        # ipdb.set_trace()
-
-
-        return molecules
     def visit_one_molecule(self, node, visited_children):
         operation_list, mol_id = visited_children
-        operation = operation_list[0]  # TODO -- can this be take out of list before?
+        operation = operation_list[0]
         return (operation, mol_id)
+
     def visit_text(self, node, visited_children):
         return (node.text)
+
     def visit_operation(self, node, visited_children):
         or_oper, and_oper, not_oper = visited_children
         if isinstance(or_oper, list):
@@ -74,6 +89,7 @@ class LogicConstructor(NodeVisitor):
             return ('and')
         elif isinstance(not_oper, list):
             return ('not')
+
     def visit_or(self, node, visited_children):
         return True
     def visit_and(self, node, visited_children):
@@ -94,29 +110,28 @@ class LogicConstructor(NodeVisitor):
 
 
 
-
+# str = "IF GLCxt or LCTSxt"
 # str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
 str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
 
-# str = "IF GLCxt or LCTSxt"
 
 str_parsed = grammar.parse(str)
 lc = LogicConstructor()
 logic = lc.visit(str_parsed)
 
+
 # import ipdb; ipdb.set_trace()
 
 
-
 def test_rule(dict):
-    return (dict.get('GLCxt', False) or dict.get('LCTSxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
-
+    return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
 
 state = {
-    'GLCxt': False,
-    'LCTSxt': True,
+    'GLCxt': True,
+    'LCTSxt': False,
+    'RUBxt': False,
     'FNR': True,
-    'GlpR': True,
+    'GlpR': False,
 }
 
 result = test_rule(state)
