@@ -5,11 +5,13 @@ from parsimonious.nodes import NodeVisitor
 
 grammar = Grammar(
     """
-    rule = if set_mols*
+    rule = active? if set_mols*
     set_mols = operation? open? one_molecule* close?
-    one_molecule = operation? operation? text
-    text = ~"[A-Za-z0-9]*"i
+    one_molecule = surplus? operation? operation? text
+    text = ~"[A-Za-z0-9-\[\]]*"i
     if = "IF" ws
+    active = "active" ws
+    surplus = "surplus" ws
     open  = "("
     close = ")"
     operation = or / and / not
@@ -29,14 +31,22 @@ class RegulatoryLogic(object):
         Make a logic function from a string
         Args:
             logic_str (str)
+        Returns: logic_function (function) that takes in a dict with boolean values {mol_id: bool},
+            and evaluates it according to the parsed expression
+
         '''
-        logic_parsed = grammar.parse(logic_str)
-        logic_function = self.logic_constructor.visit(logic_parsed)
-        return logic_function
+
+        try:
+            logic_parsed = grammar.parse(logic_str)
+            return self.logic_constructor.visit(logic_parsed)
+        except:
+            def fun(dict):
+                return None
+            return fun
 
 
 class LogicConstructor(NodeVisitor):
-    '''
+    '''s
     Make a logic function from a parsed expression.
     Args:
         - node: The node we're visiting
@@ -46,7 +56,7 @@ class LogicConstructor(NodeVisitor):
             and evaluates it according to the parsed expression
     '''
     def visit_rule(self, node, visited_children):
-        if_statement, sets_mols, = visited_children
+        active_statement, if_statement, sets_mols, = visited_children
         rule_string = ''
         for logic_set in sets_mols:
             set_operation = logic_set[0][0]
@@ -85,7 +95,7 @@ class LogicConstructor(NodeVisitor):
         return (operation, molecules, in_set)
 
     def visit_one_molecule(self, node, visited_children):
-        operation_list1, operation_list2, mol_id = visited_children
+        surplus, operation_list1, operation_list2, mol_id = visited_children
 
         operation1 = ''
         operation2 = ''
@@ -108,6 +118,10 @@ class LogicConstructor(NodeVisitor):
         return ('and')
     def visit_not(self, node, visited_children):
         return ('not')
+    def visit_surplus(self, node, visited_children):  # TODO -- base whether surplus on a threshold?
+        pass
+    def visit_active(self, node, visited_children):
+        pass
     def visit_if(self, node, visited_children):
         pass
     def visit_open(self, node, visited_children):
@@ -122,27 +136,33 @@ class LogicConstructor(NodeVisitor):
 
 
 
-# str = "IF GLCxt or LCTSxt"
-# str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
-str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
-# str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
-
-rc = RegulatoryLogic()
-logic_function = rc.get_logic_function(str)
-
-state = {
-    'GLCxt': False,
-    'LCTSxt': True,
-    'RUBxt': False,
-    'FNR': True,
-    'GlpR': False,
-}
-
-result = logic_function(state)
-
-import ipdb; ipdb.set_trace()
-
-# def test_rule(dict):
-#     return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
+# # str = "IF GLCxt or LCTSxt"
+# # str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
+# # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
+# # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
+# # str = "active IF not (OXYGEN-MOLECULE[e])"
+# # str = "active IF not (surplus FDP or F6P)"
+# str = 'action is complex'
 #
-# result = test_rule(state)
+# rc = RegulatoryLogic()
+# logic_function = rc.get_logic_function(str)
+#
+# state = {
+#     'GLCxt': False,
+#     'LCTSxt': True,
+#     'RUBxt': False,
+#     'FNR': True,
+#     'GlpR': False,
+#     'OXYGEN-MOLECULE[e]': False,
+#     'FDP': False,
+#     'F6P': False,
+# }
+#
+# result = logic_function(state)
+# print("RESULT: {}".format(result))
+#
+#
+# # def test_rule(dict):
+# #     return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
+# #
+# # result = test_rule(state)

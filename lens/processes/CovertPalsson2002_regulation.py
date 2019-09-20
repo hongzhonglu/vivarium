@@ -58,10 +58,13 @@ class Regulation(Process):
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
 
-        self.activity = {reaction['Protein']: RegulatoryLogic(reaction['Regulatory Logic'])
+
+        rc = RegulatoryLogic()
+        self.activity = {reaction['Protein']: rc.get_logic_function(reaction['Regulatory Logic'])
             for reaction in data['covert2002_regulatory_proteins']}
 
-        import ipdb; ipdb.set_trace()
+        import ipdb;
+        ipdb.set_trace()
 
         # self.regulatory_proteins = {reaction['Protein']: reaction['Regulatory Logic']
         #     for reaction in data['covert2002_regulatory_proteins']}
