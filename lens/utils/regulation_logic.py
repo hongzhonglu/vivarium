@@ -19,20 +19,6 @@ grammar = Grammar(
     ws = ~"\s*"
     """)
 
-class RegulatoryLogic(object):
-    def __init__(self):
-        self.logic_constructor = LogicConstructor()
-
-    def get_logic(self, logic_str):
-        '''
-        Make a logic function from a string
-        Args:
-            logic_str (str)
-        '''
-        logic_parsed = grammar.parse(logic_str)
-        logic_function = self.logic_constructor.visit(logic_parsed)
-        return logic_function
-
 class LogicConstructor(NodeVisitor):
     '''
     Make a logic function from a parsed expression.
@@ -56,23 +42,20 @@ class LogicConstructor(NodeVisitor):
                 operation1, operation2 = operations
 
                 if operation1 and operation2:
-                    # mol_dict = '{} {} {}'.format(operation1, operation2, mol)
-                    mol_dict = '{} {} dict.get({}, False)'.format(operation1, operation2, mol)
+                    mol_dict = "{} {} dict.get('{}', False)".format(operation1, operation2, mol)
                 elif operation1:
-                    # mol_dict = '{} {}'.format(operation1,  mol)
-                    mol_dict = '{} dict.get({}, False)'.format(operation1, mol)
+                    mol_dict = "{} dict.get('{}', False)".format(operation1, mol)
                 else:
-                    # mol_dict = '{}'.format(mol)
-                    mol_dict = 'dict.get({}, False)'.format(mol)
+                    mol_dict = "dict.get('{}', False)".format(mol)
                 rule_string = rule_string + mol_dict + ' '
             rule_string = rule_string[:-1]
             if in_set:
                 rule_string = rule_string + ')'
 
+        def logic_function(dict):
+            return eval(rule_string)
 
-
-
-        return rule_string
+        return logic_function
 
     def visit_set_mols(self, node, visited_children):
         operation, open_set, molecules, close_set = visited_children
@@ -93,14 +76,13 @@ class LogicConstructor(NodeVisitor):
             operation2 = operation_list2[0]
         return ([operation1, operation2], mol_id)
 
-    def visit_text(self, node, visited_children):
-        return (node.text)
-
     def visit_operation(self, node, visited_children):
+        ''' if there is an operation, pull the string out of the list and return it'''
         oper_list = visited_children
         if isinstance(oper_list, list):
             return oper_list[0]
-
+    def visit_text(self, node, visited_children):
+        return (node.text)
     def visit_or(self, node, visited_children):
         return ('or')
     def visit_and(self, node, visited_children):
@@ -126,25 +108,23 @@ class LogicConstructor(NodeVisitor):
 str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
 # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
 
-str_parsed = grammar.parse(str)
 lc = LogicConstructor()
-logic = lc.visit(str_parsed)
-
-
-# import ipdb; ipdb.set_trace()
-
-
-def test_rule(dict):
-    return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
+parse_str = grammar.parse(str)
+logic_function = lc.visit(parse_str)
 
 state = {
-    'GLCxt': True,
+    'GLCxt': False,
     'LCTSxt': False,
     'RUBxt': False,
     'FNR': True,
     'GlpR': False,
 }
 
-result = test_rule(state)
+result = logic_function(state)
 
 import ipdb; ipdb.set_trace()
+
+# def test_rule(dict):
+#     return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
+#
+# result = test_rule(state)
