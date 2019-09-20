@@ -19,12 +19,31 @@ grammar = Grammar(
     ws = ~"\s*"
     """)
 
+
+class RegulatoryLogic(object):
+    def __init__(self):
+        self.logic_constructor = LogicConstructor()
+
+    def get_logic_function(self, logic_str):
+        '''
+        Make a logic function from a string
+        Args:
+            logic_str (str)
+        '''
+        logic_parsed = grammar.parse(logic_str)
+        logic_function = self.logic_constructor.visit(logic_parsed)
+        return logic_function
+
+
 class LogicConstructor(NodeVisitor):
     '''
     Make a logic function from a parsed expression.
     Args:
         - node: The node we're visiting
         - visited_children: The results of visiting the children of that node, in a list
+    Returns:
+        - a logic function that takes in a dict with boolean values {mol_id: bool},
+            and evaluates it according to the parsed expression
     '''
     def visit_rule(self, node, visited_children):
         if_statement, sets_mols, = visited_children
@@ -108,13 +127,12 @@ class LogicConstructor(NodeVisitor):
 str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
 # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
 
-lc = LogicConstructor()
-parse_str = grammar.parse(str)
-logic_function = lc.visit(parse_str)
+rc = RegulatoryLogic()
+logic_function = rc.get_logic_function(str)
 
 state = {
     'GLCxt': False,
-    'LCTSxt': False,
+    'LCTSxt': True,
     'RUBxt': False,
     'FNR': True,
     'GlpR': False,
