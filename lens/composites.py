@@ -11,6 +11,7 @@ from lens.environment.lattice_compartment import LatticeCompartment, generate_la
 # processes
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.CovertPalsson2002_metabolism import Metabolism
+from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007 import Transport
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.division import Division
@@ -45,11 +46,13 @@ def initialize_covert2008(config):
     })
 
     # declare the processes
-    transport = Transport(config)
+    # transport = Transport(config)
     metabolism = Metabolism(config)
+    regulation = Regulation(config)
     deriver = DeriveVolume(config)
     processes = {
-        'transport': transport,
+        # 'transport': transport,
+        'regulation': regulation,
         'metabolism': metabolism,
         'deriver': deriver}
 
@@ -61,7 +64,10 @@ def initialize_covert2008(config):
 
     # configure the states to the roles for each process
     topology = {
-        'transport': {
+        # 'transport': {
+        #     'external': 'environment',
+        #     'internal': 'cell'},
+        'regulation': {
             'external': 'environment',
             'internal': 'cell'},
         'metabolism': {

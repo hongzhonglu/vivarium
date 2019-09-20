@@ -238,8 +238,7 @@ class Media(object):
         '''
 
         timeline_parsed = grammar.parse(timeline_str)
-        rc = RecipeConstructor()
-        timeline_recipes = rc.visit(timeline_parsed)
+        timeline_recipes = self.recipe_constructor.visit(timeline_parsed)
         timeline = []
 
         for time, recipe in timeline_recipes:

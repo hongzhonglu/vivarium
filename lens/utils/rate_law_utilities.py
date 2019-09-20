@@ -7,7 +7,7 @@ that are generated in wholecell.kinetic_rate_laws.kinetic_rate_laws.
 Functions include:
     - load_reactions(): returns a dict of all_reactions, with location tags added to the enzymes
     - get_reactions_from_exchange: provided a dict of reactions and exchange molecules, this returns a list of all reactions for those exchange molecules
-    - get_molecules_from_reactions: given a list of desired reactions and dict of all reactions with stoichiometry, returns all the relevant molecules -- substrates and enzymes
+    - get_molecules_from_stoich: given a list of desired reactions and dict of all reactions with stoichiometry, returns all the relevant molecules -- substrates and enzymes
 
 The RateLawUtilities module can be called with:
 > python -m lens.utils.rate_law_utilities

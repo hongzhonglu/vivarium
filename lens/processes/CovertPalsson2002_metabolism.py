@@ -36,8 +36,8 @@ def get_reverse(reactions):
             reverse_stoichiometry[reaction_id + '_reverse'] = stoich
     return reverse_stoichiometry
 
-def get_molecules_from_reactions(stoichiometry):
-    # TODO -- merge with rate_law_utilities.get_molecules_from_reactions
+def get_molecules_from_stoich(stoichiometry):
+    # TODO -- merge with rate_law_utilities.get_molecules_from_stoich
     molecules = set()
     for reaction, stoich in stoichiometry.iteritems():
         molecules.update(stoich.keys())
@@ -59,7 +59,7 @@ class Metabolism(Process):
             }
 
         self.load_data()
-        all_molecule_ids = get_molecules_from_reactions(self.stoichiometry)
+        all_molecule_ids = get_molecules_from_stoich(self.stoichiometry)
         self.internal_molecule_ids = [mol_id
             for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['mass']]
 
@@ -146,6 +146,7 @@ class Metabolism(Process):
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
 
+        # compose stoichiometry from files
         self.stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_reactions']}
         transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']

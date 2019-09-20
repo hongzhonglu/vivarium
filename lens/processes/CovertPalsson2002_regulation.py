@@ -5,6 +5,7 @@ import csv
 
 from lens.actor.process import Process
 from lens.data.spreadsheets import load_tsv
+from lens.utils.regulation_logic import RegulatoryLogic
 
 TSV_DIALECT = csv.excel_tab
 
@@ -13,7 +14,6 @@ LIST_OF_FILENAMES = (
     "covert2002_reactions.tsv",
     "covert2002_regulatory_proteins.tsv",
     )
-
 
 def get_reverse(reactions):
     reverse_stoichiometry = {}
@@ -26,7 +26,7 @@ def get_reverse(reactions):
     return reverse_stoichiometry
 
 def get_molecules_from_reactions(stoichiometry):
-    # TODO -- merge with rate_law_utilities.get_molecules_from_reactions
+    # TODO -- merge with rate_law_utilities.get_molecules_from_stoich
     molecules = set()
     for reaction, stoich in stoichiometry.iteritems():
         molecules.update(stoich.keys())
@@ -54,7 +54,18 @@ class Regulation(Process):
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
         data = {}
-        # TODO -- get regulatory logic from covert2002_regulatory_proteins.tsv, covert2002_reactions.tsv
         for filename in LIST_OF_FILENAMES:
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
+
+        self.activity = {reaction['Protein']: RegulatoryLogic(reaction['Regulatory Logic'])
+            for reaction in data['covert2002_regulatory_proteins']}
+
+        import ipdb; ipdb.set_trace()
+
+        # self.regulatory_proteins = {reaction['Protein']: reaction['Regulatory Logic']
+        #     for reaction in data['covert2002_regulatory_proteins']}
+        # TODO -- save regulation logic as function!
+
+        self.regulation = {reaction['Reaction']: reaction['Regulatory Logic']
+            for reaction in data['covert2002_reactions']}
