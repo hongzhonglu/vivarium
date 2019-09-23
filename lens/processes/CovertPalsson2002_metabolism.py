@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 from scipy import constants
 
 from lens.actor.process import Process
@@ -63,6 +64,13 @@ class Metabolism(Process):
         all_molecule_ids = get_molecules_from_stoich(self.stoichiometry)
         self.internal_molecule_ids = [mol_id
             for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['mass']]
+
+
+
+        import ipdb; ipdb.set_trace()
+        # TODO are self.regulation_molecules in self.internal_molecule_ids?
+
+
 
         # initialize FBA
         self.fba = FluxBalanceAnalysis(
@@ -156,20 +164,40 @@ class Metabolism(Process):
         reverse_stoichiometry = get_reverse(data['covert2002_reactions'])
         reverse_transport_stoichiometry = get_reverse(data['covert2002_transport'])
 
+        # add to stoichiometry
         self.stoichiometry.update(transport_stoichiometry)
         self.stoichiometry.update(maintenance_stoichiometry)
         self.stoichiometry.update(reverse_stoichiometry)
         self.stoichiometry.update(reverse_transport_stoichiometry)
 
+        # make regulatory logic functions
         rc = RegulatoryLogic()
         self.regulation_functions = {reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
                            for reaction in data['covert2002_reactions']}
 
-        # TODO -- need all molecules listed in logic functions
+        # get all molecules listed in "Regulatory Logic"
+        self.regulation_molecules = set()
+        regex_split = 'IF |not |or |and |\(|\)| '
+        for reaction in data['covert2002_reactions']:
+            reg_logic = reaction['Regulatory Logic']
+            reg_logic_parsed = re.split(regex_split, reg_logic)  # split string to remove patterns in regex_split
+            reg_logic_parsed = list(filter(None, reg_logic_parsed))  # remove empty strings
+            self.regulation_molecules.update(reg_logic_parsed)
+
+        # remove external molecules from regulation_molecules
+        external_regulation_molecules = set([mol_id
+            for mol_id in self.regulation_molecules if '[e]' in mol_id])
+        self.regulation_molecules.difference_update(external_regulation_molecules)
 
         # TODO -- remove growth exchange flux from file?
+        # TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
         self.external_molecule_ids = [reaction['Stoichiometry'].keys()[0]
             for reaction in data['covert2002_exchange_fluxes'] if reaction['Reaction'] != 'Growth']
+
+        # check that all external regulation molecules are in external_molecule_ids
+        set_ex = set(self.external_molecule_ids)
+        in_reg = external_regulation_molecules.difference(set_ex)
+        assert len(in_reg) == 0
 
         self.objective = {"mass": 1.0}
 

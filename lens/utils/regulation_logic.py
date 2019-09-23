@@ -89,6 +89,8 @@ class LogicConstructor(NodeVisitor):
     def visit_set_mols(self, node, visited_children):
         operation, open_set, molecules, close_set = visited_children
         in_set = False
+        if not isinstance(operation, list):
+            operation =['']
         if isinstance(open_set, list) or isinstance(close_set, list):
             assert (isinstance(open_set, list) and isinstance(close_set, list))
             in_set = True
@@ -136,33 +138,29 @@ class LogicConstructor(NodeVisitor):
 
 
 
-# # str = "IF GLCxt or LCTSxt"
-# # str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
-# # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
-# # str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
-# # str = "active IF not (OXYGEN-MOLECULE[e])"
-# # str = "active IF not (surplus FDP or F6P)"
+# str = "IF GLCxt or LCTSxt"
+str = "IF (GLCxt or LCTSxt or RIBxt or GLxt or LACxt or PYRxt or SUCCxt or ETHxt or ACxt or FORxt)"
+# str = "IF not (GLCxt or LCTSxt or RUBxt)"
+# str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
+# str = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and GlpR"
+# str = "active IF not (OXYGEN-MOLECULE[e])"
+# str = "active IF not (surplus FDP or F6P)"
 # str = 'action is complex'
+
+
+rc = RegulatoryLogic()
+logic_function = rc.get_logic_function(str)
+
+state = {
+    'GLCxt': True,
+    # 'LCTSxt': True,
+    # 'RUBxt': False,
+    # 'FNR': True,
+    # 'GlpR': False,
+    'OXYGEN-MOLECULE[e]': False,
+    # 'FDP': False,
+    # 'F6P': False,
+}
 #
-# rc = RegulatoryLogic()
-# logic_function = rc.get_logic_function(str)
-#
-# state = {
-#     'GLCxt': False,
-#     'LCTSxt': True,
-#     'RUBxt': False,
-#     'FNR': True,
-#     'GlpR': False,
-#     'OXYGEN-MOLECULE[e]': False,
-#     'FDP': False,
-#     'F6P': False,
-# }
-#
-# result = logic_function(state)
-# print("RESULT: {}".format(result))
-#
-#
-# # def test_rule(dict):
-# #     return not (dict.get('GLCxt', False) or dict.get('LCTSxt', False) or dict.get('RUBxt', False)) and dict.get('FNR', False) and not dict.get('GlpR', False)
-# #
-# # result = test_rule(state)
+result = logic_function(state)
+print("RESULT: {}".format(result))
