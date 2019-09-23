@@ -1,4 +1,4 @@
-"Reaction"	"Protein"	"Gene"	"Stoichiometry"	"Regulatory Logic""
+"Reaction"	"Protein"	"Gene"	"Stoichiometry"	"Regulatory Logic"
 	"arcA"			"active IF not (OXYGEN-MOLECULE[e])"
 	"cra (fruR)"			"active IF not (surplus FDP or F6P)"
 	"crp"			"action is complex"

@@ -8,6 +8,7 @@ from lens.data.spreadsheets import load_tsv
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.environment.make_media import Media
+from lens.utils.regulation_logic import RegulatoryLogic
 
 
 DATA_DIR = os.path.join('lens', 'data', 'flat')
@@ -103,9 +104,6 @@ class Metabolism(Process):
         external_molecules = merge_dicts(external,{key: 0 for key in environment_deltas})
         internal_molecules = merge_dicts(internal, {'volume': 1})  # fL
 
-
-        import ipdb; ipdb.set_trace()
-
         return {
             'environment_deltas': environment_deltas,
             'external': external_molecules,
@@ -149,17 +147,25 @@ class Metabolism(Process):
         # compose stoichiometry from files
         self.stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_reactions']}
+
+        # get additional stoichiomteries
         transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_transport']}
         maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_maintenance_biomass_fluxes']}
-        self.stoichiometry.update(transport_stoichiometry)
-        self.stoichiometry.update(maintenance_stoichiometry)
-
         reverse_stoichiometry = get_reverse(data['covert2002_reactions'])
         reverse_transport_stoichiometry = get_reverse(data['covert2002_transport'])
+
+        self.stoichiometry.update(transport_stoichiometry)
+        self.stoichiometry.update(maintenance_stoichiometry)
         self.stoichiometry.update(reverse_stoichiometry)
         self.stoichiometry.update(reverse_transport_stoichiometry)
+
+        rc = RegulatoryLogic()
+        self.regulation_functions = {reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
+                           for reaction in data['covert2002_reactions']}
+
+        # TODO -- need all molecules listed in logic functions
 
         # TODO -- remove growth exchange flux from file?
         self.external_molecule_ids = [reaction['Stoichiometry'].keys()[0]

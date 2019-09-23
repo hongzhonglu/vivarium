@@ -11,7 +11,6 @@ TSV_DIALECT = csv.excel_tab
 
 DATA_DIR = os.path.join('lens', 'data', 'flat')
 LIST_OF_FILENAMES = (
-    "covert2002_reactions.tsv",
     "covert2002_regulatory_proteins.tsv",
     )
 
@@ -47,9 +46,12 @@ class Regulation(Process):
 
         super(Regulation, self).__init__(roles, parameters)
 
-    def next_update(self, timestep, states):
+    def default_state(self):
+        # TODO -- get default activity of all proteins. -- state requires all molecules listed in regulatory_proteins.tsv
         pass
 
+    def next_update(self, timestep, states):
+        pass
 
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
@@ -58,17 +60,6 @@ class Regulation(Process):
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
 
-
         rc = RegulatoryLogic()
-        self.activity = {reaction['Protein']: rc.get_logic_function(reaction['Regulatory Logic'])
+        self.regulation_logic = {reaction['Protein']: rc.get_logic_function(reaction['Regulatory Logic'])
             for reaction in data['covert2002_regulatory_proteins']}
-
-        import ipdb;
-        ipdb.set_trace()
-
-        # self.regulatory_proteins = {reaction['Protein']: reaction['Regulatory Logic']
-        #     for reaction in data['covert2002_regulatory_proteins']}
-        # TODO -- save regulation logic as function!
-
-        self.regulation = {reaction['Reaction']: reaction['Regulatory Logic']
-            for reaction in data['covert2002_reactions']}

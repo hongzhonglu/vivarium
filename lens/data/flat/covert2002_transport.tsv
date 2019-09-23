@@ -9,7 +9,7 @@
 "LACUP"			{"LAC[e]": -1, "HEXT": -1, "LAC": 1}	"IF not (GLC[e] or LCTS[e] or RIB[e] or GLYCEROL[e])"	false
 "LACDN"			{"LAC": -1, "LAC[e]": 1, "HEXT": 1}		false
 "LACYR"		"lacY"	{"LCTS[e]": -1, "HEXT": -1, "LCTS": 1}	"IF not (GLC[e]) and not (lacI)"	true
-"O2TXR"			{"O2[e]": -1, "O2": 1}		true
+"O2TXR"			{"OXYGEN-MOLECULE[e]": -1, "OXYGEN-MOLECULE": 1}		true
 "PIUP2R"		"pitAB"	{"PI[e]": -1, "HEXT": -1, "PI": 1}		true
 "PYRUPR"			{"PYR[e]": -1, "HEXT": -1, "PYR": 1}		true
 "RIBUPR"		"rbsABCD"	{"RIB[e]": -1, "ATP": -1, "RIB": 1, "ADP": 1, "PI": 1}	"IF not (GLC[e] or LCTS[e]) and not RbsR"	false
