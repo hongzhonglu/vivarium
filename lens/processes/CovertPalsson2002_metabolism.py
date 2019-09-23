@@ -61,16 +61,17 @@ class Metabolism(Process):
             }
 
         self.load_data()
+
+        ## Get internal molecules
+        # get all molecules from stoichiometry
         all_molecule_ids = get_molecules_from_stoich(self.stoichiometry)
+
+        # remove external molecules
         self.internal_molecule_ids = [mol_id
             for mol_id in all_molecule_ids if mol_id not in self.external_molecule_ids + ['mass']]
 
-
-
-        import ipdb; ipdb.set_trace()
-        # TODO are self.regulation_molecules in self.internal_molecule_ids?
-
-
+        # add internal regulation_molecules
+        self.internal_molecule_ids = list(set(self.internal_molecule_ids) | self.regulation_molecules)
 
         # initialize FBA
         self.fba = FluxBalanceAnalysis(
