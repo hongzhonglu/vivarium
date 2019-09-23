@@ -32,6 +32,10 @@ def get_molecules_from_reactions(stoichiometry):
         molecules.update(stoich.keys())
     return list(molecules)
 
+def merge_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
 
 class Regulation(Process):
     def __init__(self, initial_parameters={}):
@@ -64,7 +68,20 @@ class Regulation(Process):
             'internal': internal_molecules}
 
     def next_update(self, timestep, states):
-        pass
+        internal_state = states['internal']
+        external_state = states['external']
+
+        # TODO -- add [e] back to external state?
+
+        total_state = merge_dicts(internal_state, external_state)
+        boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
+
+        import ipdb; ipdb.set_trace()
+        # TODO -- passing boolean_state sometimes returns TypeError: 'bool' object is not callable
+        regulatory_state = {mol_id: regulatory_logic(boolean_state) for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
+
+        update = regulatory_state
+        return update
 
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
