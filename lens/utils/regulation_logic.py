@@ -1,12 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
 grammar = Grammar(
     """
-    rule = active? if set_mols*
-    set_mols = operation? open? one_molecule* close?
+    rule = active? if set_mols+
+    set_mols = operation? open? one_molecule+ close?
     one_molecule = surplus? operation? operation? text
     text = ~"[A-Za-z0-9-\[\]]*"i
     if = "IF" ws
@@ -19,6 +22,25 @@ grammar = Grammar(
     and = ws "and" ws?
     not = ws "not" ws?
     ws = ~"\s*"
+    """)
+
+
+simplify = Grammar(
+    """
+    rule = active? if set_mols+
+    set_mols = not? open? one_molecule+ close?
+    one_molecule = surplus? operation? not? text
+    text = ~"[A-Za-z0-9-\[\]]+"i
+    if = "IF" ws
+    active = "active" ws
+    surplus = "surplus" ws
+    open  = "("
+    close = ")"
+    operation = or / and / not
+    or = ws "or" ws
+    and = ws "and" ws
+    not = "not" ws
+    ws = ~"\s+"
     """)
 
 
@@ -43,6 +65,67 @@ class RegulatoryLogic(object):
             def fun(dict):
                 return None
             return fun
+
+
+class Key(object):
+	def __init__(self, key):
+		self.key = key
+
+	def __repr__(self):
+		return "Key({})".format(self.key)
+
+class GenericConstructor(NodeVisitor):
+    def generic_visit(self, node, visited_children):
+		if node.expr_name:
+			value = [Key(node.expr_name), node.text]
+			for child in visited_children:
+				if isinstance(child, list):
+					if child:
+						if isinstance(child[0], Key):
+							value.append(child)
+						else:
+							for grandchild in child:
+								value.append(grandchild)
+				else:
+					value.append(child)
+			return value
+		else:
+			return visited_children
+
+class TreeConstructor(NodeVisitor):
+    def visit_rule(self, node, visited_children):
+        return visited_children
+    def visit_set_mols(self, node, visited_children):
+        return visited_children
+    def visit_one_molecule(self, node, visited_children):
+        return visited_children
+    def visit_text(self, node, visited_children):
+        return node.text
+    def visit_if(self, node, visited_children):
+        return 'IF'
+    def visit_active(self, node, visited_children):
+        return 'active'
+    def visit_surplus(self, node, visited_children):
+        return 'surplus'
+    def visit_open(self, node, visited_children):
+        return '('
+    def visit_close(self, node, visited_children):
+        return ')'
+    def visit_operation(self, node, visited_children):
+        return visited_children[0]
+    def visit_or(self, node, visited_children):
+        return 'or'
+    def visit_and(self, node, visited_children):
+        return 'and'
+    def visit_not(self, node, visited_children):
+        return 'not'
+    def visit_ws(self, node, visited_children):
+        pass
+    def generic_visit(self, node, visited_children):
+      if visited_children:
+          return visited_children
+    
+
 
 
 class LogicConstructor(NodeVisitor):
@@ -164,3 +247,22 @@ class LogicConstructor(NodeVisitor):
 # #
 # result = logic_function(state)
 # print("RESULT: {}".format(result))
+
+
+def test_parsing():
+    test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
+    state = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
+
+    print(test)
+
+    tree = simplify.parse(test)
+
+    print(tree)
+
+    # return tree
+    return tree, GenericConstructor().visit(tree)
+    # return tree, TreeConstructor().visit(tree)
+
+if __name__ == '__main__':
+    tree, outcome = test_parsing()
+    pp.pprint(outcome)
