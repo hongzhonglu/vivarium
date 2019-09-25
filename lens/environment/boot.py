@@ -5,7 +5,7 @@ import shutil
 
 from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
-
+from lens.actor.emitter import get_emitter
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.environment.make_media import Media
 
@@ -67,6 +67,17 @@ def boot_lattice(agent_id, agent_type, agent_config):
         'concentrations': media,
     }
     boot_config.update(agent_config)
+
+    # emitter  TODO (Eran) -- don't repeat this code in the boots
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
+    # create the environment
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
@@ -94,6 +105,17 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
     }
 
     boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
+    # create the environment
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
@@ -116,6 +138,17 @@ def boot_glc_lct(agent_id, agent_type, agent_config):
         'concentrations': media,
     }
     boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
+    # create the environment
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
