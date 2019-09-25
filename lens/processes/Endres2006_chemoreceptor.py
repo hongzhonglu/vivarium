@@ -5,6 +5,8 @@ import math
 from lens.actor.process import Process
 
 
+LIGAND_ID = 'MeAsp'
+
 INITIAL_STATE = {
     'n_methyl': 3.0,  # initial number of methyl groups on receptor cluster (0 to 8)
     'chemoreceptor_P_on': 1 / 3,  # initial probability of receptor cluster being on
@@ -34,7 +36,7 @@ DEFAULT_PARAMETERS = {
 class ReceptorCluster(Process):
     def __init__(self, initial_parameters={}):
 
-        self.ligand_id = 'MeAsp'
+        self.ligand_id = LIGAND_ID
 
         roles = {
             'internal': ['n_methyl', 'chemoreceptor_P_on', 'CheR', 'CheB'],
@@ -46,18 +48,29 @@ class ReceptorCluster(Process):
         super(ReceptorCluster, self).__init__(roles, parameters, deriver=True)
 
     def default_state(self):
+        '''
+        returns dictionary with:
+            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
+            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
+            - external (dict) -- external states with default initial values, will be overwritten by environment
+            - internal (dict) -- internal states with default initial values
+        '''
+
         internal = INITIAL_STATE
+        internal.update({'volume': 1})
+        external = {self.ligand_id: 0.0}
         environment_ids = [self.ligand_id]
 
         return {
-            # 'environment_deltas': external_changes,
+            'environment_deltas': [],
             'environment_ids': environment_ids,
-            'external': [],
+            'external': external,
             'internal': internal}
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['chemoreceptor_P_on'],
+            'internal': ['chemoreceptor_P_on', 'n_methyl'],
+            'external': [self.ligand_id],
         }
         return keys
 
@@ -115,6 +128,7 @@ class ReceptorCluster(Process):
         update = {
             'internal': {
                 'chemoreceptor_P_on': P_on,  # TODO -- this expects a delta, not a new probability
+                'n_methyl': n_methyl,  # TODO -- this expects a delta, not a new probability
             }
         }
 

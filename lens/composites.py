@@ -11,10 +11,11 @@ from lens.environment.lattice_compartment import LatticeCompartment, generate_la
 # processes
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.CovertPalsson2002_metabolism import Metabolism
-from lens.processes.Kremling2007 import Transport
+from lens.processes.Kremling2007_transport import Transport
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.division import Division
 from lens.processes.growth import Growth
+from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 
 
 def merge_initial_states(processes):
@@ -173,6 +174,7 @@ class BootCompartment(BootAgent):
             'metabolism': wrap_boot(wrap_initialize(Metabolism), {'volume': 1.0}),
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
+            'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
             'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0})
         }
