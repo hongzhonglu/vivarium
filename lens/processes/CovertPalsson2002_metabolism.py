@@ -74,6 +74,10 @@ class Metabolism(Process):
         # add e_key to external_molecules to match stoichiometry
         external_molecule_ids_e = [mol_id + self.e_key for mol_id in self.external_molecule_ids]
 
+        # add reaction fluxes to internal states
+        self.reaction_ids = self.stoichiometry.keys()  # [rxn_id + '_RXN' for rxn_id in self.stoichiometry.keys()]
+        internal_state = self.internal_molecule_ids + self.reaction_ids + ['volume']
+
         # initialize FBA
         objective = {"mass": 1.0}
         self.fba = FluxBalanceAnalysis(
@@ -86,7 +90,7 @@ class Metabolism(Process):
 
         roles = {
             'external': self.external_molecule_ids,
-            'internal': self.internal_molecule_ids + ['volume']}
+            'internal': internal_state}
         parameters.update(initial_parameters)
 
         super(Metabolism, self).__init__(roles, parameters)
@@ -107,24 +111,35 @@ class Metabolism(Process):
             external = make_media.get_saved_media('GLC_G6P')
         elif glc_lct:
             external = make_media.get_saved_media('GLC_LCT')
-        internal = {'mass': 0.032}
+        internal = {'mass': 0.032,
+                    'volume': 1}
 
         environment_deltas = [key + self.exchange_key for key in external.keys()]
 
         # declare the states
         external_molecules = merge_dicts(external,{key: 0 for key in environment_deltas})
-        internal_molecules = merge_dicts(internal, {'volume': 1})  # fL
+
+        # add reaction fluxes to internal state
+        rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
+        internal_state = merge_dicts(internal, rxns)
 
         return {
             'environment_deltas': environment_deltas,
             'external': external_molecules,
-            'internal': internal_molecules}
+            'internal': internal_state}
+
+    def default_emitter_keys(self):
+        keys = {
+            'internal': self.reaction_ids,
+            'external': []
+        }
+        return keys
 
     def next_update(self, timestep, states):
 
-        volume = states['internal']['volume']
+        internal_state = states['internal']
         external_state = states['external']
-
+        volume = internal_state['volume']
         # TODO -- set transport bounds
 
         # get exchange_molecule ids from FBA, remove self.e_key, and look up in external_state
@@ -143,8 +158,16 @@ class Metabolism(Process):
         delta_exchange_counts = ((1 / countsToMolar) * exchange_fluxes).astype(int)
         environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))
 
+        # get delta reaction flux
+        # TODO -- direct update flux, rather than passing delta
+        rxn_ids = self.fba.getReactionIDs()
+        rxn_fluxes = self.fba.getReactionFluxes()
+        rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
+        rxn_delta = {rxn_id: new - internal_state[rxn_id] for rxn_id, new in rxn_dict.iteritems()}
+
         # TODO -- update internal state mass
         update = {
+            'internal': rxn_delta,
             'external': {mol_id + self.exchange_key: delta
                 for mol_id, delta in environment_deltas.iteritems()},
         }
