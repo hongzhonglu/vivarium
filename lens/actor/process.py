@@ -235,7 +235,10 @@ class Compartment(object):
         data = {}
         for role_key, emit_keys in self.emitter_keys.iteritems():
             data[role_key] = self.states[role_key].state_for(emit_keys)
-        data['time'] = self.time()
+        data.update({
+            'type': 'compartment',
+            'time': self.time()
+        })
 
         self.emitter.emit(data)
 
