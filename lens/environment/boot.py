@@ -1,3 +1,12 @@
+'''
+boot functions for initialize environment simulations.
+
+Can be called from the command line by specifying an environment "agent_type" and an outer-id:
+
+>>python -m lens.environment.boot --type lattice --id lattice
+
+'''
+
 from __future__ import absolute_import, division, print_function
 
 import os
