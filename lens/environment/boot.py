@@ -48,11 +48,13 @@ class EnvironmentAgent(Outer):
 
 def boot_lattice(agent_id, agent_type, agent_config):
     working_dir = agent_config.get('working_dir', os.getcwd())
+
+    # set up media
     media_id = agent_config.get('media_id', 'minimal')
     media = agent_config.get('media', {})
     print("Media condition: {}".format(media_id))
+    make_media = Media()
     if not media:
-        make_media = Media()
         media = make_media.get_saved_media(media_id)
 
     output_dir = os.path.join(working_dir, 'out', agent_id)
@@ -60,6 +62,7 @@ def boot_lattice(agent_id, agent_type, agent_config):
         shutil.rmtree(output_dir)
 
     boot_config = {
+        'media_object': make_media,
         'output_dir': output_dir,
         'concentrations': media,
     }
@@ -81,6 +84,7 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
         shutil.rmtree(output_dir)
 
     boot_config = {
+        'media_object': make_media,
         'output_dir': output_dir,
         'concentrations': media,
         'run_for': 10.0,
@@ -107,6 +111,7 @@ def boot_glc_lct(agent_id, agent_type, agent_config):
         shutil.rmtree(output_dir)
 
     boot_config = {
+        'media_object': make_media,
         'output_dir': output_dir,
         'concentrations': media,
     }
@@ -115,6 +120,55 @@ def boot_glc_lct(agent_id, agent_type, agent_config):
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
 
+
+def boot_measp(agent_id, agent_type, agent_config):
+    # MeAsp is methylaspartate, a nonmetabolizable analog of aspartate and attractant for E. coli
+
+    working_dir = agent_config.get('working_dir', os.getcwd())
+
+    media_id = 'MeAsp timeline'
+    timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
+                   '300 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '500 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
+                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L'
+
+    make_media = Media()
+    timeline = make_media.make_timeline(timeline_str)
+
+    print("Media condition: {}".format(media_id))
+    output_dir = os.path.join(working_dir, 'out', agent_id)
+    if os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
+
+    boot_config = {
+        'output_dir': output_dir,
+        'media_object': make_media,
+        'timeline': timeline,
+        # 'concentrations': media,
+        'static_concentrations': True,
+        'gradient': {
+            'seed': True,
+            'molecules': {
+                'GLC': {
+                    'center': [0.5, 1.0],
+                    'deviation': 50.0},
+                'MeAsp': {
+                    'center': [0.25, 0.25],
+                    'deviation': 30.0}
+            }},
+        'diffusion': 0.0,
+        'translation_jitter': 0.5,
+        'rotation_jitter': 0.005,
+        'edge_length': 100.0,
+        'patches_per_edge': 50,
+    }
+    boot_config.update(agent_config)
+    environment = EnvironmentSpatialLattice(boot_config)
+
+    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+
+
 class BootEnvironment(BootAgent):
     def __init__(self):
         super(BootEnvironment, self).__init__()
@@ -122,6 +176,7 @@ class BootEnvironment(BootAgent):
             'lattice': boot_lattice,
             'sugar1': boot_glc_g6p,
             'sugar2': boot_glc_lct,
+            'measp': boot_measp,
             }
 
 def run():

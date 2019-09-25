@@ -114,14 +114,6 @@ class ShepherdControl(ActorControl):
             'run_for': 2.0,
             'media_id': media_id,
             'media': media,
-            # 'static_concentrations': True,
-            # 'gradient': {
-            #     'seed': True,
-            #     'molecules': {
-            #         'GLC': {
-            #             'center': [0.5, 0.5],
-            #             'deviation': 5.0},
-            #     }},
         }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
