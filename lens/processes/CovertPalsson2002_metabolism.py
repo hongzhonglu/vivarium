@@ -27,6 +27,7 @@ MASS_UNITS = units.g
 TIME_UNITS = units.s
 CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 
+
 # helper functions
 def get_reverse(reactions):
     reverse_stoichiometry = {}
@@ -55,16 +56,12 @@ class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.exchange_key = initial_parameters['exchange_key']
         self.e_key = '[e]'
+        parameters = {'nAvogadro': constants.N_A}
 
-        # parameters
-        parameters = {
-            'nAvogadro': constants.N_A,
-            }
-
+        # load data from files
         self.load_data()
 
-        ## Get internal molecules
-        # get all molecules from stoichiometry
+        # get internal molecules from stoichiometry
         all_molecule_ids = get_molecules_from_stoich(self.stoichiometry)
 
         # remove external molecules
@@ -74,14 +71,15 @@ class Metabolism(Process):
         # add internal regulation_molecules
         self.internal_molecule_ids = list(set(self.internal_molecule_ids) | self.regulation_molecules)
 
-        # add e_key to external_molecules, to match stoichiometry
+        # add e_key to external_molecules to match stoichiometry
         external_molecule_ids_e = [mol_id + self.e_key for mol_id in self.external_molecule_ids]
 
         # initialize FBA
+        objective = {"mass": 1.0}
         self.fba = FluxBalanceAnalysis(
             reactionStoich=self.stoichiometry,
             externalExchangedMolecules=external_molecule_ids_e,
-            objective=self.objective,
+            objective=objective,
             objectiveType="standard",
             solver="glpk-linear",
         )
@@ -131,7 +129,7 @@ class Metabolism(Process):
 
         # get exchange_molecule ids from FBA, remove self.e_key, and look up in external_state
         exchange_molecules = self.fba.getExternalMoleculeIDs()
-        external_concentrations = [external_state.get(molID.replace(self.e_key,''), 0.0)
+        external_concentrations = [external_state.get(molID.replace(self.e_key, ''), 0.0)
             for molID in exchange_molecules]
         self.fba.setExternalMoleculeLevels(external_concentrations)
 
@@ -180,7 +178,8 @@ class Metabolism(Process):
 
         # make regulatory logic functions
         rc = RegulatoryLogic()
-        self.regulation_functions = {reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
+        self.regulation_functions = {
+            reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
             for reaction in data['covert2002_reactions']}
 
         # get all molecules listed in "Regulatory Logic"
@@ -196,7 +195,7 @@ class Metabolism(Process):
         external_regulation_molecules = set([mol_id
             for mol_id in self.regulation_molecules if self.e_key in mol_id])
         self.regulation_molecules.difference_update(external_regulation_molecules)
-        external_regulation_molecules = set([mol_id.replace(self.e_key,'')
+        external_regulation_molecules = set([mol_id.replace(self.e_key, '')
             for mol_id in external_regulation_molecules])
 
         # get list of external molecules.
@@ -210,14 +209,9 @@ class Metabolism(Process):
         in_reg = external_regulation_molecules.difference(set_ex)
         assert len(in_reg) == 0
 
-        self.objective = {"mass": 1.0}
-
         self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
             for mol_id in self.external_molecule_ids}
 
         flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
             for flux in data['covert2002_GLC_G6P_flux_bounds']}
         self.default_flux_bounds = flux_bounds['default']
-
-if __name__ == '__main__':
-    Metabolism()
