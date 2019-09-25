@@ -54,6 +54,7 @@ def merge_dicts(x, y):
 class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.exchange_key = initial_parameters['exchange_key']
+        self.e_key = '[e]'
 
         # parameters
         parameters = {
@@ -73,10 +74,13 @@ class Metabolism(Process):
         # add internal regulation_molecules
         self.internal_molecule_ids = list(set(self.internal_molecule_ids) | self.regulation_molecules)
 
+        # add e_key to external_molecules, to match stoichiometry
+        external_molecule_ids_e = [mol_id + self.e_key for mol_id in self.external_molecule_ids]
+
         # initialize FBA
         self.fba = FluxBalanceAnalysis(
             reactionStoich=self.stoichiometry,
-            externalExchangedMolecules=self.external_molecule_ids,
+            externalExchangedMolecules=external_molecule_ids_e,
             objective=self.objective,
             objectiveType="standard",
             solver="glpk-linear",
@@ -124,8 +128,11 @@ class Metabolism(Process):
         external_state = states['external']
 
         # TODO -- set transport bounds
+
+        # get exchange_molecule ids from FBA, remove self.e_key, and look up in external_state
         exchange_molecules = self.fba.getExternalMoleculeIDs()
-        external_concentrations = [external_state.get(molID, 0.0) for molID in exchange_molecules]
+        external_concentrations = [external_state.get(molID.replace(self.e_key,''), 0.0)
+            for molID in exchange_molecules]
         self.fba.setExternalMoleculeLevels(external_concentrations)
 
         # TODO -- check units on exchange flux
@@ -174,7 +181,7 @@ class Metabolism(Process):
         # make regulatory logic functions
         rc = RegulatoryLogic()
         self.regulation_functions = {reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
-                           for reaction in data['covert2002_reactions']}
+            for reaction in data['covert2002_reactions']}
 
         # get all molecules listed in "Regulatory Logic"
         self.regulation_molecules = set()
@@ -185,14 +192,17 @@ class Metabolism(Process):
             reg_logic_parsed = list(filter(None, reg_logic_parsed))  # remove empty strings
             self.regulation_molecules.update(reg_logic_parsed)
 
-        # remove external molecules from regulation_molecules
+        # remove external molecules from regulation_molecules and remove the self.e_key
         external_regulation_molecules = set([mol_id
-            for mol_id in self.regulation_molecules if '[e]' in mol_id])
+            for mol_id in self.regulation_molecules if self.e_key in mol_id])
         self.regulation_molecules.difference_update(external_regulation_molecules)
+        external_regulation_molecules = set([mol_id.replace(self.e_key,'')
+            for mol_id in external_regulation_molecules])
 
-        # TODO -- remove growth exchange flux from file?
+        # get list of external molecules.
         # TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
-        self.external_molecule_ids = [reaction['Stoichiometry'].keys()[0]
+        # TODO -- remove Growth reaction from covert2002_exchange_fluxes?
+        self.external_molecule_ids = [reaction['Stoichiometry'].keys()[0].replace(self.e_key, '')
             for reaction in data['covert2002_exchange_fluxes'] if reaction['Reaction'] != 'Growth']
 
         # check that all external regulation molecules are in external_molecule_ids

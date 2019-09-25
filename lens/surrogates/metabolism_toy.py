@@ -11,7 +11,7 @@ from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.actor.inner import Simulation
 
 TSV_DIALECT = csv.excel_tab
-EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
+EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'wcEcoli_environment_molecules.tsv')
 
 COUNTS_UNITS = units.mmol
 VOLUME_UNITS = units.L
