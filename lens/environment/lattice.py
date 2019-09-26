@@ -23,7 +23,6 @@ import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
 
-from lens.environment.make_media import Media
 from lens.actor.outer import EnvironmentSimulation
 from lens.utils.multicell_physics import MultiCellPhysics
 
@@ -71,39 +70,22 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.translation_jitter = config.get('translation_jitter', 0.5)
         self.rotation_jitter = config.get('rotation_jitter', 0.005)
         self.depth = config.get('depth', 3000.0)  # um
-        self.timeline = config.get('timeline')
+
+        # configure media
+        self.make_media = config.get('media_object')
         self.media_id = config.get('media_id', 'minimal')
+        self.timeline = config.get('timeline')
         if self.timeline:
             self._times = [t[0] for t in self.timeline]
+            media = self.make_media.get_saved_media(self.timeline[0][1])
+            self._molecule_ids = media.keys()
+            self.concentrations = media.values()
+        else:
+            # make media and fill lattice patches with media concentrations
+            media = config['concentrations']
+            self._molecule_ids = config['concentrations'].keys()
+            self.concentrations = config['concentrations'].values()
 
-        # derived parameters
-        self.total_volume = (self.depth * self.edge_length ** 2) * (10 ** -15) # (L)
-        self.patch_volume = self.total_volume / (self.patches_per_edge ** 2)
-        # intervals in x- directions (assume y- direction equivalent)
-        self.dx = self.edge_length / self.patches_per_edge
-        self.dx2 = self.dx * self.dx
-        # upper limit on the time scale (go with at least 50% of this)
-        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
-
-        self.simulations = {}       # map of agent_id to simulation state
-        self.locations = {}         # map of agent_id to center location and orientation
-        self.corner_locations = {}  # map of agent_id to corner location, for Lens visualization and multi-cell physics engine
-        self.motile_forces = {}	    # map of agent_id to motile force, with magnitude and relative orientation
-
-        # make physics object by passing in bounds and jitter
-        bounds = [self.edge_length, self.edge_length]
-        self.multicell_physics = MultiCellPhysics(
-            bounds,
-            self.translation_jitter,
-            self.rotation_jitter)
-
-        # make media object for making new media
-        self.make_media = Media()  # TODO (Eran) -- pass in make_media through config to include media from all timelines!
-
-        # make media and fill lattice patches with media concentrations
-        media = config['concentrations']
-        self._molecule_ids = config['concentrations'].keys()
-        self.concentrations = config['concentrations'].values()
         self.molecule_index = {molecule: index for index, molecule in enumerate(self._molecule_ids)}
         self.fill_lattice(media)
 
@@ -119,13 +101,34 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         dy = (y_patch + 0.5) * self.edge_length / self.patches_per_edge - center[1]
                         distance = np.sqrt(dx ** 2 + dy ** 2)
                         scale = gaussian(deviation, distance)
-                        # multiply glucose gradient by scale
+                        # multiply gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-        # # Output
-        # self.create_lattice_table()
-        # # Track agent tables
-        # self.agent_tables = {}
+        # derived parameters
+        self.total_volume = (self.depth * self.edge_length ** 2) * (10 ** -15) # (L)
+        self.patch_volume = self.total_volume / (self.patches_per_edge ** 2)
+        # intervals in x- directions (assume y- direction equivalent)
+        self.dx = self.edge_length / self.patches_per_edge
+        self.dx2 = self.dx * self.dx
+        # upper limit on the time scale (go with at least 50% of this)
+        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
+
+        # initialize dicts
+        self.simulations = {}       # map of agent_id to simulation state
+        self.locations = {}         # map of agent_id to center location and orientation
+        self.corner_locations = {}  # map of agent_id to corner location, for Lens visualization and multi-cell physics engine
+        self.motile_forces = {}	    # map of agent_id to motile force, with magnitude and relative orientation
+
+        # make physics object by passing in bounds and jitter
+        bounds = [self.edge_length, self.edge_length]
+        self.multicell_physics = MultiCellPhysics(
+            bounds,
+            self.translation_jitter,
+            self.rotation_jitter)
+
+        # configure emitter
+        self.emitter = config['emitter'].get('object')
+
 
     def evolve(self):
         ''' Evolve environment '''
@@ -138,7 +141,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        # self.append_agent_tables()  # TODO (Eran) -- use emitter
+        # run emitters
+        self.emit_data()
 
     def update_locations(self):
         ''' Update location for all agent_ids '''
@@ -320,9 +324,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         if agent_id not in self.motile_forces:
             self.motile_forces[agent_id] = [0.0, 0.0]
 
-        # create output file for each cell to log location data
-        # self.create_agent_table(agent_id)  # TODO -- get tableWriter path
-
     def apply_inner_update(self, update, now):
         '''
         Use change counts from all the inner simulations, convert them to concentrations,
@@ -385,39 +386,24 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def remove_simulation(self, agent_id):
         self.simulations.pop(agent_id, {})
         self.locations.pop(agent_id, {})
-        # self.agent_tables.pop(agent_id, {})
         self.multicell_physics.remove_cell(agent_id)
 
-    # TODO (Eran) -- do all logging through emitters
-    # # TableWriter functions
-    # def create_lattice_table(self):
-    #     table = TableWriter(self.output_dir)
-    #     table.writeAttributes(
-    #         edge_length=self.edge_length,
-    #     )
-    #
-    # def create_agent_table(self, agent_id):
-    #     # TODO (Eran) -- why is this called more than once for every agent? It should only be called once at initialization
-    #     if agent_id not in self.agent_tables:
-    #         table_writer_file = os.path.join(self.output_dir, agent_id)
-    #         table = TableWriter(table_writer_file)
-    #         table.writeAttributes(
-    #             start_time = self.time(),
-    #         )
-    #         self.agent_tables[agent_id] = table
-    #
-    # def append_agent_tables(self):
-    #     for agent_id, table in self.agent_tables.iteritems():
-    #         agent_location = self.locations[agent_id]
-    #
-    #         agent_state = self.simulations[agent_id]['state']
-    #         agent_volume = agent_state['volume']
-    #         agent_width = agent_state['width']
-    #         agent_length = agent_state['length']
-    #
-    #         table.append(
-    #             location=agent_location,
-    #             volume=agent_volume,
-    #             width=agent_width,
-    #             length=agent_length
-    #         )
+
+    # Emitter
+    # TODO -- also pass edge_length to emitter
+    def emit_data(self):
+        for agent_id, simulation in self.simulations.iteritems():
+            agent_location = self.locations[agent_id].tolist()
+            agent_state = self.simulations[agent_id]['state']
+            agent_volume = agent_state['volume']
+            agent_width = agent_state['width']
+            agent_length = agent_state['length']
+            data = {
+                'type': 'lattice',
+                'agent_id': agent_id,
+                'location': agent_location,
+                'volume': agent_volume,
+                'width': agent_width,
+                'length': agent_length,
+                'time': self.time()}
+            self.emitter.emit(data)

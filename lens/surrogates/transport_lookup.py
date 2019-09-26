@@ -13,8 +13,8 @@ from lens.utils.rate_law_utilities import get_reactions_from_exchange
 from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
 
-EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'environment', 'condition', 'environment_molecules.tsv')
-TRANSPORT_IDS_FILE = os.path.join('lens', 'data', 'flat', 'transport_reactions.tsv')
+EXTERNAL_MOLECULES_FILE = os.path.join("data", "ecoli", "flat", "wcEcoli_environment_molecules.tsv")
+TRANSPORT_IDS_FILE = os.path.join("data", "ecoli", "flat", "wcEcoli_transport_reactions.tsv")
 
 TSV_DIALECT = csv.excel_tab
 TUMBLE_JITTER = 2.0 # (radians)

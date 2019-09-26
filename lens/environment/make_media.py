@@ -71,7 +71,7 @@ class Media(object):
         '''get formula weight (units.g / units.mol) for all environmental molecules'''
 
         environment_molecules_fw = {}
-        for row in raw_data.environment_molecules:
+        for row in raw_data.wcEcoli_environment_molecules:
             mol = row["molecule id"]
             fw = row["formula weight"]
             if fw == 'None':
@@ -153,7 +153,7 @@ class Media(object):
                     added_conc = added_counts / added_volume
                 else:
                     raise AddIngredientsError(
-                        "No fw defined for {} in environment_molecules.tsv".format(ingredient))
+                        "No fw defined for {} in wcEcoli_environment_molecules.tsv".format(ingredient))
 
                 # save concentration
                 added_media[ingredient] = added_conc

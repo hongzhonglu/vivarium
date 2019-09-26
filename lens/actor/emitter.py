@@ -37,7 +37,7 @@ def get_emitter(config):
 
     return {
         'object': emitter,
-        'keys': config['keys']}
+        'keys': config.get('keys')}
 
 def get_emitter_keys(processes, topology):
     emitter_keys = {}
