@@ -7,11 +7,19 @@ from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
 
+nodes = Grammar(
+	"""
+	
+	""")
+
+
+
+
 # nodes = Grammar(
 #     """
 #     rule = active? if logic (operator logic)*
 #     logic = group / operation
-#   group = not? "(" surplus? operation ")"
+# 	group = not? "(" surplus? operation ")"
 #     operation = node (operator logic)*
 #     node = not? surplus? text
 #     operator = or / and
@@ -125,15 +133,17 @@ def evaluate_set_mol(tree, env):
     outcome = True
     
     first_operation = None
+    first_inverse = None
     for index, mol in enumerate(mols):
         operation, inverse, value = evaluate_mol(mol, env)
         if index == 0:
             first_operation = operation
+            first_inverse = inverse
         outcome = evaluate_logic(outcome, operation, inverse, value)
         print('outcome: {}'.format(outcome))
 
     print('key({}): {} - {}'.format(key, string, children))
-    print('{}operation({}): {}'.format('not ' if inverse else '', operation, value))
+    print('{}operation({}): {}'.format('not ' if first_inverse else '', first_operation, value))
 
     return operation, inverse, outcome
 
@@ -316,6 +326,7 @@ class LogicConstructor(NodeVisitor):
 
 
 def test_parsing():
+    # test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
     test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
     state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
