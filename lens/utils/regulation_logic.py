@@ -6,6 +6,154 @@ pp = pprint.PrettyPrinter(indent=4)
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
+
+# nodes = Grammar(
+#     """
+#     rule = active? if logic (operator logic)*
+#     logic = group / operation
+#   group = not? "(" surplus? operation ")"
+#     operation = node (operator logic)*
+#     node = not? surplus? text
+#     operator = or / and
+
+#     or = ws "or" ws
+#     and = ws "and" ws
+#     not = "not" ws
+
+#     text = ~"[A-Za-z0-9-\[\]]+"i
+
+#     if = "IF" ws
+#     active = "active" ws
+#     surplus = "surplus" ws
+#     open  = "("
+#     close = ")"
+#     ws = ~"\s+"
+#     """)
+
+
+simplify = Grammar(
+    """
+    rule = active? if set_mols+
+    set_mols = not? open? one_molecule+ close?
+    one_molecule = surplus? operation? not? text
+    text = ~"[A-Za-z0-9-\[\]]+"i
+    if = "IF" ws
+    active = "active" ws
+    surplus = "surplus" ws
+    open  = "("
+    close = ")"
+    operation = or / and
+    or = ws "or" ws
+    and = ws "and" ws
+    not = "not" ws
+    ws = ~"\s+"
+    """)
+
+
+class Key(object):
+    def __init__(self, key):
+        self.key = key
+
+    def __repr__(self):
+        return "Key({})".format(self.key)
+
+
+class GenericConstructor(NodeVisitor):
+    def generic_visit(self, node, visited_children):
+        if node.expr_name:
+            value = [Key(node.expr_name), node.text]
+            for child in visited_children:
+                if isinstance(child, list):
+                    if child:
+                        if isinstance(child[0], Key):
+                            value.append(child)
+                        else:
+                            for grandchild in child:
+                                value.append(grandchild)
+                else:
+                    value.append(child)
+            return value
+        else:
+            return visited_children
+
+
+def pull_values(tree):
+    key = tree[0]
+    string = tree[1]
+    children = tree[2:] if len(tree) > 2 else []
+    
+    return key, string, children
+
+def evaluate_logic(outcome, operation, inverse, value):
+    value = not value if inverse else value
+
+    if operation:
+        if operation == 'and':
+            outcome = outcome and value
+        elif operation == 'or':
+            outcome = outcome or value
+    else:
+        outcome = value
+
+    return outcome
+
+def evaluate_mol(tree, env):
+    key, string, children = pull_values(tree)
+
+    operation = None
+    inverse = None
+    if children[0][0].key == 'surplus':
+        children = children[1:]
+    if children[0][0].key == 'operation':
+        operation = children[0][2][0].key
+        children = children[1:]
+    if children[0][0].key == 'not':
+        inverse = True
+        children = children[1:]
+    value = env.get(children[0][1])
+
+    print('key({}): {} - {}'.format(key, string, children))
+    print('{}operation({}): {}'.format('not ' if inverse else '', operation, value))
+
+    return operation, inverse, value
+
+def evaluate_set_mol(tree, env):
+    key, string, children = pull_values(tree)
+    
+    inverse = children[0][0].key == 'not'
+    mols = [child for child in children if child[0].key == 'one_molecule']
+    outcome = True
+    
+    first_operation = None
+    for index, mol in enumerate(mols):
+        operation, inverse, value = evaluate_mol(mol, env)
+        if index == 0:
+            first_operation = operation
+        outcome = evaluate_logic(outcome, operation, inverse, value)
+        print('outcome: {}'.format(outcome))
+
+    print('key({}): {} - {}'.format(key, string, children))
+    print('{}operation({}): {}'.format('not ' if inverse else '', operation, value))
+
+    return operation, inverse, outcome
+
+def evaluate_rule(tree, env):
+    key, string, children = pull_values(tree)
+
+    # ingore active and if keys for now
+    set_mols = [child for child in children if child[0].key == 'set_mols']
+    outcome = True
+
+    for set_mol in set_mols:
+        operation, inverse, value = evaluate_set_mol(set_mol, env)
+        outcome = evaluate_logic(outcome, operation, inverse, value)
+
+    return outcome
+    
+
+
+
+
 grammar = Grammar(
     """
     rule = active? if set_mols+
@@ -23,26 +171,6 @@ grammar = Grammar(
     not = ws "not" ws?
     ws = ~"\s*"
     """)
-
-
-simplify = Grammar(
-    """
-    rule = active? if set_mols+
-    set_mols = not? open? one_molecule+ close?
-    one_molecule = surplus? operation? not? text
-    text = ~"[A-Za-z0-9-\[\]]+"i
-    if = "IF" ws
-    active = "active" ws
-    surplus = "surplus" ws
-    open  = "("
-    close = ")"
-    operation = or / and / not
-    or = ws "or" ws
-    and = ws "and" ws
-    not = "not" ws
-    ws = ~"\s+"
-    """)
-
 
 class RegulatoryLogic(object):
     def __init__(self):
@@ -65,68 +193,6 @@ class RegulatoryLogic(object):
             def fun(dict):
                 return None
             return fun
-
-
-class Key(object):
-	def __init__(self, key):
-		self.key = key
-
-	def __repr__(self):
-		return "Key({})".format(self.key)
-
-class GenericConstructor(NodeVisitor):
-    def generic_visit(self, node, visited_children):
-		if node.expr_name:
-			value = [Key(node.expr_name), node.text]
-			for child in visited_children:
-				if isinstance(child, list):
-					if child:
-						if isinstance(child[0], Key):
-							value.append(child)
-						else:
-							for grandchild in child:
-								value.append(grandchild)
-				else:
-					value.append(child)
-			return value
-		else:
-			return visited_children
-
-class TreeConstructor(NodeVisitor):
-    def visit_rule(self, node, visited_children):
-        return visited_children
-    def visit_set_mols(self, node, visited_children):
-        return visited_children
-    def visit_one_molecule(self, node, visited_children):
-        return visited_children
-    def visit_text(self, node, visited_children):
-        return node.text
-    def visit_if(self, node, visited_children):
-        return 'IF'
-    def visit_active(self, node, visited_children):
-        return 'active'
-    def visit_surplus(self, node, visited_children):
-        return 'surplus'
-    def visit_open(self, node, visited_children):
-        return '('
-    def visit_close(self, node, visited_children):
-        return ')'
-    def visit_operation(self, node, visited_children):
-        return visited_children[0]
-    def visit_or(self, node, visited_children):
-        return 'or'
-    def visit_and(self, node, visited_children):
-        return 'and'
-    def visit_not(self, node, visited_children):
-        return 'not'
-    def visit_ws(self, node, visited_children):
-        pass
-    def generic_visit(self, node, visited_children):
-      if visited_children:
-          return visited_children
-    
-
-
 
 class LogicConstructor(NodeVisitor):
     '''s
@@ -251,18 +317,27 @@ class LogicConstructor(NodeVisitor):
 
 def test_parsing():
     test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
-    state = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
+    state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
+    state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
 
     print(test)
 
-    tree = simplify.parse(test)
+    # tree = nodes.parse(test)
+    raw = simplify.parse(test)
+    tree = GenericConstructor().visit(raw)
 
-    print(tree)
+    false = evaluate_rule(tree, state_false)
+    print('false: {}'.format(false))
+    print('')
 
-    # return tree
-    return tree, GenericConstructor().visit(tree)
+    true = evaluate_rule(tree, state_true)
+
+    print('true: {}'.format(true))
+    print('')
+
+    return tree
     # return tree, TreeConstructor().visit(tree)
 
 if __name__ == '__main__':
-    tree, outcome = test_parsing()
-    pp.pprint(outcome)
+    tree = test_parsing()
+    pp.pprint(tree)
