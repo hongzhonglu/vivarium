@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import collections
 import numpy as np
+import lens.actor.emitter as emit
 
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
@@ -12,6 +13,16 @@ def npize(d):
 
     return keys, values
 
+def update_delta(current_value, new_value):
+    return current_value + new_value
+
+def update_set(current_value, new_value):
+    return new_value
+
+updater_library = {
+    'delta': update_delta,
+    'set': update_set}
+
 
 KEY_TYPE = 'U31'
 
@@ -19,11 +30,12 @@ KEY_TYPE = 'U31'
 class State(object):
     ''' Represents a set of named values. '''
 
-    def __init__(self, initial_state={}):
+    def __init__(self, initial_state={}, updaters={}):
         ''' Keys and state initialize empty, with a maximum key length of 31. '''
 
         self.keys = np.array([], dtype=KEY_TYPE) # maximum key length
         self.state = np.array([], dtype=np.float64)
+        self.updaters = updaters
 
         self.initialize_state(initial_state)
 
@@ -32,6 +44,11 @@ class State(object):
 
         self.declare_state(initial.keys())
         self.apply_delta(initial)
+
+    def merge_updaters(self, updaters):
+        ''' Merge in a new set of updaters '''
+
+        self.updaters.merge(updaters)
 
     def sort_keys(self):
         ''' re-sort keys after adding some '''
@@ -76,6 +93,27 @@ class State(object):
 
         for delta in deltas:
             self.apply_delta(delta)
+
+    def apply_update(self, update):
+        ''' Apply a dict of keys and values to the state using its updaters. '''
+
+        if self.keys.size == 0:
+            return
+        keys, values = npize(update)
+        index = self.index_for(keys)
+
+        for index, key, value in zip(index, keys, values):
+            # updater can be a function or a key into the updater library
+            updater = self.updaters.get(key, 'delta')
+            if not callable(updater):
+                updater = updater_library[updater]
+            self.state[index] = updater(self.state[index], value)
+
+    def apply_updates(self, updates):
+        ''' Apply a list of updates to the state '''
+
+        for update in updates:
+            self.apply_update(update)
 
     def state_for(self, keys):
         ''' Get the current state of these keys as a dict of values. '''
@@ -207,7 +245,7 @@ class Compartment(object):
                 updates[key].append(deltas)
 
         for key, update in updates.iteritems():
-            self.states[key].apply_deltas(update)
+            self.states[key].apply_updates(update)
 
         self.run_derivers(timestep)
 
@@ -235,10 +273,10 @@ class Compartment(object):
         data = {}
         for role_key, emit_keys in self.emitter_keys.iteritems():
             data[role_key] = self.states[role_key].state_for(emit_keys)
+
         data.update({
             'type': 'compartment',
-            'time': self.time()
-        })
+            'time': self.time()})
 
         self.emitter.emit(data)
 
@@ -296,7 +334,7 @@ def test_compartment():
             intake = timestep * self.parameters['intake_rate']
             if states['external']['GLC'] >= intake:
                 update = {
-                    'external': {'GLC': -2},
+                    'external': {'GLC': -2, 'MASS': 1},
                     'internal': {'GLC': 2}}
 
             return update
@@ -323,10 +361,17 @@ def test_compartment():
         'external_volume': DeriveVolume(),
         'internal_volume': DeriveVolume()}
 
+    def update_mass(current, new):
+        return current / (current + new)
+
     # declare the states
     states = {
-        'periplasm': State({'GLC': 20, 'MASS': 100, 'DENSITY': 10}),
-        'cytoplasm': State({'MASS': 3, 'DENSITY': 10})}
+        'periplasm': State(
+            initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10},
+            updaters={'MASS': update_mass}),
+        'cytoplasm': State(
+            initial_state={'MASS': 3, 'DENSITY': 10},
+            updaters={'DENSITY': 'set'})}
 
     # hook up the states to the roles in each process
     topology = {
@@ -343,8 +388,19 @@ def test_compartment():
         'internal_volume': {
             'compartment': 'cytoplasm'}}
 
+    emitter = emit.get_emitter({
+        'type': 'print',
+        'keys': {
+            'periplasm': ['GLC', 'MASS'],
+            'cytoplasm': ['MASS']}})
+
+    configuration = {
+        'time_step': 1.0,
+        'topology': topology,
+        'emitter': emitter}
+
     # create the compartment (which automatically hooks everything up)
-    compartment = Compartment(processes, states, topology)
+    compartment = Compartment(processes, states, configuration)
     timestep = 1
 
     # print initial parameters and state
