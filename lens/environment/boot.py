@@ -96,7 +96,9 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
 
     media_id = 'GLC_G6P'
     make_media = Media()
-    media = make_media.get_saved_media(media_id)
+    # media = make_media.get_saved_media(media_id)
+    timeline_str = '0 {}, 25200 end'.format(media_id)  # end at 7 hours (7*60*60)
+    timeline = make_media.make_timeline(timeline_str)
 
     print("Media condition: {}".format(media_id))
     output_dir = os.path.join(working_dir, 'out', agent_id)
@@ -104,9 +106,10 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
         shutil.rmtree(output_dir)
 
     boot_config = {
+        'timeline': timeline,
         'media_object': make_media,
         'output_dir': output_dir,
-        'concentrations': media,
+        # 'concentrations': media,
         'run_for': 10.0,
         'depth': 0.0001,  # 3000 um is default
         'edge_length': 10.0,

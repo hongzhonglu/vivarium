@@ -124,6 +124,9 @@ class Media(object):
     def make_recipe(self, recipe, units=False):
         '''make a single media recipe'''
 
+        if recipe == 'end':
+            return 'end'
+
         new_media = {}
         total_volume = 0.0 * VOLUME_UNITS
         for ingredient, amount in recipe.iteritems():
@@ -243,15 +246,17 @@ class Media(object):
 
         for time, recipe in timeline_recipes:
             media = self.make_recipe(recipe, True)
-            new_media_id = str(uuid.uuid1())
+            if media == 'end':
+                new_media_id = 'end'
+            else:
+                new_media_id = str(uuid.uuid1())
+                # determine if this is an existing media
+                for media_id, concentrations in self.stock_media.iteritems():
+                    if cmp(concentrations, media) == 0:
+                        new_media_id = media_id
+                        break
+                self.stock_media[new_media_id] = media
 
-            # determine if this is an existing media
-            for media_id, concentrations in self.stock_media.iteritems():
-                if cmp(concentrations, media) == 0:
-                    new_media_id = media_id
-                    break
-
-            self.stock_media[new_media_id] = media
             timeline.append((float(time), new_media_id))
 
         return timeline
@@ -274,7 +279,9 @@ class RecipeConstructor(NodeVisitor):
     def visit_one_event(self, node, visited_children):
         time, _, recipes, _ = visited_children
 
-        if isinstance(time, list):
+        if any(key in recipes for key in ['end', 'End', 'END']):
+            event = (time[0], 'end')
+        elif isinstance(time, list):
             event = (time[0], recipes)
         else:
             event = (recipes)

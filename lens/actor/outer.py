@@ -52,6 +52,9 @@ class EnvironmentSimulation(object):
         """
         return {}
 
+    def shutdown_environment(self, now):
+        return False
+
     def run_for_time(self):
         """Return the length of time simulations should run for this time period."""
         return 0
@@ -241,6 +244,9 @@ class Outer(Actor):
                     'message_id': simulation['message_id'],
                     'state': update[inner_id],
                     'run_until': run_until})
+
+        if self.environment.shutdown_environment(now):
+            self.shutdown_inner({})
 
     def cell_exchange(self, message):
         """
