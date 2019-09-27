@@ -14,8 +14,8 @@ from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
 
 
-EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'data', 'flat', 'environment_molecules.tsv')
-TRANSPORT_IDS_FILE = os.path.join('lens', 'data', 'flat', 'transport_reactions.tsv')
+EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'data', 'flat', 'wcEcoli_environment_molecules.tsv')
+TRANSPORT_IDS_FILE = os.path.join('lens', 'data', 'flat', 'wcEcoli_transport_reactions.tsv')
 
 TSV_DIALECT = csv.excel_tab
 

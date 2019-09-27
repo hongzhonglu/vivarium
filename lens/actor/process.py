@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import collections
 import numpy as np
 
 def npize(d):
@@ -240,6 +241,23 @@ class Compartment(object):
         })
 
         self.emitter.emit(data)
+
+
+def merge_initial_states(processes):
+    initial_state = {}
+    for process_id, process in processes.iteritems():
+        default = process.default_state()
+        dict_merge(initial_state, default)
+    return initial_state
+
+def dict_merge(dct, merge_dct):
+    ''' Recursive dict merge '''
+    for k, v in merge_dct.iteritems():
+        if (k in dct and isinstance(dct[k], dict)
+                and isinstance(merge_dct[k], collections.Mapping)):
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
 
 def test_compartment():
     # simplest possible metabolism

@@ -405,5 +405,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 'volume': agent_volume,
                 'width': agent_width,
                 'length': agent_length,
+                'edge_length': self.edge_length,
                 'time': self.time()}
             self.emitter.emit(data)

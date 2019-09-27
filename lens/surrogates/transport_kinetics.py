@@ -27,8 +27,8 @@ TUMBLE_JITTER = 2.0 # (radians)
 DEFAULT_COLOR = [color/255 for color in [255, 51, 51]]
 
 TSV_DIALECT = csv.excel_tab
-TRANSPORT_IDS_FILE = os.path.join("data", "ecoli", "flat", "transport_reactions.tsv")
-EXTERNAL_MOLECULES_FILE = os.path.join('environment', 'condition', 'environment_molecules.tsv')
+TRANSPORT_IDS_FILE = os.path.join("data", "ecoli", "flat", "wcEcoli_transport_reactions.tsv")
+EXTERNAL_MOLECULES_FILE = os.path.join("data", "ecoli", "flat", "wcEcoli_environment_molecules.tsv")
 KINETIC_PARAMETERS_FILE = os.path.join('wholecell', 'kinetic_rate_laws', 'parameters', 'example_parameters.json')
 
 class TransportKinetics(Simulation):

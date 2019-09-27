@@ -3,12 +3,16 @@ Subclasses of DictWriter and DictReader that parse plaintext as JSON strings,
 allowing for basic type parsing and fields that are dictionaries or lists.
 """
 
+import os
 import csv
 import json
 import re
 import numpy as np
+from itertools import ifilter
 
 from lens.utils.units import units
+
+TSV_DIALECT = csv.excel_tab
 
 def array_to_list(value):
     if isinstance(value, np.ndarray):
@@ -66,3 +70,15 @@ class JsonReader(csv.DictReader):
         # 	key:json.loads(value) if value else "" # catch for empty field
         # 	for key, value in csv.DictReader.next(self).viewitems()
         # 	}
+
+def load_tsv(dir_name, file_name):
+    file_path = os.path.join(dir_name, file_name)
+    with open(file_path, 'rU') as tsvfile:
+        reader = JsonReader(
+            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile),  # Strip comments
+            dialect=TSV_DIALECT)
+        attr_list = []
+        fieldnames = reader.fieldnames
+        for row in reader:
+            attr_list.append({field: row[field] for field in fieldnames})
+    return attr_list

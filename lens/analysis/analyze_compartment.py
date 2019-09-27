@@ -10,6 +10,16 @@ from matplotlib.ticker import FormatStrFormatter
 
 def compartment_analysis(data_dict, experiment_id, simulation_id, output_dir='out'):
 
+    # remove series with all zeros
+    remove = []
+    for key1 in data_dict.iterkeys():
+        if key1 is not 'time':
+            for key2, series in data_dict[key1].iteritems():
+                if all(v == 0 for v in series):
+                    remove.append((key1,key2))
+    for (key1, key2) in remove:
+        del data_dict[key1][key2]
+
     data_keys = [key for key in data_dict.keys() if key is not 'time']
 
     time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
