@@ -33,3 +33,4 @@ __pycache__
 .DS_Store?
 ._*
 .python-version
+.pytest_cache
