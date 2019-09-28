@@ -91,13 +91,12 @@ def boot_lattice(agent_id, agent_type, agent_config):
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
 
-def boot_glc_g6p(agent_id, agent_type, agent_config):
+def boot_glc_g6p_small(agent_id, agent_type, agent_config):
     working_dir = agent_config.get('working_dir', os.getcwd())
 
     media_id = 'GLC_G6P'
     make_media = Media()
-    # media = make_media.get_saved_media(media_id)
-    timeline_str = '0 {}, 25200 end'.format(media_id)  # end at 7 hours (7*60*60)
+    timeline_str = '0 {}, 600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
     print("Media condition: {}".format(media_id))
@@ -110,10 +109,44 @@ def boot_glc_g6p(agent_id, agent_type, agent_config):
         'media_object': make_media,
         'output_dir': output_dir,
         # 'concentrations': media,
-        'run_for': 10.0,
-        'depth': 0.0001,  # 3000 um is default
+        'run_for': 2.0,
+        'depth': 0.1, #0.0001,  # 3000 um is default
         'edge_length': 10.0,
         'patches_per_edge': 1,
+    }
+
+    boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
+    # create the environment
+    environment = EnvironmentSpatialLattice(boot_config)
+
+    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+
+def boot_glc_g6p(agent_id, agent_type, agent_config):
+    working_dir = agent_config.get('working_dir', os.getcwd())
+
+    media_id = 'GLC_G6P'
+    make_media = Media()
+    media = make_media.get_saved_media(media_id)
+
+    print("Media condition: {}".format(media_id))
+    output_dir = os.path.join(working_dir, 'out', agent_id)
+    if os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
+
+    boot_config = {
+        'media_object': make_media,
+        'output_dir': output_dir,
+        'concentrations': media,
     }
 
     boot_config.update(agent_config)
@@ -164,7 +197,6 @@ def boot_glc_lct(agent_id, agent_type, agent_config):
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
 
 def boot_measp(agent_id, agent_type, agent_config):
     # MeAsp is methylaspartate, a nonmetabolizable analog of aspartate and attractant for E. coli
@@ -220,6 +252,7 @@ class BootEnvironment(BootAgent):
         self.agent_types = {
             'lattice': boot_lattice,
             'sugar1': boot_glc_g6p,
+            'sugar1_small': boot_glc_g6p_small,
             'sugar2': boot_glc_lct,
             'measp': boot_measp,
             }

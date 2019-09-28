@@ -54,7 +54,7 @@ def wrap_initialize(make_process):
                 'database': 'simulations',
                 },
             'compartment_options':{
-                'time_step': 10.0,
+                'time_step': 1.0,
                 },
             })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
