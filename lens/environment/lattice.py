@@ -17,7 +17,6 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
-import os
 import math
 import numpy as np
 from scipy import constants
@@ -75,6 +74,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.make_media = config.get('media_object')
         self.media_id = config.get('media_id', 'minimal')
         self.timeline = config.get('timeline')
+        self.shutdown = False
         if self.timeline:
             self._times = [t[0] for t in self.timeline]
             media = self.make_media.get_saved_media(self.timeline[0][1])
@@ -205,7 +205,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def update_media(self):
         if self.timeline:
             current_index = [i for i, t in enumerate(self._times) if self.time() >= t][-1]
-            if self.media_id != self.timeline[current_index][1]:
+            current_event = self.timeline[current_index][1]
+            if current_event == 'end':
+                self.shutdown = True
+            elif current_event != self.media_id:
                 self.media_id = self.timeline[current_index][1]
                 new_media = self.make_media.get_saved_media(self.media_id)
                 self.fill_lattice(new_media)
@@ -371,6 +374,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         return update
 
+    def shutdown_environment(self, now):
+        return self.shutdown
+
     def daughter_locations(self, parent_location, parent_length, parent_angle):
         pos_ratios = [-0.25, 0.25]
         daughter_locations = []
@@ -405,5 +411,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 'volume': agent_volume,
                 'width': agent_width,
                 'length': agent_length,
+                'edge_length': self.edge_length,
                 'time': self.time()}
             self.emitter.emit(data)

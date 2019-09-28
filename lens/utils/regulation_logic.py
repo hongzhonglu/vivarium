@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
-
 from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython
 from arpeggio import RegExMatch as rr
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 
 def text(): return rr(r'[a-zA-Z0-9\[\]]+')

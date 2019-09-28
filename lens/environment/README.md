@@ -62,6 +62,9 @@ New media can be specified by adding ingredients to existing media with +/- oper
 Ingredients can be removed from existing media, with Infinity removing all of the ingredient:
 > timeline_str = '0 M9_GLC, 10 M9_GLC 1.0 L - GLC Infinity'
 
+A simulation end time can also be specified in the timeline, by giving the time along with the word 'end':
+> timeline_str = '0 M9_GLC, 1000 end'
+
 ### construct timelines
 The timeline is constructed by passing the timeline string to the media object
 > timeline = media_obj.make_timeline(timeline_str)

@@ -13,7 +13,7 @@ def location_trace(data_dict, experiment_id, output_dir='out'):
     agent_ids = [key for key in data_dict.keys() if key is not 'time']
     time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
 
-    edge_length = 10.0  # TODO -- pass in edge length
+    edge_length = data_dict['edge_length'][0]  # edge length should be the same for all entries
 
 
     plt.figure(figsize=(8, 8))
