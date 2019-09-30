@@ -55,15 +55,13 @@ def generate_lattice_compartment(process, config):
         'process': process}
 
     # initialize states
-    defaults = process.default_state()
+    default_state = process.default_state()
+    default_updaters = process.default_updaters()
     states = {
-        role: State(defaults.get(role, {}))
-        for role in process.roles.keys()}
-
-    # TODO -- get updaters for all states. default is delta.
-    # updaters = {
-    #     process.get_updater(key) for key in process.roles.keys()
-    # }
+        role: State(
+            initial_state=default_state.get(role, {}),
+            updaters=default_updaters.get(role, {}))
+            for role in process.roles.keys()}
 
     # configure the states to the roles for each process
     topology = {
@@ -84,7 +82,7 @@ def generate_lattice_compartment(process, config):
         'environment': config.get('environment', 'external'),
         'compartment': config.get('compartment', 'internal'),
         'exchange_key': config['exchange_key'],
-        'environment_deltas': defaults['environment_deltas']}
+        'environment_deltas': default_state['environment_deltas']}
 
     options.update(config['compartment_options'])
 

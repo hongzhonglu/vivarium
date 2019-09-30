@@ -125,6 +125,17 @@ class Metabolism(Process):
         }
         return keys
 
+    def default_updaters(self):
+        '''
+        define the updater type for each state in roles.
+        The default updater is to pass a delta'''
+
+        updater_types = {
+            'internal': {rxn_id: 'set' for rxn_id in self.reaction_ids},  # reactions set values directly
+            'external': {}}  # all external values use default 'delta' udpater
+
+        return updater_types
+
     def next_update(self, timestep, states):
 
         internal_state = states['internal']

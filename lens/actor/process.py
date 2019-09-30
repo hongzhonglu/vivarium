@@ -4,6 +4,9 @@ import collections
 import numpy as np
 import lens.actor.emitter as emit
 
+
+target_key = '__target'
+
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
@@ -13,11 +16,14 @@ def npize(d):
 
     return keys, values
 
-def update_delta(current_value, new_value):
-    return current_value + new_value
+def update_delta(key, current_value, new_value):
+    return current_value + new_value, {}
 
-def update_set(current_value, new_value):
-    return new_value
+def update_set(key, current_value, new_value):
+    return new_value, {}
+
+def update_target(key, current_value, new_value):
+    return current_value, {key+target_key: new_value}
 
 updater_library = {
     'delta': update_delta,
@@ -107,7 +113,9 @@ class State(object):
             updater = self.updaters.get(key, 'delta')
             if not callable(updater):
                 updater = updater_library[updater]
-            self.state[index] = updater(self.state[index], value)
+            self.state[index], other_updates = updater(key, self.state[index], value)
+            for other_key, other_value in other_updates.iteritems():
+                self.state[other_key] = other_value
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
@@ -144,6 +152,9 @@ class Process(object):
         return {}
 
     def default_emitter_keys(self):
+        return {}
+
+    def default_updaters(self):
         return {}
 
     # def default_parameters(self):
@@ -191,6 +202,21 @@ def connect_topology(processes, states, topology):
 
         process.assign_roles(roles)
 
+def merge_initial_states(processes):
+    initial_state = {}
+    for process_id, process in processes.iteritems():
+        default = process.default_state()
+        dict_merge(initial_state, default)
+    return initial_state
+
+def dict_merge(dct, merge_dct):
+    ''' Recursive dict merge '''
+    for k, v in merge_dct.iteritems():
+        if (k in dct and isinstance(dct[k], dict)
+                and isinstance(merge_dct[k], collections.Mapping)):
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''
@@ -281,21 +307,6 @@ class Compartment(object):
         self.emitter.emit(data)
 
 
-def merge_initial_states(processes):
-    initial_state = {}
-    for process_id, process in processes.iteritems():
-        default = process.default_state()
-        dict_merge(initial_state, default)
-    return initial_state
-
-def dict_merge(dct, merge_dct):
-    ''' Recursive dict merge '''
-    for k, v in merge_dct.iteritems():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
 
 def test_compartment():
     # simplest possible metabolism
