@@ -60,6 +60,11 @@ def generate_lattice_compartment(process, config):
         role: State(defaults.get(role, {}))
         for role in process.roles.keys()}
 
+    # TODO -- get updaters for all states. default is delta.
+    # updaters = {
+    #     process.get_updater(key) for key in process.roles.keys()
+    # }
+
     # configure the states to the roles for each process
     topology = {
         'process': {

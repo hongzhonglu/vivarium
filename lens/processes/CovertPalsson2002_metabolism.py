@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import re
 from scipy import constants
+import numpy as np
 
 from lens.actor.process import Process
 from lens.data.spreadsheets import load_tsv
@@ -56,7 +57,8 @@ class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.exchange_key = initial_parameters['exchange_key']
         self.e_key = '[e]'
-        parameters = {'nAvogadro': constants.N_A}
+        self.nAvogadro = constants.N_A * 1/units.mol
+
 
         # load data from files
         data = self.load_data()
@@ -64,6 +66,8 @@ class Metabolism(Process):
         ## Initialize FBA
         objective = {"mass": 1.0}
         external_mol_ids_e = self.add_e_key(self.external_molecule_ids)
+        # external_exchange_key = [mol_id + self.exchange_key
+        #                             for mol_id in self.external_molecule_ids]
 
         self.fba = FluxBalanceAnalysis(
             reactionStoich=data['stoichiometry'],
@@ -75,8 +79,9 @@ class Metabolism(Process):
 
         # assign internal, external state ids
         roles = {
-            'external': data['external_state_ids'] + external_mol_ids_e,
+            'external': data['external_state_ids'],
             'internal': data['internal_state_ids']}
+        parameters = {}
         parameters.update(initial_parameters)
 
         super(Metabolism, self).__init__(roles, parameters)
@@ -123,27 +128,35 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = states['external']
-        volume = internal_state['volume']
-        # TODO -- set transport bounds
+        external_state = states['external'] # TODO -- can environment hold the units?
+        volume = internal_state['volume'] * units.fL
 
-        # get exchange_molecule ids from FBA, remove self.e_key, and look up in external_state
+        # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state, and conc unit
         exchange_molecules = self.fba.getExternalMoleculeIDs()
         external_concentrations = [external_state.get(molID.replace(self.e_key, ''), 0.0)
-            for molID in exchange_molecules]
-        self.fba.setExternalMoleculeLevels(external_concentrations)
+                                   for molID in exchange_molecules] * CONC_UNITS
 
-        # TODO -- check units on exchange flux
-        exchange_fluxes = self.fba.getExternalExchangeFluxes() * timestep
-        objective_value = self.fba.getObjectiveValue() * timestep  # TODO -- is this timestep coming through correctly?
+        # set external_concentrations in FBA (mmol/L)
+        self.fba.setExternalMoleculeLevels(external_concentrations.to(CONC_UNITS).magnitude)
 
-        growth = {'mass': objective_value}
+        # set transport bounds
+        flux_bounds = np.array([self.default_flux_bounds for rxn in self.reaction_ids])
+        self.fba.setReactionFluxBounds(
+            self.reaction_ids,
+            # lowerBounds=flux_bounds[:,0],  # TODO "Minimum reaction flux must be non-negative"
+            upperBounds=flux_bounds[:,1])
+
+        # TODO -- should units have time in denominator?
+        exchange_fluxes = CONC_UNITS * self.fba.getExternalExchangeFluxes() * timestep
+        objective_value = CONC_UNITS * self.fba.getObjectiveValue() * timestep
+
+        growth = {'mass': objective_value.to(CONC_UNITS).magnitude}
 
         # update state based on internal and external concentrations
-        countsToMolar = 1 / (self.parameters['nAvogadro'] * volume * 1e-15)  # convert volume fL to L
+        mmolToCount = self.nAvogadro.to('1/mmol') * volume.to('L')  # convert volume fL to L
 
         # Get the delta counts for environmental molecules
-        delta_exchange_counts = ((1 / countsToMolar) * exchange_fluxes).astype(int)
+        delta_exchange_counts = (mmolToCount * exchange_fluxes).astype(int)
         environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))  # TODO -- refactor self.external_molecule_ids
 
         # get delta reaction flux
@@ -158,6 +171,9 @@ class Metabolism(Process):
             'external': {mol_id + self.exchange_key: delta
                 for mol_id, delta in environment_deltas.iteritems()},
         }
+
+        import ipdb;
+        ipdb.set_trace()
 
         return update
 
@@ -227,9 +243,8 @@ class Metabolism(Process):
         regulation_molecules = self.mols_from_reg_logic(reg_logic)
 
         all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
-
         external_molecules = self.remove_e_key([mol_id for mol_id in all_molecules if self.e_key in mol_id])
-        internal_molecules = [mol_id for mol_id in all_molecules if mol_id not in external_molecules]
+        internal_molecules = [mol_id for mol_id in all_molecules if self.e_key not in mol_id]
 
         # TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
         # TODO -- remove Growth reaction from covert2002_exchange_fluxes?
@@ -246,12 +261,12 @@ class Metabolism(Process):
             reaction['Reaction']: rl.get_logic_function(reaction['Regulatory Logic'])
             for reaction in data['covert2002_reactions']}
 
-        # self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
-        #     for mol_id in self.external_molecule_ids}
-        #
-        # flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
-        #     for flux in data['covert2002_GLC_G6P_flux_bounds']}
-        # self.default_flux_bounds = flux_bounds['default']
+        self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
+            for mol_id in self.external_molecule_ids}
+
+        flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
+            for flux in data['covert2002_GLC_G6P_flux_bounds']}
+        self.default_flux_bounds = flux_bounds['default']
 
         return {
             'internal_state_ids': internal_molecules + self.reaction_ids + ['volume'],
