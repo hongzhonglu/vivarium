@@ -6,6 +6,7 @@ import lens.actor.emitter as emit
 
 
 target_key = '__target'
+exchange_key = '__exchange'
 
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
@@ -23,11 +24,16 @@ def update_set(key, current_value, new_value):
     return new_value, {}
 
 def update_target(key, current_value, new_value):
-    return current_value, {key+target_key: new_value}
+    return current_value, {key + target_key: new_value}
+
+def accumulate_delta(key, current_value, new_value):
+    return current_value, {key + exchange_key: new_value}
 
 updater_library = {
     'delta': update_delta,
-    'set': update_set}
+    'set': update_set,
+    'target': update_target,
+    'accumulate': accumulate_delta}
 
 
 KEY_TYPE = 'U31'
@@ -114,6 +120,7 @@ class State(object):
             if not callable(updater):
                 updater = updater_library[updater]
             self.state[index], other_updates = updater(key, self.state[index], value)
+
             for other_key, other_value in other_updates.iteritems():
                 self.state[other_key] = other_value
 

@@ -55,10 +55,8 @@ def merge_dicts(x, y):
 
 class Metabolism(Process):
     def __init__(self, initial_parameters={}):
-        self.exchange_key = initial_parameters['exchange_key']
         self.e_key = '[e]'
         self.nAvogadro = constants.N_A * 1/units.mol
-
 
         # load data from files
         data = self.load_data()
@@ -66,8 +64,6 @@ class Metabolism(Process):
         ## Initialize FBA
         objective = {"mass": 1.0}
         external_mol_ids_e = self.add_e_key(self.external_molecule_ids)
-        # external_exchange_key = [mol_id + self.exchange_key
-        #                             for mol_id in self.external_molecule_ids]
 
         self.fba = FluxBalanceAnalysis(
             reactionStoich=data['stoichiometry'],
@@ -89,7 +85,6 @@ class Metabolism(Process):
     def default_state(self):
         '''
         returns dictionary with:
-            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
             - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
@@ -104,18 +99,12 @@ class Metabolism(Process):
             external = make_media.get_saved_media('GLC_LCT')
         internal = {'mass': 0.032, 'volume': 1}
 
-        environment_deltas = [key + self.exchange_key for key in external.keys()]
-
-        # declare the states
-        external_molecules = merge_dicts(external,{key: 0 for key in environment_deltas})
-
         # add reaction fluxes to internal state
         rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
         internal_state = merge_dicts(internal, rxns)
 
         return {
-            'environment_deltas': environment_deltas,
-            'external': external_molecules,
+            'external': external,
             'internal': internal_state}
 
     def default_emitter_keys(self):
@@ -132,7 +121,7 @@ class Metabolism(Process):
 
         updater_types = {
             'internal': {rxn_id: 'set' for rxn_id in self.reaction_ids},  # reactions set values directly
-            'external': {}}  # all external values use default 'delta' udpater
+            'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
 
         return updater_types
 
@@ -179,8 +168,7 @@ class Metabolism(Process):
         # TODO -- update internal state mass
         update = {
             'internal': merge_dicts(growth, rxn_delta),
-            'external': {mol_id + self.exchange_key: delta
-                for mol_id, delta in environment_deltas.iteritems()},
+            'external': environment_deltas,
         }
 
         import ipdb;
