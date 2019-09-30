@@ -120,7 +120,7 @@ class Metabolism(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['mass', 'lacI',],  # self.reaction_ids,
+            'internal': ['mass', 'lacI'] + self.reaction_ids,
             'external': ['GLC', 'LAC', 'ACET']
         }
         return keys
@@ -132,7 +132,7 @@ class Metabolism(Process):
 
         updater_types = {
             'internal': {rxn_id: 'set' for rxn_id in self.reaction_ids},  # reactions set values directly
-            'external': {}}  # all external values use default 'delta' udpater
+            'external': {}}  # all external values use default 'delta' updater
 
         return updater_types
 
@@ -174,17 +174,11 @@ class Metabolism(Process):
         rxn_ids = self.fba.getReactionIDs()
         rxn_fluxes = self.fba.getReactionFluxes()
         rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
-        rxn_delta = {rxn_id: new - internal_state[rxn_id] for rxn_id, new in rxn_dict.iteritems()}
 
-        # TODO -- update internal state mass
         update = {
-            'internal': merge_dicts(growth, rxn_delta),
-            'external': {mol_id + self.exchange_key: delta
-                for mol_id, delta in environment_deltas.iteritems()},
+            'internal': merge_dicts(growth, rxn_dict),
+            'external': {mol_id + self.exchange_key: delta for mol_id, delta in environment_deltas.iteritems()},
         }
-
-        import ipdb;
-        ipdb.set_trace()
 
         return update
 
