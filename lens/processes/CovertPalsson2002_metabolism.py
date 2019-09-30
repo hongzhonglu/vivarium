@@ -120,7 +120,7 @@ class Metabolism(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['mass', 'lacI'] + self.reaction_ids,
+            'internal': ['mass', 'lacI'] + self.transport_ids, #self.reaction_ids,
             'external': ['GLC', 'LAC', 'ACET']
         }
         return keys
@@ -215,6 +215,9 @@ class Metabolism(Process):
     def load_data(self):
         '''Load raw data from TSV files,
         save to data dictionary and then assign to class variables
+
+        TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
+        TODO -- remove Growth reaction from covert2002_exchange_fluxes?
         '''
 
         data = {}
@@ -251,11 +254,9 @@ class Metabolism(Process):
         external_molecules = self.remove_e_key([mol_id for mol_id in all_molecules if self.e_key in mol_id])
         internal_molecules = [mol_id for mol_id in all_molecules if self.e_key not in mol_id]
 
-        # TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
-        # TODO -- remove Growth reaction from covert2002_exchange_fluxes?
-
         # reaction ids for tracking fluxes
         self.reaction_ids = stoichiometry.keys()
+        self.transport_ids = transport_stoichiometry.keys()  # transport_ids are used by default_emitter
 
         # save external molecule ids, for use in update
         self.external_molecule_ids = external_molecules

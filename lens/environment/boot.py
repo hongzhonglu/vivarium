@@ -110,7 +110,7 @@ def boot_glc_g6p_small(agent_id, agent_type, agent_config):
         'output_dir': output_dir,
         # 'concentrations': media,
         'run_for': 2.0,
-        'depth': 0.1, #0.0001,  # 3000 um is default
+        'depth': 0.01, #0.0001,  # 3000 um is default
         'edge_length': 10.0,
         'patches_per_edge': 1,
     }
