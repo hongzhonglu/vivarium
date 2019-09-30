@@ -17,17 +17,18 @@ def npize(d):
 
     return keys, values
 
-def update_delta(key, current_value, new_value):
+def update_delta(key, state, current_value, new_value):
     return current_value + new_value, {}
 
-def update_set(key, current_value, new_value):
+def update_set(key, state, current_value, new_value):
     return new_value, {}
 
-def update_target(key, current_value, new_value):
+def update_target(key, state, current_value, new_value):
     return current_value, {key + target_key: new_value}
 
-def accumulate_delta(key, current_value, new_value):
-    return current_value, {key + exchange_key: new_value}
+def accumulate_delta(key, state, current_value, new_value):
+    new_key = key + exchange_key
+    return current_value, {new_key: state[new_key] + new_value}
 
 updater_library = {
     'delta': update_delta,
@@ -119,7 +120,7 @@ class State(object):
             updater = self.updaters.get(key, 'delta')
             if not callable(updater):
                 updater = updater_library[updater]
-            self.state[index], other_updates = updater(key, self.state[index], value)
+            self.state[index], other_updates = updater(key, self.state, self.state[index], value)
 
             for other_key, other_value in other_updates.iteritems():
                 self.state[other_key] = other_value
