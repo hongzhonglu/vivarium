@@ -10,7 +10,6 @@ class LatticeCompartment(Compartment, Simulation):
     def __init__(self, processes, states, configuration):
         self.environment = configuration['environment']
         self.compartment = configuration['compartment']
-        self.exchange_key = configuration['exchange_key']
         self.environment_deltas = configuration['environment_deltas']
         self.configuration = configuration
         self.color = DEFAULT_COLOR
@@ -31,9 +30,13 @@ class LatticeCompartment(Compartment, Simulation):
     def generate_inner_update(self):
         environment = self.states.get(self.environment)
         if environment:
-            changes = environment.state_for(self.environment_deltas)
-            environment_change = {mol_id.replace(self.exchange_key, ''): value
-                                  for mol_id, value in changes.iteritems()}
+            # TODO -- get environment_deltas
+
+
+
+            # changes = environment.state_for(self.environment_deltas)
+            # environment_change = {mol_id.replace(self.exchange_key, ''): value
+            #                       for mol_id, value in changes.iteritems()}
         else:
             environment_change = {}
 
@@ -80,9 +83,7 @@ def generate_lattice_compartment(process, config):
         'topology': topology,
         'emitter': emitter,
         'environment': config.get('environment', 'external'),
-        'compartment': config.get('compartment', 'internal'),
-        'exchange_key': config['exchange_key'],
-        'environment_deltas': default_state['environment_deltas']}
+        'compartment': config.get('compartment', 'internal')}
 
     options.update(config['compartment_options'])
 

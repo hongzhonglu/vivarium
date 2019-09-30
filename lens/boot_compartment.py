@@ -47,7 +47,6 @@ def wrap_boot(initialize, initial_state):
 def wrap_initialize(make_process):
     def initialize(boot_config):
         boot_config.update({
-            'exchange_key': '__exchange',
             'emitter': {
                 'type': 'database',
                 'url': 'localhost:27017',
