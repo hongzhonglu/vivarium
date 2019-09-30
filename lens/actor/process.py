@@ -6,7 +6,7 @@ import lens.actor.emitter as emit
 
 
 target_key = '__target'
-exchange_key = '__exchange'
+exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
 
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
@@ -17,18 +17,18 @@ def npize(d):
 
     return keys, values
 
-def update_delta(key, state, current_value, new_value):
+def update_delta(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
-def update_set(key, state, current_value, new_value):
+def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-def update_target(key, state, current_value, new_value):
+def update_target(key, state_dict, current_value, new_value):
     return current_value, {key + target_key: new_value}
 
-def accumulate_delta(key, state, current_value, new_value):
+def accumulate_delta(key, state_dict, current_value, new_value):
     new_key = key + exchange_key
-    return current_value, {new_key: state[new_key] + new_value}
+    return current_value, {new_key: state_dict[new_key] + new_value}
 
 updater_library = {
     'delta': update_delta,
@@ -120,10 +120,16 @@ class State(object):
             updater = self.updaters.get(key, 'delta')
             if not callable(updater):
                 updater = updater_library[updater]
-            self.state[index], other_updates = updater(key, self.state, self.state[index], value)
+
+            self.state[index], other_updates = updater(
+                key,
+                dict(zip(self.keys,self.state)),
+                self.state[index],
+                value)
 
             for other_key, other_value in other_updates.iteritems():
-                self.state[other_key] = other_value
+                other_index = self.index_for(other_key)
+                self.state[other_index] = other_value
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''

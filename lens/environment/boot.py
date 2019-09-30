@@ -96,7 +96,7 @@ def boot_glc_g6p_small(agent_id, agent_type, agent_config):
 
     media_id = 'GLC_G6P'
     make_media = Media()
-    timeline_str = '0 {}, 7200 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
     print("Media condition: {}".format(media_id))
