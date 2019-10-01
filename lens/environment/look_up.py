@@ -8,7 +8,6 @@ from lens.data.spreadsheets import JsonReader
 
 FLAT_DIR = os.path.join('lens', 'data', 'flat')
 MEDIA_IDS = ['minimal', 'minimal_minus_oxygen', 'minimal_plus_amino_acids']
-# CONC_STR = 'lookup_conc_'  # TODO -- load concentration lookup flat files.
 FLUX_STR = 'lookup_flux_'
 
 TSV_DIALECT = csv.excel_tab

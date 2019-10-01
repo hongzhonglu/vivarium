@@ -47,14 +47,13 @@ def wrap_boot(initialize, initial_state):
 def wrap_initialize(make_process):
     def initialize(boot_config):
         boot_config.update({
-            'exchange_key': '__exchange',
             'emitter': {
                 'type': 'database',
                 'url': 'localhost:27017',
                 'database': 'simulations',
                 },
             'compartment_options':{
-                'time_step': 10.0,
+                'time_step': 1.0,
                 },
             })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters

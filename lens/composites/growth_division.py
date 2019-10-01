@@ -11,7 +11,6 @@ from lens.processes.growth import Growth
 
 def initialize_growth_division(config):
     config.update({
-        'exchange_key': '__exchange',  # key for counting exchange with lattice
         'emitter': {
             'type': 'database',
             'url': 'localhost:27017',

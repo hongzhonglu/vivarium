@@ -82,13 +82,11 @@ def merge_dicts(x, y):
 
 class Transport(Process):
     def __init__(self, initial_parameters={}):
-        self.exchange_key = initial_parameters['exchange_key']
         self.dt = 0.001  # timestep for ode integration (seconds)
 
         default_state = self.default_state()
         internal_state = default_state['internal']
         external_state = default_state['external']
-        self.environment_ids = default_state['environment_ids']
 
         roles = {
             'external': external_state.keys(),
@@ -101,8 +99,6 @@ class Transport(Process):
     def default_state(self):
         '''
         returns dictionary with:
-            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
-            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
         '''
@@ -136,18 +132,11 @@ class Transport(Process):
                 'XP': 0.01,  # [fraction phosphorylation]
             }
 
-        environment_ids = external.keys()
-        external_changes = [key + self.exchange_key for key in environment_ids]
-
-        # declare the states
-        external_molecules = merge_dicts(external, {key: 0 for key in external_changes})
-        internal_molecules = merge_dicts(internal, {'volume': 1}) # fL TODO -- get volume with deriver?
+        self.environment_ids = external.keys()
 
         return {
-            'environment_deltas': external_changes,
-            'environment_ids': environment_ids,
-            'external': external_molecules,
-            'internal': internal_molecules}
+            'external': external,
+            'internal': merge_dicts(internal, {'volume': 1})}  #TODO -- get volume with deriver?
 
     def default_emitter_keys(self):
         keys = {
@@ -155,6 +144,17 @@ class Transport(Process):
             'external': ['G6P', 'GLC', 'LAC']
         }
         return keys
+
+    def default_updaters(self):
+        '''
+        define the updater type for each state in roles.
+        The default updater is to pass a delta'''
+
+        updater_types = {
+            'internal': {},  # reactions set values directly
+            'external': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
+
+        return updater_types
 
     def next_update(self, timestep, states):
 
@@ -304,6 +304,7 @@ class Transport(Process):
         }
 
         # internal update gets delta concentration
+        # TODO -- convert to counts.
         internal_update = {}
         for state_id in states['internal'].iterkeys():
             if state_id is 'volume':
@@ -311,5 +312,5 @@ class Transport(Process):
             internal_update[state_id] = delta_concs[state_id]
 
         return {
-            'external': {mol_id + self.exchange_key: delta for mol_id, delta in environment_delta_counts.iteritems()},
+            'external': environment_delta_counts,
             'internal': internal_update}
