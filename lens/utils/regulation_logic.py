@@ -8,15 +8,18 @@ from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython, Kwd, Re
 pp = pprint.PrettyPrinter(indent=4)
 
 
-def symbol(): return RegExMatch(r'[a-zA-Z0-9\[\]]+')
+def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
 def group(): return Kwd("("), logic, Kwd(")")
 def term(): return Optional(Kwd("not")), [symbol, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
-def rule(): return Kwd("IF"), OneOrMore(logic), EOF
-
+def rule(): return [Kwd("active IF"), Kwd("IF")], OneOrMore(logic), EOF
 
 def evaluate_symbol(tree, env):
-    value = env.get(tree.value)
+    symbol = tree[0]
+    if symbol == 'surplus':
+        symbol = tree[1]
+    value = env.get(symbol.value)
+
     return value
 
 def evaluate_group(tree, env):
@@ -77,12 +80,18 @@ def build_rule(expression):
 
     return parse
 
-
 def test_arpeggio():
     test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
     state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
-    
+    run_rule = build_rule(test)
+    assert run_rule(state_false) == False
+    assert run_rule(state_true) == True
+
+    # test surplus in statement
+    test = "active IF not (surplus FDP or F6P)"
+    state_false = {'FDP': True, 'F6P': False}
+    state_true = {'FDP': False, 'F6P': False}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
