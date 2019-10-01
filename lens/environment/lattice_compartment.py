@@ -12,6 +12,7 @@ class LatticeCompartment(Compartment, Simulation):
         self.compartment = configuration['compartment']
         self.exchange_key = configuration['exchange_key']
         self.environment_ids = configuration['environment_ids']
+        self.exchange_ids = [state_id + self.exchange_key for state_id in self.environment_ids]
         self.configuration = configuration
         self.color = DEFAULT_COLOR
 
@@ -32,8 +33,7 @@ class LatticeCompartment(Compartment, Simulation):
     def generate_inner_update(self):
         environment = self.states.get(self.environment)
         if environment:
-            changes_keys = [state_id + self.exchange_key for state_id in self.environment_ids]
-            changes = environment.state_for(changes_keys)
+            changes = environment.state_for(self.exchange_ids)
             environment_change = {mol_id.replace(self.exchange_key, ''): value for mol_id, value in changes.iteritems()}
         else:
             environment_change = {}
@@ -65,17 +65,18 @@ def generate_lattice_compartment(process, config):
     default_updaters = process.default_updaters()
 
     # initialize keys for accumulate_delta updater
+    # assumes all environmental updates have been set as `accumulate` updaters
     environment_ids = []
-    initial_state_deltas = {role: {} for role in process.roles.keys()}
+    initial_exchanges = {role: {} for role in process.roles.keys()}
     for role, state_ids in default_updaters.iteritems():
         for state_id, updater in state_ids.iteritems():
             if updater is 'accumulate':
                 environment_ids.append(state_id)
-                initial_state_deltas[role].update({state_id + exchange_key: 0.0})
+                initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
     states = {
         role: State(
-            initial_state=merge_dicts(default_state.get(role, {}), initial_state_deltas.get(role, {})),
+            initial_state=merge_dicts(default_state.get(role, {}), initial_exchanges.get(role, {})),
             updaters=default_updaters.get(role, {}))
             for role in process.roles.keys()}
 
