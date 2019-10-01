@@ -27,8 +27,7 @@ class LatticeCompartment(Compartment, Simulation):
         environment = self.states.get(self.environment)
         if environment:
             environment.assign_values(update['concentrations'])
-            environment.assign_values({key + self.exchange_key: 0
-                                       for key in self.environment_ids})  # reset delta counts to 0
+            environment.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
 
     def generate_inner_update(self):
         environment = self.states.get(self.environment)
