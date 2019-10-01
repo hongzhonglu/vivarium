@@ -6,7 +6,7 @@ import csv
 
 from lens.actor.process import Process
 from lens.data.spreadsheets import load_tsv
-from lens.utils.regulation_logic import RegulatoryLogic
+from lens.utils.regulation_logic import build_rule
 
 TSV_DIALECT = csv.excel_tab
 
@@ -76,7 +76,6 @@ class Regulation(Process):
         total_state = merge_dicts(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
 
-        import ipdb; ipdb.set_trace()
         # TODO -- passing boolean_state sometimes returns TypeError: 'bool' object is not callable
         regulatory_state = {mol_id: regulatory_logic(boolean_state) for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
 

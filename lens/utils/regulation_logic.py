@@ -1,20 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
+import pprint
+
 from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython
 from arpeggio import RegExMatch as rr
 
-import pprint
+
 pp = pprint.PrettyPrinter(indent=4)
 
 
-def text(): return rr(r'[a-zA-Z0-9\[\]]+')
+def symbol(): return rr(r'[a-zA-Z0-9\[\]]+')
 def group(): return rr(r"\("), logic, rr(r"\)")
-def term(): return Optional(rr(r'not')), [text, group]
+def term(): return Optional(rr(r'not')), [symbol, group]
 def logic(): return term, ZeroOrMore([rr(r'and'), rr(r'or')], term)
 def rule(): return rr(r'IF'), OneOrMore(logic), EOF
 
 
-def evaluate_text(tree, env):
+def evaluate_symbol(tree, env):
     value = env.get(tree.value)
     return value
 
@@ -32,8 +34,8 @@ def evaluate_term(tree, env):
 
     if tree[0].rule_name == 'group':
         value = evaluate_group(tree[0], env)
-    elif tree[0].rule_name == 'text':
-        value = evaluate_text(tree[0], env)
+    elif tree[0].rule_name == 'symbol':
+        value = evaluate_symbol(tree[0], env)
 
     if invert:
         value = not value
@@ -61,6 +63,14 @@ def evaluate_rule(tree, env):
 rule_parser = ParserPython(rule)
 
 def build_rule(expression):
+    # type: (str) -> Callable[Dict[str, bool], bool]
+
+    '''
+    Accepts a string representing a logical statement about the presence or absence of
+    various molecular entities relevant to regulation, and returns a function that
+    evaluates that logic with respect to actual values for the various symbols. 
+    '''
+
     tree = rule_parser.parse(expression)
 
     def parse(env):
@@ -75,15 +85,11 @@ def test_arpeggio():
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
     
     run_rule = build_rule(test)
-    test_false = run_rule(state_false)
-    test_true = run_rule(state_true)
-
-    print('False: {}'.format(test_false))
-    print('True: {}'.format(test_true))
+    assert run_rule(state_false) == False
+    assert run_rule(state_true) == True
 
     return run_rule
 
 
 if __name__ == '__main__':
-    tree = test_arpeggio()
-    pp.pprint(tree)
+    test_arpeggio()

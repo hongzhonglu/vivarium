@@ -116,7 +116,7 @@ example_place = {
 		'control': 'C:building',
 		'ports': ['E:network:network2'],
 		'children': ['N:room:X3', 'N:room:X4'],
-		'sites': ['S:building:2']}
+		'sites': ['S:building:2']},
 	'N:computer:X1': {
 		'control': 'C:computer',
 		'ports': ['E:login:1111', 'E:network:network1'],
@@ -181,4 +181,4 @@ example_link = {
 		'outer': [],
 		'inner': ['D', 'E']}}
 
-example_bigraph = Bigraph(example_place, example_link)
+example_bigraph = Bigraph([], example_place, example_link)

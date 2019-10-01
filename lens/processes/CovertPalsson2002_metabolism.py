@@ -9,7 +9,7 @@ from lens.data.spreadsheets import load_tsv
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.environment.make_media import Media
-from lens.utils.regulation_logic import RegulatoryLogic
+from lens.utils.regulation_logic import build_rule
 
 
 DATA_DIR = os.path.join('lens', 'data', 'flat')
@@ -200,9 +200,8 @@ class Metabolism(Process):
         self.stoichiometry.update(reverse_transport_stoichiometry)
 
         # make regulatory logic functions
-        rc = RegulatoryLogic()
         self.regulation_functions = {
-            reaction['Reaction']: rc.get_logic_function(reaction['Regulatory Logic'])
+            reaction['Reaction']: build_rule(reaction['Regulatory Logic'])
             for reaction in data['covert2002_reactions']}
 
         # get all molecules listed in "Regulatory Logic"
