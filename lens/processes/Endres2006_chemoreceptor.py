@@ -74,6 +74,17 @@ class ReceptorCluster(Process):
         }
         return keys
 
+    def default_updaters(self):
+        '''
+        define the updater type for each state in roles.
+        The default updater is to pass a delta'''
+
+        updater_types = {
+            'internal': {state_id: 'set' for state_id in ['chemoreceptor_P_on', 'n_methyl']},
+            'external': {}}
+
+        return updater_types
+
     def next_update(self, timestep, states):
         '''
         Monod-Wyman-Changeux model for mixed cluster activity
@@ -127,8 +138,8 @@ class ReceptorCluster(Process):
 
         update = {
             'internal': {
-                'chemoreceptor_P_on': P_on,  # TODO -- this expects a delta, not a new probability
-                'n_methyl': n_methyl,  # TODO -- this expects a delta, not a new probability
+                'chemoreceptor_P_on': P_on,
+                'n_methyl': n_methyl,
             }
         }
 
