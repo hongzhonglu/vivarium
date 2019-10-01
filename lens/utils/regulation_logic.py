@@ -2,18 +2,17 @@ from __future__ import absolute_import, division, print_function
 
 import pprint
 
-from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython
-from arpeggio import RegExMatch as rr
+from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython, Kwd, RegExMatch
 
 
 pp = pprint.PrettyPrinter(indent=4)
 
 
-def symbol(): return rr(r'[a-zA-Z0-9\[\]]+')
-def group(): return rr(r"\("), logic, rr(r"\)")
-def term(): return Optional(rr(r'not')), [symbol, group]
-def logic(): return term, ZeroOrMore([rr(r'and'), rr(r'or')], term)
-def rule(): return rr(r'IF'), OneOrMore(logic), EOF
+def symbol(): return RegExMatch(r'[a-zA-Z0-9\[\]]+')
+def group(): return Kwd("("), logic, Kwd(")")
+def term(): return Optional(Kwd("not")), [symbol, group]
+def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
+def rule(): return Kwd("IF"), OneOrMore(logic), EOF
 
 
 def evaluate_symbol(tree, env):
