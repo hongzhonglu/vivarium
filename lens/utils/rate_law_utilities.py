@@ -37,10 +37,10 @@ import lens.utils.kinetic_rate_laws as rate_laws
 
 TSV_DIALECT = csv.excel_tab
 
-REACTIONS_FILE = os.path.join("lens", "data", "flat", "reactions.tsv")
-PROTEINS_FILE = os.path.join("lens", "data", "flat", "proteins.tsv")
-COMPLEXATION_FILE = os.path.join("lens", "data", "flat", "complexationReactions.tsv")
-KINETIC_PARAMETERS_PATH = os.path.join("lens", 'data', 'kinetic_rate_laws', 'parameters')
+REACTIONS_FILE = os.path.join("lens", "data", "flat", "wcEcoli_reactions.tsv")
+PROTEINS_FILE = os.path.join("lens", "data", "flat", "wcEcoli_proteins.tsv")
+COMPLEXATION_FILE = os.path.join("lens", "data", "flat", "wcEcoli_complexationReactions.tsv")
+KINETIC_PARAMETERS_PATH = os.path.join("lens", 'data', 'json_files')
 OUTPUT_DIR = os.path.join('out', 'kinetic_rate_laws')
 
 
