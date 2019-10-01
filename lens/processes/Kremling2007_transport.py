@@ -304,6 +304,7 @@ class Transport(Process):
         }
 
         # internal update gets delta concentration
+        # TODO -- convert to counts.
         internal_update = {}
         for state_id in states['internal'].iterkeys():
             if state_id is 'volume':

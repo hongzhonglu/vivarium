@@ -12,6 +12,7 @@ from lens.utils.rate_law_utilities import get_reactions_from_exchange
 from lens.utils.rate_law_utilities import get_molecules_from_reactions
 from lens.data.spreadsheets import JsonReader
 from itertools import ifilter
+from lens.utils.units import units
 
 
 EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'data', 'flat', 'wcEcoli_environment_molecules.tsv')
@@ -48,13 +49,19 @@ external_molecule_ids = additional_exchange + amino_acids
 # add [p] label. TODO (Eran) -- fix this
 external_molecule_ids_p = [mol_id + '[p]' for mol_id in external_molecule_ids]
 
+COUNTS_UNITS = units.mmol
+VOLUME_UNITS = units.L
+# MASS_UNITS = units.g
+TIME_UNITS = units.s
+# CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
+FLUX_UNITS = COUNTS_UNITS / VOLUME_UNITS / TIME_UNITS
+
 
 class TransportLookup(Process):
     def __init__(self, initial_parameters={}):
-        self.exchange_key = initial_parameters['exchange_key']
         self.media_id = 'minimal' # initial_parameters.get('media_id', 'minimal')
         self.lookup_type = 'average' # initial_parameters.get('lookup', 'average')
-        self.nAvogadro = constants.N_A
+        self.nAvogadro = constants.N_A * 1/units.mol
         self.external_molecule_ids = external_molecule_ids
 
         # load all reactions and maps
@@ -68,14 +75,8 @@ class TransportLookup(Process):
         # make look up object
         self.look_up = LookUp()
 
-        # get initial fluxes
-        self.transport_fluxes = self.look_up.look_up(
-            self.lookup_type,
-            self.media_id,
-            self.transport_reaction_ids)
-
         roles = {
-            'external': external_molecule_ids,
+            'external': self.external_molecule_ids,
             'internal': internal_molecule_ids + ['volume']}
         parameters = {}
         parameters.update(initial_parameters)
@@ -87,42 +88,51 @@ class TransportLookup(Process):
         make_media = Media()
         media = make_media.get_saved_media(media_id)
 
-        environment_deltas = [key + self.exchange_key for key in media.keys()]  # TODO (Eran) -- pass in '_change' string
-
         # declare the states
         environment_state = media
-        environment_state.update({key: 0 for key in environment_deltas})
         environment_state['volume'] = 10
-
         cell_state = {'volume': 1}
 
         return {
-            'environment_deltas': environment_deltas,
             'external': environment_state,
             'internal': cell_state}
 
     def default_emitter_keys(self):
         keys = {
             'internal': [],
-            'external': external_molecule_ids
+            'external': self.external_molecule_ids
         }
         return keys
 
+    def default_updaters(self):
+        '''
+        define the updater type for each state in roles.
+        The default updater is to pass a delta'''
+
+        updater_types = {
+            'internal': {},  # reactions set values directly
+            'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
+
+        return updater_types
+
     def next_update(self, timestep, states):
 
-        volume = states['internal']['volume']
-
-        # nAvogadro is in 1/mol --> convert to 1/mmol. volume is in fL --> convert to L
-        self.molar_to_counts = (self.nAvogadro * 1e-3) * (volume * 1e-15)
+        volume = states['internal']['volume'] * units.fL
+        mmol_to_counts = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get transport fluxes
-        self.transport_fluxes = self.look_up.look_up(
+        transport_fluxes = self.look_up.look_up(
             self.lookup_type,
             self.media_id,
             self.transport_reaction_ids)
 
+        # time step dependences
+        # TODO (Eran) -- load units in look_up
+        transport_fluxes = {key: value * (FLUX_UNITS) * timestep * TIME_UNITS
+                                 for key, value in transport_fluxes.iteritems()}
+
         # convert to counts
-        delta_counts = self.flux_to_counts(self.transport_fluxes)  # TODO * timestep
+        delta_counts = self.flux_to_counts(transport_fluxes, mmol_to_counts)
 
         # Get the deltas for environmental molecules
         environment_deltas = {}
@@ -131,16 +141,13 @@ class TransportLookup(Process):
                 external_molecule_id = self.molecule_to_external_map[molecule_id]
                 environment_deltas[external_molecule_id] = delta_counts[molecule_id]
 
-        update = {
-            'external': {mol_id + self.exchange_key: delta for mol_id, delta in environment_deltas.iteritems()}, # TODO (Eran) -- pass in this '_change' substring
-        }
-
-        return update
+        return {'external': environment_deltas}
 
     # TODO (Eran) -- make this a util
-    def flux_to_counts(self, fluxes):
+    def flux_to_counts(self, fluxes, conversion):
+
         rxn_counts = {
-            reaction_id: int(self.molar_to_counts * flux)
+            reaction_id: int(conversion * flux)
             for reaction_id, flux in fluxes.iteritems()}
         delta_counts = {}
         for reaction_id, rxn_count in rxn_counts.iteritems():
@@ -154,6 +161,7 @@ class TransportLookup(Process):
                     delta_counts[substrate] += delta
                 else:
                     delta_counts[substrate] = delta
+
         return delta_counts
 
     def load_data(self):

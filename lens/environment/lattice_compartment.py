@@ -32,11 +32,9 @@ class LatticeCompartment(Compartment, Simulation):
     def generate_inner_update(self):
         environment = self.states.get(self.environment)
         if environment:
-            changes_keys = [state_id + self.exchange_key
-                            for state_id in self.environment_ids]
+            changes_keys = [state_id + self.exchange_key for state_id in self.environment_ids]
             changes = environment.state_for(changes_keys)
-            environment_change = {mol_id.replace(self.exchange_key, ''): value
-                                  for mol_id, value in changes.iteritems()}
+            environment_change = {mol_id.replace(self.exchange_key, ''): value for mol_id, value in changes.iteritems()}
         else:
             environment_change = {}
 
@@ -46,7 +44,6 @@ class LatticeCompartment(Compartment, Simulation):
             'motile_force': [0,0], # TODO -- get motile_force from compartment state
             'color': self.color,
             'environment_change': environment_change,
-            'transport_fluxes': {},  # TODO -- remove this
         })
 
         return values
