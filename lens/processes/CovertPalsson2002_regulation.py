@@ -52,8 +52,6 @@ class Regulation(Process):
     def default_state(self):
         '''
         returns dictionary with:
-            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
-            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
         '''
@@ -62,16 +60,12 @@ class Regulation(Process):
         external_molecules = {key: True for key in self.external}
 
         return {
-            # 'environment_deltas': environment_deltas,
-            'environment_ids': self.external,
             'external': external_molecules,
             'internal': internal_molecules}
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
         external_state = states['external']
-
-        # TODO -- add [e] back to external state?
 
         total_state = merge_dicts(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}

@@ -50,8 +50,6 @@ class ReceptorCluster(Process):
     def default_state(self):
         '''
         returns dictionary with:
-            - environment_deltas (list) -- external molecule ids with added self.exchange_key string, for use to accumulate deltas in state
-            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
         '''
@@ -59,11 +57,8 @@ class ReceptorCluster(Process):
         internal = INITIAL_STATE
         internal.update({'volume': 1})
         external = {self.ligand_id: 0.0}
-        environment_ids = [self.ligand_id]
 
         return {
-            'environment_deltas': [],
-            'environment_ids': environment_ids,
             'external': external,
             'internal': internal}
 

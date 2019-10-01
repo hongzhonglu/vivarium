@@ -14,7 +14,6 @@ from lens.processes.division import Division
 
 def initialize_covert2008(config):
     config.update({
-        'exchange_key': '__exchange',  # key for counting exchange with lattice
         'emitter': {
             'type': 'database',
             'url': 'localhost:27017',

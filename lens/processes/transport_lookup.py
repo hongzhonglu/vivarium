@@ -51,9 +51,7 @@ external_molecule_ids_p = [mol_id + '[p]' for mol_id in external_molecule_ids]
 
 COUNTS_UNITS = units.mmol
 VOLUME_UNITS = units.L
-# MASS_UNITS = units.g
 TIME_UNITS = units.s
-# CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 FLUX_UNITS = COUNTS_UNITS / VOLUME_UNITS / TIME_UNITS
 
 
@@ -146,15 +144,11 @@ class TransportLookup(Process):
     # TODO (Eran) -- make this a util
     def flux_to_counts(self, fluxes, conversion):
 
-        rxn_counts = {
-            reaction_id: int(conversion * flux)
-            for reaction_id, flux in fluxes.iteritems()}
+        rxn_counts = {reaction_id: int(conversion * flux) for reaction_id, flux in fluxes.iteritems()}
         delta_counts = {}
         for reaction_id, rxn_count in rxn_counts.iteritems():
             stoichiometry = self.all_transport_reactions[reaction_id]['stoichiometry']
-            substrate_counts = {
-                substrate_id: coeff * rxn_count
-                for substrate_id, coeff in stoichiometry.iteritems()}
+            substrate_counts = {substrate_id: coeff * rxn_count for substrate_id, coeff in stoichiometry.iteritems()}
             # add to delta_counts
             for substrate, delta in substrate_counts.iteritems():
                 if substrate in delta_counts:

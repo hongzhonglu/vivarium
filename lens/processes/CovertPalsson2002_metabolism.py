@@ -85,7 +85,6 @@ class Metabolism(Process):
     def default_state(self):
         '''
         returns dictionary with:
-            - environment_ids (list) -- unmodified external molecule ids for use to accumulate deltas in state
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
         '''
