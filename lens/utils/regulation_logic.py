@@ -12,7 +12,7 @@ def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]]+')  
 def group(): return Kwd("("), logic, Kwd(")")
 def term(): return Optional(Kwd("not")), [symbol, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
-def rule(): return [Kwd("active IF"), Kwd("IF")], OneOrMore(logic), EOF
+def rule(): return Optional(Kwd("active")), Kwd("IF"), logic, EOF
 
 def evaluate_symbol(tree, env):
     symbol = tree[0]
@@ -23,7 +23,7 @@ def evaluate_symbol(tree, env):
     return value
 
 def evaluate_group(tree, env):
-    logic = tree[1:-1][0]
+    logic = tree[1]
     return evaluate_logic(logic, env)
 
 def evaluate_term(tree, env):
@@ -59,6 +59,8 @@ def evaluate_logic(tree, env):
     return head
 
 def evaluate_rule(tree, env):
+    if tree[0].value == 'active':
+        tree = tree[1:]
     return evaluate_logic(tree[1], env)
 
 
