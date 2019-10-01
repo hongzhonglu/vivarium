@@ -114,6 +114,7 @@ class State(object):
             return
         keys, values = npize(update)
         index = self.index_for(keys)
+        state_dict = dict(zip(self.keys,self.state))
 
         for index, key, value in zip(index, keys, values):
             # updater can be a function or a key into the updater library
@@ -123,7 +124,7 @@ class State(object):
 
             self.state[index], other_updates = updater(
                 key,
-                dict(zip(self.keys,self.state)),
+                state_dict,
                 self.state[index],
                 value)
 
