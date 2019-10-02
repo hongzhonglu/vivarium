@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import copy
+# import copy
 import collections
 import numpy as np
 import lens.actor.emitter as emit
@@ -126,9 +126,9 @@ class State(object):
             self.new_state[index], other_updates = updater(
                 key,
                 state_dict,
-                self.state[index],
+                self.new_state[index],
                 value)
-
+ 
             for other_key, other_value in other_updates.iteritems():
                 other_index = self.index_for(other_key)
                 self.new_state[other_index] = other_value
@@ -136,12 +136,16 @@ class State(object):
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
 
-        self.new_state = copy.deepcopy(self.state)
         for update in updates:
             self.apply_update(update)
 
+    def prepare(self):
+        ''' Prepares for state updates by creating new copy of existing state '''
+
+        self.new_state = np.copy(self.state)
+
     def proceed(self):
-        ''' Swaps out state for newly calculated state '''
+        ''' Once all updates are complete, swaps out state for newly calculated state '''
 
         self.state = self.new_state
 
@@ -291,6 +295,9 @@ class Compartment(object):
                 if not updates.get(key):
                     updates[key] = []
                 updates[key].append(deltas)
+
+        for key in self.states.keys():
+            self.states[key].prepare()
 
         for key, update in updates.iteritems():
             self.states[key].apply_updates(update)
