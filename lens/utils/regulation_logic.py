@@ -68,7 +68,7 @@ def evaluate_rule(tree, env):
 rule_parser = ParserPython(rule)
 
 def null_fun(env):
-    return False
+    return None
 
 def build_rule(expression):
     # type: (str) -> Callable[Dict[str, bool], bool]

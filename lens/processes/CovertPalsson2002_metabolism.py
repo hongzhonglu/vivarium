@@ -7,6 +7,7 @@ import numpy as np
 
 from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
+from lens.data.helper import mols_from_reg_logic
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.environment.make_media import Media
@@ -122,10 +123,17 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = states['external'] # TODO -- can environment hold the units?
+        external_state = self.add_e_to_dict(states['external'])
         volume = internal_state['volume'] * units.fL
 
-        # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state, and conc unit
+        # get the regulatory state of the reactions
+        # TODO -- what to do about reversible regulated reactions?
+        total_state = dict_merge(internal_state, external_state)
+        boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
+        regulatory_state = {mol_id: regulatory_logic(boolean_state)
+                            for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
+
+        # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state
         exchange_molecules = self.fba.getExternalMoleculeIDs()
         external_concentrations = [external_state.get(molID.replace(self.e_key, ''), 0.0)
                                    for molID in exchange_molecules] * CONC_UNITS
@@ -133,11 +141,15 @@ class Metabolism(Process):
         # set external_concentrations in FBA (mmol/L)
         self.fba.setExternalMoleculeLevels(external_concentrations.to(CONC_UNITS).magnitude)
 
-        # set transport bounds
+        # set reaction flux bounds, based on default bounds and regulatory_state
         flux_bounds = np.array([self.default_flux_bounds for rxn in self.reaction_ids])
+        for rxn_index, rxn_id in enumerate(self.reaction_ids):
+            if regulatory_state.get(rxn_id) is False:
+                flux_bounds[rxn_index] = 0.0
+
         self.fba.setReactionFluxBounds(
             self.reaction_ids,
-            # lowerBounds=flux_bounds[:,0],  # TODO "Minimum reaction flux must be non-negative"
+            lowerBounds=0.0,  # flux_bounds[:,0], # TODO -- if negative, lower bounds should be set bound on reverse reactions
             upperBounds=flux_bounds[:,1])
 
         # TODO -- should units have time in denominator?
@@ -171,29 +183,15 @@ class Metabolism(Process):
     def remove_e_key(self, molecule_ids):
         return [mol_id.replace(self.e_key, '') for mol_id in molecule_ids]
 
-    # def split_e_from_dict(self, molecules_dict):
-    #     '''given dict with both [e] and no [e], split into two dicts'''
-    #     keys = molecules_dict.keys()
-    #     keys_with_e = [key for key in keys if self.e_key in key]
-    #
-    #     external_dict = {key: molecules_dict[key] for key in keys_with_e}
-    #     internal_dict = copy.deepcopy(molecules_dict)
-    #     for key in keys_with_e:
-    #         del internal_dict[key]
-    #
-    #     return internal_dict, external_dict
-
-    def mols_from_reg_logic(self, reg_logic):
-        '''reg_log -- list of logic statements,
-        remove operations and return list of  molecule ids
-        '''
-        regulation_molecules = set()
-        regex_split = 'IF |not |or |and |\(|\)| '
-        for statement in reg_logic:
-            statement_parsed = re.split(regex_split, statement)  # split string to remove patterns in regex_split
-            statement_parsed = list(filter(None, statement_parsed))  # remove empty strings
-            regulation_molecules.update(statement_parsed)
-        return list(regulation_molecules)
+    def add_e_to_dict(self, molecules_dict):
+        ''' convert external state to compatible format by adding e_key'''
+        e_dict = {}
+        for key, value in molecules_dict.iteritems():
+            if self.e_key in key:
+                e_dict[key] = value
+            else:
+                e_dict[key + self.e_key] = value
+        return e_dict
 
     def load_data(self):
         '''Load raw data from TSV files,
@@ -230,8 +228,7 @@ class Metabolism(Process):
         metabolites = get_molecules_from_stoich(stoichiometry)
         enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
         transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
-        reg_logic = [reaction['Regulatory Logic'] for reaction in data['covert2002_reactions']]
-        regulation_molecules = self.mols_from_reg_logic(reg_logic)
+        regulation_molecules = mols_from_reg_logic(data['covert2002_reactions'])
 
         all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
         external_molecules = self.remove_e_key([mol_id for mol_id in all_molecules if self.e_key in mol_id])
@@ -245,9 +242,13 @@ class Metabolism(Process):
         self.external_molecule_ids = external_molecules
 
         # make regulatory logic functions
-        self.regulation_functions = {
-            reaction['Reaction']: rl.build_rule(reaction['Regulatory Logic'])
-            for reaction in data['covert2002_reactions']}
+        self.regulation_logic = {}
+        for reaction in data['covert2002_reactions']:
+            reaction_id = reaction['Reaction']
+            rule = rl.build_rule(reaction['Regulatory Logic'])
+            if rule({}):
+                self.regulation_logic[reaction_id] = rule
+
 
         self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
             for mol_id in self.external_molecule_ids}

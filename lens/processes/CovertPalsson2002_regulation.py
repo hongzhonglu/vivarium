@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 import csv
 
 from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
+from lens.data.helper import mols_from_reg_logic
 import lens.utils.regulation_logic as rl
 
 TSV_DIALECT = csv.excel_tab
@@ -100,6 +100,12 @@ class Regulation(Process):
                 e_dict[key + self.e_key] = value
         return e_dict
 
+    def add_e_key(self, molecule_ids):
+        return [mol_id + self.e_key for mol_id in molecule_ids]
+
+    def remove_e_key(self, molecule_ids):
+        return [mol_id.replace(self.e_key, '') for mol_id in molecule_ids]
+
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
         data = {}
@@ -107,26 +113,20 @@ class Regulation(Process):
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
 
-        self.regulation_logic = {reaction['Protein']: rl.build_rule(reaction['Regulatory Logic'])
-            for reaction in data['covert2002_regulatory_proteins']}
+        # make regulatory logic functions
+        self.regulation_logic = {}
+        for protein in data['covert2002_regulatory_proteins']:
+            protein_id = protein['Protein']
+            rule = rl.build_rule(protein['Regulatory Logic'])
+            if rule({}):
+                self.regulation_logic[protein_id] = rule
 
-        # get all molecules listed in "Regulatory Logic" TODO -- make this a re-usable function (for metabolism too)
-        internal_molecules = set()
-        regex_split = 'action is complex|surplus |active |IF |not |or |and |\(|\)| '
-        for reaction in data['covert2002_regulatory_proteins']:
-            protein = set([reaction['Protein']])
-            reg_logic = reaction['Regulatory Logic']
-            reg_logic_parsed = re.split(regex_split, reg_logic)  # split string to remove patterns in regex_split
-            reg_logic_parsed = set(filter(None, reg_logic_parsed))  # remove empty strings
-
-            # add protein and regulatory molecules to set
-            internal_molecules.update(protein)
-            internal_molecules.update(reg_logic_parsed)
+        # get all molecules listed in "Regulatory Logic"
+        all_molecules = mols_from_reg_logic(data['covert2002_regulatory_proteins'])
 
         # remove external molecules from internal_molecules
-        external_molecules = set(mol_id for mol_id in internal_molecules if self.e_key in mol_id)
-        internal_molecules.difference_update(external_molecules)
-        external_molecules = [mol.replace(self.e_key,'') for mol in external_molecules]
+        external_molecules = [mol_id for mol_id in all_molecules if self.e_key in mol_id]
+        internal_molecules = [mol_id for mol_id in all_molecules if mol_id not in external_molecules]
+        external_molecules = self.remove_e_key(external_molecules)
 
-
-        return list(internal_molecules), external_molecules
+        return internal_molecules, external_molecules
