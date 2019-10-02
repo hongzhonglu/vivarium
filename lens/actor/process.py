@@ -387,8 +387,8 @@ def test_compartment():
         'external_volume': DeriveVolume(),
         'internal_volume': DeriveVolume()}
 
-    def update_mass(current, new):
-        return current / (current + new)
+    def update_mass(key, state, current, new):
+        return current / (current + new), {}
 
     # declare the states
     states = {
