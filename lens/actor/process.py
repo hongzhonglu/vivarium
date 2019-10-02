@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
 import collections
 import numpy as np
 import lens.actor.emitter as emit
@@ -114,7 +115,7 @@ class State(object):
             return
         keys, values = npize(update)
         index = self.index_for(keys)
-        state_dict = dict(zip(self.keys,self.state))
+        state_dict = dict(zip(self.keys, self.state))
 
         for index, key, value in zip(index, keys, values):
             # updater can be a function or a key into the updater library
@@ -122,7 +123,7 @@ class State(object):
             if not callable(updater):
                 updater = updater_library[updater]
 
-            self.state[index], other_updates = updater(
+            self.new_state[index], other_updates = updater(
                 key,
                 state_dict,
                 self.state[index],
@@ -130,13 +131,19 @@ class State(object):
 
             for other_key, other_value in other_updates.iteritems():
                 other_index = self.index_for(other_key)
-                self.state[other_index] = other_value
+                self.new_state[other_index] = other_value
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
 
+        self.new_state = copy.deepcopy(self.state)
         for update in updates:
             self.apply_update(update)
+
+    def proceed(self):
+        ''' Swaps out state for newly calculated state '''
+
+        self.state = self.new_state
 
     def state_for(self, keys):
         ''' Get the current state of these keys as a dict of values. '''
@@ -287,6 +294,9 @@ class Compartment(object):
 
         for key, update in updates.iteritems():
             self.states[key].apply_updates(update)
+
+        for key in self.states.keys():
+            self.states[key].proceed()
 
         self.run_derivers(timestep)
 
