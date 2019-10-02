@@ -26,7 +26,6 @@ def get_reverse(reactions):
     return reverse_stoichiometry
 
 def get_molecules_from_reactions(stoichiometry):
-    # TODO -- merge with rate_law_utilities.get_molecules_from_stoich
     molecules = set()
     for reaction, stoich in stoichiometry.iteritems():
         molecules.update(stoich.keys())
@@ -56,12 +55,33 @@ class Regulation(Process):
             - internal (dict) -- internal states with default initial values
         '''
 
-        internal_molecules = {key: True for key in self.internal}
-        external_molecules = {key: True for key in self.external}
+        # TODO -- states should be boolean?
+        internal_molecules = {key: 0 for key in self.internal}
+        external_molecules = {key: 0 for key in self.external}
+
+        internal = {'volume': 1}
 
         return {
             'external': external_molecules,
-            'internal': internal_molecules}
+            'internal': internal.update(internal_molecules)}
+
+    def default_emitter_keys(self):
+        keys = {
+            'internal': self.internal,
+            'external': self.external
+        }
+        return keys
+
+    def default_updaters(self):
+        '''
+        define the updater type for each state in roles.
+        The default updater is to pass a delta'''
+
+        updater_types = {
+            'internal': {},
+            'external': {mol_id: 'accumulate' for mol_id in self.external}}  # all external values use default 'delta' udpater
+
+        return updater_types
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
@@ -74,6 +94,11 @@ class Regulation(Process):
         regulatory_state = {mol_id: regulatory_logic(boolean_state) for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
 
         update = regulatory_state
+
+
+        import ipdb; ipdb.set_trace()
+
+
         return update
 
     def load_data(self):
@@ -86,23 +111,19 @@ class Regulation(Process):
         self.regulation_logic = {reaction['Protein']: rl.build_rule(reaction['Regulatory Logic'])
             for reaction in data['covert2002_regulatory_proteins']}
 
-        import ipdb;
-        ipdb.set_trace()
-
-        # get all molecules listed in "Regulatory Logic" TODO -- make this a re-usable function (for metabolism too)q
+        # get all molecules listed in "Regulatory Logic" TODO -- make this a re-usable function (for metabolism too)
         internal_molecules = set()
-        regex_split = 'action is complex|surplus |active |IF |not |or |and |\(|\)| ' # TODO -- remove 'action is complex', 'surplus' from file
+        regex_split = 'action is complex|surplus |active |IF |not |or |and |\(|\)| '
         for reaction in data['covert2002_regulatory_proteins']:
             reg_logic = reaction['Regulatory Logic']
             reg_logic_parsed = re.split(regex_split, reg_logic)  # split string to remove patterns in regex_split
-            reg_logic_parsed = list(filter(None, reg_logic_parsed))  # remove empty strings
+            reg_logic_parsed = set(filter(None, reg_logic_parsed))  # remove empty strings
             internal_molecules.update(reg_logic_parsed)
 
         # remove external molecules from internal_molecules
-        external_molecules = set([mol_id
-            for mol_id in internal_molecules if '[e]' in mol_id])
+        external_molecules = set(mol_id for mol_id in internal_molecules if '[e]' in mol_id)
         internal_molecules.difference_update(external_molecules)
-
         external_molecules = [mol.replace('[e]','') for mol in external_molecules]
 
-        return list(internal_molecules), list(external_molecules)
+
+        return list(internal_molecules), external_molecules

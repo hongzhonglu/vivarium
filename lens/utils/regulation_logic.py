@@ -9,7 +9,7 @@ pp = pprint.PrettyPrinter(indent=4)
 
 ignored_statements = ['action is complex']
 
-def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
+def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
 def group(): return Kwd("("), logic, Kwd(")")
 def term(): return Optional(Kwd("not")), [symbol, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
