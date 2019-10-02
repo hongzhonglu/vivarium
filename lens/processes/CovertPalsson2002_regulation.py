@@ -6,7 +6,7 @@ import csv
 
 from lens.actor.process import Process
 from lens.data.spreadsheets import load_tsv
-from lens.utils.regulation_logic import build_rule
+import lens.utils.regulation_logic as rl
 
 TSV_DIALECT = csv.excel_tab
 
@@ -83,9 +83,11 @@ class Regulation(Process):
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
             data[attrName] = load_tsv(DATA_DIR, filename)
 
-        rc = RegulatoryLogic()
-        self.regulation_logic = {reaction['Protein']: rc.get_logic_function(reaction['Regulatory Logic'])
+        self.regulation_logic = {reaction['Protein']: rl.build_rule(reaction['Regulatory Logic'])
             for reaction in data['covert2002_regulatory_proteins']}
+
+        import ipdb;
+        ipdb.set_trace()
 
         # get all molecules listed in "Regulatory Logic" TODO -- make this a re-usable function (for metabolism too)q
         internal_molecules = set()
