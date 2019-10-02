@@ -278,12 +278,11 @@ class Compartment(object):
         updates = {}
         for name, process in self.processes.iteritems():
             update = process.update_for(timestep)
-            for role, deltas in update.iteritems():
+            for role, update_dict in update.iteritems():
                 key = self.topology[name][role]
-
                 if not updates.get(key):
                     updates[key] = []
-                updates[key].append(deltas)
+                updates[key].append(update_dict)
 
         for key, update in updates.iteritems():
             self.states[key].apply_updates(update)

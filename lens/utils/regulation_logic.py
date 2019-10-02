@@ -7,7 +7,7 @@ from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython, Kwd, Re
 
 pp = pprint.PrettyPrinter(indent=4)
 
-ignored_statements = ['action is complex']
+ignored_statements = ['action is complex', '']
 
 def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
 def group(): return Kwd("("), logic, Kwd(")")
@@ -68,7 +68,7 @@ def evaluate_rule(tree, env):
 rule_parser = ParserPython(rule)
 
 def null_fun(env):
-    return None
+    return False
 
 def build_rule(expression):
     # type: (str) -> Callable[Dict[str, bool], bool]

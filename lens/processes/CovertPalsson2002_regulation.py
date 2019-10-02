@@ -38,6 +38,7 @@ def merge_dicts(x, y):
 
 class Regulation(Process):
     def __init__(self, initial_parameters={}):
+        self.e_key = '[e]'
         self.internal, self.external = self.load_data()
 
         roles = {
@@ -55,15 +56,14 @@ class Regulation(Process):
             - internal (dict) -- internal states with default initial values
         '''
 
-        # TODO -- states should be boolean?
+        # TODO -- which states should be boolean?
         internal_molecules = {key: 0 for key in self.internal}
         external_molecules = {key: 0 for key in self.external}
-
-        internal = {'volume': 1}
+        internal = merge_dicts(internal_molecules, {'volume': 1})
 
         return {
             'external': external_molecules,
-            'internal': internal.update(internal_molecules)}
+            'internal': internal}
 
     def default_emitter_keys(self):
         keys = {
@@ -78,28 +78,33 @@ class Regulation(Process):
         The default updater is to pass a delta'''
 
         updater_types = {
-            'internal': {},
-            'external': {mol_id: 'accumulate' for mol_id in self.external}}  # all external values use default 'delta' udpater
+            'internal': {state_id: 'set' for state_id in self.regulation_logic.keys()},  # set updater for boolean values
+            'external': {state_id: 'accumulate' for state_id in self.external}}  # all external values use default 'delta' udpater
 
         return updater_types
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        external_state = states['external']
-
+        external_state = self.add_e_to_dict(states['external'])
         total_state = merge_dicts(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
 
-        # TODO -- passing boolean_state sometimes returns TypeError: 'bool' object is not callable
-        regulatory_state = {mol_id: regulatory_logic(boolean_state) for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
-
-        update = regulatory_state
-
+        regulatory_state = {mol_id: regulatory_logic(boolean_state)
+                            for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
 
         import ipdb; ipdb.set_trace()
 
+        return {'internal': regulatory_state, 'external': {}}
 
-        return update
+    def add_e_to_dict(self, molecules_dict):
+        ''' convert external state to compatible format by adding e_key'''
+        e_dict = {}
+        for key, value in molecules_dict.iteritems():
+            if self.e_key in key:
+                e_dict[key] = value
+            else:
+                e_dict[key + self.e_key] = value
+        return e_dict
 
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
@@ -115,15 +120,19 @@ class Regulation(Process):
         internal_molecules = set()
         regex_split = 'action is complex|surplus |active |IF |not |or |and |\(|\)| '
         for reaction in data['covert2002_regulatory_proteins']:
+            protein = set([reaction['Protein']])
             reg_logic = reaction['Regulatory Logic']
             reg_logic_parsed = re.split(regex_split, reg_logic)  # split string to remove patterns in regex_split
             reg_logic_parsed = set(filter(None, reg_logic_parsed))  # remove empty strings
+
+            # add protein and regulatory molecules to set
+            internal_molecules.update(protein)
             internal_molecules.update(reg_logic_parsed)
 
         # remove external molecules from internal_molecules
-        external_molecules = set(mol_id for mol_id in internal_molecules if '[e]' in mol_id)
+        external_molecules = set(mol_id for mol_id in internal_molecules if self.e_key in mol_id)
         internal_molecules.difference_update(external_molecules)
-        external_molecules = [mol.replace('[e]','') for mol in external_molecules]
+        external_molecules = [mol.replace(self.e_key,'') for mol in external_molecules]
 
 
         return list(internal_molecules), external_molecules

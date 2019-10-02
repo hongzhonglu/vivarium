@@ -10,7 +10,7 @@ from lens.data.spreadsheets import load_tsv
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.environment.make_media import Media
-from lens.utils.regulation_logic import build_rule
+import lens.utils.regulation_logic as rl
 
 
 DATA_DIR = os.path.join('lens', 'data', 'flat')
@@ -251,7 +251,7 @@ class Metabolism(Process):
 
         # make regulatory logic functions
         self.regulation_functions = {
-            reaction['Reaction']: build_rule(reaction['Regulatory Logic'])
+            reaction['Reaction']: rl.build_rule(reaction['Regulatory Logic'])
             for reaction in data['covert2002_reactions']}
 
         self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
