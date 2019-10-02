@@ -128,7 +128,7 @@ class State(object):
                 state_dict,
                 self.new_state[index],
                 value)
- 
+
             for other_key, other_value in other_updates.iteritems():
                 other_index = self.index_for(other_key)
                 self.new_state[other_index] = other_value
