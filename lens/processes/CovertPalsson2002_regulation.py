@@ -4,7 +4,7 @@ import os
 import re
 import csv
 
-from lens.actor.process import Process
+from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
 import lens.utils.regulation_logic as rl
 
@@ -31,10 +31,6 @@ def get_molecules_from_reactions(stoichiometry):
         molecules.update(stoich.keys())
     return list(molecules)
 
-def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
 
 class Regulation(Process):
     def __init__(self, initial_parameters={}):
@@ -59,7 +55,7 @@ class Regulation(Process):
         # TODO -- which states should be boolean?
         internal_molecules = {key: 0 for key in self.internal}
         external_molecules = {key: 0 for key in self.external}
-        internal = merge_dicts(internal_molecules, {'volume': 1})
+        internal = dict_merge(internal_molecules, {'volume': 1})
 
         return {
             'external': external_molecules,
@@ -86,13 +82,11 @@ class Regulation(Process):
     def next_update(self, timestep, states):
         internal_state = states['internal']
         external_state = self.add_e_to_dict(states['external'])
-        total_state = merge_dicts(internal_state, external_state)
+        total_state = dict_merge(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
 
         regulatory_state = {mol_id: regulatory_logic(boolean_state)
                             for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
-
-        import ipdb; ipdb.set_trace()
 
         return {'internal': regulatory_state, 'external': {}}
 

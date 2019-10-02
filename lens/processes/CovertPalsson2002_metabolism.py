@@ -5,7 +5,7 @@ import re
 from scipy import constants
 import numpy as np
 
-from lens.actor.process import Process
+from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
@@ -46,11 +46,6 @@ def get_molecules_from_stoich(stoichiometry):
     for reaction, stoich in stoichiometry.iteritems():
         molecules.update(stoich.keys())
     return list(molecules)
-
-def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
 
 
 class Metabolism(Process):
@@ -100,7 +95,7 @@ class Metabolism(Process):
 
         # add reaction fluxes to internal state
         rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
-        internal_state = merge_dicts(internal, rxns)
+        internal_state = dict_merge(internal, rxns)
 
         return {
             'external': external,
@@ -164,7 +159,7 @@ class Metabolism(Process):
         rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
 
         update = {
-            'internal': merge_dicts(growth, rxn_dict),
+            'internal': dict_merge(growth, rxn_dict),
             'external': environment_deltas,
         }
 
