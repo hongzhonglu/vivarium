@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-# import copy
 import collections
 import numpy as np
 import lens.actor.emitter as emit
