@@ -224,5 +224,5 @@ try:
             self._model.solve()
 
             self._solved = True
-except:
+except ImportError:
 	pass
