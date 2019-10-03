@@ -145,11 +145,13 @@ class Metabolism(Process):
         flux_bounds = np.array([self.default_flux_bounds for rxn in self.reaction_ids])
         for rxn_index, rxn_id in enumerate(self.reaction_ids):
             if regulatory_state.get(rxn_id) is False:
-                flux_bounds[rxn_index] = 0.0
+                flux_bounds[rxn_index] = [0.0, 0.0]
+            # set lower bound to 0
+            flux_bounds[rxn_index, 0] = 0 # TODO -- if negative, lower bounds should be set bound on reverse reactions
 
         self.fba.setReactionFluxBounds(
             self.reaction_ids,
-            lowerBounds=0.0,  # flux_bounds[:,0], # TODO -- if negative, lower bounds should be set bound on reverse reactions
+            lowerBounds=flux_bounds[:,0],
             upperBounds=flux_bounds[:,1])
 
         # TODO -- should units have time in denominator?
