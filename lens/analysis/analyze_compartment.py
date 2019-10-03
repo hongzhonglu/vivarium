@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
