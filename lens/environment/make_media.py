@@ -121,6 +121,12 @@ class Media(object):
             media = self.remove_units(media)
         return media
 
+    def add_media(self, media, new_media_id = str(uuid.uuid1())):
+        '''add a media to stock'''
+        # TODO -- check/add units?
+        self.stock_media[new_media_id] = media
+        return new_media_id
+
     def make_recipe(self, recipe, units=False):
         '''make a single media recipe'''
 

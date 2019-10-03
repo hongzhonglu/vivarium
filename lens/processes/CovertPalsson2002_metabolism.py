@@ -135,7 +135,7 @@ class Metabolism(Process):
 
         # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state
         exchange_molecules = self.fba.getExternalMoleculeIDs()
-        external_concentrations = [external_state.get(molID.replace(self.e_key, ''), 0.0)
+        external_concentrations = [external_state.get(molID, 0.0)
                                    for molID in exchange_molecules] * CONC_UNITS
 
         # set external_concentrations in FBA (mmol/L)
