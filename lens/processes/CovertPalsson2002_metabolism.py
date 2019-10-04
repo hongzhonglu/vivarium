@@ -16,10 +16,11 @@ import lens.utils.regulation_logic as rl
 DATA_DIR = os.path.join('lens', 'data', 'flat')
 LIST_OF_FILENAMES = (
     "covert2002_reactions.tsv",
-    "covert2002_maintenance_biomass_fluxes.tsv",
     "covert2002_transport.tsv",
     "covert2002_exchange_fluxes.tsv",
+    "covert2002_maintenance_biomass_fluxes.tsv",
     "covert2002_GLC_G6P_flux_bounds.tsv",
+    "covert2002_ecoli_metabolism_met_mw.tsv",
     )
 
 COUNTS_UNITS = units.mmol
@@ -129,9 +130,16 @@ class Metabolism(Process):
 
         internal_state = states['internal']
         external_state = self.add_e_to_dict(states['external'])
-        # volume = internal_state['volume'] * units.fL  # TODO -- volume deriver can do this if composed in
+
+        #convert external state from mmol/L to ug/L
+        for mol_id, value in external_state.iteritems():
+            conc = value * units.mmol / units.L
+            mw = self.met_mw[mol_id] * (units.g / units.mol)
+            new_value = (conc * mw.to('g/mmol')).to('ug/L').magnitude
+            external_state[mol_id] = new_value
+
         mass = internal_state['mass'] * units.fg
-        volume = mass.to('g') / self.density
+        volume = mass.to('g') / self.density # TODO -- volume deriver can do this if composed in
 
         # get the regulatory state of the reactions TODO -- are there reversible regulated reactions?
         total_state = dict_merge(internal_state, external_state)
@@ -164,8 +172,10 @@ class Metabolism(Process):
         exchange_fluxes = CONC_UNITS * self.fba.getExternalExchangeFluxes() * timestep
 
         # calculate growth rate, update biomass mass is in g/L
-        growth_rate = self.fba.getObjectiveValue()  # TODO Covert 2008 has objective*growRateScale
-        new_mass = growth_rate # {'mass': (mass * np.exp(growth_rate * timestep)).magnitude}
+        growth_rate = CONC_UNITS * self.fba.getObjectiveValue()  # TODO Covert 2008 has objective*growRateScale
+
+        # todo -- convert growth rate units?
+        new_mass = {'mass': (mass * np.exp(growth_rate.magnitude * timestep)).magnitude}
 
          # get the delta counts for environmental molecules
         mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
@@ -180,6 +190,9 @@ class Metabolism(Process):
         update = {
             'internal': dict_merge(new_mass, rxn_dict),
             'external': environment_deltas}
+
+        import ipdb;
+        ipdb.set_trace()
 
         return update
 
@@ -238,6 +251,10 @@ class Metabolism(Process):
         all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
         external_molecules = self.remove_e_key([mol_id for mol_id in all_molecules if self.e_key in mol_id])
         internal_molecules = [mol_id for mol_id in all_molecules if self.e_key not in mol_id]
+
+        # get molecular weights
+        self.met_mw = {molecule['molecule id']: molecule['molecular weight']
+                       for molecule in data['covert2002_ecoli_metabolism_met_mw']}
 
         # reaction ids for tracking fluxes
         self.reaction_ids = stoichiometry.keys()

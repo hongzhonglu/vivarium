@@ -1,5 +1,5 @@
 "Reaction"	"Protein"	"Gene"	"Stoichiometry"	"Regulatory Logic"	"Reversible"
-"ACEA"		"aceA"	{"ICIT": -1, "GLX": 1, "SUCC":1}	"IF not (IclR)"	false
+"ACEA"		"aceA"	{"ICIT": -1, "GLX": 1, "SUC":1}	"IF not (IclR)"	false
 "ACEB"		"aceB"	{"ACCOA": -1, "GLX": -1, "COA": 1, "MAL": 1}	"IF not (ArcA or IclR)"	false
 "ACEE"		"aceEF, lpdA"	{"PYR": -1, "COA": -1, "NAD": -1, "NADH": 1, "CO2": 1, "ACCOA": 1}	"IF (not PdhR)"	false
 "ACKAR"		"ackA"	{"ACTP": -1, "ADP": -1, "ATP": 1, "AC": 1}		true
@@ -18,7 +18,7 @@
 "FBP"		"fbp"	{"FDP": -1, "F6P": 1, "PI": 1}		false
 "FDNG"		"fdnGHI"	{"FOR": -1, "Q": -1, "QH2": 1, "CO2": 1, "HEXT": 2}	"IF FNR"	false
 "FDOH"		"fdoIHG"	{"FOR": -1, "Q": -1, "QH2": 1, "CO2": 1, "HEXT": 2}		false
-"FRDA"		"frdABCD"	{"FUM": -1, "FADH": -1, "SUCC": 1, "FAD": 1}	"IF FNR or DcuR"	false
+"FRDA"		"frdABCD"	{"FUM": -1, "FADH": -1, "SUC": 1, "FAD": 1}	"IF FNR or DcuR"	false
 "FUMAR"		"fumA"	{"FUM": -1, "MAL": 1}	"IF not (ArcA or FNR)"	true
 "FUMBR"		"fumB"	{"FUM": -1, "MAL": 1}	"IF FNR"	true
 "FUMCR"		"fumC"	{"FUM": -1, "MAL": 1}	"IF (superoxide_radicals)"	true
@@ -65,11 +65,11 @@
 "RPER"		"rpe"	{"RL5P": -1, "X5P": 1}		true
 "RPIAR"		"rpiA"	{"RL5P": -1, "R5P": 1}		true
 "RPIBR"		"rpiB"	{"RL5P": -1, "R5P": 1}	"IF not RpiR"	true
-"SDHA1"		"sdhABCD"	{"SUCC": -1, "FAD": -1, "FADH": 1, "FUM": 1}	"IF not (ArcA or FNR)"	false
+"SDHA1"		"sdhABCD"	{"SUC": -1, "FAD": -1, "FADH": 1, "FUM": 1}	"IF not (ArcA or FNR)"	false
 "SDHA2"		"sdhABCD"	{"FADH": -1, "Q": -1, "FAD": 1, "QH2": 1}	"IF not (ArcA or FNR)"	true
 "SFCA"		"sfcA"	{"MAL": -1, "NAD": -1, "CO2": 1, "NADH": 1, "PYR": 1}		false
 "SUCA"		"sucAB, lpdA"	{"AKG": -1, "NAD": -1, "COA": -1, "CO2": 1, "NADH": 1, "SUCCOA": 1}	"IF (not PdhR)"	false
-"SUCCR"		"sucCD"	{"SUCCOA": -1, "ADP": -1, "PI": -1, "ATP": 1, "COA": 1, "SUCC": 1}		true
+"SUCCR"		"sucCD"	{"SUCCOA": -1, "ADP": -1, "PI": -1, "ATP": 1, "COA": 1, "SUC": 1}		true
 "TALAR"		"talA"	{"T3P1": -1, "S7P": -1, "E4P": 1, "F6P": 1}		true
 "TALBR"		"talB"	{"T3P1": -1, "S7P": -1, "E4P": 1, "F6P": 1}		true
 "TKTA1R"		"tktA"	{"R5P": -1, "X5P": -1, "T3P1": 1, "S7P": 1}		true
