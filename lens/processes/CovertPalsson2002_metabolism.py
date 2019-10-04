@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 from scipy import constants
 import numpy as np
 
@@ -29,6 +28,9 @@ MASS_UNITS = units.g
 TIME_UNITS = units.s
 CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 
+INITIAL_INTERNAL_STATE = {
+    'mass': 1339,  # fg. covert 2002 uses 0.032 g/L
+    'volume': 1}
 
 # helper functions
 def get_reverse(reactions):
@@ -42,7 +44,6 @@ def get_reverse(reactions):
     return reverse_stoichiometry
 
 def get_molecules_from_stoich(stoichiometry):
-    # TODO -- merge with rate_law_utilities.get_molecules_from_stoich
     molecules = set()
     for reaction, stoich in stoichiometry.iteritems():
         molecules.update(stoich.keys())
@@ -53,12 +54,13 @@ class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.e_key = '[e]'
         self.nAvogadro = constants.N_A * 1/units.mol
+        self.density = 1100 * units.g/units.L
 
         # load data from files
         data = self.load_data()
 
         ## Initialize FBA
-        objective = {"mass": 1.0}
+        objective = data['objective']
         external_mol_ids_e = self.add_e_key(self.external_molecule_ids)
 
         self.fba = FluxBalanceAnalysis(
@@ -92,7 +94,7 @@ class Metabolism(Process):
             external = make_media.get_saved_media('GLC_G6P')
         elif glc_lct:
             external = make_media.get_saved_media('GLC_LCT')
-        internal = {'mass': 0.032, 'volume': 1}
+        internal = INITIAL_INTERNAL_STATE
 
         # add reaction fluxes to internal state
         rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
@@ -105,7 +107,7 @@ class Metabolism(Process):
     def default_emitter_keys(self):
         keys = {
             'internal': ['mass', 'lacI'] + self.transport_ids, #self.reaction_ids,
-            'external': ['GLC', 'LAC', 'ACET']
+            'external': ['GLC', 'LAC', 'LCTS', 'ACET']
         }
         return keys
 
@@ -114,8 +116,11 @@ class Metabolism(Process):
         define the updater type for each state in roles.
         The default updater is to pass a delta'''
 
+        reaction_updaters = {rxn_id: 'set' for rxn_id in self.reaction_ids}
+        mass_updater = {'mass': 'set'}
+
         updater_types = {
-            'internal': {rxn_id: 'set' for rxn_id in self.reaction_ids},  # reactions set values directly
+            'internal': dict_merge(reaction_updaters, mass_updater),
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
 
         return updater_types
@@ -124,10 +129,11 @@ class Metabolism(Process):
 
         internal_state = states['internal']
         external_state = self.add_e_to_dict(states['external'])
-        volume = internal_state['volume'] * units.fL
+        # volume = internal_state['volume'] * units.fL  # TODO -- volume deriver can do this if composed in
+        mass = internal_state['mass'] * units.fg
+        volume = mass.to('g') / self.density
 
-        # get the regulatory state of the reactions
-        # TODO -- what to do about reversible regulated reactions?
+        # get the regulatory state of the reactions TODO -- are there reversible regulated reactions?
         total_state = dict_merge(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
         regulatory_state = {mol_id: regulatory_logic(boolean_state)
@@ -147,23 +153,22 @@ class Metabolism(Process):
             if regulatory_state.get(rxn_id) is False:
                 flux_bounds[rxn_index] = [0.0, 0.0]
             # set lower bound to 0
-            flux_bounds[rxn_index, 0] = 0 # TODO -- if negative, lower bounds should be set bound on reverse reactions
+            flux_bounds[rxn_index, 0] = 0 # TODO -- if negative, lower bounds should set bound on reverse reactions
 
         self.fba.setReactionFluxBounds(
             self.reaction_ids,
             lowerBounds=flux_bounds[:,0],
             upperBounds=flux_bounds[:,1])
 
-        # TODO -- should units have time in denominator?
+        # get exchanges
         exchange_fluxes = CONC_UNITS * self.fba.getExternalExchangeFluxes() * timestep
-        objective_value = CONC_UNITS * self.fba.getObjectiveValue() * timestep
 
-        growth = {'mass': objective_value.to(CONC_UNITS).magnitude}
+        # calculate growth rate, update biomass mass is in g/L
+        growth_rate = self.fba.getObjectiveValue()  # TODO Covert 2008 has objective*growRateScale
+        new_mass = growth_rate # {'mass': (mass * np.exp(growth_rate * timestep)).magnitude}
 
-        # update state based on internal and external concentrations
-        mmolToCount = self.nAvogadro.to('1/mmol') * volume.to('L')  # convert volume fL to L
-
-        # Get the delta counts for environmental molecules
+         # get the delta counts for environmental molecules
+        mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
         delta_exchange_counts = (mmolToCount * exchange_fluxes).astype(int)
         environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))  # TODO -- refactor self.external_molecule_ids
 
@@ -173,9 +178,8 @@ class Metabolism(Process):
         rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
 
         update = {
-            'internal': dict_merge(growth, rxn_dict),
-            'external': environment_deltas,
-        }
+            'internal': dict_merge(new_mass, rxn_dict),
+            'external': environment_deltas}
 
         return update
 
@@ -200,7 +204,6 @@ class Metabolism(Process):
         save to data dictionary and then assign to class variables
 
         TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
-        TODO -- remove Growth reaction from covert2002_exchange_fluxes?
         '''
 
         data = {}
@@ -212,7 +215,7 @@ class Metabolism(Process):
         stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_reactions']}
 
-        # additional stoichiomteries
+        # additional stoichiometries
         transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
             for reaction in data['covert2002_transport']}
         maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
@@ -251,7 +254,6 @@ class Metabolism(Process):
             if rule({}):
                 self.regulation_logic[reaction_id] = rule
 
-
         self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
             for mol_id in self.external_molecule_ids}
 
@@ -260,7 +262,8 @@ class Metabolism(Process):
         self.default_flux_bounds = flux_bounds['default']
 
         return {
-            'internal_state_ids': internal_molecules + self.reaction_ids + ['volume'],
+            'internal_state_ids': internal_molecules + self.reaction_ids + ['volume', 'mass'],
             'external_state_ids': external_molecules,
             'stoichiometry': stoichiometry,
+            'objective': {'mass': 1},  #maintenance_stoichiometry['VGRO'],
         }
