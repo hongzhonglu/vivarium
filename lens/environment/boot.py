@@ -208,7 +208,8 @@ def boot_measp(agent_id, agent_type, agent_config):
                    '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
                    '300 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '500 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
-                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L'
+                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1000 end'
 
     make_media = Media()
     timeline = make_media.make_timeline(timeline_str)
@@ -241,6 +242,16 @@ def boot_measp(agent_id, agent_type, agent_config):
         'patches_per_edge': 50,
     }
     boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
