@@ -15,10 +15,7 @@ DEFAULT_PARAMETERS = {
     'k_z': 30.0,  # / self.CheZ,
     'gamma_Y': 0.1,
     'k_s': 0.45,  # scaling coefficient
-
-    'receptor_adapt_rate': 1000,
     'adaptPrecision': 0.3,  # set to 1.0 for perfect adaptation
-
     # motor
     'mb_0': 0.65,
     'n_motors': 5,
@@ -27,7 +24,6 @@ DEFAULT_PARAMETERS = {
 
 # initial concentrations
 initial = {
-    'CheR_WT': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
     'CheB_WT': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
 }
 
@@ -78,11 +74,14 @@ class FlagellaActivity(Process):
     def next_update(self, timestep, states):
 
         internal = states['internal']
-        external = states['external']
-        P_on = internal['chemoreceptor_P_on']
+        # external = states['external']
+        P_on = internal['chemoreceptor_P_on'] # this comes from chemoreceptor
         motor_state = internal['motor_state']
         CheZ = internal['CheZ']
         CheY_tot = internal['CheY_tot']
+        CheR = internal['CheR']
+        CheB = internal['CheB']
+
 
         # CheY phosphorylation, scaled to 1.0 at rest
         # self.CheA_P = self.CheA_tot * self.P_on * k_A / (self.P_on * k_A + k_y * self.CheY_tot)  # amount of phosphorylated CheA
@@ -93,6 +92,7 @@ class FlagellaActivity(Process):
 
         # CheB phosphorylation
         # TODO!
+        # CheB =
 
 
         ## Motor switching
@@ -121,11 +121,14 @@ class FlagellaActivity(Process):
             else:
                 motile_force = self.tumble()
 
-
         update = {
-            'motile_force': motile_force,
-            'motor_state': motor_state,
-            'CheY_P': CheY_P}
+            internal: {
+                'motile_force': motile_force,
+                'motor_state': motor_state,
+                'CheY_P': CheY_P,
+                'CheR': CheR,
+                'CheB': CheB,}
+        }
 
         return update
 
