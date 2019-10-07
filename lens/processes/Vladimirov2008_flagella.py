@@ -31,7 +31,7 @@ class FlagellaActivity(Process):
     def __init__(self, initial_parameters={}):
 
         roles = {
-            'internal': [],
+            'internal': ['chemoreceptor_P_on', 'CheZ', 'CheY_tot', 'CheR', 'CheB', 'motor_state'],
             'external': []
         }
         parameters = DEFAULT_PARAMETERS
@@ -47,7 +47,7 @@ class FlagellaActivity(Process):
         '''
 
         internal = {'chemoreceptor_P_on': 0.5,
-                    'motor_state': 'tumble'}
+                    'motor_state': 1} # motor_state 1 for tumble, 0 for run
 
         return {
             'external': {},
@@ -100,26 +100,28 @@ class FlagellaActivity(Process):
         ccw_motor_bias = self.parameters['mb_0'] / (CheY_P/CheY_tot * (1 - self.parameters['mb_0']) + self.parameters['mb_0'])
         cww_to_cw = self.parameters['cw_to_ccw'] * (1 / ccw_motor_bias - 1)
 
-
-        if motor_state is 'run':
+        motile_force = []
+        if motor_state == 0:  # 0 for run
             # switch to tumble?
             prob_switch = cww_to_cw * timestep
             print('prob_switch ' + str(prob_switch))
             if prob_switch <= np.random.random(1)[0]:
-                motor_state = 'tumble'
+                motor_state = 1  # switch to tumble
                 motile_force = self.tumble()
             else:
                 motile_force = self.run()
 
-        elif motor_state is 'tumble':
+        elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = self.parameters['cw_to_ccw'] * timestep
             print('prob_switch ' + str(prob_switch))
             if prob_switch <= np.random.random(1)[0]:
-                motor_state = 'run'
+                motor_state = 0  # switch to run
                 motile_force = self.run()
             else:
                 motile_force = self.tumble()
+
+        # import ipdb; ipdb.set_trace()
 
         update = {
             internal: {
