@@ -31,6 +31,7 @@ from lens.processes.Vladimirov2008_flagella import FlagellaActivity
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
 from lens.composites.growth_division import initialize_growth_division
+from lens.composites.Vladimirov2008 import initialize_vladimirov2008
 
 def wrap_boot(initialize, initial_state):
     def boot(agent_id, agent_type, agent_config):
@@ -76,7 +77,8 @@ class BootCompartment(BootAgent):
             'flagella': wrap_boot(wrap_initialize(FlagellaActivity), {'volume': 1.0}),
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
-            'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0})
+            'covert': wrap_boot(initialize_covert2008, {'volume': 1.0}),
+            'vladimirov': wrap_boot(initialize_vladimirov2008, {'volume': 1.0})
         }
 
 def run():
