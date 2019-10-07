@@ -157,7 +157,7 @@ def boot_custom_small(agent_id, agent_type, agent_config):
         "GLC": 12.2087 * CONC_UNITS}
     media_id = make_media.add_media(custom_media, media_id)
 
-    timeline_str = '0 {}, 7200 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
     print("Media condition: {}".format(media_id))

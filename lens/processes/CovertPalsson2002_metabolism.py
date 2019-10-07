@@ -63,10 +63,13 @@ class Metabolism(Process):
         ## Initialize FBA
         objective = data['objective']
         external_mol_ids_e = self.add_e_key(self.external_molecule_ids)
+        external_molecular_masses = {mol_id + self.e_key: data['molecular_weights'][mol_id]
+                                     for mol_id in self.external_molecule_ids}
 
         self.fba = FluxBalanceAnalysis(
             reactionStoich=data['stoichiometry'],
             externalExchangedMolecules=external_mol_ids_e,
+            moleculeMasses=external_molecular_masses,
             objective=objective,
             objectiveType="standard",
             solver="glpk-linear",
@@ -129,17 +132,17 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = self.add_e_to_dict(states['external'])
+        external_state = self.add_e_to_dict(states['external'])  # (mmol/L)
 
-        #convert external state from mmol/L to ug/L
-        for mol_id, value in external_state.iteritems():
-            conc = value * units.mmol / units.L
-            mw = self.met_mw[mol_id] * (units.g / units.mol)
-            new_value = (conc * mw.to('g/mmol')).to('ug/L').magnitude
-            external_state[mol_id] = new_value
+        # #convert external state from mmol/L to ug/L (this was done in Covert 2008)
+        # for mol_id, value in external_state.iteritems():
+        #     conc = value * units.mmol / units.L
+        #     mw = self.met_mw[mol_id] * (units.g / units.mol)
+        #     new_value = (conc * mw.to('g/mmol')).to('ug/L')
+        #     external_state[mol_id] = new_value.magnitude
 
         mass = internal_state['mass'] * units.fg
-        volume = mass.to('g') / self.density # TODO -- volume deriver can do this if composed in
+        volume = mass.to('g') / self.density # TODO -- volume deriver can do this if composed with process
 
         # get the regulatory state of the reactions TODO -- are there reversible regulated reactions?
         total_state = dict_merge(internal_state, external_state)
@@ -149,11 +152,10 @@ class Metabolism(Process):
 
         # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state
         exchange_molecules = self.fba.getExternalMoleculeIDs()
-        external_concentrations = [external_state.get(molID, 0.0)
-                                   for molID in exchange_molecules] * CONC_UNITS
+        external_concentrations = [external_state.get(molID, 0.0) for molID in exchange_molecules]
 
-        # set external_concentrations in FBA (mmol/L)
-        self.fba.setExternalMoleculeLevels(external_concentrations.to(CONC_UNITS).magnitude)
+        # set external_concentrations in FBA
+        self.fba.setExternalMoleculeLevels(external_concentrations)
 
         # set reaction flux bounds, based on default bounds and regulatory_state
         flux_bounds = np.array([self.default_flux_bounds for rxn in self.reaction_ids])
@@ -172,7 +174,7 @@ class Metabolism(Process):
         exchange_fluxes = CONC_UNITS * self.fba.getExternalExchangeFluxes() * timestep
 
         # calculate growth rate, update biomass mass is in g/L
-        growth_rate = CONC_UNITS * self.fba.getObjectiveValue()  # TODO Covert 2008 has objective*growRateScale
+        growth_rate = CONC_UNITS * (self.fba.getObjectiveValue() - 1) # TODO Covert 2008 has objective*growRateScale
 
         # todo -- convert growth rate units?
         new_mass = {'mass': (mass * np.exp(growth_rate.magnitude * timestep)).magnitude}
@@ -190,9 +192,6 @@ class Metabolism(Process):
         update = {
             'internal': dict_merge(new_mass, rxn_dict),
             'external': environment_deltas}
-
-        import ipdb;
-        ipdb.set_trace()
 
         return update
 
@@ -253,7 +252,7 @@ class Metabolism(Process):
         internal_molecules = [mol_id for mol_id in all_molecules if self.e_key not in mol_id]
 
         # get molecular weights
-        self.met_mw = {molecule['molecule id']: molecule['molecular weight']
+        met_mw = {molecule['molecule id']: molecule['molecular weight']
                        for molecule in data['covert2002_ecoli_metabolism_met_mw']}
 
         # reaction ids for tracking fluxes
@@ -283,4 +282,5 @@ class Metabolism(Process):
             'external_state_ids': external_molecules,
             'stoichiometry': stoichiometry,
             'objective': {'mass': 1},  #maintenance_stoichiometry['VGRO'],
+            'molecular_weights': met_mw,
         }
