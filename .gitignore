@@ -12,6 +12,7 @@ pom.xml.asc
 .hgignore
 .hg/
 /wholecell_lens.egg-info
+/lens_interface.egg-info
 
 out/
 .idea/
