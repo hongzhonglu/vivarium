@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_initial_states
+from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
 from lens.actor.emitter import get_emitter, configure_emitter
 from lens.environment.lattice_compartment import LatticeCompartment
 

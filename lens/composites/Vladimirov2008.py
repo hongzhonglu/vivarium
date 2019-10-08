@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_initial_states
+from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
 from lens.actor.emitter import get_emitter, configure_emitter
 from lens.environment.lattice_compartment import LatticeCompartment
 
@@ -9,6 +9,8 @@ from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_flagella import FlagellaActivity
 from lens.processes.derive_volume import DeriveVolume
 
+
+exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
 def initialize_vladimirov2008(config):
     config.update({
@@ -29,11 +31,33 @@ def initialize_vladimirov2008(config):
         'deriver': deriver}
 
     # initialize the states
-    initial_state = merge_initial_states(processes)
-    states = {
-        'environment': State(initial_state['external']),
-        'cell': State(initial_state['internal'])}
+    default_states = merge_default_states(processes)
+    default_updaters = merge_default_updaters(processes)
 
+    # get environment ids, and make exchange_ids for external state
+    environment_ids = []
+    initial_exchanges = {}
+    for process_id, process in processes.iteritems():
+        roles = {role: {} for role in process.roles.keys()}
+        initial_exchanges.update(roles)
+
+    for role, state_ids in default_updaters.iteritems():
+        for state_id, updater in state_ids.iteritems():
+            if updater is 'accumulate':
+                environment_ids.append(state_id)
+                initial_exchanges[role].update({state_id + exchange_key: 0.0})
+
+    # set states according to the compartment_roles mapping.
+    # This will not generalize to composites with processes that have different roles
+    compartment_roles = {
+        'external': 'environment',
+        'internal': 'cell'}
+
+    states = {
+        compartment_roles[role]: State(
+            initial_state=dict_merge(default_states.get(role, {}), initial_exchanges.get(role, {})),
+            updaters=default_updaters.get(role, {}))
+        for role in default_states.keys()}
     # configure the states to the roles for each process
     topology = {
         'receptor': {
@@ -54,9 +78,9 @@ def initialize_vladimirov2008(config):
         'emitter': emitter,
         'environment': 'environment',
         'compartment': 'cell',
-        'exchange_key': config['exchange_key'],
-        'environment_ids': initial_state['environment_ids'],
-        'environment_deltas': initial_state['environment_deltas']}
+        'exchange_key': exchange_key,
+        'environment_ids': environment_ids,
+    }
 
     # create the compartment
     return LatticeCompartment(processes, states, options)
