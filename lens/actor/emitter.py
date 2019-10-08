@@ -115,10 +115,12 @@ class DatabaseEmitter(Emitter):
         self.configuration = getattr(self.db, 'configuration')
         create_indexes(self.history)
 
-    def emit(self, data):
+    def emit(self, data_config):
+        data = data_config['data']
         data.update({
             'simulation_id': self.simulation_id,
             'experiment_id': self.experiment_id})
 
-        table = getattr(self.db, data['table'])
-        table.insert_one(data['data'])
+        table = getattr(self.db, data_config['table'])
+        table.insert_one(data)
+
