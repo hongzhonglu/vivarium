@@ -114,7 +114,7 @@ class State(object):
             return
         keys, values = npize(update)
         index = self.index_for(keys)
-        state_dict = dict(zip(self.keys,self.state))
+        state_dict = dict(zip(self.keys, self.state))
 
         for index, key, value in zip(index, keys, values):
             # updater can be a function or a key into the updater library
@@ -122,21 +122,31 @@ class State(object):
             if not callable(updater):
                 updater = updater_library[updater]
 
-            self.state[index], other_updates = updater(
+            self.new_state[index], other_updates = updater(
                 key,
                 state_dict,
-                self.state[index],
+                self.new_state[index],
                 value)
 
             for other_key, other_value in other_updates.iteritems():
                 other_index = self.index_for(other_key)
-                self.state[other_index] = other_value
+                self.new_state[other_index] = other_value
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
 
         for update in updates:
             self.apply_update(update)
+
+    def prepare(self):
+        ''' Prepares for state updates by creating new copy of existing state '''
+
+        self.new_state = np.copy(self.state)
+
+    def proceed(self):
+        ''' Once all updates are complete, swaps out state for newly calculated state '''
+
+        self.state = self.new_state
 
     def state_for(self, keys):
         ''' Get the current state of these keys as a dict of values. '''
@@ -293,8 +303,14 @@ class Compartment(object):
                     updates[key] = []
                 updates[key].append(update_dict)
 
+        for key in self.states.keys():
+            self.states[key].prepare()
+
         for key, update in updates.iteritems():
             self.states[key].apply_updates(update)
+
+        for key in self.states.keys():
+            self.states[key].proceed()
 
         self.run_derivers(timestep)
 
@@ -395,8 +411,8 @@ def test_compartment():
         'external_volume': DeriveVolume(),
         'internal_volume': DeriveVolume()}
 
-    def update_mass(current, new):
-        return current / (current + new)
+    def update_mass(key, state, current, new):
+        return current / (current + new), {}
 
     # declare the states
     states = {

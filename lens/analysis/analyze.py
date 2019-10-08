@@ -5,7 +5,6 @@ import argparse
 from pymongo import MongoClient
 
 import matplotlib
-matplotlib.use('Agg')
 
 from lens.analysis.analyze_compartment import compartment_analysis
 from lens.analysis.analyze_lattice import location_trace

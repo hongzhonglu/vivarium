@@ -9,7 +9,7 @@ import time
 
 import lens.actor.event as event
 from lens.actor.actor import Actor
-import lens.utils.filepath as fp
+import lens.actor.filepath as fp
 
 
 class EnvironmentSimulation(object):

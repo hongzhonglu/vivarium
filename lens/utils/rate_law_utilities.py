@@ -24,13 +24,12 @@ import argparse
 
 # import matplotlib.pyplot as plt  # RuntimeError: Python is not installed as a framework.
 import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from itertools import ifilter
 
 from lens.data.spreadsheets import JsonReader
-from lens.utils import filepath
+from lens.actor import filepath
 
 from lens.environment.look_up import LookUp
 import lens.utils.kinetic_rate_laws as rate_laws
