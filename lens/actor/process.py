@@ -227,21 +227,30 @@ def connect_topology(processes, states, topology):
 
         process.assign_roles(roles)
 
-def merge_initial_states(processes):
+def merge_default_states(processes):
     initial_state = {}
     for process_id, process in processes.iteritems():
         default = process.default_state()
-        dict_merge(initial_state, default)
+        initial_state = dict_merge(initial_state, default)
     return initial_state
+
+def merge_default_updaters(processes):
+    updaters = {}
+    for process_id, process in processes.iteritems():
+        process_updaters = process.default_updaters()
+        updaters = dict_merge(updaters, process_updaters)
+    return updaters
 
 def dict_merge(dct, merge_dct):
     ''' Recursive dict merge '''
+    new_dict = dct.copy()
     for k, v in merge_dct.iteritems():
-        if (k in dct and isinstance(dct[k], dict)
+        if (k in new_dict and isinstance(new_dict[k], dict)
                 and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
+            dict_merge(new_dict[k], merge_dct[k])
         else:
-            dct[k] = merge_dct[k]
+            new_dict[k] = merge_dct[k]
+    return new_dict
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''
@@ -288,12 +297,11 @@ class Compartment(object):
         updates = {}
         for name, process in self.processes.iteritems():
             update = process.update_for(timestep)
-            for role, deltas in update.iteritems():
+            for role, update_dict in update.iteritems():
                 key = self.topology[name][role]
-
                 if not updates.get(key):
                     updates[key] = []
-                updates[key].append(deltas)
+                updates[key].append(update_dict)
 
         for key in self.states.keys():
             self.states[key].prepare()

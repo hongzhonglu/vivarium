@@ -29,11 +29,13 @@ from lens.actor.emitter import get_emitter
 
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.environment.make_media import Media
+from lens.utils.units import units
 from lens.environment.lattice_compartment import generate_lattice_compartment
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.CovertPalsson2002_metabolism import Metabolism
+from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -41,6 +43,9 @@ from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
 from lens.composites.growth_division import initialize_growth_division
+
+
+DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 def wrap_boot(initialize, initial_state):
     def boot(agent_id, agent_type, agent_config):
@@ -72,8 +77,6 @@ def wrap_initialize(make_process):
 
     return initialize
 
-
-DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 class EnvironmentAgent(Outer):
     def build_state(self):
@@ -164,7 +167,68 @@ def boot_glc_g6p_small(agent_id, agent_type, agent_config):
         'output_dir': output_dir,
         # 'concentrations': media,
         'run_for': 2.0,
-        'depth': 1e-05, #0.0001,  # 3000 um is default
+        'depth': 1e-01, #1e-05,  # 3000 um is default
+        'edge_length': 1.0,
+        'patches_per_edge': 1,
+    }
+
+    boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
+    # create the environment
+    environment = EnvironmentSpatialLattice(boot_config)
+
+    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+
+def boot_custom_small(agent_id, agent_type, agent_config):
+    working_dir = agent_config.get('working_dir', os.getcwd())
+
+    media_id = 'custom'
+    make_media = Media()
+    COUNTS_UNITS = units.mmol
+    VOLUME_UNITS = units.L
+    CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
+
+    custom_media = {
+        "ACET": 0.0 * CONC_UNITS,
+        "CO+2": 100.0 * CONC_UNITS,
+        "ETOH": 0.0 * CONC_UNITS,
+        "FORMATE": 0.0 * CONC_UNITS,
+        "GLYCEROL": 0.0 * CONC_UNITS,
+        "LAC": 0.0 * CONC_UNITS,
+        "LCTS": 3.4034 * CONC_UNITS,
+        "OXYGEN-MOLECULE": 100.0 * CONC_UNITS,
+        "PI": 100.0 * CONC_UNITS,
+        "PYR": 0.0 * CONC_UNITS,
+        "RIB": 0.0 * CONC_UNITS,
+        "SUC": 0.0 * CONC_UNITS,
+        "G6P": 1.3451 * CONC_UNITS,
+        "GLC": 12.2087 * CONC_UNITS}
+    media_id = make_media.add_media(custom_media, media_id)
+
+    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline = make_media.make_timeline(timeline_str)
+
+    print("Media condition: {}".format(media_id))
+    output_dir = os.path.join(working_dir, 'out', agent_id)
+    if os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
+
+    boot_config = {
+        'timeline': timeline,
+        'media_object': make_media,
+        'output_dir': output_dir,
+        # 'concentrations': media,
+        'run_for': 2.0,
+        'depth': 1e-01, #1e-05,  # 3000 um is default
         'edge_length': 1.0,
         'patches_per_edge': 1,
     }
@@ -304,18 +368,22 @@ class BootEnvironment(BootAgent):
     def __init__(self):
         super(BootEnvironment, self).__init__()
         self.agent_types = {
+            # environments
             'lattice': boot_lattice,
             'sugar1': boot_glc_g6p,
             'sugar1_small': boot_glc_g6p_small,
             'sugar2': boot_glc_lct,
+            'custom': boot_custom_small,
             'measp': boot_measp,
 
             # single process compartments
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_initialize(Metabolism), {'volume': 1.0}),
+            'regulation': wrap_boot(wrap_initialize(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),
+
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
             'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0})

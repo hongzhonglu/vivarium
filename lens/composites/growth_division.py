@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_initial_states
+from lens.actor.process import State, merge_default_states
 from lens.actor.emitter import get_emitter, configure_emitter
 from lens.environment.lattice_compartment import LatticeCompartment
 
@@ -40,7 +40,7 @@ def initialize_growth_division(config):
 
     # initialize the states
     # TODO (Eran) -- this can be refactored
-    initial_state = merge_initial_states(processes)
+    initial_state = merge_default_states(processes)
     states = {
         # 'environment': State(initial_state['external']),
         'cell': State(initial_state['internal'])}
