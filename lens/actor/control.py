@@ -9,7 +9,7 @@ import argparse
 
 import lens.actor.event as event
 from lens.actor.actor import Actor
-from lens.utils import filepath
+from lens.actor import filepath
 
 DEFAULT_KAFKA_CONFIG = {
     'host': '127.0.0.1:9092',
