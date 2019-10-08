@@ -41,8 +41,13 @@ class LatticeCompartment(Compartment, Simulation):
 
         compartment = self.states[self.compartment]
         values = compartment.state_for(['volume'])
+
+        force = compartment.state_for(['motile_force'])
+        torque = compartment.state_for(['motile_torque'])
+        motile_force = [force.get('motile_force', 0.0), torque.get('motile_torque', 0.0)]
+
         values.update({
-            'motile_force': [0,0], # TODO -- get motile_force from compartment state
+            'motile_force': motile_force, # TODO -- get motile_force from compartment state
             'color': self.color,
             'environment_change': environment_change,
         })

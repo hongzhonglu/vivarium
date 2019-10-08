@@ -6,7 +6,7 @@ from lens.environment.lattice_compartment import LatticeCompartment
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
-from lens.processes.Vladimirov2008_flagella import FlagellaActivity
+from lens.processes.Vladimirov2008_motor import MotorActivity
 from lens.processes.derive_volume import DeriveVolume
 
 
@@ -23,11 +23,11 @@ def initialize_vladimirov2008(config):
 
     # declare the processes
     receptor = ReceptorCluster(config)
-    flagella = FlagellaActivity(config)
+    motor = MotorActivity(config)
     deriver = DeriveVolume(config)
     processes = {
         'receptor': receptor,
-        'flagella': flagella,
+        'motor': motor,
         'deriver': deriver}
 
     # initialize the states
@@ -63,7 +63,7 @@ def initialize_vladimirov2008(config):
         'receptor': {
             'external': 'environment',
             'internal': 'cell'},
-        'flagella': {
+        'motor': {
             'external': 'environment',
             'internal': 'cell'},
         'deriver': {

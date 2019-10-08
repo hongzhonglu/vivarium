@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import random
 
-from lens.actor.process import Process
+from lens.actor.process import Process, dict_merge
 
 
 TUMBLE_JITTER = 0.5  # (radians)
@@ -27,17 +27,47 @@ initial = {
     'CheB_WT': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
 }
 
-class FlagellaActivity(Process):
+INITIAL_STATE = {
+    # methylation regulators of receptors
+    'CheR': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
+    'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
+    'CheB_P': 0.0,  # (mM)
+    # response regulator proteins
+    'CheY_tot': 0.0097,  # (mM) 9.7 uM = 0.0097 mM
+    'CheY_P': 0.0,
+    'CheZ': 0.0,  # phosphatase
+    # sensor activity
+    'chemoreceptor_P_on': 0.5,
+    # motor activity
+    'motile_force': 0,
+    'motile_torque': 0,
+    'motor_state': 1,  # motor_state 1 for tumble, 0 for run
+}
+
+class MotorActivity(Process):
+    '''
+    Model of motor activity from:
+        Vladimirov, N., Lovdok, L., Lebiedz, D., & Sourjik, V. (2008).
+        Dependence of bacterial chemotaxis on gradient shape and adaptation rate.
+        PLoS computational biology.
+    '''
     def __init__(self, initial_parameters={}):
 
         roles = {
-            'internal': ['chemoreceptor_P_on', 'CheZ', 'CheY_tot', 'CheR', 'CheB', 'motor_state'],
+            'internal': ['chemoreceptor_P_on',
+                         'CheZ',
+                         'CheY_tot',
+                         'CheR',
+                         'CheB',
+                         'motile_force',
+                         'motile_torque',
+                         'motor_state'],
             'external': []
         }
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(FlagellaActivity, self).__init__(roles, parameters, deriver=True)
+        super(MotorActivity, self).__init__(roles, parameters, deriver=False)
 
     def default_state(self):
         '''
@@ -46,16 +76,22 @@ class FlagellaActivity(Process):
             - internal (dict) -- internal states with default initial values
         '''
 
-        internal = {'chemoreceptor_P_on': 0.5,
-                    'motor_state': 1} # motor_state 1 for tumble, 0 for run
+        internal = INITIAL_STATE
+
+        # internal = {'CheY_tot': 0.0097,
+        #             'chemoreceptor_P_on': 0.5,
+        #             'motile_force': 0,
+        #             'motile_torque': 0,
+        #             'motor_state': 1,  # motor_state 1 for tumble, 0 for run
+        #             'volume': 1}
 
         return {
             'external': {},
-            'internal': internal}
+            'internal': dict_merge(internal, {'volume': 1})}
 
     def default_emitter_keys(self):
         keys = {
-            'internal': [],
+            'internal': ['motile_force', 'motile_torque'],
             'external': [],
         }
         return keys
@@ -66,7 +102,7 @@ class FlagellaActivity(Process):
         The default updater is to pass a delta'''
 
         updater_types = {
-            'internal': {},
+            'internal': {'motile_force': 'set', 'motile_torque': 'set', 'motor_state': 'set'},
             'external': {}}
 
         return updater_types
@@ -100,36 +136,34 @@ class FlagellaActivity(Process):
         ccw_motor_bias = self.parameters['mb_0'] / (CheY_P/CheY_tot * (1 - self.parameters['mb_0']) + self.parameters['mb_0'])
         cww_to_cw = self.parameters['cw_to_ccw'] * (1 / ccw_motor_bias - 1)
 
-        motile_force = []
         if motor_state == 0:  # 0 for run
             # switch to tumble?
             prob_switch = cww_to_cw * timestep
-            print('prob_switch ' + str(prob_switch))
             if prob_switch <= np.random.random(1)[0]:
-                motor_state = 1  # switch to tumble
-                motile_force = self.tumble()
+                motor_state = 1
+                force, torque = self.tumble()
             else:
-                motile_force = self.run()
+                force, torque = self.run()
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = self.parameters['cw_to_ccw'] * timestep
-            print('prob_switch ' + str(prob_switch))
             if prob_switch <= np.random.random(1)[0]:
-                motor_state = 0  # switch to run
-                motile_force = self.run()
+                motor_state = 0
+                force, torque = self.run()
             else:
-                motile_force = self.tumble()
+                force, torque = self.tumble()
 
-        # import ipdb; ipdb.set_trace()
 
+        # TODO -- should force/torque be accumulated over exchange timestep?
         update = {
-            internal: {
-                'motile_force': motile_force,
+            'internal': {
+                'motile_force': force,
+                'motile_torque': torque,
                 'motor_state': motor_state,
                 'CheY_P': CheY_P,
                 'CheR': CheR,
-                'CheB': CheB,}
+                'CheB': CheB}
         }
 
         return update
@@ -137,9 +171,9 @@ class FlagellaActivity(Process):
     def tumble(self):
         force = 5.0
         torque = random.normalvariate(0, TUMBLE_JITTER)
-        return [force, torque]
+        return force, torque
 
     def run(self):
         force = 15.0
         torque = 0.0
-        return [force, torque]
+        return force, torque

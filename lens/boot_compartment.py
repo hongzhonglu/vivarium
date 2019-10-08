@@ -27,7 +27,7 @@ from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
-from lens.processes.Vladimirov2008_flagella import FlagellaActivity
+from lens.processes.Vladimirov2008_motor import MotorActivity
 
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
@@ -76,7 +76,7 @@ class BootCompartment(BootAgent):
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),
-            'flagella': wrap_boot(wrap_initialize(FlagellaActivity), {'volume': 1.0}),
+            'motor': wrap_boot(wrap_initialize(MotorActivity), {'volume': 1.0}),
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
             'covert': wrap_boot(initialize_covert2008, {'volume': 1.0}),
