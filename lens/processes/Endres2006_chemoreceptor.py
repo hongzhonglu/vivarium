@@ -10,10 +10,13 @@ LIGAND_ID = 'MeAsp'
 INITIAL_STATE = {
     'n_methyl': 3.0,  # initial number of methyl groups on receptor cluster (0 to 8)
     'chemoreceptor_P_on': 1 / 3,  # initial probability of receptor cluster being on
+    # initial concentrations
+    'CheR': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
+    'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
+    'CheB_P': 0.0,
 }
 
 DEFAULT_PARAMETERS = {
-    'timestep': 1.0,
     'n_Tar': 6,  # number of Tar receptors in a cluster
     'n_Tsr': 12,  # number of Tsr receptors in a cluster
     # dissociation constants (mM)
@@ -98,7 +101,7 @@ class ReceptorCluster(Process):
         elif n_methyl > 8:
             n_methyl = 8
         else:
-            d_methyl = self.parameters['adaptRate'] * (self.parameters['k_meth'] * CheR * (1.0 - P_on) - self.parameters['k_demeth'] * CheB * P_on) * self.parameters['timestep']
+            d_methyl = self.parameters['adaptRate'] * (self.parameters['k_meth'] * CheR * (1.0 - P_on) - self.parameters['k_demeth'] * CheB * P_on) * timestep
             n_methyl += d_methyl
 
         # get free-energy offsets from methylation

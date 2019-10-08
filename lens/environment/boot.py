@@ -39,10 +39,12 @@ from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
+from lens.processes.Vladimirov2008_motor import MotorActivity
 
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
 from lens.composites.growth_division import initialize_growth_division
+from lens.composites.Vladimirov2008 import initialize_vladimirov2008
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -326,7 +328,8 @@ def boot_measp(agent_id, agent_type, agent_config):
                    '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
                    '300 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '500 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
-                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L'
+                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1000 end'
 
     make_media = Media()
     timeline = make_media.make_timeline(timeline_str)
@@ -359,6 +362,16 @@ def boot_measp(agent_id, agent_type, agent_config):
         'patches_per_edge': 50,
     }
     boot_config.update(agent_config)
+
+    # emitter
+    emitter_config = {
+        'type': 'database',
+        'url': 'localhost:27017',
+        'database': 'simulations',
+        'experiment_id': agent_id}
+    emitter = get_emitter(emitter_config)
+    boot_config.update({'emitter': emitter})
+
     environment = EnvironmentSpatialLattice(boot_config)
 
     return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
@@ -383,10 +396,12 @@ class BootEnvironment(BootAgent):
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),
+            'motor': wrap_boot(wrap_initialize(MotorActivity), {'volume': 1.0}),
 
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
-            'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0})
+            'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0}),
+            'vladimirov': wrap_boot(initialize_vladimirov2008, {'volume': 1.0})
             }
 
 def run():
