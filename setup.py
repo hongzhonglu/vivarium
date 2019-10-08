@@ -13,7 +13,7 @@ setup(
     name='wholecell-lens',
     version='0.0.27',
     packages=[
-		'lens',
+        'lens',
         'lens.actor',
         'lens.analysis',
         'lens.environment',
