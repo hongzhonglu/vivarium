@@ -1,10 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import Compartment, State
+from lens.actor.process import Compartment, State, dict_merge
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
 
 DEFAULT_COLOR = [color/255 for color in [153, 204, 255]]
+
+exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
 class LatticeCompartment(Compartment, Simulation):
     def __init__(self, processes, states, configuration):
@@ -47,14 +49,7 @@ class LatticeCompartment(Compartment, Simulation):
 
         return values
 
-def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
-
 def generate_lattice_compartment(process, config):
-    exchange_key = '__exchange'  # TODO -- pass this to the compartment? get from compartment?
-
     # declare the processes
     processes = {
         'process': process}
@@ -75,7 +70,7 @@ def generate_lattice_compartment(process, config):
 
     states = {
         role: State(
-            initial_state=merge_dicts(default_state.get(role, {}), initial_exchanges.get(role, {})),
+            initial_state=dict_merge(default_state.get(role, {}), initial_exchanges.get(role, {})),
             updaters=default_updaters.get(role, {}))
             for role in process.roles.keys()}
 

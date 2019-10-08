@@ -23,6 +23,7 @@ from lens.environment.lattice_compartment import generate_lattice_compartment
 # processes
 from lens.processes.transport_lookup import TransportLookup
 from lens.processes.CovertPalsson2002_metabolism import Metabolism
+from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -71,6 +72,7 @@ class BootCompartment(BootAgent):
             # single process compartments
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_initialize(Metabolism), {'volume': 1.0}),
+            'regulation': wrap_boot(wrap_initialize(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),

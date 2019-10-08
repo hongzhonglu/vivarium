@@ -9,8 +9,9 @@ from lens.processes.CovertPalsson2002_metabolism import Metabolism
 from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.derive_volume import DeriveVolume
-from lens.processes.division import Division
 
+
+exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
 def initialize_covert2008(config):
     config.update({
@@ -22,30 +23,53 @@ def initialize_covert2008(config):
     })
 
     # declare the processes
-    transport = Transport(config)
+    # transport = Transport(config)
     metabolism = Metabolism(config)
-    # regulation = Regulation(config)
+    regulation = Regulation(config)
     deriver = DeriveVolume(config)
     processes = {
-        'transport': transport,
-        # 'regulation': regulation,
+        # 'transport': transport,
+        'regulation': regulation,
         'metabolism': metabolism,
         'deriver': deriver}
 
     # initialize the states
-    initial_state = merge_initial_states(processes)
+    default_states = merge_default_states(processes)
+    default_updaters = merge_default_updaters(processes)
+
+    # get environment ids, and make exchange_ids for external state
+    environment_ids = []
+    initial_exchanges = {}
+    for process_id, process in processes.iteritems():
+        roles = {role: {} for role in process.roles.keys()}
+        initial_exchanges.update(roles)
+
+    for role, state_ids in default_updaters.iteritems():
+        for state_id, updater in state_ids.iteritems():
+            if updater is 'accumulate':
+                environment_ids.append(state_id)
+                initial_exchanges[role].update({state_id + exchange_key: 0.0})
+
+    # set states according to the compartment_roles mapping.
+    # This will not generalize to composites with processes that have different roles
+    compartment_roles = {
+        'external': 'environment',
+        'internal': 'cell'}
+
     states = {
-        'environment': State(initial_state['external']),
-        'cell': State(initial_state['internal'])}
+        compartment_roles[role]: State(
+            initial_state=dict_merge(default_states.get(role, {}), initial_exchanges.get(role, {})),
+            updaters=default_updaters.get(role, {}))
+            for role in default_states.keys()}
 
     # configure the states to the roles for each process
     topology = {
-        'transport': {
-            'external': 'environment',
-            'internal': 'cell'},
-        # 'regulation': {
+        # 'transport': {
         #     'external': 'environment',
         #     'internal': 'cell'},
+        'regulation': {
+            'external': 'environment',
+            'internal': 'cell'},
         'metabolism': {
             'external': 'environment',
             'internal': 'cell'},
@@ -61,9 +85,9 @@ def initialize_covert2008(config):
         'emitter': emitter,
         'environment': 'environment',
         'compartment': 'cell',
-        'exchange_key': config['exchange_key'],
-        'environment_ids': initial_state['environment_ids'],
-        'environment_deltas': initial_state['environment_deltas']}
+        'exchange_key': exchange_key,
+        'environment_ids': environment_ids,
+    }
 
     # create the compartment
     return LatticeCompartment(processes, states, options)

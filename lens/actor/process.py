@@ -289,7 +289,6 @@ class Compartment(object):
             update = process.update_for(timestep)
             for role, update_dict in update.iteritems():
                 key = self.topology[name][role]
-
                 if not updates.get(key):
                     updates[key] = []
                 updates[key].append(update_dict)

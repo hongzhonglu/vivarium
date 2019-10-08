@@ -13,7 +13,7 @@
 "PIUP2R"		"pitAB"	{"PI[e]": -1, "HEXT": -1, "PI": 1}		true
 "PYRUPR"			{"PYR[e]": -1, "HEXT": -1, "PYR": 1}		true
 "RIBUPR"		"rbsABCD"	{"RIB[e]": -1, "ATP": -1, "RIB": 1, "ADP": 1, "PI": 1}	"IF not (GLC[e] or LCTS[e]) and not RbsR"	false
-"DCTAR"		"dctA"	{"SUC[e]": -1, "HEXT": -1, "SUCC": 1}	"IF not (GLC[e] or LSCTS[e] or RIB[e] or GLYCEROL[e] or LAC[e] or PYR[e]) and not ArcA and DcuR"	true
-"DCUAR"		"dcuA"	{"SUC[e]": -1, "HEXT": -1, "SUCC": 1}		true
-"DCUBR"		"dcuB"	{"SUC[e]": -1, "HEXT": -1, "SUCC": 1}	"IF not (GLC[e] or LCTS[e] or RIB[e] or GLYCEROL[e] or LAC[e] or PYR[e]) and FNR and DcuR"	true
-"DCUC"		"dcuC"	{"SUC[e]": -1, "HEXT": -1, "SUCC": 1}	"IF (FNR or ArcA)"	false
+"DCTAR"		"dctA"	{"SUC[e]": -1, "HEXT": -1, "SUC": 1}	"IF not (GLC[e] or LSCTS[e] or RIB[e] or GLYCEROL[e] or LAC[e] or PYR[e]) and not ArcA and DcuR"	true
+"DCUAR"		"dcuA"	{"SUC[e]": -1, "HEXT": -1, "SUC": 1}		true
+"DCUBR"		"dcuB"	{"SUC[e]": -1, "HEXT": -1, "SUC": 1}	"IF not (GLC[e] or LCTS[e] or RIB[e] or GLYCEROL[e] or LAC[e] or PYR[e]) and FNR and DcuR"	true
+"DCUC"		"dcuC"	{"SUC[e]": -1, "HEXT": -1, "SUC": 1}	"IF (FNR or ArcA)"	false
