@@ -126,8 +126,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.translation_jitter,
             self.rotation_jitter)
 
-        # configure emitter
+        # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
+        self.emit_configuration()
 
 
     def evolve(self):
@@ -141,7 +142,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
 
-        # run emitters
+        # emit current state
         self.emit_data()
 
     def update_locations(self):
@@ -267,8 +268,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         time = max(self._time, latest)
 
         return {
-            'time': time,
-        }
+            'time': time}
 
     def simulation_state(self, agent_id):
         """
@@ -395,22 +395,36 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.remove_cell(agent_id)
 
 
-    # Emitter
-    # TODO -- also pass edge_length to emitter
+    # Emitters
     def emit_data(self):
         for agent_id, simulation in self.simulations.iteritems():
             agent_location = self.locations[agent_id].tolist()
             agent_state = self.simulations[agent_id]['state']
-            agent_volume = agent_state['volume']
-            agent_width = agent_state['width']
-            agent_length = agent_state['length']
             data = {
                 'type': 'lattice',
                 'agent_id': agent_id,
                 'location': agent_location,
-                'volume': agent_volume,
-                'width': agent_width,
-                'length': agent_length,
-                'edge_length': self.edge_length,
+                'volume': agent_state['volume'],
+                'width': agent_state['width'],
+                'length': agent_state['length'],
                 'time': self.time()}
-            self.emitter.emit(data)
+
+            emit_config = {
+                'table': 'history',
+                'data': data}
+
+            self.emitter.emit(emit_config)
+
+    def emit_configuration(self):
+        data = {
+            'type': 'lattice',
+            'edge_length': self.edge_length,
+            'patches_per_edge': self.patches_per_edge,
+            'total_volume': self.total_volume,
+            'timeline': self.timeline}
+
+        emit_config = {
+            'table': 'configuration',
+            'data': data}
+
+        self.emitter.emit(emit_config)

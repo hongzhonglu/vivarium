@@ -7,18 +7,16 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-def location_trace(data_dict, experiment_id, output_dir='out'):
+def location_trace(exp_data, history_data, experiment_id, output_dir='out'):
 
-    agent_ids = [key for key in data_dict.keys() if key is not 'time']
-    time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
-
-    edge_length = data_dict['edge_length'][0]  # edge length should be the same for all entries
-
+    agent_ids = [key for key in history_data.keys() if key is not 'time']
+    time_vec = [t / 3600 for t in history_data['time']]  # convert to hours
+    edge_length = exp_data['edge_length']
 
     plt.figure(figsize=(8, 8))
     for agent_id in agent_ids:
         # get locations and convert to 2D array
-        locations = data_dict[agent_id]['location']
+        locations = history_data[agent_id]['location']
         locations_array = np.array(locations)
 
         x_coord = locations_array[:, 0]

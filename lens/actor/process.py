@@ -282,6 +282,12 @@ class Compartment(object):
         connect_topology(processes, self.states, self.topology)
         self.run_derivers(0)
 
+        # log experiment configuration
+        emit_config = {
+            'table': 'configuration',
+            'data': {'topology': self.topology}}
+        self.emitter.emit(emit_config)
+
     def run_derivers(self, timestep):
         ''' Run each deriver process to set up state for subsequent processes. '''
 
@@ -343,7 +349,11 @@ class Compartment(object):
             'type': 'compartment',
             'time': self.time()})
 
-        self.emitter.emit(data)
+        emit_config = {
+            'table': 'history',
+            'data': data}
+
+        self.emitter.emit(emit_config)
 
 
 

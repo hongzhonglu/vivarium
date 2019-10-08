@@ -50,7 +50,7 @@ def get_emitter_keys(processes, topology):
                 emitter_keys[compartment_name].extend(keys)
             else:
                 emitter_keys[compartment_name] = keys
-    # remove redudant keys
+    # remove redundant keys
     for compartment_name, keys in emitter_keys.iteritems():
         emitter_keys[compartment_name] = list(set(keys))
 
@@ -111,12 +111,14 @@ class DatabaseEmitter(Emitter):
 
         client = MongoClient(config['url'])
         self.db = getattr(client, config.get('database', 'simulations'))
-        self.table = getattr(self.db, 'output')
-        create_indexes(self.table)
+        self.history = getattr(self.db, 'history')
+        self.configuration = getattr(self.db, 'configuration')
+        create_indexes(self.history)
 
     def emit(self, data):
         data.update({
             'simulation_id': self.simulation_id,
             'experiment_id': self.experiment_id})
 
-        self.table.insert_one(data)
+        table = getattr(self.db, data['table'])
+        table.insert_one(data['data'])
