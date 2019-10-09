@@ -9,8 +9,7 @@ LIGAND_ID = 'MeAsp'
 
 INITIAL_STATE = {
     'n_methyl': 3.0,  # initial number of methyl groups on receptor cluster (0 to 8)
-    'chemoreceptor_P_on': 1 / 3,  # initial probability of receptor cluster being on
-    # initial concentrations
+    'chemoreceptor_activity': 1 / 3,  # initial probability of receptor cluster being on
     'CheR': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
     'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
     'CheB_P': 0.0,
@@ -42,13 +41,13 @@ class ReceptorCluster(Process):
         self.ligand_id = LIGAND_ID
 
         roles = {
-            'internal': ['n_methyl', 'chemoreceptor_P_on', 'CheR', 'CheB'],
+            'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
             'external': [self.ligand_id]
         }
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(ReceptorCluster, self).__init__(roles, parameters, deriver=True)
+        super(ReceptorCluster, self).__init__(roles, parameters)
 
     def default_state(self):
         '''
@@ -59,7 +58,7 @@ class ReceptorCluster(Process):
 
         internal = INITIAL_STATE
         internal.update({'volume': 1})
-        external = {self.ligand_id: 0.0}
+        external = {self.ligand_id: 0.1}
 
         return {
             'external': external,
@@ -67,7 +66,7 @@ class ReceptorCluster(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['chemoreceptor_P_on', 'n_methyl'],
+            'internal': ['chemoreceptor_activity', 'n_methyl'],
             'external': [self.ligand_id],
         }
         return keys
@@ -78,7 +77,7 @@ class ReceptorCluster(Process):
         The default updater is to pass a delta'''
 
         updater_types = {
-            'internal': {state_id: 'set' for state_id in ['chemoreceptor_P_on', 'n_methyl']},
+            'internal': {state_id: 'set' for state_id in ['chemoreceptor_activity', 'n_methyl']},
             'external': {}}
 
         return updater_types
@@ -90,10 +89,9 @@ class ReceptorCluster(Process):
         '''
 
         n_methyl = states['internal']['n_methyl']
-        P_on = states['internal']['chemoreceptor_P_on']
+        P_on = states['internal']['chemoreceptor_activity']
         CheR = states['internal']['CheR']
         CheB = states['internal']['CheB']
-
         ligand_conc = states['external'][self.ligand_id]
 
         if n_methyl < 0:
@@ -101,7 +99,8 @@ class ReceptorCluster(Process):
         elif n_methyl > 8:
             n_methyl = 8
         else:
-            d_methyl = self.parameters['adaptRate'] * (self.parameters['k_meth'] * CheR * (1.0 - P_on) - self.parameters['k_demeth'] * CheB * P_on) * timestep
+            d_methyl = self.parameters['adaptRate'] * (self.parameters['k_meth'] * \
+                            CheR * (1.0 - P_on) - self.parameters['k_demeth'] * CheB * P_on) * timestep
             n_methyl += d_methyl
 
         # get free-energy offsets from methylation
@@ -136,7 +135,7 @@ class ReceptorCluster(Process):
 
         update = {
             'internal': {
-                'chemoreceptor_P_on': P_on,
+                'chemoreceptor_activity': P_on,
                 'n_methyl': n_methyl,
             }
         }

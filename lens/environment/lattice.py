@@ -77,7 +77,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.shutdown = False
         if self.timeline:
             self._times = [t[0] for t in self.timeline]
-            media = self.make_media.get_saved_media(self.timeline[0][1])
+            self.media_id = self.timeline[0][1]
+            media = self.make_media.get_saved_media(self.media_id)
             self._molecule_ids = media.keys()
             self.concentrations = media.values()
         else:

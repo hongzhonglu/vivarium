@@ -24,11 +24,12 @@ def initialize_vladimirov2008(config):
     # declare the processes
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
-    deriver = DeriveVolume(config)
+    # deriver = DeriveVolume(config)
     processes = {
         'receptor': receptor,
         'motor': motor,
-        'deriver': deriver}
+        # 'deriver': deriver
+    }
 
     # initialize the states
     default_states = merge_default_states(processes)
@@ -55,9 +56,10 @@ def initialize_vladimirov2008(config):
 
     states = {
         compartment_roles[role]: State(
-            initial_state=dict_merge(default_states.get(role, {}), initial_exchanges.get(role, {})),
+            initial_state=dict_merge(dict(default_states.get(role, {})), initial_exchanges.get(role, {})),
             updaters=default_updaters.get(role, {}))
         for role in default_states.keys()}
+
     # configure the states to the roles for each process
     topology = {
         'receptor': {
@@ -66,8 +68,8 @@ def initialize_vladimirov2008(config):
         'motor': {
             'external': 'environment',
             'internal': 'cell'},
-        'deriver': {
-            'internal': 'cell'},
+        # 'deriver': {
+        #     'internal': 'cell'},
         }
 
     # configure emitter

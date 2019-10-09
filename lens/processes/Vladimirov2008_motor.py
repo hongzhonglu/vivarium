@@ -8,7 +8,7 @@ from lens.actor.process import Process, dict_merge
 
 TUMBLE_JITTER = 0.5  # (radians)
 
-## Parameters
+# parameters
 DEFAULT_PARAMETERS = {
     'k_A': 5.0,  #
     'k_y': 100.0,  # 1/uM/s
@@ -22,22 +22,14 @@ DEFAULT_PARAMETERS = {
     'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
 }
 
-# initial concentrations
-initial = {
-    'CheB_WT': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
-}
-
+##initial state
 INITIAL_STATE = {
-    # methylation regulators of receptors
-    'CheR': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
-    'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
-    'CheB_P': 0.0,  # (mM)
     # response regulator proteins
     'CheY_tot': 0.0097,  # (mM) 9.7 uM = 0.0097 mM
     'CheY_P': 0.0,
     'CheZ': 0.0,  # phosphatase
     # sensor activity
-    'chemoreceptor_P_on': 0.5,
+    'chemoreceptor_activity': 1/3,
     # motor activity
     'motile_force': 0,
     'motile_torque': 0,
@@ -54,11 +46,9 @@ class MotorActivity(Process):
     def __init__(self, initial_parameters={}):
 
         roles = {
-            'internal': ['chemoreceptor_P_on',
+            'internal': ['chemoreceptor_activity',
                          'CheZ',
                          'CheY_tot',
-                         'CheR',
-                         'CheB',
                          'motile_force',
                          'motile_torque',
                          'motor_state'],
@@ -67,7 +57,7 @@ class MotorActivity(Process):
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(MotorActivity, self).__init__(roles, parameters, deriver=False)
+        super(MotorActivity, self).__init__(roles, parameters)
 
     def default_state(self):
         '''
@@ -75,23 +65,14 @@ class MotorActivity(Process):
             - external (dict) -- external states with default initial values, will be overwritten by environment
             - internal (dict) -- internal states with default initial values
         '''
-
         internal = INITIAL_STATE
-
-        # internal = {'CheY_tot': 0.0097,
-        #             'chemoreceptor_P_on': 0.5,
-        #             'motile_force': 0,
-        #             'motile_torque': 0,
-        #             'motor_state': 1,  # motor_state 1 for tumble, 0 for run
-        #             'volume': 1}
-
         return {
             'external': {},
             'internal': dict_merge(internal, {'volume': 1})}
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['motile_force', 'motile_torque'],
+            'internal': ['motile_force', 'motile_torque', 'motor_state'],
             'external': [],
         }
         return keys
@@ -100,26 +81,34 @@ class MotorActivity(Process):
         '''
         define the updater type for each state in roles.
         The default updater is to pass a delta'''
-
+        set_states = ['motile_force', 'motile_torque', 'motor_state']
         updater_types = {
-            'internal': {'motile_force': 'set', 'motile_torque': 'set', 'motor_state': 'set'},
+            'internal': {state_id: 'set' for state_id in set_states},
             'external': {}}
 
         return updater_types
 
     def next_update(self, timestep, states):
+        '''
+        CheY phosphorylation model from:
+            Kollmann, M., Lovdok, L., Bartholome, K., Timmer, J., & Sourjik, V. (2005).
+            Design principles of a bacterial signalling network. Nature.
+        Motor switching model from:
+            Scharf, B. E., Fahrner, K. A., Turner, L., and Berg, H. C. (1998).
+            Control of direction of flagellar rotation in bacterial chemotaxis. PNAS.
+        '''
 
         internal = states['internal']
         # external = states['external']
-        P_on = internal['chemoreceptor_P_on'] # this comes from chemoreceptor
+        P_on = internal['chemoreceptor_activity'] # this comes from chemoreceptor
         motor_state = internal['motor_state']
         CheZ = internal['CheZ']
         CheY_tot = internal['CheY_tot']
-        CheR = internal['CheR']
-        CheB = internal['CheB']
+
+        # print('receptor activity: {}'.format(P_on))
 
 
-        # CheY phosphorylation, scaled to 1.0 at rest
+        ## CheY phosphorylation, scaled to 1.0 at rest
         # self.CheA_P = self.CheA_tot * self.P_on * k_A / (self.P_on * k_A + k_y * self.CheY_tot)  # amount of phosphorylated CheA
         # scaling = 19.3610  # scales CheY_P linearly so that CheY_P=1 at rest (P_on=1/3)
         # self.CheY_P = adaptPrecision * scaling * self.CheY_tot * k_y * self.CheA_P / (k_y * self.CheA_P + k_z * self.CheZ + gamma_Y)
@@ -154,26 +143,24 @@ class MotorActivity(Process):
             else:
                 force, torque = self.tumble()
 
-
         # TODO -- should force/torque be accumulated over exchange timestep?
         update = {
             'internal': {
                 'motile_force': force,
                 'motile_torque': torque,
-                'motor_state': motor_state,
-                'CheY_P': CheY_P,
-                'CheR': CheR,
-                'CheB': CheB}
+                'motor_state': motor_state}
         }
 
         return update
 
     def tumble(self):
+        # print('motor state: TUMBLE!')
         force = 5.0
         torque = random.normalvariate(0, TUMBLE_JITTER)
         return force, torque
 
     def run(self):
+        # print('motor state: RUN!')
         force = 15.0
         torque = 0.0
         return force, torque

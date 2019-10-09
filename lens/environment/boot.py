@@ -260,7 +260,7 @@ def initialize_measp(agent_config):
     boot_config = {
         'timeline': timeline,
         'media_object': make_media,
-        'run_for': 2.0,
+        'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
             'seed': True,
@@ -276,7 +276,7 @@ def initialize_measp(agent_config):
         'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
         'edge_length': 100.0,
-        'patches_per_edge': 50}
+        'patches_per_edge': 20}
     boot_config.update(agent_config)
 
     return boot_config
@@ -296,6 +296,7 @@ def initialize_measp_timeline(agent_config):
     boot_config = {
         'media_object': make_media,
         'timeline': timeline,
+        'run_for': 1.0,
         # 'concentrations': media,
         'static_concentrations': True,
         'gradient': {
