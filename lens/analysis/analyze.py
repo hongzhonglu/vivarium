@@ -25,7 +25,7 @@ def get_sims_from_exp(client, experiment_id):
 
     return list(simulation_ids)
 
-def db_to_dict_compartment(data):
+def get_compartment(data):
     skip_keys = [
         'type',
         'simulation_id',
@@ -52,7 +52,7 @@ def db_to_dict_compartment(data):
     data_dict['time'] = time_vec
     return data_dict
 
-def db_to_dict_lattice(data):
+def get_lattice(data):
     skip_keys = [
         'type',
         'agent_id',
@@ -86,6 +86,15 @@ def db_to_dict_lattice(data):
     data_dict['time'] = time_vec
     return data_dict
 
+def get_experiment(data):
+    experiment_config = {}
+    for row in data:
+        if row.get('type') == 'lattice':
+            experiment_config['edge_length'] = row['edge_length']
+        elif row.get('topology'):
+            experiment_config['topology'] = row['topology']
+
+    return experiment_config
 
 class Analyze(object):
     '''
@@ -103,35 +112,30 @@ class Analyze(object):
 
         path = args.path
         experiment_id = args.experiment
-        simulation_id = args.simulation
-        analysis_type = args.type
 
-        # query database
-        query = {'type': analysis_type}
-        if experiment_id:
-            query.update({'experiment_id': experiment_id})
-        if simulation_id:
-            query.update({'simulation_id': simulation_id})
+        # get the experiment configuration
+        query = {'experiment_id': experiment_id}
+        config_data = self.client.simulations.configuration.find(query)
+        exp_data = get_experiment(config_data)
 
-        data = self.client.simulations.output.find(query)
-        data.sort('time')
+        # get the time series data for compartments
+        query.update({'type': 'compartment'})
+        history_data = self.client.simulations.history.find(query)
+        history_data.sort('time')
+        compartment_hist = get_compartment(history_data)   # ['internal', 'external', 'time']
 
-        if analysis_type == 'compartment':
-            # structure data into dictionary for single analysis
-            data_dict = db_to_dict_compartment(data)
+        # analyze all simulations in this experiment
+        simulation_ids = get_sims_from_exp(self.client.simulations.history, experiment_id)
+        for simulation_id in simulation_ids:
+            compartment_analysis(compartment_hist, experiment_id, simulation_id, path)
 
-            if not simulation_id:
-                # simulation_id not specified, analyze all simulations in this experiment
-                simulation_ids = get_sims_from_exp(self.client.simulations.output, experiment_id)
-                for simulation_id in simulation_ids:
-                    compartment_analysis(data_dict, experiment_id, simulation_id, path)
-            else:
-                compartment_analysis(data_dict, experiment_id, simulation_id, path)
+        # run lattice analysis
+        query.update({'type': 'lattice'})
+        history_data = self.client.simulations.history.find(query)
+        history_data.sort('time')
+        lattice_hist = get_lattice(history_data)
+        location_trace(exp_data, lattice_hist, experiment_id, path)  # TODO -- run this with a separate option?
 
-        elif analysis_type == 'lattice':
-            # structure data into dictionary for lattice analysis
-            data_dict = db_to_dict_lattice(data)
-            location_trace(data_dict, experiment_id, path)  # TODO -- run this with a separate option?
 
 
     def add_arguments(self, parser):
@@ -143,22 +147,11 @@ class Analyze(object):
             help='the experiment output path')
 
         parser.add_argument(
-            '-t', '--type',
-            type=str,
-            default='compartment',
-            help='the type of analysis')
-
-        parser.add_argument(
             '-e', '--experiment',
             type=str,
             default='',
             help='the experiment id')
 
-        parser.add_argument(
-            '-s', '--simulation',
-            type=str,
-            default='',
-            help='the simulation/agent id. leave empty to analyze all simulations')
 
         return parser
 
