@@ -12,7 +12,7 @@ from lens.processes.derive_volume import DeriveVolume
 
 exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
-def initialize_vladimirov2008(config):
+def initialize_chemotaxis(config):
     config.update({
         'emitter': {
             'type': 'database',

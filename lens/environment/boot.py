@@ -43,7 +43,7 @@ from lens.processes.Vladimirov2008_motor import MotorActivity
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
 from lens.composites.growth_division import initialize_growth_division
-from lens.composites.Vladimirov2008 import initialize_vladimirov2008
+from lens.composites.Chemotaxis import initialize_chemotaxis
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -254,7 +254,7 @@ def initialize_measp(agent_config):
              'MeAsp': 0.1 * conc_units}
 
     media_id = make_media.add_media(media, media_id)
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 1000 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
     boot_config = {
@@ -284,12 +284,13 @@ def initialize_measp(agent_config):
 
 def initialize_measp_timeline(agent_config):
     media_id = 'MeAsp timeline'
+    # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant
     timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
-                   '300 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '500 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
-                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '1000 end'
+                   '200 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
+                   '600 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1000 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
+                   '1400 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1600 end'
 
     make_media = Media()
     timeline = make_media.make_timeline(timeline_str)
@@ -345,7 +346,7 @@ class BootEnvironment(BootAgent):
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
             'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0}),
-            'vladimirov2008': wrap_boot(initialize_vladimirov2008, {'volume': 1.0})
+            'chemotaxis': wrap_boot(initialize_chemotaxis, {'volume': 1.0})
             }
 
 def run():

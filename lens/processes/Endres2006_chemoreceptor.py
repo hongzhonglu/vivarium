@@ -11,8 +11,8 @@ INITIAL_STATE = {
     'n_methyl': 3.0,  # initial number of methyl groups on receptor cluster (0 to 8)
     'chemoreceptor_activity': 1 / 3,  # initial probability of receptor cluster being on
     'CheR': 0.00016,  # (mM) wild type concentration. 0.16 uM = 0.00016 mM
-    'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM
-    'CheB_P': 0.0,
+    'CheB': 0.00028,  # (mM) wild type concentration. 0.28 uM = 0.00028 mM. [CheR]:[CheB]=0.16:0.28
+    'CheB_P': 0.0,  # phosphorylated CheB
 }
 
 DEFAULT_PARAMETERS = {
@@ -26,11 +26,11 @@ DEFAULT_PARAMETERS = {
     'K_Tar_on': 0.5,  # (mM) MeAsp binding by Tar (Endres06)
     'K_Tsr_off': 100.0,  # (mM) MeAsp binding by Tsr (Endres06)
     'K_Tsr_on': 10e6,  # (mM) MeAsp binding by Tsr (Endres06)
-    # self.k_CheR = 0.0182  # effective catalytic rate of CheR
-    # self.k_CheB = 0.0364  # effective catalytic rate of CheB
+    # k_CheR = 0.0182  # effective catalytic rate of CheR
+    # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 1000,
+    'adaptRate': 1500,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 
@@ -84,8 +84,8 @@ class ReceptorCluster(Process):
 
     def next_update(self, timestep, states):
         '''
-        Monod-Wyman-Changeux model for mixed cluster activity
-        from Endres & Wingreen. (2006). Precise adaptation in bacterial chemotaxis through "assistance neighborhoods"
+        Monod-Wyman-Changeux model for mixed cluster activity from:
+            Endres & Wingreen. (2006). Precise adaptation in bacterial chemotaxis through "assistance neighborhoods"
         '''
 
         n_methyl = states['internal']['n_methyl']
@@ -120,7 +120,7 @@ class ReceptorCluster(Process):
         else:
             offset_energy = -3.0
 
-        # free energy of the receptors
+        # free energy of the receptors.
         # TODO -- generalize to multiple types of ligands. See eqn 9 in supporting info for Endres & Wingreen 2006
         Tar_free_energy = self.parameters['n_Tar'] * \
                           (offset_energy + math.log((1+ligand_conc/self.parameters['K_Tar_off'])/
@@ -131,13 +131,11 @@ class ReceptorCluster(Process):
 
         # free energy of receptor clusters
         cluster_free_energy = Tar_free_energy + Tsr_free_energy  #  free energy of the cluster
-        P_on = 1.0/(1.0 + math.exp(cluster_free_energy))  # probability that receptor cluster is ON (CheA is phosphorylated)
+        P_on = 1.0/(1.0 + math.exp(cluster_free_energy))  # probability that receptor cluster is ON (CheA is phosphorylated). Higher free energy --> activity less probably
 
         update = {
             'internal': {
                 'chemoreceptor_activity': P_on,
                 'n_methyl': n_methyl,
-            }
-        }
-
+            }}
         return update
