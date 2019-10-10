@@ -26,11 +26,10 @@ from lens.actor.inner import Inner
 from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
 from lens.actor.emitter import get_emitter
-
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.environment.make_media import Media
-from lens.utils.units import units
 from lens.environment.lattice_compartment import generate_lattice_compartment
+from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
@@ -79,6 +78,34 @@ def wrap_initialize(make_process):
 
     return initialize
 
+def wrap_boot_environment(intialize):
+    def boot(agent_id, agent_type, agent_config):
+        # get boot_config from initialize
+        boot_config = intialize(agent_config)
+
+        # paths
+        working_dir = agent_config.get('working_dir', os.getcwd())
+        output_dir = os.path.join(working_dir, 'out', agent_id)
+        if os.path.isdir(output_dir):
+            shutil.rmtree(output_dir)
+
+        # emitter
+        emitter_config = {
+            'type': 'database',
+            'url': 'localhost:27017',
+            'database': 'simulations',
+            'experiment_id': agent_id}
+        emitter = get_emitter(emitter_config)
+        boot_config.update({
+            'emitter': emitter,
+            'output_dir': output_dir})
+
+        # create the environment
+        environment = EnvironmentSpatialLattice(boot_config)
+
+        return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+
+    return boot
 
 class EnvironmentAgent(Outer):
     def build_state(self):
@@ -114,9 +141,8 @@ class EnvironmentAgent(Outer):
             self.build_state(),
             print_send=False)
 
-def boot_lattice(agent_id, agent_type, agent_config):
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+# Define environment initialization functions
+def initialize_lattice(agent_config):
     # set up media
     media_id = agent_config.get('media_id', 'minimal')
     media = agent_config.get('media', {})
@@ -125,74 +151,35 @@ def boot_lattice(agent_id, agent_type, agent_config):
     if not media:
         media = make_media.get_saved_media(media_id)
 
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-
     boot_config = {
         'media_object': make_media,
-        'output_dir': output_dir,
         'concentrations': media,
     }
     boot_config.update(agent_config)
 
-    # emitter  TODO (Eran) -- don't repeat this code in the boots
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
+    return boot_config
 
-    # create the environment
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
-def boot_glc_g6p_small(agent_id, agent_type, agent_config):
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+def initialize_glc_g6p_small(agent_config):
+    # set up media
     media_id = 'GLC_G6P'
     make_media = Media()
     timeline_str = '0 {}, 7200 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
-    print("Media condition: {}".format(media_id))
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-
     boot_config = {
         'timeline': timeline,
         'media_object': make_media,
-        'output_dir': output_dir,
-        # 'concentrations': media,
         'run_for': 2.0,
         'depth': 1e-01, #1e-05,  # 3000 um is default
         'edge_length': 1.0,
         'patches_per_edge': 1,
     }
-
     boot_config.update(agent_config)
 
-    # emitter
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
+    return boot_config
 
-    # create the environment
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
-def boot_custom_small(agent_id, agent_type, agent_config):
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+def initialize_custom_small(agent_config):
+    # set up media
     media_id = 'custom'
     make_media = Media()
     COUNTS_UNITS = units.mmol
@@ -218,111 +205,50 @@ def boot_custom_small(agent_id, agent_type, agent_config):
 
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
-
     print("Media condition: {}".format(media_id))
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
 
     boot_config = {
         'timeline': timeline,
         'media_object': make_media,
-        'output_dir': output_dir,
         # 'concentrations': media,
         'run_for': 2.0,
         'depth': 1e-01, #1e-05,  # 3000 um is default
         'edge_length': 1.0,
         'patches_per_edge': 1,
     }
-
     boot_config.update(agent_config)
 
-    # emitter
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
+    return boot_config
 
-    # create the environment
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
-def boot_glc_g6p(agent_id, agent_type, agent_config):
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+def initialize_glc_g6p(agent_config):
+    # set up media
     media_id = 'GLC_G6P'
     make_media = Media()
     media = make_media.get_saved_media(media_id)
 
-    print("Media condition: {}".format(media_id))
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-
     boot_config = {
         'media_object': make_media,
-        'output_dir': output_dir,
         'concentrations': media,
     }
-
     boot_config.update(agent_config)
 
-    # emitter
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
+    return boot_config
 
-    # create the environment
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
-def boot_glc_lct(agent_id, agent_type, agent_config):
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+def initialize_glc_lct(agent_config):
+    # set up media
     media_id = 'GLC_LCT'
     make_media = Media()
     media = make_media.get_saved_media(media_id)
 
-    print("Media condition: {}".format(media_id))
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-
     boot_config = {
         'media_object': make_media,
-        'output_dir': output_dir,
         'concentrations': media,
     }
     boot_config.update(agent_config)
 
-    # emitter
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
+    return boot_config
 
-    # create the environment
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
-
-def boot_measp(agent_id, agent_type, agent_config):
-    # MeAsp is methylaspartate, a nonmetabolizable analog of aspartate and attractant for E. coli
-
-    working_dir = agent_config.get('working_dir', os.getcwd())
-
+def initialize_measp(agent_config):
     media_id = 'MeAsp timeline'
     timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
@@ -333,14 +259,7 @@ def boot_measp(agent_id, agent_type, agent_config):
 
     make_media = Media()
     timeline = make_media.make_timeline(timeline_str)
-
-    print("Media condition: {}".format(media_id))
-    output_dir = os.path.join(working_dir, 'out', agent_id)
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-
     boot_config = {
-        'output_dir': output_dir,
         'media_object': make_media,
         'timeline': timeline,
         # 'concentrations': media,
@@ -363,18 +282,7 @@ def boot_measp(agent_id, agent_type, agent_config):
     }
     boot_config.update(agent_config)
 
-    # emitter
-    emitter_config = {
-        'type': 'database',
-        'url': 'localhost:27017',
-        'database': 'simulations',
-        'experiment_id': agent_id}
-    emitter = get_emitter(emitter_config)
-    boot_config.update({'emitter': emitter})
-
-    environment = EnvironmentSpatialLattice(boot_config)
-
-    return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+    return boot_config
 
 
 class BootEnvironment(BootAgent):
@@ -382,12 +290,12 @@ class BootEnvironment(BootAgent):
         super(BootEnvironment, self).__init__()
         self.agent_types = {
             # environments
-            'lattice': boot_lattice,
-            'sugar1': boot_glc_g6p,
-            'sugar1_small': boot_glc_g6p_small,
-            'sugar2': boot_glc_lct,
-            'custom': boot_custom_small,
-            'measp': boot_measp,
+            'lattice': wrap_boot_environment(initialize_lattice),
+            'sugar1': wrap_boot_environment(initialize_glc_g6p),
+            'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
+            'sugar2': wrap_boot_environment(initialize_glc_lct),
+            'custom': wrap_boot_environment(initialize_custom_small),
+            'measp': wrap_boot_environment(initialize_measp),
 
             # single process compartments
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
