@@ -110,7 +110,7 @@ class Metabolism(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'internal': ['mass', 'lacI'] + self.transport_ids, #self.reaction_ids,
+            'internal': ['mass', 'lacI'] + self.transport_ids + self.reaction_ids,
             'external': ['GLC', 'LAC', 'LCTS', 'ACET']
         }
         return keys
@@ -132,7 +132,7 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = self.add_e_to_dict(states['external'])  # (mmol/L)
+        external_state = self.add_str_to_keys(states['external'], self.e_key)  # (mmol/L)
 
         # #convert external state from mmol/L to ug/L (this was done in Covert 2008)
         # for mol_id, value in external_state.iteritems():
@@ -201,15 +201,15 @@ class Metabolism(Process):
     def remove_e_key(self, molecule_ids):
         return [mol_id.replace(self.e_key, '') for mol_id in molecule_ids]
 
-    def add_e_to_dict(self, molecules_dict):
-        ''' convert external state to compatible format by adding e_key'''
-        e_dict = {}
-        for key, value in molecules_dict.iteritems():
-            if self.e_key in key:
-                e_dict[key] = value
+    def add_str_to_keys(self, dct, key_str):
+        ''' convert dictionary keys by adding key_str'''
+        new_dct = {}
+        for key, value in dct.iteritems():
+            if key_str in key:
+                new_dct[key] = value
             else:
-                e_dict[key + self.e_key] = value
-        return e_dict
+                new_dct[key + key_str] = value
+        return new_dct
 
     def load_data(self):
         '''Load raw data from TSV files,
@@ -217,6 +217,8 @@ class Metabolism(Process):
 
         TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
         '''
+
+        rxn_key = '__RXN'
 
         data = {}
         for filename in LIST_OF_FILENAMES:
@@ -255,6 +257,10 @@ class Metabolism(Process):
         met_mw = {molecule['molecule id']: molecule['molecular weight']
                        for molecule in data['covert2002_ecoli_metabolism_met_mw']}
 
+        # add rxn_key to all entries of stoichiometry and transport_stoichiometry
+        stoichiometry = self.add_str_to_keys(stoichiometry, rxn_key)
+        transport_stoichiometry = self.add_str_to_keys(transport_stoichiometry, rxn_key)
+
         # reaction ids for tracking fluxes
         self.reaction_ids = stoichiometry.keys()
         self.transport_ids = transport_stoichiometry.keys()  # transport_ids are used by default_emitter
@@ -281,6 +287,24 @@ class Metabolism(Process):
             'internal_state_ids': internal_molecules + self.reaction_ids + ['volume', 'mass'],
             'external_state_ids': external_molecules,
             'stoichiometry': stoichiometry,
-            'objective': {'mass': 1},  #maintenance_stoichiometry['VGRO'],
+            'objective': {'mass': 1},  # maintenance_stoichiometry['VGRO'],
             'molecular_weights': met_mw,
         }
+
+
+def test_metabolism():
+    from lens.utils.make_network import make_gephi_network
+
+    # TODO -- add asserts for test
+    # initialize process
+    metabolism = Metabolism()
+    state = metabolism.default_state()
+    update = metabolism.next_update(1.0, state)
+
+    import ipdb; ipdb.set_trace()
+    # TODO get stoichiometry network -- make into network
+    make_gephi_network()
+
+
+if __name__ == '__main__':
+    test_metabolism()

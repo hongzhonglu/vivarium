@@ -163,14 +163,14 @@ def initialize_glc_g6p_small(agent_config):
     # set up media
     media_id = 'GLC_G6P'
     make_media = Media()
-    timeline_str = '0 {}, 7200 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 1800 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     timeline = make_media.make_timeline(timeline_str)
 
     boot_config = {
         'timeline': timeline,
         'media_object': make_media,
         'run_for': 2.0,
-        'depth': 1e-01, #1e-05,  # 3000 um is default
+        'depth': 1e-01, # 3000 um is default
         'edge_length': 1.0,
         'patches_per_edge': 1,
     }

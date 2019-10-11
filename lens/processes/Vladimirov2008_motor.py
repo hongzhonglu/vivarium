@@ -6,7 +6,7 @@ import random
 from lens.actor.process import Process, dict_merge
 
 
-    TUMBLE_JITTER = 1.0  # (radians)
+TUMBLE_JITTER = 1.0  # (radians)
 
 # parameters
 DEFAULT_PARAMETERS = {
