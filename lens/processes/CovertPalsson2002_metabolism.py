@@ -54,11 +54,19 @@ def get_molecules_from_stoich(stoichiometry):
 class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.e_key = '[e]'
+        self.rxn_key = '__RXN'
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
 
         # load data from files
         data = self.load_data()
+
+        self.stoichiometry = data['stoichiometry']
+        self.reaction_ids = self.stoichiometry.keys()
+        self.transport_ids = data['transport_stoichiometry'].keys()
+        self.external_molecule_ids = data['external_molecule_ids']
+        self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
+            for mol_id in self.external_molecule_ids}
 
         ## Initialize FBA
         objective = data['objective']
@@ -217,9 +225,6 @@ class Metabolism(Process):
 
         TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
         '''
-
-        rxn_key = '__RXN'
-
         data = {}
         for filename in LIST_OF_FILENAMES:
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
@@ -258,15 +263,8 @@ class Metabolism(Process):
                        for molecule in data['covert2002_ecoli_metabolism_met_mw']}
 
         # add rxn_key to all entries of stoichiometry and transport_stoichiometry
-        stoichiometry = self.add_str_to_keys(stoichiometry, rxn_key)
-        transport_stoichiometry = self.add_str_to_keys(transport_stoichiometry, rxn_key)
-
-        # reaction ids for tracking fluxes
-        self.reaction_ids = stoichiometry.keys()
-        self.transport_ids = transport_stoichiometry.keys()  # transport_ids are used by default_emitter
-
-        # save external molecule ids, for use in update
-        self.external_molecule_ids = external_molecules
+        stoichiometry = self.add_str_to_keys(stoichiometry, self.rxn_key)
+        transport_stoichiometry = self.add_str_to_keys(transport_stoichiometry, self.rxn_key)
 
         # make regulatory logic functions
         self.regulation_logic = {}
@@ -276,35 +274,52 @@ class Metabolism(Process):
             if rule({}):
                 self.regulation_logic[reaction_id] = rule
 
-        self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
-            for mol_id in self.external_molecule_ids}
-
+        # initialize
         flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
             for flux in data['covert2002_GLC_G6P_flux_bounds']}
         self.default_flux_bounds = flux_bounds['default']
 
         return {
-            'internal_state_ids': internal_molecules + self.reaction_ids + ['volume', 'mass'],
+            'internal_state_ids': internal_molecules + stoichiometry.keys() + ['volume', 'mass'],
             'external_state_ids': external_molecules,
             'stoichiometry': stoichiometry,
             'objective': {'mass': 1},  # maintenance_stoichiometry['VGRO'],
             'molecular_weights': met_mw,
+            'stoichiometry': stoichiometry,
+            'transport_stoichiometry': transport_stoichiometry,
+            'external_molecule_ids': external_molecules,
         }
 
 
-def test_metabolism():
-    from lens.utils.make_network import make_gephi_network
+def save_metabolic_network():
+    from lens.utils.make_network import save_network
 
     # TODO -- add asserts for test
     # initialize process
     metabolism = Metabolism()
+    stoichiometry = metabolism.stoichiometry
+    reaction_ids = metabolism.reaction_ids
+    transport_ids = metabolism.transport_ids
     state = metabolism.default_state()
     update = metabolism.next_update(1.0, state)
+    internal = update['internal']
 
-    import ipdb; ipdb.set_trace()
-    # TODO get stoichiometry network -- make into network
-    make_gephi_network()
+    # save fluxes as node size
+    node_sizes = {}
+    for rxn_id in reaction_ids:
+        flux = internal[rxn_id]
+        node_sizes[rxn_id] = flux + 1
+
+    # transport node type
+    node_types = {rxn_id: 'transport' for rxn_id in transport_ids}
+    info = {
+        'node_sizes': node_sizes,
+        'node_types': node_types
+    }
+    save_network(stoichiometry, 'out/metabolism_network', info)
+
+
 
 
 if __name__ == '__main__':
-    test_metabolism()
+    save_metabolic_network()

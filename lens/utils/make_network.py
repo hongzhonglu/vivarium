@@ -26,8 +26,13 @@ def get_loose_nodes(stoichiometry):
 
 	return loose_nodes
 
-def make_network(stoichiometry, node_type={}):
-	'''Build the network'''
+def make_network(stoichiometry, info={}):
+	'''
+	Build the network
+	TODO -- add edge weight to info
+	'''
+	node_types = info.get('node_types', {})
+	node_sizes = info.get('node_sizes', {})
 
 	nodes = {}
 	edges = []
@@ -35,20 +40,21 @@ def make_network(stoichiometry, node_type={}):
 	for reaction_id, stoich in stoichiometry.iteritems():
 
 		# add reaction to node list
-		rxn_type = 'reaction' # TODO -- pass in type
-		nodes[reaction_id] = {'label': reaction_id, 'type': rxn_type}
-		if node_type.get(reaction_id):
-			n_type = node_type.get(reaction_id)
-			nodes[reaction_id] = {'label': reaction_id, 'type': n_type}
+		n_type = node_types.get(reaction_id, 'reaction')
+		n_size = node_sizes.get(reaction_id, 1)
+		nodes[reaction_id] = {
+			'label': reaction_id,
+			'type': n_type,
+			'size': n_size}
 
 		# add molecules to node list, and connections to edge list
 		for molecule_id, coeff in stoich.iteritems():
-
-			mol_type = 'molecule' # TODO -- pass in type
-			nodes[molecule_id] = {'label': molecule_id, 'type': mol_type}
-			if node_type.get(molecule_id):
-				n_type = node_type.get(molecule_id)
-				nodes[molecule_id] = {'label': molecule_id, 'type': n_type}
+			n_type = node_types.get(molecule_id, 'molecule')
+			n_size = node_sizes.get(molecule_id, 1)
+			nodes[molecule_id] = {
+				'label': molecule_id,
+				'type': n_type,
+				'size': n_size}
 
 			## add edge between reaction and molecule
 			# a reactant
@@ -59,39 +65,44 @@ def make_network(stoichiometry, node_type={}):
 				edge = [reaction_id, molecule_id]
 			else:
 				print(reaction_id + ', ' + molecule_id + ': coeff = 0')
-
+				break
 			edges.append(edge)
 
 	return nodes, edges
 
-
-def make_gephi_network(stoichiometry, plotOutDir, node_type={}):
-
-	nodes, edges = make_network(stoichiometry, node_type)
+def save_network(stoichiometry, plotOutDir='out/network', info={}):
+	'''
+	Makes a gephi network with weighted edges.
+	stoichiometry and weights need to have the same reaction ids
+	info can contain two types of data in dictionaries, edge_weights and node_types
+	info = {
+		'node_sizes': node_sizes (dict),
+		'node_types': node_types (dict)
+	}
+	weights = {
+	'''
+	nodes, edges = make_network(stoichiometry, info)
 
 	out_dir = os.path.join(plotOutDir, 'network')
-
 	if not os.path.exists(out_dir):
 		os.makedirs(out_dir)
-
 	nodes_out = os.path.join(out_dir, 'nodes.csv')
-
 	edges_out = os.path.join(out_dir, 'edges.csv')
 
 	## Save network to csv
-
 	# nodes list
 	with open(nodes_out, 'wb') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 
 		# write header
-		writer.writerow(['Id', 'Label', 'Type'])
+		writer.writerow(['Id', 'Label', 'Type', 'Size'])
 
 		for node, specs in nodes.iteritems():
 			label = specs['label']
 			type = specs['type']
+			size = specs['size']
 
-			row = [node, label, type]
+			row = [node, label, type, size]
 			writer.writerow(row)
 
 	# edges list
