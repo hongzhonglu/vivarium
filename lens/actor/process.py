@@ -231,26 +231,29 @@ def merge_default_states(processes):
     initial_state = {}
     for process_id, process in processes.iteritems():
         default = process.default_state()
-        initial_state = dict_merge(initial_state, default)
+        initial_state = dict_merge(dict(initial_state), default)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
     for process_id, process in processes.iteritems():
         process_updaters = process.default_updaters()
-        updaters = dict_merge(updaters, process_updaters)
+        updaters = dict_merge(dict(updaters), process_updaters)
     return updaters
 
 def dict_merge(dct, merge_dct):
-    ''' Recursive dict merge '''
-    new_dict = dct.copy()
+    '''
+    Recursive dict merge
+    This mutates dct - the contents of merge_dct are added to dct (which is also returned).
+    If you want to keep dct you could call it like dict_merge(dict(dct), merge_dct)'''
     for k, v in merge_dct.iteritems():
-        if (k in new_dict and isinstance(new_dict[k], dict)
+        if (k in dct and isinstance(dct[k], dict)
                 and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(new_dict[k], merge_dct[k])
+            dict_merge(dct[k], merge_dct[k])
         else:
-            new_dict[k] = merge_dct[k]
-    return new_dict
+            dct[k] = merge_dct[k]
+    return dct
+
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''

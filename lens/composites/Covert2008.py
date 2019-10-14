@@ -58,7 +58,7 @@ def initialize_covert2008(config):
 
     states = {
         compartment_roles[role]: State(
-            initial_state=dict_merge(default_states.get(role, {}), initial_exchanges.get(role, {})),
+            initial_state=dict_merge(dict(default_states.get(role, {})), initial_exchanges.get(role, {})),
             updaters=default_updaters.get(role, {}))
             for role in default_states.keys()}
 

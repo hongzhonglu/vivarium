@@ -43,7 +43,7 @@ from lens.processes.Vladimirov2008_motor import MotorActivity
 # composites
 from lens.composites.Covert2008 import initialize_covert2008
 from lens.composites.growth_division import initialize_growth_division
-from lens.composites.Vladimirov2008 import initialize_vladimirov2008
+from lens.composites.Chemotaxis import initialize_chemotaxis
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -182,25 +182,22 @@ def initialize_custom_small(agent_config):
     # set up media
     media_id = 'custom'
     make_media = Media()
-    COUNTS_UNITS = units.mmol
-    VOLUME_UNITS = units.L
-    CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
-
+    conc_units = units.mmol / units.L
     custom_media = {
-        "ACET": 0.0 * CONC_UNITS,
-        "CO+2": 100.0 * CONC_UNITS,
-        "ETOH": 0.0 * CONC_UNITS,
-        "FORMATE": 0.0 * CONC_UNITS,
-        "GLYCEROL": 0.0 * CONC_UNITS,
-        "LAC": 0.0 * CONC_UNITS,
-        "LCTS": 3.4034 * CONC_UNITS,
-        "OXYGEN-MOLECULE": 100.0 * CONC_UNITS,
-        "PI": 100.0 * CONC_UNITS,
-        "PYR": 0.0 * CONC_UNITS,
-        "RIB": 0.0 * CONC_UNITS,
-        "SUC": 0.0 * CONC_UNITS,
-        "G6P": 1.3451 * CONC_UNITS,
-        "GLC": 12.2087 * CONC_UNITS}
+        "ACET": 0.0 * conc_units,
+        "CO+2": 100.0 * conc_units,
+        "ETOH": 0.0 * conc_units,
+        "FORMATE": 0.0 * conc_units,
+        "GLYCEROL": 0.0 * conc_units,
+        "LAC": 0.0 * conc_units,
+        "LCTS": 3.4034 * conc_units,
+        "OXYGEN-MOLECULE": 100.0 * conc_units,
+        "PI": 100.0 * conc_units,
+        "PYR": 0.0 * conc_units,
+        "RIB": 0.0 * conc_units,
+        "SUC": 0.0 * conc_units,
+        "G6P": 1.3451 * conc_units,
+        "GLC": 12.2087 * conc_units}
     media_id = make_media.add_media(custom_media, media_id)
 
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
@@ -249,31 +246,59 @@ def initialize_glc_lct(agent_config):
     return boot_config
 
 def initialize_measp(agent_config):
+
+    conc_units = units.mmol / units.L
+    make_media = Media()
+    media_id = 'MeAsp_media'
+    media = {'GLC': 20.0 * conc_units,
+             'MeAsp': 0.1 * conc_units}
+
+    media_id = make_media.add_media(media, media_id)
+    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline = make_media.make_timeline(timeline_str)
+
+    boot_config = {
+        'timeline': timeline,
+        'media_object': make_media,
+        'run_for': 1.0,
+        'static_concentrations': True,
+        'gradient': {
+            'seed': True,
+            'molecules': {
+                'GLC': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0},
+                'MeAsp': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0}
+            }},
+        'diffusion': 0.0,
+        'translation_jitter': 0.5,
+        'rotation_jitter': 0.005,
+        'edge_length': 200.0,
+        'patches_per_edge': 40}
+    boot_config.update(agent_config)
+
+    return boot_config
+
+
+def initialize_measp_timeline(agent_config):
     media_id = 'MeAsp timeline'
+    # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant. 0.2 b/c of dilution.
     timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '100 GLC 20.0 mmol 1 L + MeAsp 0.01 mmol 1 L, ' \
-                   '300 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '500 GLC 20.0 mmol 1 L + MeAsp 0.1 mmol 1 L, ' \
-                   '700 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
-                   '1000 end'
+                   '200 GLC 20.0 mmol 1 L + MeAsp 0.2 mmol 1 L, ' \
+                   '600 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1000 GLC 20.0 mmol 1 L + MeAsp 0.02 mmol 1 L, ' \
+                   '1400 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
+                   '1600 end'
 
     make_media = Media()
     timeline = make_media.make_timeline(timeline_str)
     boot_config = {
         'media_object': make_media,
         'timeline': timeline,
-        # 'concentrations': media,
+        'run_for': 1.0,
         'static_concentrations': True,
-        'gradient': {
-            'seed': True,
-            'molecules': {
-                'GLC': {
-                    'center': [0.5, 1.0],
-                    'deviation': 50.0},
-                'MeAsp': {
-                    'center': [0.25, 0.25],
-                    'deviation': 30.0}
-            }},
         'diffusion': 0.0,
         'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
@@ -296,6 +321,7 @@ class BootEnvironment(BootAgent):
             'sugar2': wrap_boot_environment(initialize_glc_lct),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
+            'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
 
             # single process compartments
             'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
@@ -309,7 +335,7 @@ class BootEnvironment(BootAgent):
             # composite compartments
             'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
             'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0}),
-            'vladimirov': wrap_boot(initialize_vladimirov2008, {'volume': 1.0})
+            'chemotaxis': wrap_boot(initialize_chemotaxis, {'volume': 1.0})
             }
 
 def run():

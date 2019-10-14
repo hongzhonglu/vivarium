@@ -102,7 +102,7 @@ class Metabolism(Process):
 
         # add reaction fluxes to internal state
         rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
-        internal_state = dict_merge(internal, rxns)
+        internal_state = dict_merge(dict(internal), rxns)
 
         return {
             'external': external,
@@ -124,7 +124,7 @@ class Metabolism(Process):
         mass_updater = {'mass': 'set'}
 
         updater_types = {
-            'internal': dict_merge(reaction_updaters, mass_updater),
+            'internal': dict_merge(dict(reaction_updaters), mass_updater),
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
 
         return updater_types
@@ -145,7 +145,7 @@ class Metabolism(Process):
         volume = mass.to('g') / self.density # TODO -- volume deriver can do this if composed with process
 
         # get the regulatory state of the reactions TODO -- are there reversible regulated reactions?
-        total_state = dict_merge(internal_state, external_state)
+        total_state = dict_merge(dict(internal_state), external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
         regulatory_state = {mol_id: regulatory_logic(boolean_state)
                             for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
@@ -190,7 +190,7 @@ class Metabolism(Process):
         rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
 
         update = {
-            'internal': dict_merge(new_mass, rxn_dict),
+            'internal': dict_merge(dict(new_mass), rxn_dict),
             'external': environment_deltas}
 
         return update

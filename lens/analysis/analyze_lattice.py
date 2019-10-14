@@ -23,6 +23,8 @@ def location_trace(exp_data, history_data, experiment_id, output_dir='out'):
         y_coord = locations_array[:, 1]
         angle = locations_array[:, 2]
 
+        # mark starting point
+        plt.plot(x_coord[0], y_coord[0], 'r*')
         for i in range(len(locations)):
             plt.plot(x_coord[i:i + 2], y_coord[i:i + 2], 'b-')
 
