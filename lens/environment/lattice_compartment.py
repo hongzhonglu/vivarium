@@ -35,16 +35,14 @@ class LatticeCompartment(Compartment, Simulation):
 
     def generate_daughters(self):
         states = self.divide_state(self)
-        daughter = states[0][self.compartment].state_for['volume']
+        volume = states[0][self.compartment]['volume']
 
         return [
             dict(
-                daughter,
-                id=uuid.uuid1(),
+                id=str(uuid.uuid1()),
                 start_time=self.time(),
-                initial_state={
-                    state_key: state.to_dict()
-                    for state_key, state in daughter_state.items()})
+                volume=volume,
+                initial_state=daughter_state)
             for daughter_state in states]
 
     def generate_inner_update(self):
