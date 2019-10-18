@@ -62,7 +62,7 @@ class State(object):
     def duplicate(self, initial_state={}):
         return State(
             initial_state = initial_state or self.to_dict(),
-            updaters = self.dict(updaters))
+            updaters = self.dict(self.updaters))
 
     def merge_updaters(self, updaters):
         ''' Merge in a new set of updaters '''
