@@ -238,11 +238,9 @@ def plot_output(output):
     ax3.set_xlabel("time (s)", fontsize=12)
     ax3.set_ylabel("average \n methylation", fontsize=10)
 
-    OUTPUT_PLOT = os.path.join(
-        'out', 'Endres2006_chemoreceptor_test'
-    )
+    fig_path = os.path.join('out', 'Endres2006_chemoreceptor_test')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(OUTPUT_PLOT + '.png', bbox_inches='tight')
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':

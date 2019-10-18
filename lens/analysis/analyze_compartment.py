@@ -31,7 +31,7 @@ def compartment_analysis(data_dict, experiment_id, simulation_id, output_dir='ou
 
     # plot data
     for key in data_keys:
-        for mol_id, series in data_dict[key].iteritems():
+        for mol_id, series in sorted(data_dict[key].iteritems()):
             ax = fig.add_subplot(n_rows, 1, plot_idx)
             ax.plot(time_vec, series)
             ax.title.set_text(str(key) + ': ' + mol_id)
