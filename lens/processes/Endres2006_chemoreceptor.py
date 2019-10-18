@@ -220,7 +220,7 @@ def plot_output(output):
     # plot results
     cols = 1
     rows = 3
-    plt.figure(figsize=(6 * cols, 1 * rows))
+    plt.figure(figsize=(6, 6))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
