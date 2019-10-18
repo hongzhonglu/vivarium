@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import uuid
+
 from lens.actor.process import Compartment, State, dict_merge
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
@@ -31,26 +33,44 @@ class LatticeCompartment(Compartment, Simulation):
             environment.assign_values(update['concentrations'])
             environment.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
 
+    def generate_daughters(self):
+        states = self.divide_state(self)
+        daughter = states[0][self.compartment].state_for['volume']
+
+        return [
+            dict(
+                daughter,
+                id=uuid.uuid1(),
+                start_time=self.time(),
+                initial_state={
+                    state_key: state.to_dict()
+                    for state_key, state in daughter_state.items()})
+            for daughter_state in states]
+
     def generate_inner_update(self):
         environment = self.states.get(self.environment)
         if environment:
             changes = environment.state_for(self.exchange_ids)
-            environment_change = {mol_id.replace(self.exchange_key, ''): value for mol_id, value in changes.iteritems()}
+            environment_change = {
+                mol_id.replace(self.exchange_key, ''): value
+                for mol_id, value in changes.items()}
         else:
             environment_change = {}
 
-        compartment = self.states[self.compartment]
-        values = compartment.state_for(['volume'])
+        state = self.states[self.compartment]
+        values = state.state_for(['volume'])
+        forces = state.state_for(['motile_force', 'motile_torque'])
+        motile_force = [
+            forces.get('motile_force', 0.0),
+            forces.get('motile_torque', 0.0)]
 
-        force = compartment.state_for(['motile_force'])
-        torque = compartment.state_for(['motile_torque'])
-        motile_force = [force.get('motile_force', 0.0), torque.get('motile_torque', 0.0)]
+        if self.divide_condition(self):
+            values['division'] = self.generate_daughters()
 
         values.update({
             'motile_force': motile_force, # TODO -- get motile_force from compartment state
             'color': self.color,
-            'environment_change': environment_change,
-        })
+            'environment_change': environment_change})
 
         return values
 

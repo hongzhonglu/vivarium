@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import collections
 import numpy as np
 import lens.actor.emitter as emit
+import random
 
 
 target_key = '__target'
@@ -57,6 +58,11 @@ class State(object):
 
         self.declare_state(initial.keys())
         self.apply_delta(initial)
+
+    def duplicate(self, initial_state={}):
+        return State(
+            initial_state = initial_state or self.to_dict(),
+            updaters = self.dict(updaters))
 
     def merge_updaters(self, updaters):
         ''' Merge in a new set of updaters '''
@@ -262,7 +268,8 @@ class Compartment(object):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
-        self.local_time = 0.0
+        self.initial_time = configuration.get('initial_time', 0.0)
+        self.local_time = self.initial_time
         self.time_step = configuration.get('time_step', 1.0)
 
         self.derivers = {
@@ -278,6 +285,9 @@ class Compartment(object):
         self.states = states
         self.topology = configuration['topology']
 
+        self.divide_condition = configuration.get('divide_condition', self.default_divide_condition)
+        self.divide_state = configuration.get('divide_state', self.default_divide_state)
+
         # emitter
         self.emitter_keys = configuration['emitter'].get('keys')
         self.emitter = configuration['emitter'].get('object')
@@ -290,6 +300,22 @@ class Compartment(object):
             'table': 'configuration',
             'data': {'topology': self.topology}}
         self.emitter.emit(emit_config)
+
+    def default_divide_condition(self, compartment):
+        return self.local_time - self.initial_time > 20
+
+    def default_divide_state(self, compartment):
+        divided = [{}, {}]
+        for state_key, state in compartment.states.items():
+            left = random.randint(0, 1)
+            for index in range(2):
+                divided[index][state_key] = {}
+                for key, value in state.to_dict().items():
+                    divided[index][state_key][key] = value // 2 + (
+                        value % 2 if index == left else 0)
+
+        print('divided {}'.format(divided))
+        return divided
 
     def run_derivers(self, timestep):
         ''' Run each deriver process to set up state for subsequent processes. '''
