@@ -40,9 +40,11 @@ class LatticeCompartment(Compartment, Simulation):
         return [
             dict(
                 id=str(uuid.uuid1()),
-                start_time=self.time(),
                 volume=volume,
-                initial_state=daughter_state)
+                boot_config=dict(
+                    start_time=self.time(),
+                    volume=volume,
+                    initial_state=daughter_state))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -80,6 +82,7 @@ def generate_lattice_compartment(process, config):
     # initialize states
     default_state = process.default_state()
     default_updaters = process.default_updaters()
+    initial_state = config.get('initial_state', {})
 
     # initialize keys for accumulate_delta updater
     # assumes all environmental updates have been set as `accumulate` updaters
@@ -91,9 +94,13 @@ def generate_lattice_compartment(process, config):
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
+    default_states = dict_merge(default_states, initial_exchanges)
+
     states = {
         role: State(
-            initial_state=dict_merge(dict(default_state.get(role, {})), initial_exchanges.get(role, {})),
+            initial_state=dict_merge(
+                default_states.get(role, {}),
+                dict(initial_state.get(role, {}))),
             updaters=default_updaters.get(role, {}))
             for role in process.roles.keys()}
 

@@ -34,6 +34,7 @@ def initialize_chemotaxis(config):
     # initialize the states
     default_states = merge_default_states(processes)
     default_updaters = merge_default_updaters(processes)
+    initial_state = config.get('initial_state', {})
 
     # get environment ids, and make exchange_ids for external state
     environment_ids = []
@@ -48,6 +49,8 @@ def initialize_chemotaxis(config):
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
+    default_states = dict_merge(default_states, initial_exchanges)
+
     # set states according to the compartment_roles mapping.
     # This will not generalize to composites with processes that have different roles
     compartment_roles = {
@@ -56,7 +59,9 @@ def initialize_chemotaxis(config):
 
     states = {
         compartment_roles[role]: State(
-            initial_state=dict_merge(dict(default_states.get(role, {})), initial_exchanges.get(role, {})),
+            initial_state=dict_merge(
+                default_states.get(role, {}),
+                dict(initial_state.get(compartment_roles[role], {}))),
             updaters=default_updaters.get(role, {}))
         for role in default_states.keys()}
 
