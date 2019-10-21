@@ -419,6 +419,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
+            'cell_radius': self.cell_radius,
             'edge_length': self.edge_length,
             'patches_per_edge': self.patches_per_edge,
             'total_volume': self.total_volume,

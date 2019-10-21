@@ -275,6 +275,42 @@ def initialize_measp(agent_config):
         'diffusion': 0.0,
         'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
+        'edge_length': 50.0,
+        'patches_per_edge': 10}
+    boot_config.update(agent_config)
+
+    return boot_config
+
+def initialize_measp_large(agent_config):
+
+    conc_units = units.mmol / units.L
+    make_media = Media()
+    media_id = 'MeAsp_media'
+    media = {'GLC': 20.0 * conc_units,
+             'MeAsp': 0.1 * conc_units}
+
+    media_id = make_media.add_media(media, media_id)
+    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline = make_media.make_timeline(timeline_str)
+
+    boot_config = {
+        'timeline': timeline,
+        'media_object': make_media,
+        'run_for': 1.0,
+        'static_concentrations': True,
+        'gradient': {
+            'seed': True,
+            'molecules': {
+                'GLC': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0},
+                'MeAsp': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0}
+            }},
+        'diffusion': 0.0,
+        'translation_jitter': 0.5,
+        'rotation_jitter': 0.005,
         'edge_length': 200.0,
         'patches_per_edge': 40}
     boot_config.update(agent_config)
@@ -321,6 +357,7 @@ class BootEnvironment(BootAgent):
             'sugar2': wrap_boot_environment(initialize_glc_lct),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
+            'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
 
             # single process compartments
