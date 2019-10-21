@@ -1,325 +1,289 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from scipy import constants
-import numpy as np
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import dict_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import mols_from_reg_logic
-from lens.utils.units import units
-from lens.utils.modular_fba import FluxBalanceAnalysis
+
 from lens.environment.make_media import Media
 import lens.utils.regulation_logic as rl
+
+from lens.processes.metabolism import Metabolism
 
 
 DATA_DIR = os.path.join('lens', 'data', 'flat')
 LIST_OF_FILENAMES = (
-    "covert2002_reactions.tsv",
-    "covert2002_transport.tsv",
-    "covert2002_exchange_fluxes.tsv",
-    "covert2002_maintenance_biomass_fluxes.tsv",
-    "covert2002_GLC_G6P_flux_bounds.tsv",
-    "covert2002_ecoli_metabolism_met_mw.tsv",
-    )
+   "covert2002_reactions.tsv",
+   "covert2002_transport.tsv",
+   "covert2002_exchange_fluxes.tsv",
+   "covert2002_maintenance_biomass_fluxes.tsv",
+   "covert2002_GLC_G6P_flux_bounds.tsv",
+   "covert2002_ecoli_metabolism_met_mw.tsv",
+   )
 
-COUNTS_UNITS = units.mmol
-VOLUME_UNITS = units.L
-MASS_UNITS = units.g
-TIME_UNITS = units.s
-CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
+def Covert2002Metabolism(parameters):
+   '''load in flux_targets and target_key through parameters'''
+   config = load_data(DATA_DIR, LIST_OF_FILENAMES)
+   config.update(parameters)
 
-INITIAL_INTERNAL_STATE = {
-    'mass': 1339,  # fg. covert 2002 uses 0.032 g/L
-    'volume': 1}
+   return Metabolism(config)
 
-# helper functions
-def get_reverse(reactions):
-    reverse_stoichiometry = {}
-    for reaction in reactions:
-        if reaction['Reversible']:
-            reaction_id = reaction['Reaction']
-            stoich = {mol_id: -1 * coeff
-                      for mol_id, coeff in reaction['Stoichiometry'].iteritems()}
-            reverse_stoichiometry[reaction_id + '_reverse'] = stoich
-    return reverse_stoichiometry
+
+def load_data(data_dir, filenames):
+   '''Load raw data from TSV files'''
+
+   e_key = '[e]'
+   rxn_key = '__RXN'
+
+   data = {}
+   for filename in filenames:
+       attrName = filename.split(os.path.sep)[-1].split(".")[0]
+       data[attrName] = load_tsv(data_dir, filename)
+
+   # compose stoichiometry
+   stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+                    for reaction in data['covert2002_reactions']}
+   transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+                              for reaction in data['covert2002_transport']}
+   maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+                                for reaction in data['covert2002_maintenance_biomass_fluxes']}
+   stoichiometry.update(transport_stoichiometry)
+
+   # objective
+   # objective = maintenance_stoichiometry['VGRO']
+   # stoichiometry.update({'ATPM': maintenance_stoichiometry['ATPM']})
+   stoichiometry.update(maintenance_stoichiometry)
+   objective = {'mass': 1}
+
+   # list of reversible reactions
+   reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
+
+   # add rxn_key to all entries of stoichiometry and transport_stoichiometry
+   stoichiometry = add_str_to_dict_keys(stoichiometry, rxn_key)
+   reversible_reactions = add_str_key(reversible_reactions, rxn_key)
+
+   # get all molecules
+   metabolites = get_molecules_from_stoich(stoichiometry)
+   enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
+   transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
+   regulation_molecules = mols_from_reg_logic(data['covert2002_reactions'])
+
+   all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
+   external_molecules = [mol_id for mol_id in all_molecules if e_key in mol_id]   # this test keeps the e_key, since it doesn't require lattice
+   internal_molecules = [mol_id for mol_id in all_molecules if e_key not in mol_id]
+
+   # flux bounds on reactions
+   flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
+                  for flux in data['covert2002_GLC_G6P_flux_bounds']}
+   # default_flux_bounds = flux_bounds['default']
+
+   # # make regulatory logic functions from data
+   # regulation_logic = {}
+   # for reaction in data['covert2002_reactions']:
+   #     reaction_id = reaction['Reaction']
+   #     rule = rl.build_rule(reaction['Regulatory Logic'])
+   #     if rule({}):
+   #         regulation_logic[reaction_id] = rule
+
+
+   # initial state
+   make_media = Media()
+   external_state = make_media.get_saved_media('GLC_G6P')
+   external_state = add_str_to_dict_keys(external_state, e_key)
+   internal = {'mass': 1339,'volume': 1}
+   rxns = {rxn_id: 0.0 for rxn_id in stoichiometry.keys()}
+   internal_state = dict_merge(dict(internal), rxns)
+   initial_state = {'external': external_state, 'internal': internal_state}
+
+   # TODO -- add regulation_logic, flux_bounds
+   return {
+       'stoichiometry': stoichiometry,
+       'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,  # TODO -- what reversible reactions are needed?
+       'external_molecules': external_molecules,
+       'objective': objective,
+       # 'transport_limits': transport_limits,
+       'initial_state': initial_state}
+
+def add_str_to_dict_keys(dct, key_str):
+   ''' convert dictionary keys by adding key_str'''
+   new_dct = {}
+   for key, value in dct.iteritems():
+       if key_str in key:
+           new_dct[key] = value
+       else:
+           new_dct[key + key_str] = value
+   return new_dct
+
+def add_str_key(molecule_ids, key_str):
+   return [mol_id + key_str for mol_id in molecule_ids]
+
+def remove_str_key(molecule_ids, key_str):
+   return [mol_id.replace(key_str, '') for mol_id in molecule_ids]
 
 def get_molecules_from_stoich(stoichiometry):
-    molecules = set()
-    for reaction, stoich in stoichiometry.iteritems():
-        molecules.update(stoich.keys())
-    return list(molecules)
+   molecules = set()
+   for reaction, stoich in stoichiometry.iteritems():
+       molecules.update(stoich.keys())
+   return list(molecules)
 
 
-class Metabolism(Process):
-    def __init__(self, initial_parameters={}):
-        self.e_key = '[e]'
-        self.rxn_key = '__RXN'
-        self.nAvogadro = constants.N_A * 1/units.mol
-        self.density = 1100 * units.g/units.L
 
-        # load data from files
-        data = self.load_data()
+def test_covert2002(total_time=3600):
+    import numpy as np
+    from lens.utils.units import units
 
-        self.stoichiometry = data['stoichiometry']
-        self.reaction_ids = self.stoichiometry.keys()
-        self.transport_ids = data['transport_stoichiometry'].keys()
-        self.external_molecule_ids = data['external_molecule_ids']
-        self.transport_limits = {mol_id: 1.0 * (units.mmol / units.g / units.h)
-            for mol_id in self.external_molecule_ids}
+    target_key = '__target'
+    # make kinetic rate laws to mimic transport kinetics
+    transport_rates = {}
 
-        ## Initialize FBA
-        objective = data['objective']
-        external_mol_ids_e = self.add_e_key(self.external_molecule_ids)
-        external_molecular_masses = {mol_id + self.e_key: data['molecular_weights'][mol_id]
-                                     for mol_id in self.external_molecule_ids}
+    # configure process
+    metabolism = Covert2002Metabolism({})
+    target_rxn_ids = metabolism.flux_targets
 
-        self.fba = FluxBalanceAnalysis(
-            reactionStoich=data['stoichiometry'],
-            externalExchangedMolecules=external_mol_ids_e,
-            moleculeMasses=external_molecular_masses,
-            objective=objective,
-            objectiveType="standard",
-            solver="glpk-linear",
-        )
+    # get initial state and parameters
+    state = metabolism.default_state()
+    density = metabolism.density
+    nAvogadro = metabolism.nAvogadro
 
-        # assign internal, external state ids
-        roles = {
-            'external': data['external_state_ids'],
-            'internal': data['internal_state_ids']}
-        parameters = {}
-        parameters.update(initial_parameters)
+    saved_state = {
+        'internal': {state_id: [value] for state_id, value in state['internal'].iteritems()},
+        'external': {state_id: [value] for state_id, value in state['external'].iteritems()},
+        'time': [0]}
 
-        super(Metabolism, self).__init__(roles, parameters)
+    # run simulation
+    time = 0
+    timestep = 1  # sec
+    while time < total_time:
+        mass_t0 = state['internal']['mass']
+        volume_t0 = (mass_t0 * units.fg).to('g') / density
+        time += timestep
 
-    def default_state(self):
-        '''
-        returns dictionary with:
-            - external (dict) -- external states with default initial values, will be overwritten by environment
-            - internal (dict) -- internal states with default initial values
-        '''
-        glc_g6p = True
-        glc_lct = False
+        # get update
+        update = metabolism.next_update(timestep, state)
+        state['internal'] = update['internal']
+        growth_rate = metabolism.fba.getObjectiveValue()
 
-        make_media = Media()
-        if glc_g6p:
-            external = make_media.get_saved_media('GLC_G6P')
-        elif glc_lct:
-            external = make_media.get_saved_media('GLC_LCT')
-        internal = INITIAL_INTERNAL_STATE
+        # apply external update
+        mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
+        for mol_id, exchange in update['external'].iteritems():
+            exchange_rate = exchange / mmolToCount  # TODO -- per second?
+            delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
-        # add reaction fluxes to internal state
-        rxns = {rxn_id: 0.0 for rxn_id in self.reaction_ids}
-        internal_state = dict_merge(dict(internal), rxns)
+            if np.isnan(delta_conc):
+                delta_conc = 0.0
 
-        return {
-            'external': external,
-            'internal': internal_state}
+            state['external'][mol_id] += delta_conc * 0.001  # TODO -- scaling?
+            if state['external'][mol_id] < 0:  # this shouldn't be needed
+                state['external'][mol_id] = 0
 
-    def default_emitter_keys(self):
-        keys = {
-            'internal': ['mass', 'lacI'] + self.transport_ids + self.reaction_ids,
-            'external': ['GLC', 'LAC', 'LCTS', 'ACET']
-        }
-        return keys
+        # # get new flux targets
+        # target_fluxes = {}
+        # for rxn_id, rate_law in transport_rates.iteritems():
+        #     target_flux = rate_law(state['external'])
+        #     target_fluxes[rxn_id + target_key] = target_flux
+        # state['internal'].update(target_fluxes)
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
+        # save state
+        saved_state['time'].append(time)
+        saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
+        for state_id, value in state['internal'].iteritems():
+            saved_state['internal'][state_id].append(value)
+        for state_id, value in state['external'].iteritems():
+            saved_state['external'][state_id].append(value)
 
-        reaction_updaters = {rxn_id: 'set' for rxn_id in self.reaction_ids}
-        mass_updater = {'mass': 'set'}
+    # check that mass values are strictly increasing
+    mass_ts = saved_state['internal']['mass'][2:]
+    assert all(i < j for i, j in zip(mass_ts, mass_ts[1:]))
 
-        updater_types = {
-            'internal': dict_merge(dict(reaction_updaters), mass_updater),
-            'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
+    data = {
+        'saved_state': saved_state,
+        'target_rxn_ids': target_rxn_ids,
+        'target_key': target_key}
+    return data
 
-        return updater_types
+def plot_metabolism_output(data):
+    import os
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    import math
 
-    def next_update(self, timestep, states):
+    saved_state = data['saved_state']
+    target_rxn_ids = data.get('target_rxn_ids')
+    target_key = data.get('target_key')
+    targeted_states = remove_str_key(target_rxn_ids, target_key)
 
-        internal_state = states['internal']
-        external_state = self.add_str_to_keys(states['external'], self.e_key)  # (mmol/L)
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
+    n_data = [len(saved_state[key].keys()) for key in data_keys]
 
-        # #convert external state from mmol/L to ug/L (this was done in Covert 2008)
-        # for mol_id, value in external_state.iteritems():
-        #     conc = value * units.mmol / units.L
-        #     mw = self.met_mw[mol_id] * (units.g / units.mol)
-        #     new_value = (conc * mw.to('g/mmol')).to('ug/L')
-        #     external_state[mol_id] = new_value.magnitude
+    n_col = 3
+    n_rows = math.ceil(sum(n_data) / n_col) + 1
 
-        mass = internal_state['mass'] * units.fg
-        volume = mass.to('g') / self.density # TODO -- volume deriver can do this if composed with process
+    # make figure
+    fig = plt.figure(figsize=(n_col * 8, n_rows * 2.5))
+    plot_idx = 1
+    for key in data_keys:
+        for state_id, series in sorted(saved_state[key].iteritems()):
+            if state_id not in target_rxn_ids:
+                ax = fig.add_subplot(n_rows, n_col, plot_idx)
+                ax.plot(time_vec, series)
+                ax.title.set_text(str(key) + ': ' + state_id)
+                ax.ticklabel_format(style='sci',axis='y')
+                ax.set_xlabel('time (hr)')
+                plot_idx += 1
 
-        # get the regulatory state of the reactions TODO -- are there reversible regulated reactions?
-        total_state = dict_merge(dict(internal_state), external_state)
-        boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
-        regulatory_state = {mol_id: regulatory_logic(boolean_state)
-                            for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
+                # if state has target, plot series in red
+                if state_id in targeted_states:
+                    target_id = state_id + target_key
+                    target_series = saved_state[key][target_id]
+                    ax.plot(time_vec, target_series, 'r', label='target')
+                    ax.legend()
 
-        # get exchange_molecule ids from FBA, remove self.e_key, look up in external_state
-        exchange_molecules = self.fba.getExternalMoleculeIDs()
-        external_concentrations = [external_state.get(molID, 0.0) for molID in exchange_molecules]
-
-        # set external_concentrations in FBA
-        self.fba.setExternalMoleculeLevels(external_concentrations)
-
-        # set reaction flux bounds, based on default bounds and regulatory_state
-        flux_bounds = np.array([self.default_flux_bounds for rxn in self.reaction_ids])
-        for rxn_index, rxn_id in enumerate(self.reaction_ids):
-            if regulatory_state.get(rxn_id) is False:
-                flux_bounds[rxn_index] = [0.0, 0.0]
-            # set lower bound to 0
-            flux_bounds[rxn_index, 0] = 0 # TODO -- if negative, lower bounds should set bound on reverse reactions
-
-        self.fba.setReactionFluxBounds(
-            self.reaction_ids,
-            lowerBounds=flux_bounds[:,0],
-            upperBounds=flux_bounds[:,1])
-
-        # get exchanges
-        exchange_fluxes = CONC_UNITS * self.fba.getExternalExchangeFluxes() * timestep
-
-        # calculate growth rate, update biomass mass is in g/L
-        growth_rate = CONC_UNITS * (self.fba.getObjectiveValue() - 1) # TODO Covert 2008 has objective*growRateScale
-
-        # todo -- convert growth rate units?
-        new_mass = {'mass': (mass * np.exp(growth_rate.magnitude * timestep)).magnitude}
-
-         # get the delta counts for environmental molecules
-        mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
-        delta_exchange_counts = (mmolToCount * exchange_fluxes).astype(int)
-        environment_deltas = dict(zip(self.external_molecule_ids, delta_exchange_counts))  # TODO -- refactor self.external_molecule_ids
-
-        # get delta reaction flux
-        rxn_ids = self.fba.getReactionIDs()
-        rxn_fluxes = self.fba.getReactionFluxes()
-        rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
-
-        update = {
-            'internal': dict_merge(dict(new_mass), rxn_dict),
-            'external': environment_deltas}
-
-        return update
-
-    def add_e_key(self, molecule_ids):
-        return [mol_id + self.e_key for mol_id in molecule_ids]
-
-    def remove_e_key(self, molecule_ids):
-        return [mol_id.replace(self.e_key, '') for mol_id in molecule_ids]
-
-    def add_str_to_keys(self, dct, key_str):
-        ''' convert dictionary keys by adding key_str'''
-        new_dct = {}
-        for key, value in dct.iteritems():
-            if key_str in key:
-                new_dct[key] = value
-            else:
-                new_dct[key + key_str] = value
-        return new_dct
-
-    def load_data(self):
-        '''Load raw data from TSV files,
-        save to data dictionary and then assign to class variables
-
-        TODO -- what is covert2002_exchange_fluxes doing besides providing external molecule ids?
-        '''
-        data = {}
-        for filename in LIST_OF_FILENAMES:
-            attrName = filename.split(os.path.sep)[-1].split(".")[0]
-            data[attrName] = load_tsv(DATA_DIR, filename)
-
-        # compose stoichiometry
-        stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-            for reaction in data['covert2002_reactions']}
-
-        # additional stoichiometries
-        transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-            for reaction in data['covert2002_transport']}
-        maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-            for reaction in data['covert2002_maintenance_biomass_fluxes']}
-        reverse_stoichiometry = get_reverse(data['covert2002_reactions'])
-        reverse_transport_stoichiometry = get_reverse(data['covert2002_transport'])
-
-        # add to stoichiometry
-        stoichiometry.update(transport_stoichiometry)
-        stoichiometry.update(maintenance_stoichiometry)
-        stoichiometry.update(reverse_stoichiometry)
-        stoichiometry.update(reverse_transport_stoichiometry)
-
-        # get all molecules
-        metabolites = get_molecules_from_stoich(stoichiometry)
-        enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
-        transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
-        regulation_molecules = mols_from_reg_logic(data['covert2002_reactions'])
-
-        all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
-        external_molecules = self.remove_e_key([mol_id for mol_id in all_molecules if self.e_key in mol_id])
-        internal_molecules = [mol_id for mol_id in all_molecules if self.e_key not in mol_id]
-
-        # get molecular weights
-        met_mw = {molecule['molecule id']: molecule['molecular weight']
-                       for molecule in data['covert2002_ecoli_metabolism_met_mw']}
-
-        # add rxn_key to all entries of stoichiometry and transport_stoichiometry
-        stoichiometry = self.add_str_to_keys(stoichiometry, self.rxn_key)
-        transport_stoichiometry = self.add_str_to_keys(transport_stoichiometry, self.rxn_key)
-
-        # make regulatory logic functions
-        self.regulation_logic = {}
-        for reaction in data['covert2002_reactions']:
-            reaction_id = reaction['Reaction']
-            rule = rl.build_rule(reaction['Regulatory Logic'])
-            if rule({}):
-                self.regulation_logic[reaction_id] = rule
-
-        # initialize
-        flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
-            for flux in data['covert2002_GLC_G6P_flux_bounds']}
-        self.default_flux_bounds = flux_bounds['default']
-
-        return {
-            'internal_state_ids': internal_molecules + stoichiometry.keys() + ['volume', 'mass'],
-            'external_state_ids': external_molecules,
-            'stoichiometry': stoichiometry,
-            'objective': {'mass': 1},  # maintenance_stoichiometry['VGRO'],
-            'molecular_weights': met_mw,
-            'stoichiometry': stoichiometry,
-            'transport_stoichiometry': transport_stoichiometry,
-            'external_molecule_ids': external_molecules,
-        }
-
+    # make figure output directory and save figure
+    fig_path = os.path.join('out', 'covert2002_metabolism_dFBA_test')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 def save_metabolic_network():
-    from lens.utils.make_network import save_network
+    # TODO -- make this function into an analysis
+    import math
+    from lens.utils.make_network import make_network, save_network
 
-    # TODO -- add asserts for test
-    # initialize process
-    metabolism = Metabolism()
+    flux_simstep = 10 # simulation step for flux edge weights
+
+    # # initialize process
+    metabolism = Covert2002Metabolism({})
     stoichiometry = metabolism.stoichiometry
-    reaction_ids = metabolism.reaction_ids
-    transport_ids = metabolism.transport_ids
-    state = metabolism.default_state()
-    update = metabolism.next_update(1.0, state)
-    internal = update['internal']
+    reaction_ids = stoichiometry.keys()
+    external_mol_ids = metabolism.fba.getExternalMoleculeIDs()
+    objective = metabolism.objective
+
+    # run test to get simulation output
+    data = test_covert2002(60)
+    saved_state = data['saved_state']
+    external = saved_state['external']
+    internal = saved_state['internal']
 
     # save fluxes as node size
-    node_sizes = {}
+    reaction_fluxes = {}
     for rxn_id in reaction_ids:
-        flux = internal[rxn_id]
-        node_sizes[rxn_id] = flux + 1
+        flux = internal[rxn_id][flux_simstep]
+        reaction_fluxes[rxn_id] = math.log(1000 * flux + 1.1)
 
     # transport node type
-    node_types = {rxn_id: 'transport' for rxn_id in transport_ids}
+    node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
+    node_types.update({mol_id: 'external_mol' for mol_id in external_mol_ids})
+    node_types.update({mol_id: 'objective' for mol_id in objective.keys()})
     info = {
-        'node_sizes': node_sizes,
-        'node_types': node_types
-    }
-    save_network(stoichiometry, 'out/metabolism_network', info)
+        'node_types': node_types,
+        'reaction_fluxes': reaction_fluxes}
 
-
-
+    nodes, edges = make_network(stoichiometry, info)
+    save_network(nodes, edges, 'out/covert2002_metabolism_network')
 
 if __name__ == '__main__':
-    save_metabolic_network()
+   saved_state = test_covert2002()
+   plot_metabolism_output(saved_state)
+   save_metabolic_network()

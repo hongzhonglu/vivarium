@@ -143,10 +143,9 @@ class MotorActivity(Process):
         ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)
         ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)
 
-        # TODO -- timestep dependence
         if motor_state == 0:  # 0 for run
             # switch to tumble?
-            prob_switch = ccw_to_cw
+            prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
                 force, torque = self.tumble()
@@ -155,7 +154,7 @@ class MotorActivity(Process):
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
-            prob_switch = ccw_motor_bias
+            prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
                 force, torque = self.run()
@@ -186,10 +185,51 @@ class MotorActivity(Process):
         return force, torque
 
 
-def test_motor():
-    # TODO -- make plotting optional
+def test_motor_control():
     # TODO -- add asserts for test
 
+    motor = MotorActivity()
+    state = motor.default_state()
+    receptor_activity = 1./3.
+    state['internal']['chemoreceptor_activity'] = receptor_activity
+
+    CheY_P_vec = []
+    ccw_motor_bias_vec = []
+    ccw_to_cw_vec = []
+    motor_state_vec = []
+    time_vec = []
+
+    # run simulation
+    time = 0
+    timestep = 0.01  # sec
+    end_time = 360  # secs
+    while time < end_time:
+
+        update = motor.next_update(timestep, state)
+        CheY_P = update['internal']['CheY_P']
+        ccw_motor_bias = update['internal']['ccw_motor_bias']
+        ccw_to_cw = update['internal']['ccw_to_cw']
+        motor_state = update['internal']['motor_state']
+
+        # update motor state
+        state['internal']['motor_state'] = motor_state
+
+        CheY_P_vec.append(CheY_P)
+        ccw_motor_bias_vec.append(ccw_motor_bias)
+        ccw_to_cw_vec.append(ccw_to_cw)
+        motor_state_vec.append(motor_state)
+        time_vec.append(time)
+
+        time += timestep
+
+    return {
+        'CheY_P_vec': CheY_P_vec,
+        'ccw_motor_bias_vec': ccw_motor_bias_vec,
+        'ccw_to_cw_vec': ccw_to_cw_vec,
+        'motor_state_vec': motor_state_vec,
+        'time_vec': time_vec}
+
+def test_variable_receptor():
     from numpy import linspace
 
     motor = MotorActivity()
@@ -213,6 +253,9 @@ def test_motor():
         ccw_to_cw_vec.append(ccw_to_cw)
         motor_state_vec.append(motile_state)
 
+    # check ccw_to_cw bias is strictly increasing with increased receptor activity
+    assert all(i < j for i, j in zip(ccw_to_cw_vec, ccw_to_cw_vec[1:]))
+
     return {
         'receptor_activities': receptor_activities,
         'CheY_P_vec': CheY_P_vec,
@@ -220,7 +263,69 @@ def test_motor():
         'ccw_to_cw_vec': ccw_to_cw_vec,
         'motor_state_vec': motor_state_vec}
 
-def plot_output(output):
+def plot_motor_control(output):
+    # TODO -- make this into an analysis figure
+    import os
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    # receptor_activities = output['receptor_activities']
+    CheY_P_vec = output['CheY_P_vec']
+    ccw_motor_bias_vec = output['ccw_motor_bias_vec']
+    ccw_to_cw_vec = output['ccw_to_cw_vec']
+    motor_state_vec = output['motor_state_vec']
+    time_vec = output['time_vec']
+
+    # plot results
+    cols = 1
+    rows = 4
+    plt.figure(figsize=(6 * cols, 1 * rows))
+
+    ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
+    ax4 = plt.subplot(rows, cols, 3)
+
+    ax1.plot(CheY_P_vec, 'b')
+    ax2.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
+    ax2.plot(ccw_to_cw_vec, 'g', label='ccw_to_cw')
+
+    # get length of runs, tumbles
+    run_lengths = []
+    tumble_lengths = []
+    prior_state = 0
+    state_start_time = 0
+    for state, time in zip(motor_state_vec,time_vec):
+        if state == 0:  # run
+            if prior_state != 0:
+                tumble_lengths.append(time - state_start_time)
+                state_start_time = time
+        elif state == 1:  # tumble
+            if prior_state != 1:
+                run_lengths.append(time - state_start_time)
+                state_start_time = time
+        prior_state = state
+
+    # plot run/tumble distributions
+    max_length = max(run_lengths + tumble_lengths)
+    bins = np.linspace(0, max_length, 20)
+    ax4.hist([run_lengths, tumble_lengths], bins, label=['run_lengths', 'tumble_lengths'])
+
+    # labels
+    ax1.set_xticklabels([])
+    ax1.set_ylabel("CheY_P", fontsize=10)
+    ax2.set_xticklabels([])
+    ax2.set_ylabel("motor bias", fontsize=10)
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax4.set_xlabel("motor state length (sec)", fontsize=10)
+
+    fig_path = os.path.join('out', 'Vladimirov2008_motor_control')
+    plt.subplots_adjust(wspace=0.7, hspace=0.5)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+
+
+def plot_variable_receptor(output):
     import os
     import matplotlib
     matplotlib.use('TkAgg')
@@ -258,13 +363,14 @@ def plot_output(output):
     ax4.set_yticks([0.0, 1.0])
     ax4.set_yticklabels(["run", "tumble"])
 
-    OUTPUT_PLOT = os.path.join(
-        'out', 'Vladimirov2008_motor_test'
-    )
+    fig_path = os.path.join('out', 'Vladimirov2008_motor_variable_receptor')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(OUTPUT_PLOT + '.png', bbox_inches='tight')
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
-    output = test_motor()
-    plot_output(output)
+    output1 = test_motor_control()
+    plot_motor_control(output1)
+
+    output2 = test_variable_receptor()
+    plot_variable_receptor(output2)

@@ -28,17 +28,22 @@ def get_loose_nodes(stoichiometry):
 
 def make_network(stoichiometry, info={}):
 	'''
-	Build the network
-	TODO -- add edge weight to info
+	Makes a gephi network
+	info can contain node_sizes, node_types
+	info = {
+		'node_sizes': node_sizes (dict),
+		'node_types': node_types (dict)
+	}
 	'''
+
 	node_types = info.get('node_types', {})
 	node_sizes = info.get('node_sizes', {})
+	reaction_fluxes = info.get('reaction_fluxes', {})
 
 	nodes = {}
 	edges = []
-
 	for reaction_id, stoich in stoichiometry.iteritems():
-
+		flux = reaction_fluxes.get(reaction_id, 1)
 		# add reaction to node list
 		n_type = node_types.get(reaction_id, 'reaction')
 		n_size = node_sizes.get(reaction_id, 1)
@@ -59,10 +64,10 @@ def make_network(stoichiometry, info={}):
 			## add edge between reaction and molecule
 			# a reactant
 			if coeff < 0:
-				edge = [molecule_id, reaction_id]
+				edge = [molecule_id, reaction_id, flux]
 			# a product
 			elif coeff > 0:
-				edge = [reaction_id, molecule_id]
+				edge = [reaction_id, molecule_id, flux]
 			else:
 				print(reaction_id + ', ' + molecule_id + ': coeff = 0')
 				break
@@ -70,20 +75,45 @@ def make_network(stoichiometry, info={}):
 
 	return nodes, edges
 
-def save_network(stoichiometry, plotOutDir='out/network', info={}):
-	'''
-	Makes a gephi network with weighted edges.
-	stoichiometry and weights need to have the same reaction ids
-	info can contain two types of data in dictionaries, edge_weights and node_types
-	info = {
-		'node_sizes': node_sizes (dict),
-		'node_types': node_types (dict)
-	}
-	weights = {
-	'''
-	nodes, edges = make_network(stoichiometry, info)
+def collapse_network(nodes, edges, remove_nodes_list):
+	''' remove_nodes (list) -- nodes to be removed '''
+	new_nodes = nodes.copy()
 
-	out_dir = os.path.join(plotOutDir, 'network')
+	remove_edges = []
+	add_edges = []
+	for node_id in remove_nodes_list:
+		# remove node from from new_nodes
+		new_nodes.pop(node_id, None)
+
+		# remove all edges from and to this node_id
+		from_edges = [[from_node, to_node] for [from_node, to_node] in edges if to_node is node_id]
+		to_edges = [[from_node, to_node] for [from_node, to_node] in edges if from_node is node_id]
+		remove_edges.extend(from_edges)
+		remove_edges.extend(to_edges)
+
+		# connect the severed nodes
+		for [from_node, c_node1] in from_edges:
+			make_edges = [[from_node, to_node] for [c_node2, to_node] in to_edges]
+			add_edges.extend(make_edges)
+
+	# make new edges
+	new_edges = [edge for edge in edges if edge not in remove_edges]
+	new_edges.extend(add_edges)
+
+	# remove redundant new edges
+	new_edges2 = []
+	for edge in new_edges:
+		if edge not in new_edges2:
+			new_edges2.append(edge)
+
+	return new_nodes, new_edges2
+
+def save_network(nodes, edges, plotOutDir='out/network'):
+	'''
+	Save nodes and edges
+	'''
+
+	out_dir = os.path.join(plotOutDir)
 	if not os.path.exists(out_dir):
 		os.makedirs(out_dir)
 	nodes_out = os.path.join(out_dir, 'nodes.csv')
@@ -110,11 +140,12 @@ def save_network(stoichiometry, plotOutDir='out/network', info={}):
 		writer = csv.writer(csvfile, delimiter=',')
 
 		# write header
-		writer.writerow(['Source', 'Target'])
+		writer.writerow(['Source', 'Target', 'Weight'])
 
 		for edge in edges:
 			source = edge[0]
 			target = edge[1]
+			weight = edge[2]
 
-			row = [source, target]
+			row = [source, target, weight]
 			writer.writerow(row)
