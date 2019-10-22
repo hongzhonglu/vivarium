@@ -261,6 +261,23 @@ def dict_merge(dct, merge_dct):
     return dct
 
 
+def default_divide_condition(compartment):
+    return compartment.local_time > 20
+
+def default_divide_state(compartment):
+    divided = [{}, {}]
+    for state_key, state in compartment.states.items():
+        left = random.randint(0, 1)
+        for index in range(2):
+            divided[index][state_key] = {}
+            for key, value in state.to_dict().items():
+                divided[index][state_key][key] = value // 2 + (
+                    value % 2 if index == left else 0)
+
+    print('divided {}'.format(divided))
+    return divided
+
+
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''
 
@@ -285,8 +302,8 @@ class Compartment(object):
         self.states = states
         self.topology = configuration['topology']
 
-        self.divide_condition = configuration.get('divide_condition', self.default_divide_condition)
-        self.divide_state = configuration.get('divide_state', self.default_divide_state)
+        self.divide_condition = configuration.get('divide_condition', default_divide_condition)
+        self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
         self.emitter_keys = configuration['emitter'].get('keys')
@@ -300,22 +317,6 @@ class Compartment(object):
             'table': 'configuration',
             'data': {'topology': self.topology}}
         self.emitter.emit(emit_config)
-
-    def default_divide_condition(self, compartment):
-        return self.local_time > 20
-
-    def default_divide_state(self, compartment):
-        divided = [{}, {}]
-        for state_key, state in compartment.states.items():
-            left = random.randint(0, 1)
-            for index in range(2):
-                divided[index][state_key] = {}
-                for key, value in state.to_dict().items():
-                    divided[index][state_key][key] = value // 2 + (
-                        value % 2 if index == left else 0)
-
-        print('divided {}'.format(divided))
-        return divided
 
     def run_derivers(self, timestep):
         ''' Run each deriver process to set up state for subsequent processes. '''
