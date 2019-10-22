@@ -45,6 +45,9 @@ def get_sims_from_exp(client, experiment_id):
 
     return list(simulation_ids)
 
+class AnalysisError(Exception):
+    pass
+
 class Analyze(object):
     '''
     example use:
@@ -64,10 +67,9 @@ class Analyze(object):
         self.analyses = args.analyses
 
     def run_analysis(self):
-
+        # get the tables
         config_client = self.client.simulations.configuration
         history_client = self.client.simulations.history
-
 
         simulation_ids = get_sims_from_exp(self.client.simulations.history, self.experiment_id)
         output_dir = os.path.join(self.path, self.experiment_id)
@@ -84,8 +86,9 @@ class Analyze(object):
         query = {'experiment_id': self.experiment_id}
         config_data = config_client.find(query)
         experiment_config = get_experiment(config_data)
+        if not experiment_config:
+            raise AnalysisError('database has no experiment id: {}'.format(self.experiment_id))
         active_processes = experiment_config['topology'].keys()
-
 
         # make list of analysis objects to try
         if self.analyses:
@@ -99,8 +102,9 @@ class Analyze(object):
             required_processes = analysis.requirements()
 
             if all(processes in active_processes for processes in required_processes):
-                data = analysis.get_data(history_client)
+                data = analysis.get_data(history_client, query.copy())
 
+                # run the compartment analysis for each simulation in simulation_ids
                 if analysis.analysis_type is 'compartment':
                     for sim_id in simulation_ids:
                         sim_out_dir = os.path.join(output_dir, sim_id)

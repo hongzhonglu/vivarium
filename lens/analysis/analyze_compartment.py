@@ -9,8 +9,8 @@ class Compartment(Analysis):
     def __init__(self):
         super(Compartment, self).__init__(analysis_type='compartment')
 
-    def get_data(self, client):
-        query = {'type': 'compartment'}
+    def get_data(self, client, query):
+        query.update({'type': 'compartment'})
         history_data = client.find(query)
         history_data.sort('time')
         compartment_history = get_compartment(history_data)

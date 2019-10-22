@@ -12,8 +12,8 @@ class ChemotaxisTrace(Analysis):
     def requirements(self):
         return ['motor']
 
-    def get_data(self, client):
-        query = {'type': 'lattice'}
+    def get_data(self, client, query):
+        query.update({'type': 'lattice'})
         history_data = client.find(query)
         history_data.sort('time')
         lattice_history = get_lattice(history_data)

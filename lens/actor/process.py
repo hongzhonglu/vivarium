@@ -302,7 +302,7 @@ class Compartment(object):
         self.emitter.emit(emit_config)
 
     def default_divide_condition(self, compartment):
-        return self.local_time > 20
+        return self.local_time > 200
 
     def default_divide_state(self, compartment):
         divided = [{}, {}]
