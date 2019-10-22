@@ -80,7 +80,7 @@ def generate_lattice_compartment(process, config):
         'process': process}
 
     # initialize states
-    default_state = process.default_state()
+    default_states = process.default_state()
     default_updaters = process.default_updaters()
     initial_state = config.get('initial_state', {})
 
