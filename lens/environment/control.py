@@ -53,7 +53,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'lookup', {
-                'boot': args.get('agent_boot', 'lens.boot_compartment'),
+                'boot': args.get('agent_boot', 'lens.environment.boot'),
                 'boot_config': {},
                 'outer_id': lattice_id,
                 'working_dir': args['working_dir'],
@@ -94,7 +94,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'ecoli', {
-                'boot': 'lens.boot_compartment',
+                'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
@@ -122,7 +122,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'metabolism', {
-                'boot': 'lens.boot_compartment',
+                'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
@@ -163,8 +163,8 @@ class ShepherdControl(ActorControl):
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis_minimal', {
-                'boot': 'lens.boot_compartment',
+            self.add_cell(args['type'] or 'chemotaxis', {
+                'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index})
 
@@ -195,7 +195,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'endocrine', {
-                'boot': 'lens.boot_compartment',
+                'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index})
 

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import collections
 import numpy as np
 import lens.actor.emitter as emit
+import random
 
 
 target_key = '__target'
@@ -57,6 +58,11 @@ class State(object):
 
         self.declare_state(initial.keys())
         self.apply_delta(initial)
+
+    def duplicate(self, initial_state={}):
+        return State(
+            initial_state = initial_state or self.to_dict(),
+            updaters = self.dict(self.updaters))
 
     def merge_updaters(self, updaters):
         ''' Merge in a new set of updaters '''
@@ -254,6 +260,22 @@ def dict_merge(dct, merge_dct):
             dct[k] = merge_dct[k]
     return dct
 
+def default_divide_condition(compartment):
+    return compartment.local_time > 20
+
+def default_divide_state(compartment):
+    divided = [{}, {}]
+    for state_key, state in compartment.states.items():
+        left = random.randint(0, 1)
+        for index in range(2):
+            divided[index][state_key] = {}
+            for key, value in state.to_dict().items():
+                divided[index][state_key][key] = value // 2 + (
+                    value % 2 if index == left else 0)
+
+    print('divided {}'.format(divided))
+    return divided
+
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''
@@ -262,6 +284,7 @@ class Compartment(object):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
+        self.initial_time = configuration.get('initial_time', 0.0)
         self.local_time = 0.0
         self.time_step = configuration.get('time_step', 1.0)
 
@@ -277,6 +300,9 @@ class Compartment(object):
 
         self.states = states
         self.topology = configuration['topology']
+
+        self.divide_condition = configuration.get('divide_condition', default_divide_condition)
+        self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
         self.emitter_keys = configuration['emitter'].get('keys')
@@ -341,7 +367,7 @@ class Compartment(object):
             for name, process in self.processes.iteritems()}
 
     def time(self):
-        return self.local_time
+        return self.initial_time + self.local_time
 
     def emit_data(self):
         data = {}

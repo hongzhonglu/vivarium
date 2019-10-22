@@ -72,10 +72,9 @@ class Analysis(object):
     def requirements(self):
         return []
 
-    def get_data(self, client):
-        # data = client.find(query)
-        # return data
-        return {}
+    def get_data(self, client, query):
+        data = client.find(query)
+        return data
 
     def analyze(self, experiment_config, data):
         pass

@@ -9,8 +9,8 @@ class Snapshots(Analysis):
     def __init__(self):
         super(Snapshots, self).__init__(analysis_type='lattice')
 
-    def get_data(self, client):
-        query = {'type': 'lattice'}
+    def get_data(self, client, query):
+        query.update({'type': 'lattice'})  # TODO -- this can be automatically added given analysis_type
         data = client.find(query)
         data.sort('time')
 
@@ -40,15 +40,17 @@ class Snapshots(Analysis):
         cell_radius = experiment_config['cell_radius']  # TODO -- save cell_radius
 
         # define number of snapshots to be plotted
-        n_snapshots = 10
+        n_snapshots = 6
 
         # get the time steps that will be used
-        plot_step = int(len(time_vec)/n_snapshots)
+        plot_step = int(len(time_vec)/(n_snapshots-1))
         snapshot_times = time_vec[::plot_step]
 
         fig = plt.figure(figsize=(20*n_snapshots, 20))
+        plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times):
             ax = fig.add_subplot(1, n_snapshots, index+1)
+            ax.title.set_text('time = {}'.format(time))
             ax.set_xlim([0, edge_length])
             ax.set_ylim([0, edge_length])
 
@@ -66,7 +68,7 @@ class Snapshots(Analysis):
                 dy = length * np.cos(theta)
                 width = linewidth_from_data_units(cell_radius*2, ax)
 
-                ax.plot([x-dx/2, x+dx/2], [y-dy/2, y+dy/2], linewidth=width, color='slateblue', solid_capstyle='round')
+                ax.plot([y-dy/2, y+dy/2], [x-dx/2, x+dx/2], linewidth=width, color='slateblue', solid_capstyle='round')
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
         plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
@@ -90,7 +92,6 @@ class Snapshots(Analysis):
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """
     Convert a linewidth in data units to linewidth in points.
-
     Parameters
     ----------
     linewidth: float
@@ -101,7 +102,6 @@ def linewidth_from_data_units(linewidth, axis, reference='y'):
     reference: string
         The axis that is taken as a reference for the data width.
         Possible values: 'x' and 'y'. Defaults to 'y'.
-
     Returns
     -------
     linewidth: float

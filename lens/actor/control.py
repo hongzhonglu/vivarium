@@ -149,7 +149,6 @@ class AgentCommand(object):
 
         parser.add_argument(
             '--type',
-            default='ecoli',
             help='type of the agent to add (default: ecoli)')
 
         parser.add_argument(
