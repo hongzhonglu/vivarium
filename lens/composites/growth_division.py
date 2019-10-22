@@ -42,6 +42,7 @@ def initialize_growth_division(config):
     # TODO (Eran) -- this can be refactored
     default_state = merge_default_states(processes)
     initial_state = config.get('initial_state', {})
+    initial_time = config.get('initial_time', 0.0)
     default_state['internal'].update(initial_state['cell'])
 
     states = {
@@ -54,6 +55,7 @@ def initialize_growth_division(config):
     options = {
         'topology': topology,
         'emitter': emitter,
+        'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
         'exchange_key': config['exchange_key'],

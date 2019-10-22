@@ -42,9 +42,9 @@ class LatticeCompartment(Compartment, Simulation):
                 id=str(uuid.uuid1()),
                 volume=volume,
                 boot_config=dict(
-                    start_time=self.time(),
-                    volume=volume,
-                    initial_state=daughter_state))
+                    initial_time=self.time(),
+                    initial_state=daughter_state,
+                    volume=volume))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -83,6 +83,7 @@ def generate_lattice_compartment(process, config):
     default_states = process.default_state()
     default_updaters = process.default_updaters()
     initial_state = config.get('initial_state', {})
+    initial_time = config.get('initial_time', 0.0)
 
     # initialize keys for accumulate_delta updater
     # assumes all environmental updates have been set as `accumulate` updaters
@@ -120,6 +121,7 @@ def generate_lattice_compartment(process, config):
     options = {
         'topology': topology,
         'emitter': emitter,
+        'initial_time': initial_time,
         'environment_ids': environment_ids,
         'exchange_key': exchange_key,
         'environment': config.get('environment', 'external'),
