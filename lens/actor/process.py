@@ -260,7 +260,6 @@ def dict_merge(dct, merge_dct):
             dct[k] = merge_dct[k]
     return dct
 
-
 def default_divide_condition(compartment):
     return compartment.local_time > 20
 

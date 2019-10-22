@@ -111,7 +111,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # intervals in x- directions (assume y- direction equivalent)
         self.dx = self.edge_length / self.patches_per_edge
         self.dx2 = self.dx * self.dx
-        # upper limit on the time scale (go with at least 50% of this)
+        # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the upper limit)
         self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
 
         # initialize dicts
@@ -419,6 +419,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
+            'cell_radius': self.cell_radius,
             'edge_length': self.edge_length,
             'patches_per_edge': self.patches_per_edge,
             'total_volume': self.total_volume,
