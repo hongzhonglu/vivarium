@@ -35,6 +35,7 @@ def initialize_chemotaxis(config):
     default_states = merge_default_states(processes)
     default_updaters = merge_default_updaters(processes)
     initial_state = config.get('initial_state', {})
+    initial_time = config.get('initial_time', 0.0)
 
     # get environment ids, and make exchange_ids for external state
     environment_ids = []
@@ -83,6 +84,7 @@ def initialize_chemotaxis(config):
     options = {
         'topology': topology,
         'emitter': emitter,
+		'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
         'exchange_key': exchange_key,

@@ -269,7 +269,7 @@ class Compartment(object):
             connections, perform those connections. '''
 
         self.initial_time = configuration.get('initial_time', 0.0)
-        self.local_time = self.initial_time
+        self.local_time = 0.0
         self.time_step = configuration.get('time_step', 1.0)
 
         self.derivers = {
@@ -302,7 +302,7 @@ class Compartment(object):
         self.emitter.emit(emit_config)
 
     def default_divide_condition(self, compartment):
-        return self.local_time - self.initial_time > 20
+        return self.local_time > 20
 
     def default_divide_state(self, compartment):
         divided = [{}, {}]
@@ -367,7 +367,7 @@ class Compartment(object):
             for name, process in self.processes.iteritems()}
 
     def time(self):
-        return self.local_time
+        return self.initial_time + self.local_time
 
     def emit_data(self):
         data = {}
