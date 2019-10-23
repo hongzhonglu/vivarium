@@ -30,8 +30,8 @@ DEFAULT_PARAMETERS = {
     'K_Tsr_on': 10e6,  # (mM) MeAsp binding by Tsr (Endres06)
     # k_CheR = 0.0182  # effective catalytic rate of CheR
     # k_CheB = 0.0364  # effective catalytic rate of CheB
-    'k_meth': 0.0625,  # Catalytic rate of methylation
-    'k_demeth': 0.0714,  # Catalytic rate of demethylation
+    'k_meth': 0.0625,  # *0.9,  # Catalytic rate of methylation
+    'k_demeth': 0.0714,  # *1.1,  # Catalytic rate of demethylation
     'adaptRate': 2,  #1000, # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 

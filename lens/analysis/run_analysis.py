@@ -12,7 +12,7 @@ from lens.analysis.snapshots import Snapshots
 
 # classes for run_analysis to cycle through
 analysis_classes = {
-    'chemotaxis': ChemotaxisTrace,
+    # 'chemotaxis': ChemotaxisTrace,
     'compartment': Compartment,
     'lattice': LatticeTrace,
     'snapshots': Snapshots,

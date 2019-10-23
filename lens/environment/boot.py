@@ -27,9 +27,7 @@ from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
 from lens.actor.emitter import get_emitter
 from lens.environment.lattice import EnvironmentSpatialLattice
-from lens.environment.make_media import Media
 from lens.environment.lattice_compartment import generate_lattice_compartment
-from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
@@ -146,15 +144,10 @@ def initialize_lattice(agent_config):
     # set up media
     media_id = agent_config.get('media_id', 'minimal')
     media = agent_config.get('media', {})
-    print("Media condition: {}".format(media_id))
-    make_media = Media()
-    if not media:
-        media = make_media.get_saved_media(media_id)
-
-    boot_config = {
-        'media_object': make_media,
-        'concentrations': media,
-    }
+    if media:
+        boot_config = {'concentrations': media}
+    else:
+        boot_config = {'media_id': media_id}
     boot_config.update(agent_config)
 
     return boot_config
@@ -162,13 +155,9 @@ def initialize_lattice(agent_config):
 def initialize_glc_g6p_small(agent_config):
     # set up media
     media_id = 'GLC_G6P'
-    make_media = Media()
     timeline_str = '0 {}, 1800 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    timeline = make_media.make_timeline(timeline_str)
-
     boot_config = {
-        'timeline': timeline,
-        'media_object': make_media,
+        'timeline_str': timeline_str,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
         'edge_length': 1.0,
@@ -181,35 +170,30 @@ def initialize_glc_g6p_small(agent_config):
 def initialize_custom_small(agent_config):
     # set up media
     media_id = 'custom'
-    make_media = Media()
-    conc_units = units.mmol / units.L
     custom_media = {
-        "ACET": 0.0 * conc_units,
-        "CO+2": 100.0 * conc_units,
-        "ETOH": 0.0 * conc_units,
-        "FORMATE": 0.0 * conc_units,
-        "GLYCEROL": 0.0 * conc_units,
-        "LAC": 0.0 * conc_units,
-        "LCTS": 3.4034 * conc_units,
-        "OXYGEN-MOLECULE": 100.0 * conc_units,
-        "PI": 100.0 * conc_units,
-        "PYR": 0.0 * conc_units,
-        "RIB": 0.0 * conc_units,
-        "SUC": 0.0 * conc_units,
-        "G6P": 1.3451 * conc_units,
-        "GLC": 12.2087 * conc_units}
-    media_id = make_media.add_media(custom_media, media_id)
+        "ACET": 0.0,
+        "CO+2": 100.0,
+        "ETOH": 0.0,
+        "FORMATE": 0.0,
+        "GLYCEROL": 0.0,
+        "LAC": 0.0,
+        "LCTS": 3.4034,
+        "OXYGEN-MOLECULE": 100.0,
+        "PI": 100.0,
+        "PYR": 0.0,
+        "RIB": 0.0,
+        "SUC": 0.0,
+        "G6P": 1.3451,
+        "GLC": 12.2087}
 
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    timeline = make_media.make_timeline(timeline_str)
-    print("Media condition: {}".format(media_id))
+    new_media = {media_id: custom_media}
+    timeline_str = '0 {}, 1200 end'.format(media_id)
 
     boot_config = {
-        'timeline': timeline,
-        'media_object': make_media,
-        # 'concentrations': media,
+        'timeline_str': timeline_str,
+        'new_media': new_media,
         'run_for': 2.0,
-        'depth': 1e-01, #1e-05,  # 3000 um is default
+        'depth': 1e-01, # 3000 um is default
         'edge_length': 1.0,
         'patches_per_edge': 1,
     }
@@ -218,48 +202,24 @@ def initialize_custom_small(agent_config):
     return boot_config
 
 def initialize_glc_g6p(agent_config):
-    # set up media
-    media_id = 'GLC_G6P'
-    make_media = Media()
-    media = make_media.get_saved_media(media_id)
-
-    boot_config = {
-        'media_object': make_media,
-        'concentrations': media,
-    }
+    boot_config = {'media_id': 'GLC_G6P'}
     boot_config.update(agent_config)
-
     return boot_config
 
 def initialize_glc_lct(agent_config):
-    # set up media
-    media_id = 'GLC_LCT'
-    make_media = Media()
-    media = make_media.get_saved_media(media_id)
-
-    boot_config = {
-        'media_object': make_media,
-        'concentrations': media,
-    }
+    boot_config = {'media_id': 'GLC_LCT'}
     boot_config.update(agent_config)
-
     return boot_config
 
 def initialize_measp(agent_config):
-
-    conc_units = units.mmol / units.L
-    make_media = Media()
     media_id = 'MeAsp_media'
-    media = {'GLC': 20.0 * conc_units,
-             'MeAsp': 0.1 * conc_units}
-
-    media_id = make_media.add_media(media, media_id)
+    media = {'GLC': 20.0,  # assumes mmol/L
+             'MeAsp': 0.1}
+    new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    timeline = make_media.make_timeline(timeline_str)
-
     boot_config = {
-        'timeline': timeline,
-        'media_object': make_media,
+        'new_media': new_media,
+        'timeline_str': timeline_str,
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
@@ -282,20 +242,14 @@ def initialize_measp(agent_config):
     return boot_config
 
 def initialize_measp_large(agent_config):
-
-    conc_units = units.mmol / units.L
-    make_media = Media()
     media_id = 'MeAsp_media'
-    media = {'GLC': 20.0 * conc_units,
-             'MeAsp': 0.1 * conc_units}
-
-    media_id = make_media.add_media(media, media_id)
+    media = {'GLC': 20.0,  # assumes mmol/L
+             'MeAsp': 0.1}
+    new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    timeline = make_media.make_timeline(timeline_str)
-
     boot_config = {
-        'timeline': timeline,
-        'media_object': make_media,
+        'timeline_str': timeline_str,
+        'new_media': new_media,
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
@@ -319,7 +273,6 @@ def initialize_measp_large(agent_config):
 
 
 def initialize_measp_timeline(agent_config):
-    media_id = 'MeAsp timeline'
     # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant. 0.2 b/c of dilution.
     timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '200 GLC 20.0 mmol 1 L + MeAsp 0.2 mmol 1 L, ' \
@@ -328,11 +281,8 @@ def initialize_measp_timeline(agent_config):
                    '1400 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '1600 end'
 
-    make_media = Media()
-    timeline = make_media.make_timeline(timeline_str)
     boot_config = {
-        'media_object': make_media,
-        'timeline': timeline,
+        'timeline_str': timeline_str,
         'run_for': 1.0,
         'static_concentrations': True,
         'diffusion': 0.0,

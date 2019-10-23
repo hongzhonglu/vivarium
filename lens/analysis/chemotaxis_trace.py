@@ -31,7 +31,7 @@ class ChemotaxisTrace(Analysis):
 
     def analyze(self, experiment_config, data, output_dir):
         lattice_history = data['lattice_history']
-        # compartment_history = data['compartment_history']
+        # motor_state = data['compartment_history']['cell']['motor_state']
 
         agent_ids = [key for key in lattice_history.keys() if key is not 'time']
         time_vec = [t / 3600 for t in lattice_history['time']]  # convert to hours

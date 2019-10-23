@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import time
 import uuid
 
-from lens.environment.make_media import Media
 from lens.actor.control import ActorControl, AgentCommand
 
 
@@ -21,33 +20,26 @@ class ShepherdControl(ActorControl):
             agent_config)
 
     def lattice_experiment(self, args):
-        lattice_id = self.get_experiment_id()
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id()
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            lattice_id, num_cells))
+            experiment_id, num_cells))
 
         # make media
-        timeline = args.get('timeline')
-        media_id = args.get('media')
-        make_media = Media()
-        if timeline:
-            current_timeline = make_media.make_timeline(timeline)
-            media_id = current_timeline[0][1]
-        else:
-            timeline = '0 ' + media_id
-            current_timeline = make_media.make_timeline(timeline)
-        media = make_media.get_saved_media(media_id)
-
+        timeline_str = args.get('timeline','')
+        media_id = args.get('media', 'minimal')
         lattice_config = {
+            'timeline_str': timeline_str,
+            'media_id': media_id,
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
             'media_id': media_id,
-            'media': media,
-            'timeline': current_timeline,
             'translation_jitter': 0.5,
             'rotation_jitter': 0.005}
 
-        self.add_agent(lattice_id, 'lattice', lattice_config)
+        self.add_agent(experiment_id, 'lattice', lattice_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -55,37 +47,26 @@ class ShepherdControl(ActorControl):
             self.add_cell(args['type'] or 'lookup', {
                 'boot': args.get('agent_boot', 'lens.environment.boot'),
                 'boot_config': {},
-                'outer_id': lattice_id,
+                'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})
 
     def large_lattice_experiment(self, args):
-        experiment_id = self.get_experiment_id('large_lattice')
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('large_lattice')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        # make media
-        timeline = args.get('timeline')
+        timeline_str = args.get('timeline','')
         media_id = args.get('media')
-        make_media = Media()
-        if timeline:
-            current_timeline = make_media.make_timeline(timeline)
-            media_id = current_timeline[0][1]
-        else:
-            timeline = '0 ' + media_id
-            current_timeline = make_media.make_timeline(timeline)
-        media = make_media.make_recipe(media_id)
-
         lattice_config = {
-            'run_for': 4.0,
+            'timeline_str': timeline_str,
             'media_id': media_id,
-            'media': media,
-            'timeline': current_timeline,
-            'translation_jitter': 0.5,
-            'rotation_jitter': 0.005,
-            'edge_length': 40.0,
-            'patches_per_edge': 20,
+            'run_for': 2.0,
+            'edge_length': 50.0,
+            'patches_per_edge': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
@@ -100,21 +81,16 @@ class ShepherdControl(ActorControl):
                 'seed': index})
 
     def glc_g6p_experiment(self, args):
-        experiment_id = self.get_experiment_id('glc-g6p')
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('glc-g6p')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        # make media
-        media_id = 'GLC_G6P'
-        make_media = Media()
-        media = make_media.get_saved_media(media_id)
-
         experiment_config = {
             'run_for': 2.0,
-            'media_id': media_id,
-            'media': media,
-        }
+            'media_id': 'GLC_G6P'}
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
@@ -128,35 +104,39 @@ class ShepherdControl(ActorControl):
                 'seed': index})
 
     def chemotaxis_experiment(self, args):
-        experiment_id = self.get_experiment_id('chemotaxis')
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('chemotaxis')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
         media_id = 'MeAsp'
         media = {'GLC': 20.0,
-                 'MeAsp': 0.1}
+                 'MeAsp': 1.0}
+        new_media = {media_id: media}
+        timeline_str = '0 {}, 3600 end'.format(media_id)
 
         chemotaxis_config = {
+            'timeline_str': timeline_str,
+            'new_media': new_media,
             'run_for' : 2.0,
             'static_concentrations': True,
             'gradient': {
                 'seed': True,
                 'molecules': {
                     'GLC':{
-                        'center': [0.5, 1.0],
-                        'deviation': 50.0},
+                        'center': [0.5, 0.5],
+                        'deviation': 30.0},
                     'MeAsp': {
-                        'center': [0.25, 0.25],
+                        'center': [0.5, 0.5],
                         'deviation': 30.0}
                 }},
             'diffusion': 0.0,
             'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
-            'edge_length': 100.0,
-            'patches_per_edge': 50,
-            'media_id': media_id,
-            'media': media}
+            'edge_length': 200.0,
+            'patches_per_edge': 50}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells
@@ -164,37 +144,6 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'chemotaxis', {
-                'boot': 'lens.environment.boot',
-                'outer_id': experiment_id,
-                'seed': index})
-
-    def endocrine_experiment(self, args):
-        experiment_id = self.get_experiment_id('endocrine')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
-
-        media_id = 'endocrine_signal'
-        media = {'signal': 0.0}
-
-        endocrine_config = {
-            'run_for' : 1.0,
-            # 'static_concentrations': True,
-            # 'gradient': {'seed': True},
-            'diffusion': 0.05,
-            'translation_jitter': 0.5,
-            'rotation_jitter': 0.005,
-            'edge_length': 10.0,
-            'patches_per_edge': 10,
-            'media_id': media_id,
-            'media': media}
-        self.add_agent(experiment_id, 'lattice', endocrine_config)
-
-        # give lattice time before adding the cells
-        time.sleep(15)
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'endocrine', {
                 'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index})
@@ -225,14 +174,11 @@ class EnvironmentCommand(AgentCommand):
         chemotaxis environment with N agents of type T
     'chemotaxis-experiment [--number N] [--type T]` ask the Shepherd to run a
         chemotaxis environment with N agents of type T
-    'endocrine-experiment [--number N] [--type T]` ask the Shepherd to run a
-        endocrine environment with N agents of type T
     ''' + description
 
         full_choices = [
 			'large-experiment',
             'chemotaxis-experiment',
-            'endocrine-experiment',
             'glc-g6p-experiment'] + choices
 
         super(EnvironmentCommand, self).__init__(
@@ -263,14 +209,13 @@ class EnvironmentCommand(AgentCommand):
         control.chemotaxis_experiment(args)
         control.shutdown()
 
-    def endocrine_experiment(self, args):
-        self.require(args, 'number')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
-        control.endocrine_experiment(args)
-        control.shutdown()
-
     def add_arguments(self, parser):
         parser = super(EnvironmentCommand, self).add_arguments(parser)
+
+        parser.add_argument(
+            '-e', '--experiment_id',
+            type=str,
+            help='The experiment id')
 
         parser.add_argument(
             '-m', '--media',

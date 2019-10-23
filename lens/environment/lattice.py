@@ -24,6 +24,7 @@ from scipy.ndimage import convolve
 
 from lens.actor.outer import EnvironmentSimulation
 from lens.utils.multicell_physics import MultiCellPhysics
+from lens.environment.make_media import Media
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -71,22 +72,32 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.depth = config.get('depth', 3000.0)  # um
 
         # configure media
-        self.make_media = config.get('media_object')
+        self.make_media = Media()
         self.media_id = config.get('media_id', 'minimal')
-        self.timeline = config.get('timeline')
-        self.shutdown = False
-        if self.timeline:
+        self.timeline = ()
+        timeline_str = config.get('timeline_str')
+        new_media = config.get('new_media', {})
+        get_concentrations = config.get('concentrations',{})
+        self.end_timeline = False
+
+        # add new media
+        for new_media_id, media_dict in new_media.iteritems():
+            media_id = self.make_media.add_media(media_dict, new_media_id)
+
+        # make the timeline and media
+        if timeline_str:
+            self.timeline = self.make_media.make_timeline(timeline_str)
             self._times = [t[0] for t in self.timeline]
             self.media_id = self.timeline[0][1]
             media = self.make_media.get_saved_media(self.media_id)
-            self._molecule_ids = media.keys()
-            self.concentrations = media.values()
-        else:
+        elif get_concentrations:
             # make media and fill lattice patches with media concentrations
-            media = config['concentrations']
-            self._molecule_ids = config['concentrations'].keys()
-            self.concentrations = config['concentrations'].values()
+            media = get_concentrations
+        else:
+            media = self.make_media.get_saved_media(self.media_id)
 
+        self._molecule_ids = media.keys()
+        self.concentrations = media.values()
         self.molecule_index = {molecule: index for index, molecule in enumerate(self._molecule_ids)}
         self.fill_lattice(media)
 
@@ -209,7 +220,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             current_index = [i for i, t in enumerate(self._times) if self.time() >= t][-1]
             current_event = self.timeline[current_index][1]
             if current_event == 'end':
-                self.shutdown = True
+                self.end_timeline = True
             elif current_event != self.media_id:
                 self.media_id = self.timeline[current_index][1]
                 new_media = self.make_media.get_saved_media(self.media_id)
@@ -376,7 +387,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         return update
 
     def shutdown_environment(self, now):
-        return self.shutdown
+        return self.end_timeline
 
     def daughter_locations(self, parent_location, parent_length, parent_angle):
         pos_ratios = [-0.25, 0.25]

@@ -123,7 +123,15 @@ class Media(object):
 
     def add_media(self, media, new_media_id = str(uuid.uuid1())):
         '''add a media to stock'''
-        # TODO -- check/add units?
+
+        # check/add units, if none defined, assume CONC_UNITS
+        if all(isinstance(x, (float, int)) for x in media.values()):
+            for mol_id, conc in media.iteritems():
+                media[mol_id] = conc * CONC_UNITS
+        elif any(isinstance(x, (float, int)) for x in media.values()):
+            raise AddIngredientsError(
+                "inconsistent units for {}".format(new_media_id))
+
         self.stock_media[new_media_id] = media
         return new_media_id
 

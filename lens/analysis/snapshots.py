@@ -49,7 +49,7 @@ class Snapshots(Analysis):
         fig = plt.figure(figsize=(20*n_snapshots, 20))
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times):
-            ax = fig.add_subplot(1, n_snapshots, index+1)
+            ax = fig.add_subplot(1, n_snapshots, index+1, adjustable='box')
             ax.title.set_text('time = {}'.format(time))
             ax.set_xlim([0, edge_length])
             ax.set_ylim([0, edge_length])
