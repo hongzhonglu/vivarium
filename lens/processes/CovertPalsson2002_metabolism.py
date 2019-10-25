@@ -6,6 +6,7 @@ from lens.actor.process import dict_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import mols_from_reg_logic
 
+from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
 from lens.environment.make_media import Media
 import lens.utils.regulation_logic as rl
 
@@ -29,11 +30,10 @@ def Covert2002Metabolism(parameters):
 
    return Metabolism(config)
 
-
 def load_data(data_dir, filenames):
    '''Load raw data from TSV files'''
 
-   e_key = '[e]'
+   external_key = '[e]'
    rxn_key = '__RXN'
 
    data = {}
@@ -60,8 +60,8 @@ def load_data(data_dir, filenames):
    reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
 
    # add rxn_key to all entries of stoichiometry and transport_stoichiometry
-   stoichiometry = add_str_to_dict_keys(stoichiometry, rxn_key)
-   reversible_reactions = add_str_key(reversible_reactions, rxn_key)
+   stoichiometry = add_str_to_keys(stoichiometry, rxn_key)
+   reversible_reactions = add_str_in_list(reversible_reactions, rxn_key)
 
    # get all molecules
    metabolites = get_molecules_from_stoich(stoichiometry)
@@ -70,8 +70,8 @@ def load_data(data_dir, filenames):
    regulation_molecules = mols_from_reg_logic(data['covert2002_reactions'])
 
    all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
-   external_molecules = [mol_id for mol_id in all_molecules if e_key in mol_id]   # this test keeps the e_key, since it doesn't require lattice
-   internal_molecules = [mol_id for mol_id in all_molecules if e_key not in mol_id]
+   external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
+   internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
 
    # flux bounds on reactions
    flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
@@ -90,7 +90,7 @@ def load_data(data_dir, filenames):
    # initial state
    make_media = Media()
    external_state = make_media.get_saved_media('GLC_G6P')
-   external_state = add_str_to_dict_keys(external_state, e_key)
+   external_state = add_str_to_keys(external_state, external_key)
    internal = {'mass': 1339,'volume': 1}
    rxns = {rxn_id: 0.0 for rxn_id in stoichiometry.keys()}
    internal_state = dict_merge(dict(internal), rxns)
@@ -99,27 +99,12 @@ def load_data(data_dir, filenames):
    # TODO -- add regulation_logic, flux_bounds
    return {
        'stoichiometry': stoichiometry,
-       'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,  # TODO -- what reversible reactions are needed?
-       'external_molecules': external_molecules,
+       'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
+       'external_molecules': external_molecules,  # external molecules are for lattice environment
+       'external_key': external_key,
        'objective': objective,
        # 'transport_limits': transport_limits,
        'initial_state': initial_state}
-
-def add_str_to_dict_keys(dct, key_str):
-   ''' convert dictionary keys by adding key_str'''
-   new_dct = {}
-   for key, value in dct.iteritems():
-       if key_str in key:
-           new_dct[key] = value
-       else:
-           new_dct[key + key_str] = value
-   return new_dct
-
-def add_str_key(molecule_ids, key_str):
-   return [mol_id + key_str for mol_id in molecule_ids]
-
-def remove_str_key(molecule_ids, key_str):
-   return [mol_id.replace(key_str, '') for mol_id in molecule_ids]
 
 def get_molecules_from_stoich(stoichiometry):
    molecules = set()
@@ -202,6 +187,41 @@ def test_covert2002(total_time=3600):
         'target_key': target_key}
     return data
 
+def plot_environment_output(data):
+    # plot glc/mass only
+    import os
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    saved_state = data['saved_state']
+    time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
+    external_data = data['saved_state']['external']
+    mass_series = data['saved_state']['internal']['mass']
+
+
+    # make figure
+    fig, ax1 = plt.subplots(figsize=(5,5))
+    color = 'black'
+    ax1.plot(time_vec, mass_series, color=color, linewidth=3.0, label='mass')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.set_xlabel('time (hr)')
+    ax1.set_ylabel('mass (fg)', color=color)
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
+    for state_id, series in external_data.iteritems():
+        ax2.plot(time_vec, series, label=state_id)
+    ax2.set_ylabel('env concentrations (mmol/L)', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.legend(prop={'size': 6}, loc=7)
+
+    # make figure output directory and save figure
+    fig_path = os.path.join('out', 'covert2002_metabolism_environment')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
 def plot_metabolism_output(data):
     import os
     import matplotlib
@@ -212,7 +232,7 @@ def plot_metabolism_output(data):
     saved_state = data['saved_state']
     target_rxn_ids = data.get('target_rxn_ids')
     target_key = data.get('target_key')
-    targeted_states = remove_str_key(target_rxn_ids, target_key)
+    targeted_states = remove_str_in_list(target_rxn_ids, target_key)
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
@@ -242,7 +262,7 @@ def plot_metabolism_output(data):
                     ax.legend()
 
     # make figure output directory and save figure
-    fig_path = os.path.join('out', 'covert2002_metabolism_dFBA_test')
+    fig_path = os.path.join('out', 'covert2002_metabolism_all')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
@@ -251,9 +271,9 @@ def save_metabolic_network():
     import math
     from lens.utils.make_network import make_network, save_network
 
-    flux_simstep = 10 # simulation step for flux edge weights
+    flux_simstep = 10 # the simulation step used to set edge weights with reaction flux
 
-    # # initialize process
+    # initialize process
     metabolism = Covert2002Metabolism({})
     stoichiometry = metabolism.stoichiometry
     reaction_ids = stoichiometry.keys()
@@ -261,7 +281,8 @@ def save_metabolic_network():
     objective = metabolism.objective
 
     # run test to get simulation output
-    data = test_covert2002(60)
+    run_time = 60
+    data = test_covert2002(run_time)
     saved_state = data['saved_state']
     external = saved_state['external']
     internal = saved_state['internal']
@@ -286,4 +307,5 @@ def save_metabolic_network():
 if __name__ == '__main__':
    saved_state = test_covert2002()
    plot_metabolism_output(saved_state)
+   plot_environment_output(saved_state)
    save_metabolic_network()

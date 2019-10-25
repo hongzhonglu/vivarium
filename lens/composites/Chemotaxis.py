@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
-from lens.actor.emitter import get_emitter, configure_emitter
-from lens.environment.lattice_compartment import LatticeCompartment
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -10,16 +8,8 @@ from lens.processes.Vladimirov2008_motor import MotorActivity
 from lens.processes.derive_volume import DeriveVolume
 
 
-exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
-
-def initialize_chemotaxis(config):
-    config.update({
-        'emitter': {
-            'type': 'database',
-            'url': 'localhost:27017',
-            'database': 'simulations',
-        }
-    })
+def compose_chemotaxis(config):
+    exchange_key = config.get('exchange_key')
 
     # declare the processes
     receptor = ReceptorCluster(config)
@@ -78,18 +68,15 @@ def initialize_chemotaxis(config):
         #     'internal': 'cell'},
         }
 
-    # configure emitter
-    emitter = configure_emitter(config, processes, topology)
-
     options = {
         'topology': topology,
-        'emitter': emitter,
 		'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
-        'exchange_key': exchange_key,
         'environment_ids': environment_ids,
     }
 
-    # create the compartment
-    return LatticeCompartment(processes, states, options)
+    return {
+        'processes': processes,
+        'states': states,
+        'options': options}

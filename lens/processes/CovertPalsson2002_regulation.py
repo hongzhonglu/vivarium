@@ -7,6 +7,7 @@ from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import mols_from_reg_logic
 import lens.utils.regulation_logic as rl
+from lens.environment.lattice_compartment import remove_str_in_list, add_str_to_keys
 
 TSV_DIALECT = csv.excel_tab
 
@@ -34,7 +35,7 @@ def get_molecules_from_reactions(stoichiometry):
 
 class Regulation(Process):
     def __init__(self, initial_parameters={}):
-        self.e_key = '[e]'
+        self.external_key = '[e]'
         self.internal, self.external = self.load_data()
 
         roles = {
@@ -81,7 +82,7 @@ class Regulation(Process):
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        external_state = self.add_e_to_dict(states['external'])
+        external_state = add_str_to_keys(states['external'], self.external_key)
         total_state = dict_merge(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
 
@@ -89,22 +90,6 @@ class Regulation(Process):
                             for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
 
         return {'internal': regulatory_state, 'external': {}}
-
-    def add_e_to_dict(self, molecules_dict):
-        ''' convert external state to compatible format by adding e_key'''
-        e_dict = {}
-        for key, value in molecules_dict.iteritems():
-            if self.e_key in key:
-                e_dict[key] = value
-            else:
-                e_dict[key + self.e_key] = value
-        return e_dict
-
-    def add_e_key(self, molecule_ids):
-        return [mol_id + self.e_key for mol_id in molecule_ids]
-
-    def remove_e_key(self, molecule_ids):
-        return [mol_id.replace(self.e_key, '') for mol_id in molecule_ids]
 
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
@@ -125,8 +110,8 @@ class Regulation(Process):
         all_molecules = mols_from_reg_logic(data['covert2002_regulatory_proteins'])
 
         # remove external molecules from internal_molecules
-        external_molecules = [mol_id for mol_id in all_molecules if self.e_key in mol_id]
+        external_molecules = [mol_id for mol_id in all_molecules if self.external_key in mol_id]
         internal_molecules = [mol_id for mol_id in all_molecules if mol_id not in external_molecules]
-        external_molecules = self.remove_e_key(external_molecules)
+        external_molecules = remove_str_in_list(external_molecules, self.external_key)
 
         return internal_molecules, external_molecules

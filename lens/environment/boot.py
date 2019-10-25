@@ -25,9 +25,9 @@ import shutil
 from lens.actor.inner import Inner
 from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
-from lens.actor.emitter import get_emitter
+from lens.actor.emitter import get_emitter, configure_emitter
 from lens.environment.lattice import EnvironmentSpatialLattice
-from lens.environment.lattice_compartment import generate_lattice_compartment
+from lens.environment.lattice_compartment import LatticeCompartment, generate_lattice_compartment
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
@@ -39,9 +39,9 @@ from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
 
 # composites
-from lens.composites.Covert2008 import initialize_covert2008
-from lens.composites.growth_division import initialize_growth_division
-from lens.composites.Chemotaxis import initialize_chemotaxis
+from lens.composites.Covert2008 import compose_covert2008
+from lens.composites.growth_division import compose_growth_division
+from lens.composites.Chemotaxis import compose_chemotaxis
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -59,7 +59,7 @@ def wrap_boot(initialize, initial_state):
 
     return boot
 
-def wrap_initialize(make_process):
+def wrap_init_basic(make_process):
     def initialize(boot_config):
         boot_config.update({
             'emitter': {
@@ -73,6 +73,37 @@ def wrap_initialize(make_process):
             })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
         return generate_lattice_compartment(process, boot_config)
+
+    return initialize
+
+def wrap_init_composite(make_composite):
+    def initialize(boot_config):
+        # configure the emitter and exchange_key
+        exchange_key = '__exchange'
+        boot_config.update({
+            'emitter': {
+                'type': 'database',
+                'url': 'localhost:27017',
+                'database': 'simulations'},
+            'exchange_key': exchange_key,
+            })
+
+        # set up the the composite
+        composite_config = make_composite(boot_config)
+        processes = composite_config['processes']
+        states = composite_config['states']
+        options = composite_config['options']
+        topology = options['topology']
+
+        # update options
+        emitter = configure_emitter(boot_config, processes, topology)
+        options.update({
+            'emitter': emitter,
+            'exchange_key': exchange_key,
+            })
+
+        # create the compartment
+        return LatticeCompartment(processes, states, options)
 
     return initialize
 
@@ -214,7 +245,7 @@ def initialize_glc_lct(agent_config):
 def initialize_measp(agent_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 0.1}
+             'MeAsp': 1.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     boot_config = {
@@ -244,7 +275,7 @@ def initialize_measp(agent_config):
 def initialize_measp_large(agent_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 0.1}
+             'MeAsp': 1.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     boot_config = {
@@ -270,7 +301,6 @@ def initialize_measp_large(agent_config):
     boot_config.update(agent_config)
 
     return boot_config
-
 
 def initialize_measp_timeline(agent_config):
     # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant. 0.2 b/c of dilution.
@@ -311,18 +341,18 @@ class BootEnvironment(BootAgent):
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
 
             # single process compartments
-            'lookup': wrap_boot(wrap_initialize(TransportLookup), {'volume': 1.0}),
-            'metabolism': wrap_boot(wrap_initialize(Covert2002Metabolism), {'volume': 1.0}),
-            'regulation': wrap_boot(wrap_initialize(Regulation), {'volume': 1.0}),
-            'transport': wrap_boot(wrap_initialize(Transport), {'volume': 1.0}),
-            'growth': wrap_boot(wrap_initialize(Growth), {'volume': 1.0}),
-            'receptor': wrap_boot(wrap_initialize(ReceptorCluster), {'volume': 1.0}),
-            'motor': wrap_boot(wrap_initialize(MotorActivity), {'volume': 1.0}),
+            'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
+            'metabolism': wrap_boot(wrap_init_basic(Covert2002Metabolism), {'volume': 1.0}),
+            'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
+            'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
+            'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
+            'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
+            'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
 
             # composite compartments
-            'growth_division': wrap_boot(initialize_growth_division, {'volume': 1.0}),
-            'covert2008': wrap_boot(initialize_covert2008, {'volume': 1.0}),
-            'chemotaxis': wrap_boot(initialize_chemotaxis, {'volume': 1.0})
+            'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
+            'covert2008': wrap_boot(wrap_init_composite(compose_covert2008), {'volume': 1.0}),
+            'chemotaxis': wrap_boot(wrap_init_composite(compose_chemotaxis), {'volume': 1.0})
             }
 
 def run():

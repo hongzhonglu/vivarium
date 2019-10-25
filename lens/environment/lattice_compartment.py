@@ -10,6 +10,36 @@ DEFAULT_COLOR = [color/255 for color in [153, 204, 255]]
 
 exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
+
+def add_str_in_list(molecule_ids, key_str):
+   return [mol_id + key_str for mol_id in molecule_ids]
+
+def remove_str_in_list(molecule_ids, key_str):
+   return [mol_id.replace(key_str, '') for mol_id in molecule_ids]
+
+def add_str_to_keys(dct, key_str):
+   ''' convert dictionary keys by adding key_str'''
+   new_dct = {}
+   for key, value in dct.iteritems():
+       if key_str in key:
+           new_dct[key] = value
+       else:
+           new_dct[key + key_str] = value
+   return new_dct
+
+def remove_str_from_keys(dct, key_str):
+    ''' convert dictionary keys by removing key_str'''
+    new_dct = {}
+    for key, value in dct.iteritems():
+        if key_str in key:
+            new_key = key.replace(key_str, '')
+            new_dct[new_key] = value
+        else:
+            new_dct[key] = value
+    return new_dct
+
+
+
 class LatticeCompartment(Compartment, Simulation):
     def __init__(self, processes, states, configuration):
         self.environment = configuration['environment']

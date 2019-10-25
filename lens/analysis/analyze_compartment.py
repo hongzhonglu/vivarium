@@ -30,17 +30,20 @@ class Compartment(Analysis):
 
         data_keys = [key for key in data_dict.keys() if key is not 'time']
         time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
-        n_data = [len(data_dict[key].keys()) for key in data_keys]
-        n_rows = sum(n_data) + 2
 
-        # make figure
+        # make figure, with grid for subplots
+        n_data = [len(data_dict[key].keys()) for key in data_keys]
+        n_zeros = len(zero_state)
+        n_rows = sum(n_data) + int(n_zeros/20)  # 20 zero_state ids per additional subplot
+
         fig = plt.figure(figsize=(8, n_rows * 1.5))
-        plot_idx = 1
+        grid = plt.GridSpec(n_rows, 1, wspace=0.4, hspace=1.5)
 
         # plot data
+        plot_idx = 0
         for key in data_keys:
             for mol_id, series in sorted(data_dict[key].iteritems()):
-                ax = fig.add_subplot(n_rows, 1, plot_idx)
+                ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
@@ -48,10 +51,11 @@ class Compartment(Analysis):
                 plot_idx += 1
 
         # additional data as text
-        zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
-        ax = fig.add_subplot(n_rows, 1, plot_idx)
-        ax.text(0.02, 0.1, 'states with all zeros: {}'.format(zeros), wrap=True)
-        ax.axis('off')
+        if zero_state:
+            zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
+            ax = fig.add_subplot(grid[plot_idx:, 0])
+            ax.text(0.02, 0.1, 'states with all zeros: {}'.format(zeros), wrap=True)
+            ax.axis('off')
 
         plt.savefig(output_dir + '/compartment')
         plt.clf()

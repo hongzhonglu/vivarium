@@ -261,7 +261,7 @@ def dict_merge(dct, merge_dct):
     return dct
 
 def default_divide_condition(compartment):
-    return compartment.local_time > 400
+    return False  # compartment.local_time > 400
 
 def default_divide_state(compartment):
     divided = [{}, {}]

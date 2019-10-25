@@ -6,6 +6,7 @@ import numpy as np
 from lens.actor.process import Process, dict_merge
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
+from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
 
 
 # helper functions
@@ -21,7 +22,6 @@ def get_reverse(stoichiometry, reversible_reactions, reverse_key):
             mol_id: -1 * coeff for mol_id, coeff in forward_stoich.iteritems()}
     return reverse_stoichiometry
 
-
 def get_molecules_from_stoich(stoichiometry):
     molecules = set()
     for reaction, stoich in stoichiometry.iteritems():
@@ -29,38 +29,19 @@ def get_molecules_from_stoich(stoichiometry):
     return list(molecules)
 
 
-def add_str_to_keys(dct, key_str):
-    ''' convert dictionary keys by adding key_str'''
-    new_dct = {}
-    for key, value in dct.iteritems():
-        if key_str in key:
-            new_dct[key] = value
-        else:
-            new_dct[key + key_str] = value
-    return new_dct
-
-
-def remove_str_from_keys(dct, key_str):
-    ''' convert dictionary keys by removing key_str'''
-    new_dct = {}
-    for key, value in dct.iteritems():
-        if key_str in key:
-            new_key = key.replace(key_str, '')
-            new_dct[new_key] = value
-        else:
-            new_dct[key] = value
-    return new_dct
-
-
-def add_str_key(molecule_ids, key_str):
-    return [mol_id + key_str for mol_id in molecule_ids]
-
-
-def remove_str_key(molecule_ids, key_str):
-    return [mol_id.replace(key_str, '') for mol_id in molecule_ids]
-
-
 class Metabolism(Process):
+    '''
+    A general metabolism process, which sets the FBA problem based on input configuration data.
+    initial_parameters (dict) configures the process with the following keys/values:
+        - initial_state (dict) -- the default state, with a dict for internal and external:
+            {'external': external_state, 'internal': internal_state}
+        - stoichiometry (dict) -- {reaction_id: stoichiometry dict}
+        - objective (dict) -- stoichiometry dict to be optimized
+        - external_key (str) -- the key (typically [e]) designating external states in the FBA problem
+        - external molecules (list) -- the external molecules, without the added external_key
+        - target_key (TODO)
+        - flux_targets (TODO)
+        '''
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
@@ -70,26 +51,28 @@ class Metabolism(Process):
 
         # make reverse reactions
         self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
-        reverse_key = '_reverse'
-        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, reverse_key)
+        self.reverse_key = '_reverse'
+        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, self.reverse_key)
         self.stoichiometry.update(reverse_stoichiometry)
 
         # set transport
         # self.transport_limits = initial_parameters.get('transport_limits')
-        external_mol_ids = initial_parameters['external_molecules']
+        self.external_key = initial_parameters.get('external_key')
+        self.external_molecule_ids = initial_parameters['external_molecules']
+        external_molecule_ids_e = add_str_in_list(self.external_molecule_ids, self.external_key)
         self.target_key = initial_parameters.get('target_key', '')
-        self.flux_targets = add_str_key(initial_parameters.get('flux_targets', []), self.target_key)
+        self.flux_targets = add_str_in_list(initial_parameters.get('flux_targets', []), self.target_key)
 
         self.fba = FluxBalanceAnalysis(
             reactionStoich=self.stoichiometry,
-            externalExchangedMolecules=external_mol_ids,
+            externalExchangedMolecules=external_molecule_ids_e,
             objective=self.objective,
             objectiveType="standard",
             solver="glpk-linear")
 
         # assign internal and external state ids
         roles = {
-            'external': external_mol_ids,
+            'external': self.external_molecule_ids,
             'internal': self.stoichiometry.keys() + ['volume', 'mass']}
         parameters = {}
         parameters.update(initial_parameters)
@@ -107,8 +90,7 @@ class Metabolism(Process):
     def default_emitter_keys(self):
         keys = {
             'internal': self.fba.getReactionIDs(),
-            'external': self.fba.getExternalMoleculeIDs()
-        }
+            'external': self.fba.getExternalMoleculeIDs()}
         return keys
 
     def default_updaters(self):
@@ -119,19 +101,16 @@ class Metabolism(Process):
         return updater_types
 
     def next_update(self, timestep, states):
-        '''
-        timestep is assumed to be 1 second.
-        transport limits need to be in concentration/sec'''
+        ''' timestep is assumed to be 1 second '''
 
         internal_state = states['internal']
-        external_state = states['external']  # (mmol/L)
-
+        external_state = add_str_to_keys(states['external'], self.external_key)
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
-        # set external concentrations TODO -- is this actually a flux limit?
+        # set external concentrations
         external_molecule_ids = self.fba.getExternalMoleculeIDs()
-        self.fba.setExternalMoleculeLevels([external_state[molID] / 3600 for molID in external_molecule_ids])
+        self.fba.setExternalMoleculeLevels([external_state[molID] / 3600 for molID in external_molecule_ids])  # TODO -- handle unit conversions (x/3600) separately
 
         # set flux bounds
         for flux_id in self.flux_targets:
@@ -140,7 +119,7 @@ class Metabolism(Process):
             if flux_target >= 0:
                 self.fba.setReactionFluxBounds(reaction_id, 0, flux_target)
             elif flux_target < 0:
-                # if negative, set -flux_target on reverse reaction
+                # if negative, set -(flux_target) on reverse reaction
                 if reaction_id in self.reversible_reactions:
                     rev_reaction_id = reaction_id + self.reverse_key
                     self.fba.setReactionFluxBounds(rev_reaction_id, 0, -flux_target)
@@ -153,7 +132,7 @@ class Metabolism(Process):
         # get delta counts for external molecules
         mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
         delta_exchange_counts = (mmolToCount * exchange_fluxes).astype(int)
-        environment_deltas = dict(zip(external_molecule_ids, delta_exchange_counts))  # TODO -- refactor self.external_molecule_ids
+        environment_deltas = dict(zip(remove_str_in_list(external_molecule_ids, self.external_key), delta_exchange_counts))
 
         # get reaction flux
         rxn_ids = self.fba.getReactionIDs()
@@ -321,7 +300,7 @@ def plot_metabolism_output(data):
     saved_state = data['saved_state']
     target_rxn_ids = data.get('target_rxn_ids')
     target_key = data.get('target_key')
-    targeted_states = remove_str_key(target_rxn_ids, target_key)
+    targeted_states = remove_str_in_list(target_rxn_ids, target_key)
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours

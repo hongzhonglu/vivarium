@@ -1,30 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
 from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
-from lens.actor.emitter import get_emitter, configure_emitter
-from lens.environment.lattice_compartment import LatticeCompartment
 
 # processes
-from lens.processes.CovertPalsson2002_metabolism import Metabolism
+from lens.processes.CovertPalsson2002_metabolism import Covert2002Metabolism
 from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.derive_volume import DeriveVolume
 
 
-exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
-
-def initialize_covert2008(config):
-    config.update({
-        'emitter': {
-            'type': 'database',
-            'url': 'localhost:27017',
-            'database': 'simulations',
-        }
-    })
+def compose_covert2008(config):
+    exchange_key = config.get('exchange_key')
 
     # declare the processes
     # transport = Transport(config)
-    metabolism = Metabolism(config)
+    metabolism = Covert2002Metabolism(config)
     regulation = Regulation(config)
     deriver = DeriveVolume(config)
     processes = {
@@ -83,18 +73,15 @@ def initialize_covert2008(config):
             'internal': 'cell'},
         }
 
-    # configure emitter
-    emitter = configure_emitter(config, processes, topology)
-
     options = {
         'topology': topology,
-        'emitter': emitter,
         'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
-        'exchange_key': exchange_key,
         'environment_ids': environment_ids,
     }
 
-    # create the compartment
-    return LatticeCompartment(processes, states, options)
+    return {
+        'processes': processes,
+        'states': states,
+        'options': options}
