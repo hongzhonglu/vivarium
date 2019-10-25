@@ -140,6 +140,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
+        self.emit_fields = config.get('emit_fields', [])
+        self.emit_indices = [self._molecule_ids.index(mol_id) for mol_id in self.emit_fields]
         self.emit_configuration()
 
 
@@ -409,6 +411,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     # Emitters
     def emit_data(self):
+
+        # emit lattice data
+        emit_fields = {}
+        for index, molecule_id in zip(self.emit_indices, self.emit_fields):
+            emit_fields[molecule_id] = self.lattice[index].tolist()
+        data = {
+            'type': 'lattice-field',
+            'fields': emit_fields,
+            'time': self.time()}
+        emit_config = {
+            'table': 'history',
+            'data': data}
+        self.emitter.emit(emit_config)
+
+        # emit data for each agent
         for agent_id, simulation in self.simulations.iteritems():
             agent_location = self.locations[agent_id].tolist()
             agent_state = self.simulations[agent_id]['state']
