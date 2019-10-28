@@ -13,12 +13,12 @@ def compose_covert2008(config):
     exchange_key = config.get('exchange_key')
 
     # declare the processes
-    # transport = Transport(config)
+    transport = Transport(config)
     metabolism = Covert2002Metabolism(config)
     regulation = Regulation(config)
     deriver = DeriveVolume(config)
     processes = {
-        # 'transport': transport,
+        'transport': transport,
         'regulation': regulation,
         'metabolism': metabolism,
         'deriver': deriver}
@@ -60,9 +60,9 @@ def compose_covert2008(config):
 
     # configure the states to the roles for each process
     topology = {
-        # 'transport': {
-        #     'external': 'environment',
-        #     'internal': 'cell'},
+        'transport': {
+            'external': 'environment',
+            'internal': 'cell'},
         'regulation': {
             'external': 'environment',
             'internal': 'cell'},

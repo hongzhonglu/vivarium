@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 from scipy import constants
 import numpy as np
 
@@ -41,7 +42,7 @@ class Metabolism(Process):
         - external molecules (list) -- the external molecules, without the added external_key
         - target_key (TODO)
         - flux_targets (TODO)
-        '''
+    '''
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
@@ -50,18 +51,22 @@ class Metabolism(Process):
         self.objective = initial_parameters['objective']
 
         # make reverse reactions
-        self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
         self.reverse_key = '_reverse'
+        self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
         reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, self.reverse_key)
         self.stoichiometry.update(reverse_stoichiometry)
+        self.reaction_ids = self.stoichiometry.keys()
 
-        # set transport
+        # transport
         # self.transport_limits = initial_parameters.get('transport_limits')
-        self.external_key = initial_parameters.get('external_key')
+        self.external_key = initial_parameters.get('external_key', '')
+        self.target_key = initial_parameters.get('target_key', '')
         self.external_molecule_ids = initial_parameters['external_molecules']
         external_molecule_ids_e = add_str_in_list(self.external_molecule_ids, self.external_key)
-        self.target_key = initial_parameters.get('target_key', '')
         self.flux_targets = add_str_in_list(initial_parameters.get('flux_targets', []), self.target_key)
+
+        # regulation
+        self.regulation = initial_parameters.get('regulation')
 
         self.fba = FluxBalanceAnalysis(
             reactionStoich=self.stoichiometry,
@@ -108,24 +113,54 @@ class Metabolism(Process):
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
-        # set external concentrations
+        # # wcEcoli exchange state assumes mmol/g.h. coefficient in g.s/L. FBA takes mmol/L
+        # # Coefficient converts between flux (mol/g DCW/hr) basis and concentration (M) basis.
+        # # assumes dryMass / cellMass = 0.3
+        # coefficient = 0.3 * self.density * (timestep * units.s)
+
+        # TODO -- define constrained, unconstrained (np.inf), and 0 exchanges
+        # set external concentrations.
         external_molecule_ids = self.fba.getExternalMoleculeIDs()
+        # self.fba.setExternalMoleculeLevels([external_state[molID] for molID in external_molecule_ids])
         self.fba.setExternalMoleculeLevels([external_state[molID] / 3600 for molID in external_molecule_ids])  # TODO -- handle unit conversions (x/3600) separately
 
-        # set flux bounds
-        for flux_id in self.flux_targets:
-            reaction_id = flux_id.replace(self.target_key, '')
-            flux_target = internal_state[flux_id]
-            if flux_target >= 0:
-                self.fba.setReactionFluxBounds(reaction_id, 0, flux_target)
-            elif flux_target < 0:
-                # if negative, set -(flux_target) on reverse reaction
-                if reaction_id in self.reversible_reactions:
-                    rev_reaction_id = reaction_id + self.reverse_key
-                    self.fba.setReactionFluxBounds(rev_reaction_id, 0, -flux_target)
+        ## Regulation
+        # get the regulatory state of the reactions TODO -- are reversible reactions regulated?
+        total_state = dict_merge(dict(internal_state), external_state)
+        boolean_state = {mol_id: (value>1e-5) for mol_id, value in total_state.iteritems()}  # TODO -- generalize the threshold
+        regulatory_state = {rxn_id: regulatory_logic(boolean_state)
+                            for rxn_id, regulatory_logic in self.regulation.iteritems()}
+
+        # set reaction flux bounds, based on default bounds and regulatory_state
+        # TODO -- set default_flux_bounds in init
+        # TODO -- if negative, lower bounds should set bound on reverse reactions
+        default_flux_bounds = np.inf
+        flux_bounds = np.array([[0.0, default_flux_bounds] for rxn in self.reaction_ids])
+        for rxn_index, rxn_id in enumerate(self.reaction_ids):
+            if regulatory_state.get(rxn_id) is False:
+                flux_bounds[rxn_index] = [0.0, 0.0]
+
+        # pass flux bounds to FBA
+        self.fba.setReactionFluxBounds(
+            self.reaction_ids,
+            lowerBounds=flux_bounds[:,0],
+            upperBounds=flux_bounds[:,1])
+
+        # # set flux bounds on targets.
+        # # TODO -- only update fluxes that are different from the previous timestep
+        # for flux_id in self.flux_targets:
+        #     reaction_id = flux_id.replace(self.target_key, '')
+        #     flux_target = internal_state[flux_id]
+        #     if flux_target >= 0:
+        #         self.fba.setReactionFluxBounds(reaction_id, 0, flux_target)
+        #     elif flux_target < 0:
+        #         # if negative, set -(flux_target) on reverse reaction
+        #         if reaction_id in self.reversible_reactions:
+        #             rev_reaction_id = reaction_id + self.reverse_key
+        #             self.fba.setReactionFluxBounds(rev_reaction_id, 0, -flux_target)
 
         # get exchanges and growth
-        exchange_fluxes = self.fba.getExternalExchangeFluxes() * timestep
+        exchange_fluxes = self.fba.getExternalExchangeFluxes() * timestep #* mass.to('g').magnitude  # TODO -- scale by mass
         growth_rate = self.fba.getBiomassReactionFlux()
         new_mass = {'mass': (mass.magnitude * np.exp(growth_rate * timestep))}
 
@@ -145,7 +180,7 @@ class Metabolism(Process):
         return update
 
 
-
+# tests and analyses of process
 def kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
         flux = (vmax * state[mol_id]) / (km + state[mol_id])
@@ -200,9 +235,11 @@ def get_configuration():
     return config
 
 def test_metabolism(total_time=3600):
+    import lens.utils.regulation_logic as rl
 
     target_key = '__target'
-    # make kinetic rate laws to mimic transport kinetics
+
+    # transport kinetics
     transport_rates = {
         "R1": kinetic_rate("A", 1.2e-2, 20),   # A import
         "R3": kinetic_rate("F", 2e-3, 5),  # F export
@@ -213,10 +250,17 @@ def test_metabolism(total_time=3600):
         # "Rres": kinetic_rate("O2", 4e-1, 200), # O2 import
     }
 
+    # regulation
+    regulation = {
+        "R1": rl.build_rule('IF not (F)'),
+    }
+
     # configure process
     config = get_configuration()
     config['flux_targets'] = transport_rates.keys()
     config['target_key'] = target_key
+    config['regulation'] = regulation
+
     metabolism = Metabolism(config)
     target_rxn_ids = metabolism.flux_targets
 
@@ -278,6 +322,7 @@ def test_metabolism(total_time=3600):
 
     # check values are strictly increasing
     assert all(i < j for i, j in zip(mass_ts, mass_ts[1:]))
+
     # check values are strictly decreasing
     assert all(i > j for i, j in zip(F_ts, F_ts[1:]))
     assert all(i > j for i, j in zip(H_ts, H_ts[1:]))
@@ -290,7 +335,7 @@ def test_metabolism(total_time=3600):
         'target_key': target_key}
     return data
 
-def plot_metabolism_output(data):
+def plot_metabolism_output(data, out_dir='out'):
     import os
     import matplotlib
     matplotlib.use('TkAgg')
@@ -330,11 +375,11 @@ def plot_metabolism_output(data):
                     ax.legend()
 
     # make figure output directory and save figure
-    fig_path = os.path.join('out', 'metabolism_dFBA_test')
+    fig_path = os.path.join(out_dir, 'metabolism_dFBA')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
-def save_metabolic_network():
+def save_metabolic_network(out_dir='out'):
     # TODO -- make this function into an analysis
     import math
     from lens.utils.make_network import make_network, save_network
@@ -370,9 +415,12 @@ def save_metabolic_network():
         'reaction_fluxes': reaction_fluxes}
 
     nodes, edges = make_network(stoichiometry, info)
-    save_network(nodes, edges, 'out/metabolism_network_rxns')
+    save_network(nodes, edges, out_dir)
 
 if __name__ == '__main__':
     saved_data = test_metabolism()
-    plot_metabolism_output(saved_data)
-    save_metabolic_network()
+    out_dir = os.path.join('out', 'general_metabolism')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_metabolism_output(saved_data, out_dir)
+    save_metabolic_network(out_dir)

@@ -4,7 +4,7 @@ import os
 
 from lens.actor.process import dict_merge
 from lens.data.spreadsheets import load_tsv
-from lens.data.helper import mols_from_reg_logic
+from lens.data.helper import get_mols_from_stoich, get_mols_from_reg_logic
 
 from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
 from lens.environment.make_media import Media
@@ -24,96 +24,100 @@ LIST_OF_FILENAMES = (
    )
 
 def Covert2002Metabolism(parameters):
-   '''load in flux_targets and target_key through parameters'''
-   config = load_data(DATA_DIR, LIST_OF_FILENAMES)
-   config.update(parameters)
+    '''load in flux_targets and target_key through parameters'''
+    config = load_data(DATA_DIR, LIST_OF_FILENAMES)
+    config.update(parameters)
 
-   return Metabolism(config)
+    return Metabolism(config)
 
 def load_data(data_dir, filenames):
-   '''Load raw data from TSV files'''
+    '''Load raw data from TSV files'''
 
-   external_key = '[e]'
-   rxn_key = '__RXN'
+    external_key = '[e]'
+    rxn_key = '__RXN'
 
-   data = {}
-   for filename in filenames:
-       attrName = filename.split(os.path.sep)[-1].split(".")[0]
-       data[attrName] = load_tsv(data_dir, filename)
+    data = {}
+    for filename in filenames:
+        attrName = filename.split(os.path.sep)[-1].split(".")[0]
+        data[attrName] = load_tsv(data_dir, filename)
 
-   # compose stoichiometry
-   stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-                    for reaction in data['covert2002_reactions']}
-   transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-                              for reaction in data['covert2002_transport']}
-   maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
-                                for reaction in data['covert2002_maintenance_biomass_fluxes']}
-   stoichiometry.update(transport_stoichiometry)
+    ## Stoichiometry
+    stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+         for reaction in data['covert2002_reactions']}
+    transport_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+         for reaction in data['covert2002_transport']}
+    maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+         for reaction in data['covert2002_maintenance_biomass_fluxes']}
+    stoichiometry.update(transport_stoichiometry)
+    stoichiometry.update(maintenance_stoichiometry)  # TODO -- in standard FBA, this should only be needed in objective
 
-   # objective
-   # objective = maintenance_stoichiometry['VGRO']
-   # stoichiometry.update({'ATPM': maintenance_stoichiometry['ATPM']})
-   stoichiometry.update(maintenance_stoichiometry)
-   objective = {'mass': 1}
+    # list of reversible reactions
+    reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
 
-   # list of reversible reactions
-   reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
+    # add rxn_key to all entries of stoichiometry and transport_stoichiometry
+    # this helps identify reactions in later analyses.
+    stoichiometry = add_str_to_keys(stoichiometry, rxn_key)
+    reversible_reactions = add_str_in_list(reversible_reactions, rxn_key)
 
-   # add rxn_key to all entries of stoichiometry and transport_stoichiometry
-   stoichiometry = add_str_to_keys(stoichiometry, rxn_key)
-   reversible_reactions = add_str_in_list(reversible_reactions, rxn_key)
+    # get all molecules
+    metabolites = get_mols_from_stoich(stoichiometry)
+    enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
+    transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
+    regulation_molecules = get_mols_from_reg_logic(data['covert2002_reactions'])
 
-   # get all molecules
-   metabolites = get_molecules_from_stoich(stoichiometry)
-   enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
-   transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
-   regulation_molecules = mols_from_reg_logic(data['covert2002_reactions'])
+    all_molecules = set(metabolites + enzymes + transporters + regulation_molecules)
+    all_molecules.remove('mass')
+    external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
+    internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
 
-   all_molecules = list(set(metabolites + enzymes + transporters + regulation_molecules))
-   external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
-   internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
+    ## Objective
+    # objective = maintenance_stoichiometry['VGRO']
+    objective = {'mass': 1}  # TODO -- this is non-standard
 
-   # flux bounds on reactions
-   flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
-                  for flux in data['covert2002_GLC_G6P_flux_bounds']}
-   # default_flux_bounds = flux_bounds['default']
+    ## Flux bounds on reactions
+    flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
+                   for flux in data['covert2002_GLC_G6P_flux_bounds']}
+    # default_flux_bounds = flux_bounds['default']
 
-   # # make regulatory logic functions from data
-   # regulation_logic = {}
-   # for reaction in data['covert2002_reactions']:
-   #     reaction_id = reaction['Reaction']
-   #     rule = rl.build_rule(reaction['Regulatory Logic'])
-   #     if rule({}):
-   #         regulation_logic[reaction_id] = rule
+    ## Regulatory logic functions
+    regulation_logic = {}
+    for reaction in data['covert2002_reactions']:
+        reaction_id = reaction['Reaction']
+        rule = rl.build_rule(reaction['Regulatory Logic'])
+        if rule({}):
+            regulation_logic[reaction_id] = rule
+
+    ## Initial state
+    # external
+    make_media = Media()
+    external_state = make_media.get_saved_media('GLC_G6P')
+    external_state = add_str_to_keys(external_state, external_key)
+
+    # # internal
+    internal_state = {}
+    mass_volume = {'mass': 1339,'volume': 1}
+    mols = {mol_id: 0 for mol_id in internal_molecules}  # TODO -- are initial states for regulation molecules known?
+    rxns = {rxn_id: 0.0 for rxn_id in stoichiometry.keys()}
+    internal_state.update(mass_volume)
+    internal_state.update(mols)
+    internal_state.update(rxns)
+
+    initial_state = {
+        'external': external_state,
+        'internal': internal_state}
+
+    return {
+        'stoichiometry': stoichiometry,
+        'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
+        'external_molecules': external_molecules,  # external molecules are for lattice environment
+        'external_key': external_key,
+        'objective': objective,
+        'regulation': regulation_logic,
+        # 'transport_limits': transport_limits,
+        'initial_state': initial_state}
 
 
-   # initial state
-   make_media = Media()
-   external_state = make_media.get_saved_media('GLC_G6P')
-   external_state = add_str_to_keys(external_state, external_key)
-   internal = {'mass': 1339,'volume': 1}
-   rxns = {rxn_id: 0.0 for rxn_id in stoichiometry.keys()}
-   internal_state = dict_merge(dict(internal), rxns)
-   initial_state = {'external': external_state, 'internal': internal_state}
-
-   # TODO -- add regulation_logic, flux_bounds
-   return {
-       'stoichiometry': stoichiometry,
-       'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
-       'external_molecules': external_molecules,  # external molecules are for lattice environment
-       'external_key': external_key,
-       'objective': objective,
-       # 'transport_limits': transport_limits,
-       'initial_state': initial_state}
-
-def get_molecules_from_stoich(stoichiometry):
-   molecules = set()
-   for reaction, stoich in stoichiometry.iteritems():
-       molecules.update(stoich.keys())
-   return list(molecules)
-
-
-
+# tests and analyses of process
 def test_covert2002(total_time=3600):
     import numpy as np
     from lens.utils.units import units
@@ -125,6 +129,7 @@ def test_covert2002(total_time=3600):
     # configure process
     metabolism = Covert2002Metabolism({})
     target_rxn_ids = metabolism.flux_targets
+    external_key = metabolism.external_key
 
     # get initial state and parameters
     state = metabolism.default_state()
@@ -142,16 +147,18 @@ def test_covert2002(total_time=3600):
     while time < total_time:
         mass_t0 = state['internal']['mass']
         volume_t0 = (mass_t0 * units.fg).to('g') / density
+        state['internal']['volume'] = volume_t0.magnitude
         time += timestep
 
         # get update
         update = metabolism.next_update(timestep, state)
-        state['internal'] = update['internal']
+        external_update = add_str_to_keys(update['external'], external_key)
+        state['internal'].update(update['internal'])
         growth_rate = metabolism.fba.getObjectiveValue()
 
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
-        for mol_id, exchange in update['external'].iteritems():
+        for mol_id, exchange in external_update.iteritems():
             exchange_rate = exchange / mmolToCount  # TODO -- per second?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
@@ -171,7 +178,7 @@ def test_covert2002(total_time=3600):
 
         # save state
         saved_state['time'].append(time)
-        saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
+        # saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
         for state_id, value in state['internal'].iteritems():
             saved_state['internal'][state_id].append(value)
         for state_id, value in state['external'].iteritems():
@@ -187,9 +194,7 @@ def test_covert2002(total_time=3600):
         'target_key': target_key}
     return data
 
-def plot_environment_output(data):
-    # plot glc/mass only
-    import os
+def plot_environment_output(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -198,7 +203,6 @@ def plot_environment_output(data):
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
     external_data = data['saved_state']['external']
     mass_series = data['saved_state']['internal']['mass']
-
 
     # make figure
     fig, ax1 = plt.subplots(figsize=(5,5))
@@ -218,12 +222,11 @@ def plot_environment_output(data):
     ax2.legend(prop={'size': 6}, loc=7)
 
     # make figure output directory and save figure
-    fig_path = os.path.join('out', 'covert2002_metabolism_environment')
+    fig_path = os.path.join(out_dir, 'covert2002_metabolism_environment')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
-def plot_metabolism_output(data):
-    import os
+def plot_metabolism_output(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -262,11 +265,11 @@ def plot_metabolism_output(data):
                     ax.legend()
 
     # make figure output directory and save figure
-    fig_path = os.path.join('out', 'covert2002_metabolism_all')
+    fig_path = os.path.join(out_dir, 'covert2002_metabolism_all')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
-def save_metabolic_network():
+def save_metabolic_network(out_dir='out'):
     # TODO -- make this function into an analysis
     import math
     from lens.utils.make_network import make_network, save_network
@@ -302,10 +305,14 @@ def save_metabolic_network():
         'reaction_fluxes': reaction_fluxes}
 
     nodes, edges = make_network(stoichiometry, info)
-    save_network(nodes, edges, 'out/covert2002_metabolism_network')
+    out_path = os.path.join(out_dir, 'covert2002_metabolism_network')
+    save_network(nodes, edges, out_path)
 
 if __name__ == '__main__':
-   saved_state = test_covert2002()
-   plot_metabolism_output(saved_state)
-   plot_environment_output(saved_state)
-   save_metabolic_network()
+    saved_state = test_covert2002()
+    out_dir = os.path.join('out', 'CovertPalsson2002_metabolism')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_metabolism_output(saved_state, out_dir)
+    plot_environment_output(saved_state, out_dir)
+    save_metabolic_network(out_dir)

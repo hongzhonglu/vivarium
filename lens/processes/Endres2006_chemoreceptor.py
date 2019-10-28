@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 import math
 
 from lens.actor.process import Process
@@ -152,6 +153,7 @@ class ReceptorCluster(Process):
         return update
 
 
+# tests and analyses of process
 def test_receptor():
     # TODO -- add asserts for test
     # define timeline with (time (s), ligand concentration (mmol/L))
@@ -207,8 +209,7 @@ def test_receptor():
         'receptor_activity_vec': receptor_activity_vec,
         'n_methyl_vec': n_methyl_vec}
 
-def plot_output(output):
-    import os
+def plot_output(output, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -238,11 +239,14 @@ def plot_output(output):
     ax3.set_xlabel("time (s)", fontsize=12)
     ax3.set_ylabel("average \n methylation", fontsize=10)
 
-    fig_path = os.path.join('out', 'Endres2006_chemoreceptor_test')
+    fig_path = os.path.join(out_dir, 'response')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
     output = test_receptor()
-    plot_output(output)
+    out_dir = os.path.join('out', 'Endres2006_chemoreceptor')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_output(output, out_dir)

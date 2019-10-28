@@ -2,7 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import re
 
-def mols_from_reg_logic(data):
+def get_mols_from_stoich(stoichiometry):
+    molecules = set()
+    for reaction, stoich in stoichiometry.iteritems():
+        molecules.update(stoich.keys())
+    return list(molecules)
+
+def get_mols_from_reg_logic(data):
     # get all molecules listed in "Regulatory Logic"
     regulation_molecules = set()
     regex_split = 'action is complex|surplus |active |IF |not |or |and |\(|\)| '

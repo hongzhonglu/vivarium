@@ -39,7 +39,8 @@ from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
 
 # composites
-from lens.composites.Covert2008 import compose_covert2008
+from lens.composites.Covert2002_rFBA import compose_covert2002
+from lens.composites.Covert2008_iFBA import compose_covert2008
 from lens.composites.growth_division import compose_growth_division
 from lens.composites.Chemotaxis import compose_chemotaxis
 
@@ -242,6 +243,12 @@ def initialize_glc_lct(agent_config):
     boot_config.update(agent_config)
     return boot_config
 
+def initialize_glc_lct_shift(agent_config):
+    timeline_str = '0 GLC_G6P, 800 GLC_LCT, 1600 end'
+    boot_config = {'timeline_str': timeline_str}
+    boot_config.update(agent_config)
+    return boot_config
+
 def initialize_measp(agent_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
@@ -336,12 +343,13 @@ class BootEnvironment(BootAgent):
             'sugar1': wrap_boot_environment(initialize_glc_g6p),
             'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
             'sugar2': wrap_boot_environment(initialize_glc_lct),
+            'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
             'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
 
-            # single process compartments
+            # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_init_basic(Covert2002Metabolism), {'volume': 1.0}),
             'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
@@ -352,6 +360,7 @@ class BootEnvironment(BootAgent):
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
+            'covert2002': wrap_boot(wrap_init_composite(compose_covert2002), {'volume': 1.0}),
             'covert2008': wrap_boot(wrap_init_composite(compose_covert2008), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_chemotaxis), {'volume': 1.0})
             }

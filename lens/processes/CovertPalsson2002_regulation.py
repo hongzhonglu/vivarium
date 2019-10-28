@@ -5,7 +5,7 @@ import csv
 
 from lens.actor.process import Process, dict_merge
 from lens.data.spreadsheets import load_tsv
-from lens.data.helper import mols_from_reg_logic
+from lens.data.helper import get_mols_from_reg_logic
 import lens.utils.regulation_logic as rl
 from lens.environment.lattice_compartment import remove_str_in_list, add_str_to_keys
 
@@ -89,7 +89,9 @@ class Regulation(Process):
         regulatory_state = {mol_id: regulatory_logic(boolean_state)
                             for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
 
-        return {'internal': regulatory_state, 'external': {}}
+        return {
+            'internal': regulatory_state,
+            'external': {}}
 
     def load_data(self):
         # Load raw data from TSV files, save to data dictionary and then assign to class variables
@@ -107,7 +109,7 @@ class Regulation(Process):
                 self.regulation_logic[protein_id] = rule
 
         # get all molecules listed in "Regulatory Logic"
-        all_molecules = mols_from_reg_logic(data['covert2002_regulatory_proteins'])
+        all_molecules = get_mols_from_reg_logic(data['covert2002_regulatory_proteins'])
 
         # remove external molecules from internal_molecules
         external_molecules = [mol_id for mol_id in all_molecules if self.external_key in mol_id]
