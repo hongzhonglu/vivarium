@@ -13,11 +13,9 @@ class Growth(Process):
         super(Growth, self).__init__(roles, parameters)
 
     def default_state(self):
-        mass = 1.339e-12  # g  # 1339 (wet mass in fg)
+        mass = 1339  # g  # 1339 (wet mass in fg)
         default_state = {'mass': mass}
         return {
-            'environment_deltas': [],
-            'environment_ids': [],
             'internal': default_state}
 
     def default_emitter_keys(self):
