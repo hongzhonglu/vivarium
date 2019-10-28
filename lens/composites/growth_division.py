@@ -25,8 +25,10 @@ def divide_state(compartment):
         for index in range(2):
             divided[index][state_key] = {}
             for key, value in state.to_dict().items():
-                divided[index][state_key][key] = value // 2 + (
-                    value % 2 if index == left else 0)
+                if key == 'division':
+                    divided[index][state_key][key] = 0
+                else:
+                    divided[index][state_key][key] = value // 2 + (value % 2 if index == left else 0)
 
     print('divided {}'.format(divided))
     return divided

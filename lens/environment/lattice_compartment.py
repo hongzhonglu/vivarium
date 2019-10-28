@@ -89,10 +89,15 @@ class LatticeCompartment(Compartment, Simulation):
 
         state = self.states[self.compartment]
         values = state.state_for(['volume'])
-        forces = state.state_for(['motile_force', 'motile_torque'])
-        motile_force = [
-            forces.get('motile_force', 0.0),
-            forces.get('motile_torque', 0.0)]
+
+        # check if state has motile_force and motile_torque
+        if 'motile_force' in state.keys and 'motile_torque' in state.keys:
+            forces = state.state_for(['motile_force', 'motile_torque'])
+            motile_force = [
+                forces['motile_force'],
+                forces['motile_torque']]
+        else:
+            motile_force = [0.0, 0.0]
 
         if self.divide_condition(self):
             values['division'] = self.generate_daughters()

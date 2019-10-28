@@ -94,7 +94,6 @@ class ShepherdControl(ActorControl):
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            # 'rotation_jitter': 0.0
         }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)

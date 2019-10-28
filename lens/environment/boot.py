@@ -234,12 +234,14 @@ def initialize_custom_small(agent_config):
     return boot_config
 
 def initialize_glc_g6p(agent_config):
-    boot_config = {'media_id': 'GLC_G6P'}
+    timeline_str = '0 GLC_G6P, 1600 end'
+    boot_config = {'timeline_str': timeline_str}
     boot_config.update(agent_config)
     return boot_config
 
 def initialize_glc_lct(agent_config):
-    boot_config = {'media_id': 'GLC_LCT'}
+    timeline_str = '0 GLC_LCT, 1600 end'
+    boot_config = {'timeline_str': timeline_str}
     boot_config.update(agent_config)
     return boot_config
 
