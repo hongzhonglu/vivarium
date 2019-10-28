@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import random
+
 from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
 
 # processes
@@ -7,6 +9,27 @@ from lens.processes.derive_volume import DeriveVolume
 from lens.processes.growth import Growth
 from lens.processes.division import Division
 
+
+def divide_condition(compartment):
+    division = compartment.states['cell'].state_for(['division'])
+    if division.get('division', 0) == 0:  # 0 is false
+        divide = False
+    else:
+        divide = True
+    return divide
+
+def divide_state(compartment):
+    divided = [{}, {}]
+    for state_key, state in compartment.states.items():
+        left = random.randint(0, 1)
+        for index in range(2):
+            divided[index][state_key] = {}
+            for key, value in state.to_dict().items():
+                divided[index][state_key][key] = value // 2 + (
+                    value % 2 if index == left else 0)
+
+    print('divided {}'.format(divided))
+    return divided
 
 def compose_growth_division(config):
     exchange_key = config.get('exchange_key')
@@ -63,7 +86,9 @@ def compose_growth_division(config):
         'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
-        'environment_ids': environment_ids}
+        'environment_ids': environment_ids,
+        'divide_condition': divide_condition,
+        'divide_state': divide_state}
 
     return {
         'processes': processes,

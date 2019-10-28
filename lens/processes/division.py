@@ -5,7 +5,7 @@ from lens.actor.process import Process
 
 class Division(Process):
     def __init__(self, initial_parameters={}):
-        self.division = False
+        self.division = 0
 
         roles = {'internal': ['volume']}
         parameters = {'division_volume': 2.0}
@@ -18,9 +18,15 @@ class Division(Process):
         return {
             'internal': default_state}
 
+    def default_updaters(self):
+        updater_types = {
+            'internal': {'division': 'set'}}
+        return updater_types
+
     def next_update(self, timestep, states):
         volume = states['internal']['volume']
+
         if volume >= self.parameters['division_volume']:
-            self.division = True
+            self.division = 1
 
         return {'internal': {'division': self.division}}
