@@ -99,7 +99,7 @@ class Snapshots(Analysis):
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
         plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
-        plt.clf()
+        plt.close(fig)
 
     def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius):
         for agent_id, agent_data in agent_data.iteritems():

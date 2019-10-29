@@ -24,7 +24,7 @@ class LatticeTrace(Analysis):
         edge_length = experiment_config['edge_length']
 
         # plot trajectories
-        plt.figure(figsize=(8, 8))
+        fig = plt.figure(figsize=(8, 8))
         for agent_id in agent_ids:
             # get locations and convert to 2D array
             locations = history_data[agent_id]['location']
@@ -40,4 +40,4 @@ class LatticeTrace(Analysis):
         plt.ylim((0, edge_length))
 
         plt.savefig(output_dir + '/location_trace')
-        plt.clf()
+        plt.close(fig)

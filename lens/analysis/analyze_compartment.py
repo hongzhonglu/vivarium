@@ -58,4 +58,4 @@ class Compartment(Analysis):
             ax.axis('off')
 
         plt.savefig(output_dir + '/compartment')
-        plt.clf()
+        plt.close(fig)
