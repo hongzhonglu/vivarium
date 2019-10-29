@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 from lens.analysis.analysis import Analysis
 
+DEFAULT_COLOR = [color/255 for color in [102, 178 , 255]]
+
+
 class Snapshots(Analysis):
     def __init__(self):
         super(Snapshots, self).__init__(analysis_type='lattice')
@@ -87,7 +90,7 @@ class Snapshots(Analysis):
                                extent=[0,patches_per_edge,0,patches_per_edge],
                                interpolation='nearest',
                                cmap='YlGn')
-                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius)
+                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, DEFAULT_COLOR)
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
@@ -95,13 +98,13 @@ class Snapshots(Analysis):
                 ax.set_ylim([0, patches_per_edge])
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
-                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius)
+                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, DEFAULT_COLOR)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
         plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
         plt.close(fig)
 
-    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius):
+    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, agent_color):
         for agent_id, agent_data in agent_data.iteritems():
             location = agent_data['location']
             volume = agent_data['volume']
@@ -114,8 +117,18 @@ class Snapshots(Analysis):
             dx = length * np.sin(theta)
             dy = length * np.cos(theta)
             width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
+            body_width = width * 0.95
 
-            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2], linewidth=width, color='slateblue',
+            # plot outline
+            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
+                    linewidth=width,
+                    color='k',
+                    solid_capstyle='round')
+
+            # plot body
+            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
+                    linewidth=body_width,
+                    color=agent_color,
                     solid_capstyle='round')
 
 
