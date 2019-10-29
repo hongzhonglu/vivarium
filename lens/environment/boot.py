@@ -37,6 +37,7 @@ from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
+from lens.processes.proton_motive_force import ProtonMotiveForce
 
 # composites
 from lens.composites.Covert2002_rFBA import compose_covert2002
@@ -359,6 +360,7 @@ class BootEnvironment(BootAgent):
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
+            'PMF': wrap_boot(wrap_init_basic(ProtonMotiveForce), {'volume': 1.0}),
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
