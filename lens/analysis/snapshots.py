@@ -73,39 +73,50 @@ class Snapshots(Analysis):
             field_data = time_data[time]['fields']
             agent_data = time_data[time]['agents']
 
-            # plot fields
-            for field_id in field_ids:
+            if field_ids:
+                # plot fields
+                for field_id in field_ids:
+                    ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
+                    ax.title.set_text('time = {}'.format(time))
+                    ax.set_xlim([0, patches_per_edge])
+                    ax.set_ylim([0, patches_per_edge])
+                    ax.set_yticklabels([])
+                    ax.set_xticklabels([])
+
+                    plt.imshow(field_data[field_id],
+                               extent=[0,patches_per_edge,0,patches_per_edge],
+                               interpolation='nearest',
+                               cmap='YlGn')
+                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius)
+            else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
                 ax.set_xlim([0, patches_per_edge])
                 ax.set_ylim([0, patches_per_edge])
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
-
-                plt.imshow(field_data[field_id],
-                           extent=[0,patches_per_edge,0,patches_per_edge],
-                           interpolation='nearest',
-                           cmap='YlGn')
-                # plt.colorbar()
-
-                for agent_id, agent_data in agent_data.iteritems():
-                    location = agent_data['location']
-                    volume = agent_data['volume']
-                    y = location[0] * lattice_scaling
-                    x = location[1] * lattice_scaling
-                    theta = location[2]
-                    length = self.volume_to_length(volume, cell_radius) * lattice_scaling
-
-                    # plot cell as a 2D line
-                    dx = length * np.sin(theta)
-                    dy = length * np.cos(theta)
-                    width = linewidth_from_data_units(cell_radius*2, ax) * lattice_scaling
-
-                    ax.plot([y-dy/2, y+dy/2], [x-dx/2, x+dx/2], linewidth=width, color='slateblue', solid_capstyle='round')
+                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
         plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
         plt.clf()
+
+    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius):
+        for agent_id, agent_data in agent_data.iteritems():
+            location = agent_data['location']
+            volume = agent_data['volume']
+            y = location[0] * lattice_scaling
+            x = location[1] * lattice_scaling
+            theta = location[2]
+            length = self.volume_to_length(volume, cell_radius) * lattice_scaling
+
+            # plot cell as a 2D line
+            dx = length * np.sin(theta)
+            dy = length * np.cos(theta)
+            width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
+
+            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2], linewidth=width, color='slateblue',
+                    solid_capstyle='round')
 
 
     def volume_to_length(self, volume, cell_radius):
