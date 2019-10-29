@@ -118,7 +118,7 @@ then open a browser window onto [http://localhost:33332/](http://localhost:33332
 
 Now you can start a virtual microscope experiment in a "command" terminal tab:
 
-   `> python -m lens.environment.control experiment --number 3`
+   `> python -m lens.environment.control experiment --number 3 --type metabolism --experiment_id exp123`
 
 This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ agent and three for the _cell simulation_ agents. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
 

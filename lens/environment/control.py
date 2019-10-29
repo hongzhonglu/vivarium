@@ -89,7 +89,7 @@ class ShepherdControl(ActorControl):
             experiment_id, num_cells))
 
         media_id = 'minimal'
-        timeline_str = '0 {}, 1800 end'.format(media_id)
+        timeline_str = '0 {}, 7200 end'.format(media_id)
 
         experiment_config = {
             'timeline_str': timeline_str,
