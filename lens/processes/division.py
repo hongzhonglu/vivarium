@@ -8,7 +8,7 @@ class Division(Process):
         self.division = 0
 
         roles = {'internal': ['volume']}
-        parameters = {'division_volume': 2.0}
+        parameters = {'division_volume': 2.4}  # TODO -- make division at 2X initial_volume?
         parameters.update(initial_parameters)
 
         super(Division, self).__init__(roles, parameters)

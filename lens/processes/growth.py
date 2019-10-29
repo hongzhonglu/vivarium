@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
+
 from lens.actor.process import Process
 
 
@@ -8,12 +10,12 @@ class Growth(Process):
         roles = {
             'internal': ['mass', 'volume'],
         }
-        parameters = {'growth_rate': 0.005}
+        parameters = {'growth_rate': 0.0006}
         parameters.update(initial_parameters)
         super(Growth, self).__init__(roles, parameters)
 
     def default_state(self):
-        mass = 1339  # g  # 1339 (wet mass in fg)
+        mass = 1339  # (wet mass in fg)
         default_state = {'mass': mass}
         return {
             'internal': default_state}
@@ -22,8 +24,11 @@ class Growth(Process):
         keys = {'internal': ['mass']}
         return keys
 
+    def default_updaters(self):
+        updater_types = {'internal': {'mass': 'set'}}
+        return updater_types
+
     def next_update(self, timestep, states):
         mass = states['internal']['mass']
-        growth_rate = mass * self.parameters['growth_rate'] * timestep
-        update = {'mass': growth_rate}
-        return {'internal': update}
+        new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
+        return {'internal': {'mass': new_mass}}

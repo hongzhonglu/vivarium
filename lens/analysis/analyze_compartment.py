@@ -36,7 +36,7 @@ class Compartment(Analysis):
         n_zeros = len(zero_state)
         n_rows = sum(n_data) + int(n_zeros/20)  # 20 zero_state ids per additional subplot
 
-        fig = plt.figure(figsize=(8, n_rows * 1.5))
+        fig = plt.figure(figsize=(8, n_rows * 2.5))
         grid = plt.GridSpec(n_rows+1, 1, wspace=0.4, hspace=1.5)
 
         # plot data

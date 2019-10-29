@@ -234,19 +234,19 @@ def initialize_custom_small(agent_config):
     return boot_config
 
 def initialize_glc_g6p(agent_config):
-    timeline_str = '0 GLC_G6P, 1600 end'
+    timeline_str = '0 GLC_G6P, 3600 end'
     boot_config = {'timeline_str': timeline_str}
     boot_config.update(agent_config)
     return boot_config
 
 def initialize_glc_lct(agent_config):
-    timeline_str = '0 GLC_LCT, 1600 end'
+    timeline_str = '0 GLC_LCT, 3600 end'
     boot_config = {'timeline_str': timeline_str}
     boot_config.update(agent_config)
     return boot_config
 
 def initialize_glc_lct_shift(agent_config):
-    timeline_str = '0 GLC_G6P, 800 GLC_LCT, 1600 end'
+    timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
     boot_config = {'timeline_str': timeline_str}
     boot_config.update(agent_config)
     return boot_config
