@@ -264,7 +264,7 @@ def plot_metabolism_output(data, out_dir='out'):
                     ax.plot(time_vec, target_series, 'r', label='target')
                     ax.legend()
 
-    # make figure output directory and save figure
+    # save figure
     fig_path = os.path.join(out_dir, 'covert2002_metabolism_all')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')

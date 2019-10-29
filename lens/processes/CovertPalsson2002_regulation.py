@@ -117,3 +117,62 @@ class Regulation(Process):
         external_molecules = remove_str_in_list(external_molecules, self.external_key)
 
         return internal_molecules, external_molecules
+
+def test_covert2002_regulation(total_time=3600):
+    # configure process
+    regulation = Regulation({})
+
+    # get initial state and parameters
+    state = regulation.default_state()
+
+    saved_state = {
+        'internal': {state_id: [value] for state_id, value in state['internal'].iteritems()},
+        'external': {state_id: [value] for state_id, value in state['external'].iteritems()},
+        'time': [0]}
+
+    # run simulation
+    time = 0
+    timestep = 1  # sec
+    while time < total_time:
+        time += timestep
+
+        # get update
+        update = regulation.next_update(timestep, state)
+
+
+
+        # save state
+        saved_state['time'].append(time)
+        # saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
+        for state_id, value in state['internal'].iteritems():
+            saved_state['internal'][state_id].append(value)
+        for state_id, value in state['external'].iteritems():
+            saved_state['external'][state_id].append(value)
+
+
+    data = {'saved_state': saved_state}
+    return data
+
+def plot_regulation_output(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    saved_state = data['saved_state']
+
+
+    import ipdb; ipdb.set_trace()
+
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'covert2002_regulation')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    saved_state = test_covert2002_regulation()
+    out_dir = os.path.join('out', 'CovertPalsson2002_regulation')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_regulation_output(saved_state, out_dir)
