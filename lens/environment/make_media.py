@@ -358,3 +358,43 @@ class RecipeConstructor(NodeVisitor):
     def generic_visit(self, node, visited_children):
         # The generic visit method.
         return visited_children or node
+
+
+def test_make_media():
+    media_obj = Media()
+
+    # Retrieve stock media
+    media1 = media_obj.get_saved_media('M9_GLC', True)
+
+    # Make media from ingredients
+    ingredients = {
+        'L-ALPHA-ALANINE': {'weight': 1.78 * units.g, 'volume': 0.025 * units.L},
+        'ARG': {'weight': 8.44 * units.g, 'volume': 0.1 * units.L},
+        'UREA': {'counts': 102.0 * units.mmol, 'volume': 1.0 * units.L},
+        'LEU': {'weight': float("inf") * units.g, 'volume': 0 * units.L},
+        'OXYGEN-MOLECULE': {'counts': 0 * units.g, 'volume': 0 * units.L},
+    }
+    media2 = media_obj.make_recipe(ingredients, True)
+
+    # Combine two medias
+    media3 = media_obj.combine_media(media1, 0.8 * units.L, media2, 0.2 * units.L)
+
+    #Recipes with parsing expression grammer
+    recipe_str = 'GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L + ARG 0.1 mmol .5 L'
+    recipe_parsed = grammar.parse(recipe_str)
+
+    # Make a recipe with recipe constructor
+    rc = RecipeConstructor()
+    recipe = rc.visit(recipe_parsed)
+    media4 = media_obj.make_recipe(recipe[0])
+
+    # Make timelines
+    timeline_str = '0 minimal 1 L + GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L, ' \
+                   '10 minimal_minus_oxygen 1 L + GLT 0.2 mmol 1 L, ' \
+                   '100 minimal 1 L + GLT 0.2 mmol 1 L'
+    timeline = media_obj.make_timeline(timeline_str)
+    media1_id = timeline[0][1]
+    media5 = media_obj.get_saved_media(media1_id)
+
+if __name__ == '__main__':
+    output = test_make_media()
