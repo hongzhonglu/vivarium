@@ -21,6 +21,10 @@ analysis_classes = {
 # mongoDB local url
 url='localhost:27017'
 
+
+class AnalysisError(Exception):
+    pass
+
 def get_experiment(data):
     experiment_config = {}
     for row in data:
@@ -45,8 +49,6 @@ def get_sims_from_exp(client, experiment_id):
 
     return list(simulation_ids)
 
-class AnalysisError(Exception):
-    pass
 
 class Analyze(object):
     '''
@@ -102,15 +104,18 @@ class Analyze(object):
             required_processes = analysis.requirements()
 
             if all(processes in active_processes for processes in required_processes):
-                data = analysis.get_data(history_client, query.copy())
 
                 # run the compartment analysis for each simulation in simulation_ids
                 if analysis.analysis_type is 'compartment':
                     for sim_id in simulation_ids:
+                        compartment_query = query.copy()
+                        compartment_query.update({'simulation_id': sim_id})
+                        data = analysis.get_data(history_client, compartment_query)
                         sim_out_dir = os.path.join(output_dir, sim_id)
                         analysis.analyze(experiment_config, data, sim_out_dir)
 
                 elif analysis.analysis_type is 'lattice':
+                    data = analysis.get_data(history_client, query.copy())
                     analysis.analyze(experiment_config, data, output_dir)
 
                 print('completed analysis: {}'.format(analysis_class.__name__))

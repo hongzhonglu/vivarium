@@ -80,6 +80,33 @@ class ShepherdControl(ActorControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
+    def short_lattice_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('short_lattice')
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        media_id = 'minimal'
+        timeline_str = '0 {}, 7200 end'.format(media_id)
+
+        experiment_config = {
+            'timeline_str': timeline_str,
+            'run_for': 2.0,
+        }
+
+        self.add_agent(experiment_id, 'lattice', experiment_config)
+
+        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'metabolism', {
+                'boot': 'lens.environment.boot',
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
     def glc_g6p_experiment(self, args):
         experiment_id = args['experiment_id']
         if not experiment_id:
@@ -178,6 +205,7 @@ class EnvironmentCommand(AgentCommand):
 
         full_choices = [
 			'large-experiment',
+            'short-experiment',
             'chemotaxis-experiment',
             'glc-g6p-experiment'] + choices
 
@@ -195,6 +223,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.large_lattice_experiment(args)
+        control.shutdown()
+
+    def short_experiment(self, args):
+        self.require(args, 'number', 'working_dir')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.short_lattice_experiment(args)
         control.shutdown()
 
     def glc_g6p_experiment(self, args):

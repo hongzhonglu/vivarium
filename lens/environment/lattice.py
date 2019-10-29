@@ -427,7 +427,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # emit data for each agent
         for agent_id, simulation in self.simulations.iteritems():
-            agent_location = self.locations[agent_id].tolist()
+            agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
             agent_state = self.simulations[agent_id]['state']
             data = {
                 'type': 'lattice',

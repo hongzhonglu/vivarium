@@ -1,19 +1,48 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_default_states
+import random
+
+from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
 
 # processes
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.growth import Growth
+from lens.processes.division import Division
 
+
+def divide_condition(compartment):
+    division = compartment.states['cell'].state_for(['division'])
+    if division.get('division', 0) == 0:  # 0 is false
+        divide = False
+    else:
+        divide = True
+    return divide
+
+def divide_state(compartment):
+    divided = [{}, {}]
+    for state_key, state in compartment.states.items():
+        left = random.randint(0, 1)
+        for index in range(2):
+            divided[index][state_key] = {}
+            for key, value in state.to_dict().items():
+                if key == 'division':
+                    divided[index][state_key][key] = 0
+                else:
+                    divided[index][state_key][key] = value // 2 + (value % 2 if index == left else 0)
+
+    print('divided {}'.format(divided))
+    return divided
 
 def compose_growth_division(config):
+    exchange_key = config.get('exchange_key')
 
     # declare the processes
     growth = Growth(config)
+    division = Division(config)
     deriver = DeriveVolume(config)
     processes = {
         'growth': growth,
+        'division': division,
         'deriver': deriver,
     }
 
@@ -21,26 +50,47 @@ def compose_growth_division(config):
     topology = {
         'growth': {
             'internal': 'cell'},
+        'division': {
+            'internal': 'cell'},
         'deriver': {
             'internal': 'cell'},
         }
 
     # initialize the states
-    default_state = merge_default_states(processes)
+    default_states = merge_default_states(processes)
+    default_updaters = merge_default_updaters(processes)
     initial_state = config.get('initial_state', {})
     initial_time = config.get('initial_time', 0.0)
-    default_state['internal'].update(initial_state['cell'])
+
+    # get environment ids, and make exchange_ids for external state
+    environment_ids = []
+    initial_exchanges = {}
+    for process_id, process in processes.iteritems():
+        roles = {role: {} for role in process.roles.keys()}
+        initial_exchanges.update(roles)
+
+    # set states according to the compartment_roles mapping.
+    # This will not generalize to composites with processes that have different roles
+    compartment_roles = {
+        'external': 'environment',
+        'internal': 'cell'}
 
     states = {
-        # 'environment': State(initial_state['external']),
-        'cell': State(initial_state=default_state['internal'])}
+        compartment_roles[role]: State(
+            initial_state=dict_merge(
+                default_states.get(role, {}),
+                dict(initial_state.get(compartment_roles[role], {}))),
+            updaters=default_updaters.get(role, {}))
+        for role in default_states.keys()}
 
     options = {
         'topology': topology,
         'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
-        'environment_ids': initial_state['environment_ids']}
+        'environment_ids': environment_ids,
+        'divide_condition': divide_condition,
+        'divide_state': divide_state}
 
     return {
         'processes': processes,
