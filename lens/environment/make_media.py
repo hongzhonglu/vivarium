@@ -380,11 +380,9 @@ def test_make_media():
     media3 = media_obj.combine_media(media1, 0.8 * units.L, media2, 0.2 * units.L)
 
     #Recipes with parsing expression grammer
+    rc = RecipeConstructor()
     recipe_str = 'GLT 0.2 mmol 1 L + LEU 0.05 mmol .1 L + ARG 0.1 mmol .5 L'
     recipe_parsed = grammar.parse(recipe_str)
-
-    # Make a recipe with recipe constructor
-    rc = RecipeConstructor()
     recipe = rc.visit(recipe_parsed)
     media4 = media_obj.make_recipe(recipe[0])
 
