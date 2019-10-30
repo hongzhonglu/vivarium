@@ -46,7 +46,11 @@ class Snapshots(Analysis):
         # add fields
         for row in data_field:
             time = row.get('time')
-            fields = row.get('fields')
+            if time not in time_dict:
+                break
+                # time_dict[time] = {}
+
+            fields = row.get('fields', [])
             time_dict[time].update({'fields': fields})
 
         return time_dict
@@ -60,27 +64,27 @@ class Snapshots(Analysis):
         lattice_scaling = patches_per_edge / edge_length
 
         # define number of snapshots to be plotted
-        n_snapshots = 6
+        n_snapshots = 8
 
         # get the time steps that will be used
         plot_step = int(len(time_vec)/(n_snapshots-1))
         snapshot_times = time_vec[::plot_step]
 
         # get number of fields
-        field_ids = time_data[time_vec[0]]['fields'].keys()
+        field_ids = time_data[time_vec[0]].get('fields',{}).keys()
         n_fields = max(len(field_ids),1)
 
         fig = plt.figure(figsize=(20*n_snapshots, 20*n_fields))
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times):
-            field_data = time_data[time]['fields']
+            field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
             if field_ids:
                 # plot fields
                 for field_id in field_ids:
                     ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
-                    ax.title.set_text('time = {}'.format(time))
+                    ax.title.set_text('time = {:.2f} hr'.format(time/60/60))
                     ax.set_xlim([0, patches_per_edge])
                     ax.set_ylim([0, patches_per_edge])
                     ax.set_yticklabels([])
@@ -114,22 +118,23 @@ class Snapshots(Analysis):
             length = self.volume_to_length(volume, cell_radius) * lattice_scaling
 
             # plot cell as a 2D line
-            dx = length * np.sin(theta)
-            dy = length * np.cos(theta)
             width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
             body_width = width * 0.95
+            dx = length * np.sin(theta)
+            dy = length * np.cos(theta)
 
+            # import ipdb; ipdb.set_trace()
             # plot outline
             ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
                     linewidth=width,
                     color='k',
-                    solid_capstyle='round')
+                    solid_capstyle='butt')
 
             # plot body
             ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
                     linewidth=body_width,
                     color=agent_color,
-                    solid_capstyle='round')
+                    solid_capstyle='butt')
 
 
     def volume_to_length(self, volume, cell_radius):
@@ -173,5 +178,6 @@ def linewidth_from_data_units(linewidth, axis, reference='y'):
         value_range = np.diff(axis.get_ylim())
     # Convert length to points
     length *= 72
+
     # Scale linewidth to value range
-    return linewidth * (length / value_range)
+    return linewidth * (length / value_range[0])
