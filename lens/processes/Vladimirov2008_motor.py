@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 import numpy as np
 import random
 
@@ -263,7 +264,7 @@ def test_variable_receptor():
         'ccw_to_cw_vec': ccw_to_cw_vec,
         'motor_state_vec': motor_state_vec}
 
-def plot_motor_control(output):
+def plot_motor_control(output, out_dir='out'):
     # TODO -- make this into an analysis figure
     import os
     import matplotlib
@@ -320,12 +321,12 @@ def plot_motor_control(output):
     ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax4.set_xlabel("motor state length (sec)", fontsize=10)
 
-    fig_path = os.path.join('out', 'Vladimirov2008_motor_control')
+    fig_path = os.path.join(out_dir, 'motor_control')
     plt.subplots_adjust(wspace=0.7, hspace=0.5)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
-def plot_variable_receptor(output):
+def plot_variable_receptor(output, out_dir='out'):
     import os
     import matplotlib
     matplotlib.use('TkAgg')
@@ -363,14 +364,18 @@ def plot_variable_receptor(output):
     ax4.set_yticks([0.0, 1.0])
     ax4.set_yticklabels(["run", "tumble"])
 
-    fig_path = os.path.join('out', 'Vladimirov2008_motor_variable_receptor')
+    fig_path = os.path.join(out_dir, 'motor_variable_receptor')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
+    out_dir = os.path.join('out', 'Vladimirov2008_motor')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
     output1 = test_motor_control()
-    plot_motor_control(output1)
+    plot_motor_control(output1, out_dir)
 
     output2 = test_variable_receptor()
-    plot_variable_receptor(output2)
+    plot_variable_receptor(output2, out_dir)
