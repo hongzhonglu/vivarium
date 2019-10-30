@@ -123,7 +123,6 @@ class Snapshots(Analysis):
             dx = length * np.sin(theta)
             dy = length * np.cos(theta)
 
-            # import ipdb; ipdb.set_trace()
             # plot outline
             ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
                     linewidth=width,
