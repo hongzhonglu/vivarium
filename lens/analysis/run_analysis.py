@@ -67,6 +67,7 @@ class Analyze(object):
         self.path = args.path
         self.experiment_id = args.experiment
         self.analyses = args.analyses
+        self.tags = args.tags
 
     def run_analysis(self):
         # get the tables
@@ -107,15 +108,46 @@ class Analyze(object):
 
                 # run the compartment analysis for each simulation in simulation_ids
                 if analysis.analysis_type is 'compartment':
+                    # A compartment analysis is run on a single compartment.
+                    # It expects to run queries on the compartment tables in the DB.
+                    # Output is saved to the compartment's directory.
+
                     for sim_id in simulation_ids:
                         compartment_query = query.copy()
                         compartment_query.update({'simulation_id': sim_id})
                         data = analysis.get_data(history_client, compartment_query)
+
                         sim_out_dir = os.path.join(output_dir, sim_id)
                         analysis.analyze(experiment_config, data, sim_out_dir)
 
-                elif analysis.analysis_type is 'lattice':
-                    data = analysis.get_data(history_client, query.copy())
+                elif analysis.analysis_type is 'environment':
+                    # A environment analysis is run on the environment.
+                    # It expects to run queries on the environment (lattice) tables in the DB.
+                    # Output is saved to the experiment's base directory.
+
+                    environment_data = analysis.get_data(history_client, query.copy())
+                    analysis.analyze(experiment_config, environment_data, output_dir)
+
+                elif analysis.analysis_type is 'tags':
+                    # A tags analysis is run on the environment AND compartments.
+                    # It expects to run queries on the environment (lattice) tables in the DB,
+                    # but if an option is passed with simulation id, it will query those as well.
+                    # Output is saved to the experiment's base directory.
+
+                    if self.tags:
+                        tag_data = {}
+                        for sim_id in simulation_ids:
+                            compartment_query = query.copy()
+                            compartment_query.update({'simulation_id': sim_id})
+                            options = {'tags': self.tags}
+                            tag_data[sim_id] = analysis.get_data(history_client, compartment_query, options)
+
+                    environment_data = analysis.get_data(history_client, query.copy())
+
+                    data = {
+                        'tags': tag_data,
+                        'environment': environment_data}
+
                     analysis.analyze(experiment_config, data, output_dir)
 
                 print('completed analysis: {}'.format(analysis_class.__name__))
@@ -141,6 +173,13 @@ class Analyze(object):
             type=str,
             default='',
             help='names of analyses to run')
+
+        parser.add_argument(
+            '-t', '--tags',
+            nargs='+',
+            type=str,
+            default='',
+            help='names of molecules to tag')
 
         return parser
 
