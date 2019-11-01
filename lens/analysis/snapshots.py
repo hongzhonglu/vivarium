@@ -12,7 +12,7 @@ DEFAULT_COLOR = [210/360, 100.0/100.0, 0.0/100.0]  # HSV
 
 class Snapshots(Analysis):
     def __init__(self):
-        super(Snapshots, self).__init__(analysis_type='tags')
+        super(Snapshots, self).__init__(analysis_type='both')
 
     def get_data(self, client, query, options={}):
 
@@ -136,15 +136,17 @@ class Snapshots(Analysis):
         plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
         plt.close(fig)
 
-    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, agent_color):
+
+
+    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, baseline_color):
 
         for agent_id, data in agent_data.iteritems():
             location = data['location']
             volume = data['volume']
             tags = data.get('tags')
-            tag_intensity = 0.0
+            intensity = 0.0
             if tags:
-                tag_intensity = tags[tags.keys()[0]]  # only use first tag TODO -- multiple tags?
+                intensity = tags[tags.keys()[0]]  # only use first tag TODO -- multiple tags?
 
             y = location[0] * lattice_scaling
             x = location[1] * lattice_scaling
@@ -154,11 +156,13 @@ class Snapshots(Analysis):
             # plot cell as a 2D line
             width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
             body_width = width * 0.95
+            # TODO get body_length
+
             dx = length * np.sin(theta)
             dy = length * np.cos(theta)
 
-            # adjust hue to tag intensity
-            agent_color[2] = min(tag_intensity/20, 1)
+            # adjust color to tag intensity
+            agent_color = flourescent_color(baseline_color, intensity)
             rgb = hsv_to_rgb(agent_color)
 
             # plot outline
@@ -187,6 +191,17 @@ class Snapshots(Analysis):
         total_length = cylinder_length + 2 * cell_radius
 
         return total_length
+
+def flourescent_color(baseline_hsv, intensity):
+    new_hsv = baseline_hsv[:]
+
+    # saturation
+    new_hsv[1] = max((1-intensity/100), 0.3)
+
+    # value
+    new_hsv[2] = min(intensity/20, 1)
+
+    return new_hsv
 
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """

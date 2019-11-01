@@ -128,8 +128,8 @@ class Analyze(object):
                     environment_data = analysis.get_data(history_client, query.copy())
                     analysis.analyze(experiment_config, environment_data, output_dir)
 
-                elif analysis.analysis_type is 'tags':
-                    # A tags analysis is run on the environment AND compartments.
+                elif analysis.analysis_type is 'both':
+                    # A both analysis is run on the environment AND compartments.
                     # It expects to run queries on the environment (lattice) tables in the DB,
                     # but if an option is passed with simulation id, it will query those as well.
                     # Output is saved to the experiment's base directory.
