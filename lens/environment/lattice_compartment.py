@@ -102,6 +102,12 @@ class LatticeCompartment(Compartment, Simulation):
         if self.divide_condition(self):
             values['division'] = self.generate_daughters()
 
+            # emit phylogeny info
+            daughters = {'daughters': [daughter['id'] for daughter in values['division']]}
+            self.emitter.emit({
+                'table': 'phylogeny',
+                'data': daughters})
+
         values.update({
             'motile_force': motile_force, # TODO -- get motile_force from compartment state
             'color': self.color,

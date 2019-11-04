@@ -5,6 +5,7 @@ import argparse
 from pymongo import MongoClient
 
 from lens.analysis.analyze_compartment import Compartment
+from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.analyze_lattice import LatticeTrace
 from lens.analysis.chemotaxis_trace import ChemotaxisTrace
 from lens.analysis.snapshots import Snapshots
@@ -14,6 +15,7 @@ from lens.analysis.snapshots import Snapshots
 analysis_classes = {
     # 'chemotaxis': ChemotaxisTrace,
     'compartment': Compartment,
+    'multigen': MultigenCompartment,
     'lattice': LatticeTrace,
     'snapshots': Snapshots,
 }
@@ -24,6 +26,16 @@ url='localhost:27017'
 
 class AnalysisError(Exception):
     pass
+
+def get_phylogeny(data):
+    # given the phylogeny client and experiment id, return a dict of {parent_id: [daughter1_id, daughter2_id]}
+    phylogeny_data = {}
+    for row in data:
+        simulation_id = row.get('simulation_id')
+        daughters = row.get('daughters')
+        phylogeny_data[simulation_id] = daughters
+
+    return phylogeny_data
 
 def get_experiment(data):
     experiment_config = {}
@@ -72,12 +84,14 @@ class Analyze(object):
     def run_analysis(self):
         # get the tables
         config_client = self.client.simulations.configuration
+        phylogeny_client = self.client.simulations.phylogeny
         history_client = self.client.simulations.history
 
-        simulation_ids = get_sims_from_exp(self.client.simulations.history, self.experiment_id)
-        output_dir = os.path.join(self.path, self.experiment_id)
+        # get simulations ids
+        simulation_ids = get_sims_from_exp(history_client, self.experiment_id)
 
-        # make plot output directories
+        # make plot output directories, for experiment and for each simulation
+        output_dir = os.path.join(self.path, self.experiment_id)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
         for sim_id in simulation_ids:
@@ -92,6 +106,11 @@ class Analyze(object):
         if not experiment_config:
             raise AnalysisError('database has no experiment id: {}'.format(self.experiment_id))
         active_processes = experiment_config['topology'].keys()
+
+        # get the phylogenetic tree
+        query = {'experiment_id': self.experiment_id}
+        phylogeny_data = phylogeny_client.find(query)
+        experiment_config['phylogeny'] = get_phylogeny(phylogeny_data)
 
         # make list of analysis objects to try
         if self.analyses:
