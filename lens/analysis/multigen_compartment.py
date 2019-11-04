@@ -2,65 +2,67 @@ from __future__ import absolute_import, division, print_function
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
+import numpy as np
 
 from lens.analysis.analysis import Analysis, get_compartment
+from lens.actor.process import dict_merge
 
 class MultigenCompartment(Analysis):
     def __init__(self):
-        super(MultigenCompartment, self).__init__(analysis_type='compartment')
+        super(MultigenCompartment, self).__init__(analysis_type='both')
 
-    def get_data(self, client, query):
-        single_query = {'type': 'compartment'}
-        single_query.update(query)
-        history_data = client.find(single_query)
-        history_data.sort('time')
-        compartment_history = get_compartment(history_data)
+    def get_data(self, client, query, options={}):
+        tags = options.get('tags')
+        data = {}
+        if tags:
+            query.update({'type': 'compartment'})
+            history_data = client.find(query)
+            history_data.sort('time')
+            compartment_history = get_compartment(history_data)
 
-        return compartment_history
+            times = compartment_history['time']
+            tags_history = {tag: compartment_history['cell'][tag] for tag in tags}
 
-    def analyze(self, experiment_config, data_dict, output_dir):
+            data['time'] = times
+            data['tags'] = tags_history
+
+        return data
+
+    def analyze(self, experiment_config, data, output_dir):
 
         phylogeny = experiment_config['phylogeny']
-        import ipdb; ipdb.set_trace()
+        compartments = data['compartments']
 
-        # remove series with all zeros
-        zero_state = []
-        for key1 in data_dict.iterkeys():
-            if key1 is not 'time':
-                for key2, series in data_dict[key1].iteritems():
-                    if all(v == 0 for v in series):
-                        zero_state.append((key1, key2))
-        for (key1, key2) in zero_state:
-            del data_dict[key1][key2]
+        # TODO -- find initial cells in phylogeny
+        ancestors = phylogeny.keys()
+        descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
+        initial_ancestors = np.setdiff1d(ancestors,descendents)
 
-        data_keys = [key for key in data_dict.keys() if key is not 'time']
-        time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
-
-        # make figure, with grid for subplots
-        n_data = [len(data_dict[key].keys()) for key in data_keys]
-        n_zeros = len(zero_state)
-        n_rows = sum(n_data) + int(n_zeros/20)  # 20 zero_state ids per additional subplot
-
+        n_rows = len(initial_ancestors)  # 20 zero_state ids per additional subplot
         fig = plt.figure(figsize=(8, n_rows * 2.5))
-        grid = plt.GridSpec(n_rows+1, 1, wspace=0.4, hspace=1.5)
+        grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
+        for plot_idx, ancestor in enumerate(initial_ancestors):
+            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+            simulation_ids = [ancestor]
 
-        # plot data
-        plot_idx = 0
-        for key in data_keys:
-            for mol_id, series in sorted(data_dict[key].iteritems()):
-                ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
-                ax.plot(time_vec, series)
-                ax.title.set_text(str(key) + ': ' + mol_id)
-                ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-                ax.set_xlabel('time (hrs)')
-                plot_idx += 1
+            # plot all descendants of ancestor
+            while simulation_ids:
+                sim_id = simulation_ids[0]
+                simulation_ids.remove(sim_id)
+                daughter_ids = phylogeny.get(sim_id)
+                if daughter_ids:
+                    simulation_ids.extend(daughter_ids)
+                plot_single(ax, compartments[sim_id])
 
-        # additional data as text
-        if zero_state:
-            zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
-            ax = fig.add_subplot(grid[plot_idx:, 0])
-            ax.text(0.02, 0.1, 'states with all zeros: {}'.format(zeros), wrap=True)
-            ax.axis('off')
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.set_xlabel('time (hrs)')
 
-        plt.savefig(output_dir + '/compartment')
+        plt.savefig(output_dir + '/multigen')
         plt.close(fig)
+
+def plot_single(ax, data):
+    tag_data = data['tags']
+    time_data = data['time']
+    time_vec = [t / 3600 for t in time_data]  # convert to hours
+    for mol_id, series in tag_data.iteritems():
+        ax.plot(time_vec, series)

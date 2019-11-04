@@ -7,7 +7,7 @@ from lens.analysis.analysis import Analysis, get_lattice
 
 class LatticeTrace(Analysis):
     def __init__(self):
-        super(LatticeTrace, self).__init__(analysis_type='lattice')
+        super(LatticeTrace, self).__init__(analysis_type='environment')
 
     def get_data(self, client, query):
         query.update({'type': 'lattice'})

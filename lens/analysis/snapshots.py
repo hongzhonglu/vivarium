@@ -69,7 +69,6 @@ class Snapshots(Analysis):
                 time = row.get('time')
                 if time not in time_dict:
                     break
-                    # time_dict[time] = {}
 
                 fields = row.get('fields', [])
                 time_dict[time].update({'fields': fields})
@@ -79,7 +78,7 @@ class Snapshots(Analysis):
     def analyze(self, experiment_config, data, output_dir):
 
         time_data = data['environment']
-        tags_data = data['tags']
+        tags_data = data['compartments']
 
         time_vec = time_data.keys()
         edge_length = experiment_config['edge_length']
@@ -104,8 +103,9 @@ class Snapshots(Analysis):
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
-            agent_tags = {agent_id: tags_data[agent_id].get(time, {}) for agent_id in agent_data.keys()}
-            agent_data = dict_merge(dict(agent_data), agent_tags)
+            if tags_data:
+                agent_tags = {agent_id: tags_data[agent_id].get(time, {}) for agent_id in agent_data.keys()}
+                agent_data = dict_merge(dict(agent_data), agent_tags)
 
             if field_ids:
                 # plot fields
