@@ -42,7 +42,7 @@ class LatticeTrace(Analysis):
         start = mlines.Line2D([], [], color=(0.0,0.8,0.0), marker='*', linestyle='None',
                                   markersize=10, label='start')
         end = mlines.Line2D([], [], color='r', marker='*', linestyle='None',
-                                  markersize=10, label='start')
+                                  markersize=10, label='end')
         plt.legend(handles=[start, end])
 
         plt.savefig(output_dir + '/location_trace')
