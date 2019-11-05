@@ -35,6 +35,9 @@ CELL_DENSITY = 1100
 # Lattice parameters
 N_DIMS = 2
 
+TRANSLATION_JITTER = 0.1
+ROTATION_JITTER = 0.05
+
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
@@ -67,8 +70,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     'deviation': 10.0},
             }}
         self.gradient.update(config.get('gradient', {}))
-        self.translation_jitter = config.get('translation_jitter', 0.5)
-        self.rotation_jitter = config.get('rotation_jitter', 0.005)
+        self.translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
+        self.rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
         self.depth = config.get('depth', 3000.0)  # um
 
         # configure media

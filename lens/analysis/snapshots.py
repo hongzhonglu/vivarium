@@ -8,7 +8,7 @@ from lens.analysis.analysis import Analysis, get_compartment
 from lens.actor.process import dict_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
-DEFAULT_COLOR = [210/360, 100.0/100.0, 10.0/100.0]  # HSV
+DEFAULT_COLOR = [220/360, 100.0/100.0, 60.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 MAX_PROTEIN = 20  # if a tagged protein has a value over this, it is fully saturated
@@ -155,30 +155,29 @@ class Snapshots(Analysis):
     def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, agent_colors):
 
         for agent_id, data in agent_data.iteritems():
-            location = data['location']
-            volume = data['volume']
-            agent_color = agent_colors[agent_id]
-            tags = data.get('tags')
-            intensity = 0
-            if tags:
-                intensity = min(tags[tags.keys()[0]] / MAX_PROTEIN, 1)  # only use first tag TODO -- multiple tags?
 
+            # location, orientation, length
+            volume = data['volume']
+            location = data['location']
             y = location[0] * lattice_scaling
             x = location[1] * lattice_scaling
             theta = location[2]
-            length = self.volume_to_length(volume, cell_radius) * lattice_scaling
+            length = volume_to_length(volume, cell_radius) * lattice_scaling
 
             # plot cell as a 2D line
             width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
             body_width = width * 0.95
             # TODO get body_length
-
             dx = length * np.sin(theta)
             dy = length * np.cos(theta)
 
-            # adjust color to tag intensity
-            agent_flourescence = flourescent_color(agent_color, intensity)
-            rgb = hsv_to_rgb(agent_flourescence)
+            # colors and flourescent tags
+            agent_color = agent_colors[agent_id] #
+            tags = data.get('tags')
+            if tags:
+                intensity = min(tags[tags.keys()[0]] / MAX_PROTEIN, 1)  # only use first tag TODO -- multiple tags?
+                agent_color = flourescent_color(DEFAULT_COLOR, intensity)
+            rgb = hsv_to_rgb(agent_color)
 
             # plot outline
             ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
@@ -192,20 +191,6 @@ class Snapshots(Analysis):
                     color=rgb,
                     solid_capstyle='butt')
 
-
-    def volume_to_length(self, volume, cell_radius):
-        '''
-        get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
-        a=length of cylinder without rounded caps, l=total length:
-        V = (4/3)*PI*r^3 + PI*r^2*a
-        l = a + 2*r
-        '''
-        pi = np.pi
-
-        cylinder_length = (volume - (4 / 3) * pi * cell_radius ** 3) / (pi * cell_radius ** 2)
-        total_length = cylinder_length + 2 * cell_radius
-
-        return total_length
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
     # get colors for all descendants of the ancestor through recursive calls to each generation
@@ -229,6 +214,19 @@ def flourescent_color(baseline_hsv, intensity):
     distance = [a - b for a, b in zip(FLOURESCENT_COLOR, new_hsv)]
     new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
     return new_hsv
+
+def volume_to_length(volume, cell_radius):
+    '''
+    get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
+    a=length of cylinder without rounded caps, l=total length:
+    V = (4/3)*PI*r^3 + PI*r^2*a
+    l = a + 2*r
+    '''
+    pi = np.pi
+    cylinder_length = (volume - (4 / 3) * pi * cell_radius ** 3) / (pi * cell_radius ** 2)
+    total_length = cylinder_length + 2 * cell_radius
+
+    return total_length
 
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """

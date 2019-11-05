@@ -111,7 +111,7 @@ class Analyze(object):
         experiment_config = get_experiment(config_client, self.experiment_id)
         if not experiment_config:
             raise AnalysisError('database has no experiment id: {}'.format(self.experiment_id))
-        active_processes = experiment_config['topology'].keys()
+        active_processes = experiment_config.get('topology', {}).keys()
 
         # get the phylogenetic tree in experiment config
         experiment_config['phylogeny'] = get_phylogeny(phylogeny_client, self.experiment_id)

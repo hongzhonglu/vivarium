@@ -43,8 +43,8 @@ class ShepherdControl(ActorControl):
             'run_for': 4.0,
             'edge_length': 20.0,
             'patches_per_edge': 10,
-            'translation_jitter': 0.5,
-            'rotation_jitter': 0.005}
+            'translation_jitter': 0.1,
+            'rotation_jitter': 0.01}
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
 
@@ -180,7 +180,7 @@ class ShepherdControl(ActorControl):
                         'deviation': 30.0}
                 }},
             'diffusion': 0.0,
-            'translation_jitter': 0.5,
+            # 'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
             'edge_length': 200.0,
             'patches_per_edge': 50}

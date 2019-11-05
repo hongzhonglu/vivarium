@@ -275,7 +275,6 @@ def initialize_measp(agent_config):
                     'deviation': 30.0}
             }},
         'diffusion': 0.0,
-        'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
         'edge_length': 50.0,
         'patches_per_edge': 10}
@@ -305,7 +304,6 @@ def initialize_measp_large(agent_config):
                     'deviation': 30.0}
             }},
         'diffusion': 0.0,
-        'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
         'edge_length': 200.0,
         'patches_per_edge': 40}
@@ -327,7 +325,6 @@ def initialize_measp_timeline(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'diffusion': 0.0,
-        'translation_jitter': 0.5,
         'rotation_jitter': 0.005,
         'edge_length': 100.0,
         'patches_per_edge': 50,

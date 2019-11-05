@@ -33,6 +33,10 @@ class MultigenCompartment(Analysis):
         phylogeny = experiment_config['phylogeny']
         compartments = data['compartments']
 
+        if not compartments:
+            print('no tags for multigen_compartment analysis')
+            return
+
         # find initial cells in phylogeny
         ancestors = phylogeny.keys()
         descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
@@ -52,7 +56,8 @@ class MultigenCompartment(Analysis):
                 daughter_ids = phylogeny.get(sim_id)
                 if daughter_ids:
                     simulation_ids.extend(daughter_ids)
-                plot_single(ax, compartments[sim_id])
+                if compartments.get(sim_id):
+                    plot_single(ax, compartments[sim_id])
 
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.set_xlabel('time (hrs)')
