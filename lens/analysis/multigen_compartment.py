@@ -33,17 +33,17 @@ class MultigenCompartment(Analysis):
         phylogeny = experiment_config['phylogeny']
         compartments = data['compartments']
 
-        # TODO -- find initial cells in phylogeny
+        # find initial cells in phylogeny
         ancestors = phylogeny.keys()
         descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
-        initial_ancestors = np.setdiff1d(ancestors,descendents)
+        initial_agents = np.setdiff1d(ancestors,descendents)
 
-        n_rows = len(initial_ancestors)  # 20 zero_state ids per additional subplot
-        fig = plt.figure(figsize=(8, n_rows * 2.5))
+        n_rows = len(initial_agents)  # 20 zero_state ids per additional subplot
+        fig = plt.figure(figsize=(8, n_rows * 3))
         grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
-        for plot_idx, ancestor in enumerate(initial_ancestors):
+        for plot_idx, agent_id in enumerate(initial_agents):
             ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
-            simulation_ids = [ancestor]
+            simulation_ids = [agent_id]
 
             # plot all descendants of ancestor
             while simulation_ids:

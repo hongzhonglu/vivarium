@@ -8,7 +8,10 @@ from lens.analysis.analysis import Analysis, get_compartment
 from lens.actor.process import dict_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
-DEFAULT_COLOR = [210/360, 100.0/100.0, 0.0/100.0]  # HSV
+DEFAULT_COLOR = [210/360, 100.0/100.0, 10.0/100.0]  # HSV
+FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
+
+MAX_PROTEIN = 20  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -77,6 +80,7 @@ class Snapshots(Analysis):
 
     def analyze(self, experiment_config, data, output_dir):
 
+        phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
         tags_data = data['compartments']
 
@@ -96,6 +100,14 @@ class Snapshots(Analysis):
         # get number of fields
         field_ids = time_data[time_vec[0]].get('fields',{}).keys()
         n_fields = max(len(field_ids),1)
+
+        # agent colors based on phylogeny
+        agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
+        ancestors = phylogeny.keys()
+        descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
+        initial_agents = np.setdiff1d(ancestors,descendents)
+        for agent_id in initial_agents:
+            agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
         fig = plt.figure(figsize=(20*n_snapshots, 20*n_fields))
         plt.rcParams.update({'font.size': 36})
@@ -121,7 +133,7 @@ class Snapshots(Analysis):
                                extent=[0,patches_per_edge,0,patches_per_edge],
                                interpolation='nearest',
                                cmap='YlGn')
-                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, DEFAULT_COLOR)
+                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
 
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
@@ -130,23 +142,26 @@ class Snapshots(Analysis):
                 ax.set_ylim([0, patches_per_edge])
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
-                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, DEFAULT_COLOR)
+                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
-        plt.savefig(output_dir + '/snapshots', bbox_inches='tight')
+        figname = '/snapshots'
+        if tags_data:
+            figname = '/snapshots_tagged'
+        plt.savefig(output_dir + figname, bbox_inches='tight')
         plt.close(fig)
 
 
-
-    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, baseline_color):
+    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, agent_colors):
 
         for agent_id, data in agent_data.iteritems():
             location = data['location']
             volume = data['volume']
+            agent_color = agent_colors[agent_id]
             tags = data.get('tags')
-            intensity = 0.0
+            intensity = 0
             if tags:
-                intensity = tags[tags.keys()[0]]  # only use first tag TODO -- multiple tags?
+                intensity = min(tags[tags.keys()[0]] / MAX_PROTEIN, 1)  # only use first tag TODO -- multiple tags?
 
             y = location[0] * lattice_scaling
             x = location[1] * lattice_scaling
@@ -162,8 +177,8 @@ class Snapshots(Analysis):
             dy = length * np.cos(theta)
 
             # adjust color to tag intensity
-            agent_color = flourescent_color(baseline_color, intensity)
-            rgb = hsv_to_rgb(agent_color)
+            agent_flourescence = flourescent_color(agent_color, intensity)
+            rgb = hsv_to_rgb(agent_flourescence)
 
             # plot outline
             ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
@@ -192,15 +207,27 @@ class Snapshots(Analysis):
 
         return total_length
 
-def flourescent_color(baseline_hsv, intensity):
+def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
+    # get colors for all descendants of the ancestor through recursive calls to each generation
+    phylogeny_colors.update({ancestor_id: baseline_hsv})
+    daughter_ids = phylogeny.get(ancestor_id)
+    if daughter_ids:
+        for daughter_id in daughter_ids:
+            daughter_color = mutate_color(baseline_hsv)
+            color_phylogeny(daughter_id, phylogeny, daughter_color)
+    return phylogeny_colors
+
+def mutate_color(baseline_hsv):
     new_hsv = baseline_hsv[:]
+    new_h = new_hsv[0] + np.random.normal(0, 0.08)  # (mu, sigma)
+    new_hsv[0] = new_h % 1  # hue
+    return new_hsv
 
-    # saturation
-    new_hsv[1] = max((1-intensity/100), 0.3)
-
-    # value
-    new_hsv[2] = min(intensity/20, 1)
-
+def flourescent_color(baseline_hsv, intensity):
+    # move color towards bright green when intensity = 1
+    new_hsv = baseline_hsv[:]
+    distance = [a - b for a, b in zip(FLOURESCENT_COLOR, new_hsv)]
+    new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
     return new_hsv
 
 def linewidth_from_data_units(linewidth, axis, reference='y'):
