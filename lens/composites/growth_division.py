@@ -8,6 +8,7 @@ from lens.actor.process import State, merge_default_states, merge_default_update
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.growth import Growth
 from lens.processes.division import Division
+from lens.processes.protein_expression import ProteinExpression
 
 
 def divide_condition(compartment):
@@ -39,10 +40,12 @@ def compose_growth_division(config):
     # declare the processes
     growth = Growth(config)
     division = Division(config)
+    expression = ProteinExpression(config)
     deriver = DeriveVolume(config)
     processes = {
         'growth': growth,
         'division': division,
+        'expression': expression,
         'deriver': deriver,
     }
 
@@ -51,6 +54,8 @@ def compose_growth_division(config):
         'growth': {
             'internal': 'cell'},
         'division': {
+            'internal': 'cell'},
+        'expression': {
             'internal': 'cell'},
         'deriver': {
             'internal': 'cell'},

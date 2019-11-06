@@ -6,14 +6,21 @@ import json
 
 from lens.actor.actor import delivery_report
 
-INDEX_COLUMNS = [
+HISTORY_INDEXES = [
     'time',
+    'type',
     'simulation_id',
     'experiment_id']
 
-def create_indexes(table):
+CONFIGURATION_INDEXES = [
+    'type',
+    'simulation_id',
+    'experiment_id']
+
+
+def create_indexes(table, columns):
     '''Create all of the necessary indexes for the given table name.'''
-    for column in INDEX_COLUMNS:
+    for column in columns:
         table.create_index(column)
 
 def get_emitter(config):
@@ -113,7 +120,10 @@ class DatabaseEmitter(Emitter):
         self.db = getattr(client, config.get('database', 'simulations'))
         self.history = getattr(self.db, 'history')
         self.configuration = getattr(self.db, 'configuration')
-        create_indexes(self.history)
+        self.phylogeny = getattr(self.db, 'phylogeny')
+        create_indexes(self.history, HISTORY_INDEXES)
+        create_indexes(self.configuration, CONFIGURATION_INDEXES)
+        create_indexes(self.phylogeny, CONFIGURATION_INDEXES)
 
     def emit(self, data_config):
         data = data_config['data']
