@@ -31,7 +31,7 @@ class ShepherdControl(ActorControl):
         media_id = args.get('media', 'minimal')
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 {}, 7200 end'.format(media_id)
+            timeline_str = '0 {}, 14400 end'.format(media_id)
 
         emit_field = ['GLC']
 
