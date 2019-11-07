@@ -123,11 +123,18 @@ def test_covert2002_regulation():
         (0, {'external': {
             'GLC': 1}
         }),
-        (200, {'external': {
+        (100, {'external': {
             'GLC': 0,
             'OXYGEN-MOLECULE': 1}
         }),
-        (1000, {}),
+        (200, {'external': {
+            'SUC': 0}
+        }),
+        (300, {'external': {
+            'ACET': 0,
+            'OXYGEN-MOLECULE': 0}
+        }),
+        (500, {}),
     ]
 
     # configure process
@@ -202,6 +209,12 @@ def plot_regulation_output(saved_state, out_dir='out'):
             ax.title.set_text(str(key) + ': ' + mol_id)
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.set_xlabel('time (hrs)')
+
+            if key is 'internal':
+                ax.set_yticks([0.0, 1.0])
+                ax.set_yticklabels(["False", "True"])
+
+
             plot_idx += 1
 
     # save figure
