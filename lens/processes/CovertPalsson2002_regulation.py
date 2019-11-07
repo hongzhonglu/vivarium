@@ -118,7 +118,7 @@ class Regulation(Process):
 
         return internal_molecules, external_molecules
 
-def test_covert2002_regulation(total_time=3600):
+def test_covert2002_regulation(total_time=60):
     # configure process
     regulation = Regulation({})
 
@@ -126,9 +126,9 @@ def test_covert2002_regulation(total_time=3600):
     state = regulation.default_state()
 
     saved_state = {
-        'internal': {state_id: [value] for state_id, value in state['internal'].iteritems()},
-        'external': {state_id: [value] for state_id, value in state['external'].iteritems()},
-        'time': [0]}
+        'internal': {},  # {state_id: [value] for state_id, value in state['internal'].iteritems()},
+        'external': {},  # {state_id: [value] for state_id, value in state['external'].iteritems()},
+        'time': []}
 
     # run simulation
     time = 0
@@ -139,19 +139,31 @@ def test_covert2002_regulation(total_time=3600):
         # get update
         update = regulation.next_update(timestep, state)
 
-
-
         # save state
         saved_state['time'].append(time)
         # saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
-        for state_id, value in state['internal'].iteritems():
-            saved_state['internal'][state_id].append(value)
-        for state_id, value in state['external'].iteritems():
-            saved_state['external'][state_id].append(value)
+        for role in ['internal', 'external']:
+            for state_id, value in update[role].iteritems():
+                if state_id in saved_state[role].keys():
+                    saved_state[role][state_id].append(value)
+                else:
+                    saved_state[role][state_id] = [value]
+
 
 
     data = {'saved_state': saved_state}
     return data
+
+def bool_to_int(series):
+    int_series = []
+    for v in series:
+        if v is True:
+            int_series.append(1)
+        elif v is False:
+            int_series.append(0)
+        else:
+            int_series.append(v)
+    return int_series
 
 def plot_regulation_output(data, out_dir='out'):
     import matplotlib
@@ -159,10 +171,27 @@ def plot_regulation_output(data, out_dir='out'):
     import matplotlib.pyplot as plt
 
     saved_state = data['saved_state']
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
 
+    # make figure, with grid for subplots
+    n_data = [len(saved_state[key].keys()) for key in data_keys]
+    n_rows = sum(n_data)
+    fig = plt.figure(figsize=(8, n_rows * 2.5))
+    grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
 
-    import ipdb; ipdb.set_trace()
+    # plot data
+    plot_idx = 0
+    for key in data_keys:
+        for mol_id, series in sorted(saved_state[key].iteritems()):
+            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+            numeric_series = bool_to_int(series)
 
+            ax.plot(time_vec, numeric_series)
+            ax.title.set_text(str(key) + ': ' + mol_id)
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.set_xlabel('time (hrs)')
+            plot_idx += 1
 
     # save figure
     fig_path = os.path.join(out_dir, 'covert2002_regulation')
