@@ -28,16 +28,23 @@ class ShepherdControl(ActorControl):
             experiment_id, num_cells))
 
         # make media
-        timeline_str = args.get('timeline','')
         media_id = args.get('media', 'minimal')
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 14400 end'.format(media_id)
+
+        emit_field = ['GLC']
+
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
+            'emit_fields': emit_field,
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
-            'media_id': media_id,
-            'translation_jitter': 0.5,
-            'rotation_jitter': 0.005}
+            'edge_length': 20.0,
+            'patches_per_edge': 10,
+            'translation_jitter': 0.1,
+            'rotation_jitter': 0.01}
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
 
@@ -59,11 +66,17 @@ class ShepherdControl(ActorControl):
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        timeline_str = args.get('timeline','')
-        media_id = args.get('media')
+        media_id = args.get('media', 'minimal')
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        emit_field = ['GLC']
+
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
+            'emit_fields': emit_field,
             'run_for': 2.0,
             'edge_length': 50.0,
             'patches_per_edge': 10,
@@ -80,20 +93,27 @@ class ShepherdControl(ActorControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
-    def short_lattice_experiment(self, args):
+    def small_lattice_experiment(self, args):
         experiment_id = args['experiment_id']
         if not experiment_id:
-            experiment_id = self.get_experiment_id('short_lattice')
+            experiment_id = self.get_experiment_id('small_lattice')
         num_cells = args['number']
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        media_id = 'minimal'
-        timeline_str = '0 {}, 7200 end'.format(media_id)
+        media_id = args.get('media', 'minimal')
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        emit_field = ['GLC']
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
+            'emit_fields': emit_field,
+            'edge_length': 10.0,
+            'patches_per_edge': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
@@ -160,7 +180,7 @@ class ShepherdControl(ActorControl):
                         'deviation': 30.0}
                 }},
             'diffusion': 0.0,
-            'translation_jitter': 0.5,
+            # 'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
             'edge_length': 200.0,
             'patches_per_edge': 50}
@@ -205,7 +225,7 @@ class EnvironmentCommand(AgentCommand):
 
         full_choices = [
 			'large-experiment',
-            'short-experiment',
+            'small-experiment',
             'chemotaxis-experiment',
             'glc-g6p-experiment'] + choices
 
@@ -225,10 +245,10 @@ class EnvironmentCommand(AgentCommand):
         control.large_lattice_experiment(args)
         control.shutdown()
 
-    def short_experiment(self, args):
+    def small_experiment(self, args):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
-        control.short_lattice_experiment(args)
+        control.small_lattice_experiment(args)
         control.shutdown()
 
     def glc_g6p_experiment(self, args):
@@ -260,7 +280,7 @@ class EnvironmentCommand(AgentCommand):
         parser.add_argument(
             '-t', '--timeline',
             type=str,
-            # default='0 minimal',
+            default=None,
             help='The timeline')
 
         return parser
