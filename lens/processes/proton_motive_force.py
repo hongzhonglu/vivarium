@@ -150,9 +150,22 @@ def plot_PMF(saved_state, out_dir='out'):
     fig = plt.figure(figsize=(8, n_rows * 2.5))
     grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
 
-    # plot
-    # TODO
+    # plot data
+    plot_idx = 0
+    for key in data_keys:
+        for mol_id, series in sorted(saved_state[key].iteritems()):
+            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
 
+            ax.plot(time_vec, series)
+            ax.title.set_text(str(key) + ': ' + mol_id)
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.set_xlabel('time (hrs)')
+
+            if key is 'internal':
+                ax.set_yticks([0.0, 1.0])
+                ax.set_yticklabels(["False", "True"])
+
+            plot_idx += 1
     # save figure
     fig_path = os.path.join(out_dir, 'PMF')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
