@@ -8,10 +8,12 @@ from lens.analysis.analysis import Analysis, get_compartment
 from lens.actor.process import dict_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
-DEFAULT_COLOR = [220/360, 100.0/100.0, 60.0/100.0]  # HSV
+DEFAULT_COLOR = [220/360, 100.0/100.0, 50.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
-MAX_PROTEIN = 20  # if a tagged protein has a value over this, it is fully saturated
+# TODO (Eran) -- min/max should be an argument
+MIN_PROTEIN = 75  # any value less than this shows no flourescence
+MAX_PROTEIN = 110  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -116,7 +118,12 @@ class Snapshots(Analysis):
             agent_data = time_data[time]['agents']
 
             if tags_data:
-                agent_tags = {agent_id: tags_data[agent_id].get(time, {}) for agent_id in agent_data.keys()}
+                agent_tags = {}
+                for agent_id in agent_data.keys():
+                    tdata = tags_data[agent_id]
+                    tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
+                    agent_tags[agent_id] = tags
+
                 agent_data = dict_merge(dict(agent_data), agent_tags)
 
             if field_ids:
@@ -129,7 +136,9 @@ class Snapshots(Analysis):
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
-                    plt.imshow(field_data[field_id],
+                    # rotate field and plot
+                    field = np.rot90(np.array(field_data[field_id])).tolist()
+                    plt.imshow(field,
                                extent=[0,patches_per_edge,0,patches_per_edge],
                                interpolation='nearest',
                                cmap='YlGn')
@@ -172,10 +181,11 @@ class Snapshots(Analysis):
             dy = length * np.cos(theta)
 
             # colors and flourescent tags
-            agent_color = agent_colors[agent_id] #
+            agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
             tags = data.get('tags')
             if tags:
-                intensity = min(tags[tags.keys()[0]] / MAX_PROTEIN, 1)  # only use first tag TODO -- multiple tags?
+                intensity = max((tags[tags.keys()[0]] - MIN_PROTEIN), 0)
+                intensity = min(intensity / (MAX_PROTEIN - MIN_PROTEIN), 1)  # only use first tag TODO -- multiple tags?
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)
 
