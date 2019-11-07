@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 from lens.actor.process import Process
 from lens.utils.units import units
 
@@ -82,3 +84,79 @@ class ProtonMotiveForce(Process):
             # 'external': {},
         }
         return update
+
+def test_PMF():
+    saved_state = {}
+    timeline = [
+        # (0, {'external': {
+        #     'GLC': 1}
+        # }),
+        (500, {}),
+    ]
+
+    # configure process
+    PMF = ProtonMotiveForce({})
+
+    # get initial state and parameters
+    state = PMF.default_state()
+    saved_state = {'internal': {}, 'external': {}, 'time': []}
+
+    # run simulation
+    time = 0
+    timestep = 1  # sec
+    while time < timeline[-1][0]:
+        time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.iteritems():
+                    state[key].update(change)
+
+        update = PMF.next_update(timestep, state)
+        saved_state['time'].append(time)
+
+        # update external state
+        for state_id, value in state['external'].iteritems():
+            if state_id in saved_state['external'].keys():
+                saved_state['external'][state_id].append(value)
+            else:
+                saved_state['external'][state_id] = [value]
+
+        # update internal state from update
+        for state_id, value in update['internal'].iteritems():
+            if state_id in saved_state['internal'].keys():
+                saved_state['internal'][state_id].append(value)
+            else:
+                saved_state['internal'][state_id] = [value]
+
+
+    return saved_state
+
+def plot_PMF(saved_state, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
+
+    # make figure, with grid for subplots
+    n_data = [len(saved_state[key].keys()) for key in data_keys]
+    n_rows = sum(n_data)
+    fig = plt.figure(figsize=(8, n_rows * 2.5))
+    grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
+
+    # plot
+    # TODO
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'PMF')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    saved_state = test_PMF()
+    out_dir = os.path.join('out', 'proton_motive_force')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_PMF(saved_state, out_dir)
