@@ -71,4 +71,5 @@ The timeline is constructed by passing the timeline string to the media object
 
 The media_ids in the timeline either use prespecified ids from the stock_media, or assigned a uuid. 
 media_ids are saved to ```stock_media```, and can be retrieved:
-> media4 = media_obj.get_saved_media(media1_id)
+> media1_id = timeline[0][1]
+> media5 = media_obj.get_saved_media(media1_id)

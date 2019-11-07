@@ -7,7 +7,7 @@ from lens.analysis.analysis import Analysis, get_lattice, get_compartment
 
 class ChemotaxisTrace(Analysis):
     def __init__(self):
-        super(ChemotaxisTrace, self).__init__(analysis_type='lattice')
+        super(ChemotaxisTrace, self).__init__(analysis_type='environment')
 
     def requirements(self):
         return ['motor']

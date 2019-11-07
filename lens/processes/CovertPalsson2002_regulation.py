@@ -117,3 +117,115 @@ class Regulation(Process):
         external_molecules = remove_str_in_list(external_molecules, self.external_key)
 
         return internal_molecules, external_molecules
+
+def test_covert2002_regulation():
+    timeline = [
+        (0, {'external': {
+            'GLC': 1}
+        }),
+        (100, {'external': {
+            'GLC': 0,
+            'OXYGEN-MOLECULE': 1}
+        }),
+        (200, {'external': {
+            'SUC': 0}
+        }),
+        (300, {'external': {
+            'ACET': 0,
+            'OXYGEN-MOLECULE': 0}
+        }),
+        (500, {}),
+    ]
+
+    # configure process
+    regulation = Regulation({})
+
+    # get initial state and parameters
+    state = regulation.default_state()
+    saved_state = {'internal': {}, 'external': {}, 'time': []}
+
+    # run simulation
+    time = 0
+    timestep = 1  # sec
+    while time < timeline[-1][0]:
+        time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.iteritems():
+                    state[key].update(change)
+
+        update = regulation.next_update(timestep, state)
+        saved_state['time'].append(time)
+
+        # update external state
+        for state_id, value in state['external'].iteritems():
+            if state_id in saved_state['external'].keys():
+                saved_state['external'][state_id].append(value)
+            else:
+                saved_state['external'][state_id] = [value]
+
+        # update internal state from update
+        for state_id, value in update['internal'].iteritems():
+            if state_id in saved_state['internal'].keys():
+                saved_state['internal'][state_id].append(value)
+            else:
+                saved_state['internal'][state_id] = [value]
+
+    return saved_state
+
+def bool_to_int(series):
+    int_series = []
+    for v in series:
+        if v is True:
+            int_series.append(1)
+        elif v is False:
+            int_series.append(0)
+        else:
+            int_series.append(v)
+    return int_series
+
+def plot_regulation_output(saved_state, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
+
+    # make figure, with grid for subplots
+    n_data = [len(saved_state[key].keys()) for key in data_keys]
+    n_rows = sum(n_data)
+    fig = plt.figure(figsize=(8, n_rows * 2.5))
+    grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
+
+    # plot data
+    plot_idx = 0
+    for key in data_keys:
+        for mol_id, series in sorted(saved_state[key].iteritems()):
+            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+            numeric_series = bool_to_int(series)
+
+            ax.plot(time_vec, numeric_series)
+            ax.title.set_text(str(key) + ': ' + mol_id)
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.set_xlabel('time (hrs)')
+
+            if key is 'internal':
+                ax.set_yticks([0.0, 1.0])
+                ax.set_yticklabels(["False", "True"])
+
+
+            plot_idx += 1
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'covert2002_regulation')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    saved_state = test_covert2002_regulation()
+    out_dir = os.path.join('out', 'CovertPalsson2002_regulation')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_regulation_output(saved_state, out_dir)

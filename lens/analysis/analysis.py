@@ -72,7 +72,7 @@ class Analysis(object):
     def requirements(self):
         return []
 
-    def get_data(self, client, query):
+    def get_data(self, client, query, options={}):
         data = client.find(query)
         return data
 

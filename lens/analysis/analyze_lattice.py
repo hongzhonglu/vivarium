@@ -2,12 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 
 from lens.analysis.analysis import Analysis, get_lattice
 
 class LatticeTrace(Analysis):
     def __init__(self):
-        super(LatticeTrace, self).__init__(analysis_type='lattice')
+        super(LatticeTrace, self).__init__(analysis_type='environment')
 
     def get_data(self, client, query):
         query.update({'type': 'lattice'})
@@ -38,6 +39,11 @@ class LatticeTrace(Analysis):
 
         plt.xlim((0, edge_length))
         plt.ylim((0, edge_length))
+        start = mlines.Line2D([], [], color=(0.0,0.8,0.0), marker='*', linestyle='None',
+                                  markersize=10, label='start')
+        end = mlines.Line2D([], [], color='r', marker='*', linestyle='None',
+                                  markersize=10, label='end')
+        plt.legend(handles=[start, end])
 
         plt.savefig(output_dir + '/location_trace')
         plt.close(fig)
