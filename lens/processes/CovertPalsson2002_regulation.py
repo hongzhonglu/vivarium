@@ -118,41 +118,53 @@ class Regulation(Process):
 
         return internal_molecules, external_molecules
 
-def test_covert2002_regulation(total_time=60):
+def test_covert2002_regulation():
+    timeline = [
+        (0, {'external': {
+            'GLC': 1}
+        }),
+        (200, {'external': {
+            'GLC': 0,
+            'OXYGEN-MOLECULE': 1}
+        }),
+        (1000, {}),
+    ]
+
     # configure process
     regulation = Regulation({})
 
     # get initial state and parameters
     state = regulation.default_state()
-
-    saved_state = {
-        'internal': {},  # {state_id: [value] for state_id, value in state['internal'].iteritems()},
-        'external': {},  # {state_id: [value] for state_id, value in state['external'].iteritems()},
-        'time': []}
+    saved_state = {'internal': {}, 'external': {}, 'time': []}
 
     # run simulation
     time = 0
     timestep = 1  # sec
-    while time < total_time:
+    while time < timeline[-1][0]:
         time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.iteritems():
+                    state[key].update(change)
 
-        # get update
         update = regulation.next_update(timestep, state)
-
-        # save state
         saved_state['time'].append(time)
-        # saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
-        for role in ['internal', 'external']:
-            for state_id, value in update[role].iteritems():
-                if state_id in saved_state[role].keys():
-                    saved_state[role][state_id].append(value)
-                else:
-                    saved_state[role][state_id] = [value]
 
+        # update external state
+        for state_id, value in state['external'].iteritems():
+            if state_id in saved_state['external'].keys():
+                saved_state['external'][state_id].append(value)
+            else:
+                saved_state['external'][state_id] = [value]
 
+        # update internal state from update
+        for state_id, value in update['internal'].iteritems():
+            if state_id in saved_state['internal'].keys():
+                saved_state['internal'][state_id].append(value)
+            else:
+                saved_state['internal'][state_id] = [value]
 
-    data = {'saved_state': saved_state}
-    return data
+    return saved_state
 
 def bool_to_int(series):
     int_series = []
@@ -165,12 +177,11 @@ def bool_to_int(series):
             int_series.append(v)
     return int_series
 
-def plot_regulation_output(data, out_dir='out'):
+def plot_regulation_output(saved_state, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
-    saved_state = data['saved_state']
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
 
