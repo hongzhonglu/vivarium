@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import numpy as np
 
 from lens.actor.process import Process
 from lens.utils.units import units
@@ -13,14 +14,15 @@ class ProtonMotiveForce(Process):
     def __init__(self, initial_parameters={}):
 
         parameters = {
+            'R': 8.314462618,  # (kg * m^2 * s^-2 * K^-1 * mol^-1) gas constant
+            'z': 1,  # valence of charge molecule  # TODO -- get this
             'F': 96485.33289, # (charge / mol)  Faraday constant
         }
 
-
         roles = {
-            'internal': ['Q_in'],
+            'internal': ['c_in'],
             'membrane': ['V_m'],
-            'external': [],
+            'external': ['c_out'],
         }
         parameters.update(initial_parameters)
 
@@ -33,11 +35,10 @@ class ProtonMotiveForce(Process):
             'external': states (dict) -- external states ids with default initial values
             'internal': states (dict) -- internal states ids with default initial values
         '''
-
         return {
-            'internal': {},
-            'membrane': {},
-            'external': {},
+            'internal': {'c_in': 1.1},
+            # 'membrane': {'V_m': },
+            'external': {'c_out': 1, 'T': 37}
         }
 
     def default_emitter_keys(self):
@@ -49,9 +50,9 @@ class ProtonMotiveForce(Process):
         }
         '''
         keys = {
-            'internal': [],
-            'membrane': [],
-            'external': [],
+            # 'internal': ['c_in'],
+            'membrane': ['V_m'],
+            # 'external': ['c_out'],
         }
         return keys
 
@@ -60,22 +61,27 @@ class ProtonMotiveForce(Process):
         define the updater type for each state in roles.
         The default updater is to pass a delta,
         which is accumulated and passed to the environment at every exchange step'''
-        keys = {
-            'membrane': {
-                'V_m': 'accumulate'}}
+        keys = {'membrane': {'V_m': 'set'}}
         return keys
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
         external_state = states['external']
 
-        Q_in = internal_state['Q_in']
+        # parameters
+        R = self.parameters['R']  # gas constant
+        z = self.parameters['z']  # valence of charged molecule
+        F = self.parameters['F']  # Faraday constant
 
-        # V_m = electric potential difference
-        # Q_in is the intracellular charge (in mole)
-        # C is the membrane capacitance
-        # F is the Faraday constant
-        V_m = self.parameters['F'] * Q_in / C
+        # state
+        c_in = internal_state['c_in']  # internal concentration of charged molecule
+        c_out = external_state['c_out']  # internal concentration of charged molecule
+        T = external_state['T']  # temperature
+
+        # TODO -- what if multiple charged molecules?
+
+        # Membrane potential Pilizota
+        V_m = (R * T) / (z * F) * np.log(c_out / c_in)
 
 
         update = {
@@ -86,7 +92,6 @@ class ProtonMotiveForce(Process):
         return update
 
 def test_PMF():
-    saved_state = {}
     timeline = [
         # (0, {'external': {
         #     'GLC': 1}
@@ -99,7 +104,7 @@ def test_PMF():
 
     # get initial state and parameters
     state = PMF.default_state()
-    saved_state = {'internal': {}, 'external': {}, 'time': []}
+    saved_state = {'internal': {}, 'external': {}, 'membrane': {}, 'time': []}
 
     # run simulation
     time = 0
@@ -122,11 +127,11 @@ def test_PMF():
                 saved_state['external'][state_id] = [value]
 
         # update internal state from update
-        for state_id, value in update['internal'].iteritems():
-            if state_id in saved_state['internal'].keys():
-                saved_state['internal'][state_id].append(value)
+        for state_id, value in update['membrane'].iteritems():
+            if state_id in saved_state['membrane'].keys():
+                saved_state['membrane'][state_id].append(value)
             else:
-                saved_state['internal'][state_id] = [value]
+                saved_state['membrane'][state_id] = [value]
 
 
     return saved_state
