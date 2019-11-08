@@ -31,38 +31,19 @@ class MembranePotential(Process):
         super(MembranePotential, self).__init__(roles, parameters)
 
     def default_state(self):
-        '''
-        returns dictionary with:
-        default_state = {
-            'external': states (dict) -- external states ids with default initial values
-            'internal': states (dict) -- internal states ids with default initial values
-        '''
+        # TODO -- get real concentrations.
         return {
-            'internal': {'K': 1, 'Na': 1, 'Cl': 1},
-            # 'membrane': {'V_m': },
+            'internal': {'K': 30, 'Na': 10, 'Cl': 10},  # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
             'external': {'K': 1, 'Na': 1, 'Cl': 1, 'T': 310.15}  # temperature in Kelvin
         }
 
     def default_emitter_keys(self):
-        '''
-        returns dictionary with:
         keys = {
-            'internal': states (list), # a list of states to emit from internal
-            'external': states (list), # a list of states to emit from external
-        }
-        '''
-        keys = {
-            # 'internal': ['c_in'],
             'membrane': ['V_m'],
-            # 'external': ['c_out'],
         }
         return keys
 
     def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta,
-        which is accumulated and passed to the environment at every exchange step'''
         keys = {'membrane': {'V_m': 'set'}}
         return keys
 
@@ -71,11 +52,11 @@ class MembranePotential(Process):
         external_state = states['external']
 
         # parameters
-        R = self.parameters['R']  # gas constant
-        F = self.parameters['F']  # Faraday constant
-        p_K = self.parameters['p_K']  # Faraday constant
-        p_Na = self.parameters['p_Na']  # Faraday constant
-        p_Cl = self.parameters['p_Cl']  # Faraday constant
+        R = self.parameters['R']
+        F = self.parameters['F']
+        p_K = self.parameters['p_K']
+        p_Na = self.parameters['p_Na']
+        p_Cl = self.parameters['p_Cl']
 
         # state
         K_in = internal_state['K']
@@ -99,11 +80,14 @@ class MembranePotential(Process):
         }
         return update
 
-def test_PMF():
+def test_mem_potential():
     timeline = [
-        # (0, {'external': {
-        #     'GLC': 1}
-        # }),
+        (0, {'external': {
+            'Na': 1}
+        }),
+        (100, {'external': {
+            'Na': 2}
+        }),
         (500, {}),
     ]
 
@@ -128,23 +112,23 @@ def test_PMF():
         saved_state['time'].append(time)
 
         # update external state
-        for state_id, value in state['external'].iteritems():
-            if state_id in saved_state['external'].keys():
-                saved_state['external'][state_id].append(value)
-            else:
-                saved_state['external'][state_id] = [value]
+        for role in ['internal', 'external']:
+            for state_id, value in state[role].iteritems():
+                if state_id in saved_state[role].keys():
+                    saved_state[role][state_id].append(value)
+                else:
+                    saved_state[role][state_id] = [value]
 
-        # update internal state from update
+        # update membrane state from update
         for state_id, value in update['membrane'].iteritems():
             if state_id in saved_state['membrane'].keys():
                 saved_state['membrane'][state_id].append(value)
             else:
                 saved_state['membrane'][state_id] = [value]
 
-
     return saved_state
 
-def plot_PMF(saved_state, out_dir='out'):
+def plot_mem_potential(saved_state, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -166,7 +150,6 @@ def plot_PMF(saved_state, out_dir='out'):
 
             ax.plot(time_vec, series)
             ax.title.set_text(str(key) + ': ' + mol_id)
-            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.set_xlabel('time (hrs)')
 
             if key is 'internal':
@@ -174,15 +157,16 @@ def plot_PMF(saved_state, out_dir='out'):
                 ax.set_yticklabels(["False", "True"])
 
             plot_idx += 1
+
     # save figure
-    fig_path = os.path.join(out_dir, 'PMF')
+    fig_path = os.path.join(out_dir, 'membrane_potential')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 
 if __name__ == '__main__':
-    saved_state = test_PMF()
-    out_dir = os.path.join('out', 'proton_motive_force')
+    saved_state = test_mem_potential()
+    out_dir = os.path.join('out', 'membrane_potential')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    plot_PMF(saved_state, out_dir)
+    plot_mem_potential(saved_state, out_dir)
