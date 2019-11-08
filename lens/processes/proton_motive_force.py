@@ -15,8 +15,10 @@ class ProtonMotiveForce(Process):
 
         parameters = {
             'R': 8.314462618,  # (kg * m^2 * s^-2 * K^-1 * mol^-1) gas constant
-            'z': 1,  # valence of charge molecule  # TODO -- get this
             'F': 96485.33289, # (charge / mol)  Faraday constant
+            'p_K': 0.05,  # (unitless, relative permeability) membrane permeability of K
+            'p_Na': 0.05,  # (unitless, relative permeability) membrane permeability of Na
+            'p_Cl': 0.05,  # (unitless, relative permeability) membrane permeability of Cl
         }
 
         roles = {
@@ -36,9 +38,9 @@ class ProtonMotiveForce(Process):
             'internal': states (dict) -- internal states ids with default initial values
         '''
         return {
-            'internal': {'c_in': 1.1},
+            'internal': {'K': 1, 'Na': 1, 'Cl': 1},
             # 'membrane': {'V_m': },
-            'external': {'c_out': 1, 'T': 37}
+            'external': {'K': 1, 'Na': 1, 'Cl': 1, 'T': 37}
         }
 
     def default_emitter_keys(self):
@@ -70,19 +72,25 @@ class ProtonMotiveForce(Process):
 
         # parameters
         R = self.parameters['R']  # gas constant
-        z = self.parameters['z']  # valence of charged molecule
         F = self.parameters['F']  # Faraday constant
+        p_K = self.parameters['p_K']  # Faraday constant
+        p_Na = self.parameters['p_Na']  # Faraday constant
+        p_Cl = self.parameters['p_Cl']  # Faraday constant
 
         # state
-        c_in = internal_state['c_in']  # internal concentration of charged molecule
-        c_out = external_state['c_out']  # internal concentration of charged molecule
+        K_in = internal_state['K']
+        Na_in = internal_state['Na']
+        Cl_in = internal_state['Cl']
+        K_out = external_state['K']
+        Na_out = external_state['Na']
+        Cl_out = external_state['Cl']
+
         T = external_state['T']  # temperature
 
-        # TODO -- what if multiple charged molecules?
-
-        # Membrane potential Pilizota
-        V_m = (R * T) / (z * F) * np.log(c_out / c_in)
-
+        # Goldman equation
+        numerator = p_K * K_out + p_Na * Na_out + p_Cl * Cl_in
+        denominator = p_K * K_in + p_Na * Na_in + p_Cl * Cl_out
+        V_m = (R * T) / (F) * np.log(numerator / denominator)
 
         update = {
             # 'internal': {},
