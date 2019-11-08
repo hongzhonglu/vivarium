@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 import numpy as np
 from scipy.integrate import odeint
 
 from lens.actor.process import Process
-from lens.utils.flux_conversion import millimolar_to_counts
+from lens.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from lens.environment.make_media import Media
 
 DEFAULT_PARAMETERS = {
@@ -151,7 +152,7 @@ class Transport(Process):
         The default updater is to pass a delta'''
 
         updater_types = {
-            'internal': {},  # reactions set values directly
+            'internal': {state_id: 'set' for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
             'external': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
 
         return updater_types
@@ -288,29 +289,121 @@ class Transport(Process):
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
 
-        # get differences between final and initial state
-        delta_concs = {}
-        delta_counts = {}
-        for state_idx, state_id in enumerate(state_keys):
-            delta_conc = solution[-1, state_idx] - solution[0, state_idx]
-            delta_concs[state_id] = delta_conc
-            delta_counts[state_id] = millimolar_to_counts(delta_conc, volume)  # TODO -- this does not apply to all states (such as mass)
 
-        # environment update gets delta counts
-        environment_delta_counts = {
-            'G6P': delta_counts['G6P[e]'],
-            'LCTS': delta_counts['LCTS[e]'],
-            'GLC': delta_counts['GLC[e]'],
-        }
-
-        # internal update gets delta concentration
-        # TODO -- convert to counts.
         internal_update = {}
-        for state_id in states['internal'].iterkeys():
-            if state_id is 'volume':
+        external_update = {}
+        for state_idx, state_id in enumerate(state_keys):
+            initial_conc = solution[0, state_idx]
+            final_conc = solution[-1, state_idx]
+            delta_conc = final_conc - initial_conc
+
+            if state_id in ['GLC[e]', 'G6P[e]', 'LCTS[e]']:
+                # Get delta counts for external state
+                # Note: converting concentrations to counts can lose precision
+                delta_count = millimolar_to_counts(delta_conc, volume)
+                external_update[state_id.replace('[e]','')] = delta_count
+
+                # print('{} | delta_conc: {} | delta_count: {}'.format(state_id, delta_conc, delta_count))
+
+            elif state_id is 'volume':
+                # skip volume
                 continue
-            internal_update[state_id] = delta_concs[state_id]
+            else:
+                # set internal directly
+                internal_update[state_id] = final_conc
+
 
         return {
-            'external': environment_delta_counts,
+            'external': external_update,
             'internal': internal_update}
+
+# test and analysis of process
+def test_transport():
+    timeline = [
+        # (0, {'external': {
+        #     'GLC': 1}
+        # }),
+        (7.5*60*60, {}),
+    ]
+
+    # configure process
+    transport = Transport({})
+
+    # get initial state and parameters
+    state = transport.default_state()
+    saved_state = {'internal': {}, 'external': {}, 'time': []}
+
+    # run simulation
+    time = 0
+    timestep = 1  # sec
+    while time < timeline[-1][0]:
+        time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.iteritems():
+                    state[key].update(change)
+
+        # get update
+        update = transport.next_update(timestep, state)
+
+        # apply update to state
+        saved_state['time'].append(time)
+        state['internal'].update(update['internal'])
+
+        # apply external update
+        volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
+        for mol_id, delta_count in update['external'].iteritems():
+            delta_conc = counts_to_millimolar(delta_count, volume)
+            state['external'][mol_id] += delta_conc
+
+        # save state
+        for role in ['internal', 'external']:
+             for state_id, value in state[role].iteritems():
+                 if state_id in saved_state[role].keys():
+                     saved_state[role][state_id].append(value)
+                 else:
+                     saved_state[role][state_id] = [value]
+
+    return saved_state
+
+def plot_transport(saved_state, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
+
+    # make figure, with grid for subplots
+    n_data = [len(saved_state[key].keys()) for key in data_keys]
+    n_rows = sum(n_data)
+    fig = plt.figure(figsize=(8, n_rows * 2.5))
+    grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
+
+    # plot data
+    plot_idx = 0
+    for key in data_keys:
+        for mol_id, series in sorted(saved_state[key].iteritems()):
+            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+
+            ax.plot(time_vec, series)
+            ax.title.set_text(str(key) + ': ' + mol_id)
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.set_xlabel('time (hrs)')
+
+            plot_idx += 1
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'transport')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    saved_state = test_transport()
+    out_dir = os.path.join('out', 'Kremling2007_transport')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plot_transport(saved_state, out_dir)
+
+
