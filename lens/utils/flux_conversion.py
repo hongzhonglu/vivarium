@@ -50,6 +50,20 @@ def counts_to_molar(counts, volume):
     # volume = cell_mass / density
     return counts / (nAvogadro * volume)
 
+
+def counts_to_millimolar(counts, volume):
+    '''
+    input:
+        counts -- list
+        volume -- list (L)
+
+    return:
+        fluxes -- list (molar)
+    '''
+    # volume = cell_mass / density
+    return counts / (nAvogadro * volume * 1e-3)
+
+
 def molar_to_molDCWhr(fluxes, dry_mass, cell_mass, density, timestep):
     '''
     input:
