@@ -41,7 +41,7 @@ class ShepherdControl(ActorControl):
             'emit_fields': emit_field,
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
-            'edge_length': 20.0,
+            'edge_length_x': 20.0,
             'patches_per_edge': 10,
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
@@ -78,7 +78,7 @@ class ShepherdControl(ActorControl):
             'media_id': media_id,
             'emit_fields': emit_field,
             'run_for': 2.0,
-            'edge_length': 50.0,
+            'edge_length_x': 50.0,
             'patches_per_edge': 10,
         }
 
@@ -112,7 +112,7 @@ class ShepherdControl(ActorControl):
             'timeline_str': timeline_str,
             'run_for': 2.0,
             'emit_fields': emit_field,
-            'edge_length': 10.0,
+            'edge_length_x': 10.0,
             'patches_per_edge': 10,
         }
 
@@ -182,7 +182,7 @@ class ShepherdControl(ActorControl):
             'diffusion': 0.0,
             # 'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
-            'edge_length': 200.0,
+            'edge_length_x': 200.0,
             'patches_per_edge': 50}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 

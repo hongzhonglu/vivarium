@@ -194,7 +194,7 @@ def initialize_glc_g6p_small(agent_config):
         'timeline_str': timeline_str,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
-        'edge_length': 1.0,
+        'edge_length_x': 1.0,
         'patches_per_edge': 1,
     }
     boot_config.update(agent_config)
@@ -228,7 +228,7 @@ def initialize_custom_small(agent_config):
         'new_media': new_media,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
-        'edge_length': 1.0,
+        'edge_length_x': 1.0,
         'patches_per_edge': 1,
     }
     boot_config.update(agent_config)
@@ -277,7 +277,7 @@ def initialize_measp(agent_config):
             }},
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
-        'edge_length': 50.0,
+        'edge_length_x': 50.0,
         'patches_per_edge': 10}
     boot_config.update(agent_config)
 
@@ -306,7 +306,7 @@ def initialize_measp_large(agent_config):
             }},
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
-        'edge_length': 200.0,
+        'edge_length_x': 200.0,
         'patches_per_edge': 40}
     boot_config.update(agent_config)
 
@@ -327,7 +327,7 @@ def initialize_measp_timeline(agent_config):
         'static_concentrations': True,
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
-        'edge_length': 100.0,
+        'edge_length_x': 100.0,
         'patches_per_edge': 50,
     }
     boot_config.update(agent_config)

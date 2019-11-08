@@ -35,7 +35,8 @@ class ChemotaxisTrace(Analysis):
 
         agent_ids = [key for key in lattice_history.keys() if key is not 'time']
         time_vec = [t / 3600 for t in lattice_history['time']]  # convert to hours
-        edge_length = experiment_config['edge_length']
+        edge_length_x = experiment_config['edge_length_x']
+        edge_length_y = experiment_config['edge_length_y']
 
         plt.figure(figsize=(8, 8))
         for agent_id in agent_ids:
@@ -52,8 +53,8 @@ class ChemotaxisTrace(Analysis):
             for i in range(len(locations)):
                 plt.plot(x_coord[i:i + 2], y_coord[i:i + 2], 'b-')
 
-        plt.xlim((0, edge_length))
-        plt.ylim((0, edge_length))
+        plt.xlim((0, edge_length_x))
+        plt.ylim((0, edge_length_y))
 
         plt.savefig(output_dir + '/chemotaxis_trace')
         plt.clf()

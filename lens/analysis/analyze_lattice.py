@@ -22,7 +22,8 @@ class LatticeTrace(Analysis):
 
         agent_ids = [key for key in history_data.keys() if key is not 'time']
         time_vec = [t / 3600 for t in history_data['time']]  # convert to hours
-        edge_length = experiment_config['edge_length']
+        edge_length_x = experiment_config['edge_length_x']
+        edge_length_y = experiment_config['edge_length_y']
 
         # plot trajectories
         fig = plt.figure(figsize=(8, 8))
@@ -37,8 +38,8 @@ class LatticeTrace(Analysis):
             plt.plot(x_coord[0], y_coord[0], color=(0.0,0.8,0.0), marker='*')  # starting point
             plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  #  ending point
 
-        plt.xlim((0, edge_length))
-        plt.ylim((0, edge_length))
+        plt.xlim((0, edge_length_x))
+        plt.ylim((0, edge_length_y))
         start = mlines.Line2D([], [], color=(0.0,0.8,0.0), marker='*', linestyle='None',
                                   markersize=10, label='start')
         end = mlines.Line2D([], [], color='r', marker='*', linestyle='None',

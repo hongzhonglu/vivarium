@@ -46,7 +46,8 @@ def get_experiment(client, experiment_id):
     experiment_config = {}
     for row in data:
         if row.get('type') == 'lattice':
-            experiment_config['edge_length'] = row['edge_length']
+            experiment_config['edge_length_x'] = row['edge_length_x']
+            experiment_config['edge_length_y'] = row['edge_length_y']
             experiment_config['patches_per_edge'] = row['patches_per_edge']
             experiment_config['cell_radius'] = row['cell_radius']
         elif row.get('topology'):

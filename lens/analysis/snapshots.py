@@ -87,10 +87,11 @@ class Snapshots(Analysis):
         tags_data = data['compartments']
 
         time_vec = time_data.keys()
-        edge_length = experiment_config['edge_length']
-        patches_per_edge = experiment_config['patches_per_edge']
+        edge_length_x = experiment_config['edge_length_x']
+        edge_length_y = experiment_config['edge_length_y']
+        patches_per_edge = experiment_config['patches_per_edge']  # TODO -- need patches_per_edge_x, patches_per_edge_y
         cell_radius = experiment_config['cell_radius']
-        lattice_scaling = patches_per_edge / edge_length
+        lattice_scaling = patches_per_edge / edge_length_x
 
         # define number of snapshots to be plotted
         n_snapshots = 8
