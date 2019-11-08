@@ -38,6 +38,7 @@ from lens.processes.growth import Growth
 from lens.processes.protein_expression import ProteinExpression
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
+from lens.processes.membrane_potential import MembranePotential
 
 # composites
 from lens.composites.Covert2002_rFBA import compose_covert2002
@@ -358,6 +359,7 @@ class BootEnvironment(BootAgent):
             'expression': wrap_boot(wrap_init_basic(ProteinExpression), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
+            'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
