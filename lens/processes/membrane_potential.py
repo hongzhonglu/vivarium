@@ -7,15 +7,15 @@ from lens.actor.process import Process
 from lens.utils.units import units
 
 
-class ProtonMotiveForce(Process):
+class MembranePotential(Process):
     '''
     Need to add a boot method for this process to lens/environment/boot.py for it to run on its own
     '''
     def __init__(self, initial_parameters={}):
 
         parameters = {
-            'R': 8.314462618,  # (kg * m^2 * s^-2 * K^-1 * mol^-1) gas constant
-            'F': 96485.33289, # (charge / mol)  Faraday constant
+            'R': 8.314462618,  # (J * K^-1 * mol^-1) gas constant
+            'F': 96485.33289, # (charge * mol^-1)  Faraday constant
             'p_K': 0.05,  # (unitless, relative permeability) membrane permeability of K
             'p_Na': 0.05,  # (unitless, relative permeability) membrane permeability of Na
             'p_Cl': 0.05,  # (unitless, relative permeability) membrane permeability of Cl
@@ -28,7 +28,7 @@ class ProtonMotiveForce(Process):
         }
         parameters.update(initial_parameters)
 
-        super(ProtonMotiveForce, self).__init__(roles, parameters)
+        super(MembranePotential, self).__init__(roles, parameters)
 
     def default_state(self):
         '''
@@ -40,7 +40,7 @@ class ProtonMotiveForce(Process):
         return {
             'internal': {'K': 1, 'Na': 1, 'Cl': 1},
             # 'membrane': {'V_m': },
-            'external': {'K': 1, 'Na': 1, 'Cl': 1, 'T': 37}
+            'external': {'K': 1, 'Na': 1, 'Cl': 1, 'T': 310.15}  # temperature in Kelvin
         }
 
     def default_emitter_keys(self):
@@ -108,10 +108,10 @@ def test_PMF():
     ]
 
     # configure process
-    PMF = ProtonMotiveForce({})
+    mp = MembranePotential({})
 
     # get initial state and parameters
-    state = PMF.default_state()
+    state = mp.default_state()
     saved_state = {'internal': {}, 'external': {}, 'membrane': {}, 'time': []}
 
     # run simulation
@@ -124,7 +124,7 @@ def test_PMF():
                 for key, change in change_dict.iteritems():
                     state[key].update(change)
 
-        update = PMF.next_update(timestep, state)
+        update = mp.next_update(timestep, state)
         saved_state['time'].append(time)
 
         # update external state
