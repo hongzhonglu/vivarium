@@ -58,6 +58,46 @@ class ShepherdControl(ActorControl):
                 'working_dir': args['working_dir'],
                 'seed': index})
 
+    def long_lattice_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id()
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        # make media
+        media_id = args.get('media', 'minimal')
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 14400 end'.format(media_id)
+
+        emit_field = ['GLC']
+
+        lattice_config = {
+            'timeline_str': timeline_str,
+            'media_id': media_id,
+            'emit_fields': emit_field,
+            'boot': 'lens.environment.boot',
+            'run_for': 4.0,
+            'edge_length_x': 80.0,
+            'edge_length_y': 20.0,
+            'patches_per_edge_x': 8,
+            'translation_jitter': 0.1,
+            'rotation_jitter': 0.01}
+
+        self.add_agent(experiment_id, 'lattice', lattice_config)
+
+        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'lookup', {
+                'boot': args.get('agent_boot', 'lens.environment.boot'),
+                'boot_config': {},
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
     def large_lattice_experiment(self, args):
         experiment_id = args['experiment_id']
         if not experiment_id:
@@ -224,7 +264,8 @@ class EnvironmentCommand(AgentCommand):
     ''' + description
 
         full_choices = [
-			'large-experiment',
+            'long-experiment',
+            'large-experiment',
             'small-experiment',
             'chemotaxis-experiment',
             'glc-g6p-experiment'] + choices
@@ -237,6 +278,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.lattice_experiment(args)
+        control.shutdown()
+
+    def long_experiment(self, args):
+        self.require(args, 'number', 'working_dir')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.long_lattice_experiment(args)
         control.shutdown()
 
     def large_experiment(self, args):
