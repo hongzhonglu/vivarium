@@ -376,7 +376,7 @@ function updateLattice(draw, lens, data) {
 // given the new state of the lens from the simulation, apply all of the
 // updates to the various elements of the visualization
 function updateLens(draw, lens, data) {
-  lens.edgeLength = data.edge_length;
+  lens.edgeLength = data.edge_length;  // TODO use data.edge_length_x, data.edge_length_y
 
   // remove any cells that are no longer referenced in the data
   _.each(_.keys(lens.cells), function(key) {
@@ -398,7 +398,7 @@ function updateLens(draw, lens, data) {
 
   // add any new cells that have appeared since the last set of data and update
   // existing cells with their new state
-  var scale = VISUALIZATION_WIDTH / data.edge_length;
+  var scale = VISUALIZATION_WIDTH / data.edge_length;  // TODO use data.edge_length_x, data.edge_length_y
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
     simulation.scale = scale

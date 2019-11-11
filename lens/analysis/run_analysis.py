@@ -6,7 +6,7 @@ from pymongo import MongoClient
 
 from lens.analysis.analyze_compartment import Compartment
 from lens.analysis.multigen_compartment import MultigenCompartment
-from lens.analysis.analyze_lattice import LatticeTrace
+from lens.analysis.location_trace import LatticeTrace
 from lens.analysis.chemotaxis_trace import ChemotaxisTrace
 from lens.analysis.snapshots import Snapshots
 
@@ -16,7 +16,7 @@ analysis_classes = {
     # 'chemotaxis': ChemotaxisTrace,
     'compartment': Compartment,
     'multigen': MultigenCompartment,
-    'lattice': LatticeTrace,
+    'location': LatticeTrace,
     'snapshots': Snapshots,
 }
 
@@ -48,7 +48,8 @@ def get_experiment(client, experiment_id):
         if row.get('type') == 'lattice':
             experiment_config['edge_length_x'] = row['edge_length_x']
             experiment_config['edge_length_y'] = row['edge_length_y']
-            experiment_config['patches_per_edge'] = row['patches_per_edge']
+            experiment_config['patches_per_edge_x'] = row['patches_per_edge_x']
+            experiment_config['patches_per_edge_y'] = row['patches_per_edge_y']
             experiment_config['cell_radius'] = row['cell_radius']
         elif row.get('topology'):
             experiment_config['topology'] = row['topology']

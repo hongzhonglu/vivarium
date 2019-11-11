@@ -42,7 +42,7 @@ class ShepherdControl(ActorControl):
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
             'edge_length_x': 20.0,
-            'patches_per_edge': 10,
+            'patches_per_edge_x': 10,
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
 
@@ -79,7 +79,7 @@ class ShepherdControl(ActorControl):
             'emit_fields': emit_field,
             'run_for': 2.0,
             'edge_length_x': 50.0,
-            'patches_per_edge': 10,
+            'patches_per_edge_x': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
@@ -113,7 +113,7 @@ class ShepherdControl(ActorControl):
             'run_for': 2.0,
             'emit_fields': emit_field,
             'edge_length_x': 10.0,
-            'patches_per_edge': 10,
+            'patches_per_edge_x': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
@@ -183,7 +183,7 @@ class ShepherdControl(ActorControl):
             # 'translation_jitter': 0.5,
             'rotation_jitter': 0.005,
             'edge_length_x': 200.0,
-            'patches_per_edge': 50}
+            'patches_per_edge_x': 50}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells

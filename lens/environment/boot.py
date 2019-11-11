@@ -162,7 +162,8 @@ class EnvironmentAgent(Outer):
             'agent_type': 'ecoli',
             'running': not self.paused,
             'time': self.environment.time(),
-            'edge_length': self.environment.edge_length,
+            'edge_length_x': self.environment.edge_length_x,
+            'edge_length_y': self.environment.edge_length_y,
             'cell_radius': self.environment.cell_radius,   # TODO (Eran) -- remove this from environment config, should be an attribute of cellSimulations
             'lattice': lattice,
             'simulations': simulations}
@@ -195,7 +196,7 @@ def initialize_glc_g6p_small(agent_config):
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
         'edge_length_x': 1.0,
-        'patches_per_edge': 1,
+        'patches_per_edge_x': 1,
     }
     boot_config.update(agent_config)
 
@@ -229,7 +230,7 @@ def initialize_custom_small(agent_config):
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
         'edge_length_x': 1.0,
-        'patches_per_edge': 1,
+        'patches_per_edge_x': 1,
     }
     boot_config.update(agent_config)
 
@@ -278,10 +279,42 @@ def initialize_measp(agent_config):
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
         'edge_length_x': 50.0,
-        'patches_per_edge': 10}
+        'patches_per_edge_x': 40}
     boot_config.update(agent_config)
 
     return boot_config
+
+def initialize_measp_long(agent_config):
+    media_id = 'MeAsp_media'
+    media = {'GLC': 20.0,  # assumes mmol/L
+             'MeAsp': 1.0}
+    new_media = {media_id: media}
+    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    boot_config = {
+        'new_media': new_media,
+        'timeline_str': timeline_str,
+        'emit_fields': ['MeAsp'],
+        'run_for': 1.0,
+        'static_concentrations': True,
+        'gradient': {
+            'seed': True,
+            'molecules': {
+                'GLC': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0},
+                'MeAsp': {
+                    'center': [0.5, 0.5],
+                    'deviation': 30.0}
+            }},
+        'diffusion': 0.0,
+        'rotation_jitter': 0.005,
+        'edge_length_x': 200.0,
+        'edge_length_y': 50.0,
+        'patches_per_edge_x': 40}
+    boot_config.update(agent_config)
+
+    return boot_config
+
 
 def initialize_measp_large(agent_config):
     media_id = 'MeAsp_media'
@@ -307,7 +340,7 @@ def initialize_measp_large(agent_config):
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
-        'patches_per_edge': 40}
+        'patches_per_edge_x': 40}
     boot_config.update(agent_config)
 
     return boot_config
@@ -328,7 +361,7 @@ def initialize_measp_timeline(agent_config):
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
         'edge_length_x': 100.0,
-        'patches_per_edge': 50,
+        'patches_per_edge_x': 50,
     }
     boot_config.update(agent_config)
 
@@ -347,6 +380,7 @@ class BootEnvironment(BootAgent):
             'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
+            'measp_long': wrap_boot_environment(initialize_measp_long),
             'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
 

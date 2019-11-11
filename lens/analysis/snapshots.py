@@ -81,6 +81,8 @@ class Snapshots(Analysis):
             return time_dict
 
     def analyze(self, experiment_config, data, output_dir):
+        # number of snapshots to be plotted
+        n_snapshots = 8
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
@@ -89,12 +91,10 @@ class Snapshots(Analysis):
         time_vec = time_data.keys()
         edge_length_x = experiment_config['edge_length_x']
         edge_length_y = experiment_config['edge_length_y']
-        patches_per_edge = experiment_config['patches_per_edge']  # TODO -- need patches_per_edge_x, patches_per_edge_y
+        patches_per_edge_x = experiment_config['patches_per_edge_x']
+        patches_per_edge_y = experiment_config['patches_per_edge_y']
         cell_radius = experiment_config['cell_radius']
-        lattice_scaling = patches_per_edge / edge_length_x
-
-        # define number of snapshots to be plotted
-        n_snapshots = 8
+        lattice_scaling = patches_per_edge_x / edge_length_x
 
         # get the time steps that will be used
         plot_step = int(len(time_vec)/(n_snapshots-1))
@@ -132,15 +132,15 @@ class Snapshots(Analysis):
                 for field_id in field_ids:
                     ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                     ax.title.set_text('time = {:.2f} hr'.format(time/60/60))
-                    ax.set_xlim([0, patches_per_edge])
-                    ax.set_ylim([0, patches_per_edge])
+                    ax.set_xlim([0, patches_per_edge_x])
+                    ax.set_ylim([0, patches_per_edge_y])
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
                     # rotate field and plot
                     field = np.rot90(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
-                               extent=[0,patches_per_edge,0,patches_per_edge],
+                               extent=[0,patches_per_edge_x,0,patches_per_edge_y],
                                interpolation='nearest',
                                cmap='YlGn')
                     self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
@@ -148,8 +148,8 @@ class Snapshots(Analysis):
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
-                ax.set_xlim([0, patches_per_edge])
-                ax.set_ylim([0, patches_per_edge])
+                ax.set_xlim([0, patches_per_edge_x])
+                ax.set_ylim([0, patches_per_edge_y])
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
                 self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
