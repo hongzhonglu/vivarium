@@ -96,6 +96,10 @@ class Snapshots(Analysis):
         cell_radius = experiment_config['cell_radius']
         lattice_scaling = patches_per_edge_x / edge_length_x
 
+
+        # print('x: {}, y: {}'.format(edge_length_x, edge_length_y))
+
+
         # get the time steps that will be used
         plot_step = int(len(time_vec)/(n_snapshots-1))
         snapshot_times = time_vec[::plot_step]
@@ -138,8 +142,10 @@ class Snapshots(Analysis):
                     ax.set_xticklabels([])
 
                     # rotate field and plot
-                    field = np.rot90(np.array(field_data[field_id])).tolist()
+                    # field = np.rot90(np.array(field_data[field_id])).tolist()
+                    field = np.array(field_data[field_id]).tolist()
                     plt.imshow(field,
+                               origin='lower',
                                extent=[0,patches_per_edge_x,0,patches_per_edge_y],
                                interpolation='nearest',
                                cmap='YlGn')
@@ -162,24 +168,24 @@ class Snapshots(Analysis):
         plt.close(fig)
 
 
-    def plot_agents(self, ax, agent_data, lattice_scaling, cell_radius, agent_colors):
+    def plot_agents(self, ax, agent_data, scale, cell_radius, agent_colors):
 
         for agent_id, data in agent_data.iteritems():
 
             # location, orientation, length
             volume = data['volume']
             location = data['location']
-            y = location[0] * lattice_scaling
-            x = location[1] * lattice_scaling
-            theta = location[2]
-            length = volume_to_length(volume, cell_radius) * lattice_scaling
+            x = location[0]
+            y = location[1]
+            theta = location[2] #+ np.pi/2  # rotate 90 degrees to match field
+            length = volume_to_length(volume, cell_radius)
 
             # plot cell as a 2D line
-            width = linewidth_from_data_units(cell_radius * 2, ax) * lattice_scaling
+            width = linewidth_from_data_units(cell_radius * 2, ax) * scale
             body_width = width * 0.95
             # TODO get body_length
-            dx = length * np.sin(theta)
-            dy = length * np.cos(theta)
+            dx = length / 2 * np.cos(theta)
+            dy = length / 2 * np.sin(theta)
 
             # colors and flourescent tags
             agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
@@ -190,14 +196,21 @@ class Snapshots(Analysis):
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)
 
+            x_vec = [scale*x - scale*dx, scale*x + scale*dx]
+            y_vec = [scale*y - scale*dy, scale*y + scale*dy]
+
+
+            # import ipdb; ipdb.set_trace()
+            # l_scale = ((x_vec[0]-x_vec[1])**2 + (y_vec[0]-y_vec[1])**2)**0.5
+
             # plot outline
-            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
+            ax.plot(x_vec, y_vec,
                     linewidth=width,
                     color='k',
                     solid_capstyle='butt')
 
             # plot body
-            ax.plot([y - dy / 2, y + dy / 2], [x - dx / 2, x + dx / 2],
+            ax.plot(x_vec, y_vec,
                     linewidth=body_width,
                     color=rgb,
                     solid_capstyle='butt')
