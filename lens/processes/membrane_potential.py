@@ -23,7 +23,7 @@ class MembranePotential(Process):
 
         roles = {
             'internal': ['c_in'],
-            'membrane': ['V_m'],
+            'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
             'external': ['c_out'],
         }
         parameters.update(initial_parameters)
@@ -39,12 +39,16 @@ class MembranePotential(Process):
 
     def default_emitter_keys(self):
         keys = {
-            'membrane': ['V_m'],
+            'membrane': ['d_V', 'd_pH', 'PMF'],
         }
         return keys
 
     def default_updaters(self):
-        keys = {'membrane': {'V_m': 'set'}}
+        keys = {'membrane': {
+            'd_V': 'set',
+            'd_pH': 'set',
+            'PMF': 'set',
+        }}
         return keys
 
     def next_update(self, timestep, states):
@@ -68,16 +72,24 @@ class MembranePotential(Process):
 
         T = external_state['T']  # temperature
 
-        # Goldman equation
+        # Membrane potential. Goldman equation
         numerator = p_K * K_out + p_Na * Na_out + p_Cl * Cl_in
         denominator = p_K * K_in + p_Na * Na_in + p_Cl * Cl_out
-        V_m = (R * T) / (F) * np.log(numerator / denominator)
+        d_V = (R * T) / (F) * np.log(numerator / denominator)
+
+        # pH difference
+        d_pH = 0
+
+        # proton motive force
+        PMF = d_V + d_pH
+
 
         update = {
-            # 'internal': {},
-            'membrane': {'V_m': V_m},
-            # 'external': {},
-        }
+            'membrane': {
+                'd_V': d_V,
+                'd_pH': d_pH,
+                'PMF': PMF,
+            }}
         return update
 
 def test_mem_potential():
