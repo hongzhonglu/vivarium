@@ -47,5 +47,9 @@ class LatticeTrace(Analysis):
                                   markersize=10, label='end')
         plt.legend(handles=[start, end])
 
+        # specify the number of ticks
+        plt.locator_params(axis='y', nbins=int(edge_y/10))
+        plt.locator_params(axis='x', nbins=int(edge_x/10))
+
         plt.savefig(output_dir + '/location_trace')
         plt.close(fig)
