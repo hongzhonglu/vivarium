@@ -300,10 +300,10 @@ def initialize_measp_long(agent_config):
             'seed': True,
             'molecules': {
                 'GLC': {
-                    'center': [0.5, 0.5],
+                    'center': [0.25, 0.5],
                     'deviation': 30.0},
                 'MeAsp': {
-                    'center': [0.5, 0.5],
+                    'center': [0.75, 0.5],
                     'deviation': 30.0}
             }},
         'diffusion': 0.0,

@@ -82,7 +82,7 @@ class Snapshots(Analysis):
 
     def analyze(self, experiment_config, data, output_dir):
         # number of snapshots to be plotted
-        n_snapshots = 3  #8
+        n_snapshots = 6  #8
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
@@ -112,7 +112,7 @@ class Snapshots(Analysis):
         for agent_id in initial_agents:
             agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
-        fig = plt.figure(figsize=(20*n_snapshots, 20*n_fields))
+        fig = plt.figure(figsize=(20*n_snapshots, 10*n_fields))
         grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.01)
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times, 0):
@@ -130,8 +130,6 @@ class Snapshots(Analysis):
             if field_ids:
                 # plot fields
                 for f_index, field_id in enumerate(field_ids, 0):  # TODO --multiple fields
-
-                    # print('f_index: {} | index: {}'.format(f_index, index))
 
                     ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
                     ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time)/60./60., field_id))
@@ -182,8 +180,8 @@ class Snapshots(Analysis):
             width = linewidth_from_data_units(cell_radius * 2, ax) * scale
             body_width = width * 0.95
             # TODO get body_length
-            dx = length / 2 * np.cos(theta)
-            dy = length / 2 * np.sin(theta)
+            dx = length / 2 * np.cos(theta+np.pi/2)
+            dy = length / 2 * np.sin(theta+np.pi/2)
 
             # colors and flourescent tags
             agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
@@ -194,21 +192,21 @@ class Snapshots(Analysis):
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)
 
-            x_vec = [scale*x - scale*dx, scale*x + scale*dx]
-            y_vec = [scale*y - scale*dy, scale*y + scale*dy]
-
-
-            # import ipdb; ipdb.set_trace()
+            # x_vec = [x - dx, x + dx]
+            # y_vec = [y - dy, y + dy]
             # l_scale = ((x_vec[0]-x_vec[1])**2 + (y_vec[0]-y_vec[1])**2)**0.5
 
+            x_scaled = [scale*x - scale*dx, scale*x + scale*dx]
+            y_scaled = [scale*y - scale*dy, scale*y + scale*dy]
+
             # plot outline
-            ax.plot(x_vec, y_vec,
+            ax.plot(x_scaled, y_scaled,
                     linewidth=width,
                     color='k',
                     solid_capstyle='butt')
 
             # plot body
-            ax.plot(x_vec, y_vec,
+            ax.plot(x_scaled, y_scaled,
                     linewidth=body_width,
                     color=rgb,
                     solid_capstyle='butt')

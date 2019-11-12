@@ -398,7 +398,7 @@ function updateLens(draw, lens, data) {
 
   // add any new cells that have appeared since the last set of data and update
   // existing cells with their new state
-  var scale = VISUALIZATION_WIDTH / data.edge_length;  // TODO use data.edge_length_x, data.edge_length_y
+  var scale = VISUALIZATION_WIDTH / data.edge_length_x;  // TODO use data.edge_length_x, data.edge_length_y
   _.each(_.keys(data.simulations), function(key) {
     var simulation = data.simulations[key];
     simulation.scale = scale
