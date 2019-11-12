@@ -82,7 +82,7 @@ class Snapshots(Analysis):
 
     def analyze(self, experiment_config, data, output_dir):
         # number of snapshots to be plotted
-        n_snapshots = 8
+        n_snapshots = 3  #8
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
@@ -96,13 +96,9 @@ class Snapshots(Analysis):
         cell_radius = experiment_config['cell_radius']
         lattice_scaling = patches_per_edge_x / edge_length_x
 
-
-        # print('x: {}, y: {}'.format(edge_length_x, edge_length_y))
-
-
         # get the time steps that will be used
-        plot_step = int(len(time_vec)/(n_snapshots-1))
-        snapshot_times = time_vec[::plot_step]
+        plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
+        snapshot_times = [time_vec[i] for i in plot_steps]
 
         # get number of fields
         field_ids = time_data[time_vec[0]].get('fields',{}).keys()
@@ -117,8 +113,9 @@ class Snapshots(Analysis):
             agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
         fig = plt.figure(figsize=(20*n_snapshots, 20*n_fields))
+        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.01)
         plt.rcParams.update({'font.size': 36})
-        for index, time in enumerate(snapshot_times):
+        for index, time in enumerate(snapshot_times, 0):
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
@@ -128,22 +125,23 @@ class Snapshots(Analysis):
                     tdata = tags_data[agent_id]
                     tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
                     agent_tags[agent_id] = tags
-
                 agent_data = dict_merge(dict(agent_data), agent_tags)
 
             if field_ids:
                 # plot fields
-                for field_id in field_ids:
-                    ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
-                    ax.title.set_text('time = {:.2f} hr'.format(time/60/60))
+                for f_index, field_id in enumerate(field_ids, 0):  # TODO --multiple fields
+
+                    # print('f_index: {} | index: {}'.format(f_index, index))
+
+                    ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
+                    ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time)/60./60., field_id))
                     ax.set_xlim([0, patches_per_edge_x])
                     ax.set_ylim([0, patches_per_edge_y])
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
                     # rotate field and plot
-                    # field = np.rot90(np.array(field_data[field_id])).tolist()
-                    field = np.array(field_data[field_id]).tolist()
+                    field = np.rot90(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
                                origin='lower',
                                extent=[0,patches_per_edge_x,0,patches_per_edge_y],

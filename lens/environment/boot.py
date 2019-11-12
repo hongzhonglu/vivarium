@@ -293,7 +293,7 @@ def initialize_measp_long(agent_config):
     boot_config = {
         'new_media': new_media,
         'timeline_str': timeline_str,
-        'emit_fields': ['MeAsp'],
+        'emit_fields': ['GLC','MeAsp'],
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
