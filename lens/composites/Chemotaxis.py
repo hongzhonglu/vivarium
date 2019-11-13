@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
+from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge, merge_dicts
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -15,11 +15,11 @@ def compose_chemotaxis(config):
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
     # deriver = DeriveVolume(config)
-    processes = {
+    processes = [{
         'receptor': receptor,
         'motor': motor,
         # 'deriver': deriver
-    }
+    }]
 
     # initialize the states
     default_states = merge_default_states(processes)
@@ -30,12 +30,12 @@ def compose_chemotaxis(config):
     # get environment ids, and make exchange_ids for external state
     environment_ids = []
     initial_exchanges = {}
-    for process_id, process in processes.iteritems():
+    for process_id, process in merge_dicts(processes).items():
         roles = {role: {} for role in process.roles.keys()}
         initial_exchanges.update(roles)
 
-    for role, state_ids in default_updaters.iteritems():
-        for state_id, updater in state_ids.iteritems():
+    for role, state_ids in default_updaters.items():
+        for state_id, updater in state_ids.items():
             if updater is 'accumulate':
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
