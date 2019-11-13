@@ -2,24 +2,28 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
+import scipy.constants as constants
 
 from lens.actor.process import Process, dict_merge
 from lens.utils.units import units
 
-
+# (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
+# Schultz, Stanley G., and A. K. Solomon. "Cation Transport in Escherichia coli" (1961)
+# TODO -- add Mg2+, Ca2+
 DEFAULT_STATE = {
     'internal': {
-        'K': 30,
-        'Na': 10,
-        'Cl': 10},  # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
+        'K': 300,  # (mmol) 30-300
+        'Na': 10,  # (mmol) 10
+        'Cl': 10},  # (mmol) 10-200 media-dependent
     'external': {
-        'K': 1,
-        'Na': 1,
-        'Cl': 1}  # temperature in Kelvin
+        'K': 5,
+        'Na': 145,
+        'Cl': 110}  # (mmol)
     }
 
+# TODO -- get references on these
 DEFAULT_PARAMETERS = {
-    'p_K': 0.05,  # unitless, relative membrane permeability of K
+    'p_K': 1,  # unitless, relative membrane permeability of K
     'p_Na': 0.05,  # unitless, relative membrane permeability of Na
     'p_Cl': 0.05,  # unitless, relative membrane permeability of Cl
     }
@@ -50,9 +54,10 @@ class MembranePotential(Process):
 
         # set parameters
         parameters = {
-            'R': 8.314462618,  # (J * K^-1 * mol^-1) gas constant
-            'F': 96485.33289, # (charge * mol^-1)  Faraday constant
-        }
+            'R': constants.gas_constant,  # (J * K^-1 * mol^-1) gas constant
+            'F': constants.physical_constants['Faraday constant'][0], # (C * mol^-1) Faraday constant
+            'k': constants.Boltzmann, # (J * K^-1) Boltzmann constant
+            }
         parameters.update(config.get('parameters', DEFAULT_PARAMETERS))
 
         self.permeability = config.get('permeability', PERMEABILITY_MAP)
@@ -93,11 +98,13 @@ class MembranePotential(Process):
         # parameters
         R = self.parameters['R']
         F = self.parameters['F']
+        k = self.parameters['k']
 
         # state
         T = external_state['T']  # temperature
+        # e = 1 # proton charge # TODO -- get proton charge from state
 
-        # Membrane potential. Goldman equation
+        # Membrane potential.
         numerator = 0
         denominator = 0
         for ion_id, p_ion_id in self.permeability.iteritems():
@@ -118,10 +125,14 @@ class MembranePotential(Process):
                 raise NoChargeError(
                     "No charge given for {}".format(ion_id))
 
-        d_V = (R * T) / (F) * np.log(numerator / denominator)
+        # Goldman equation for membrane potential
+        # expected d_V = -120 mV
+        d_V = (R * T) / (F) * np.log(numerator / denominator) * 1e3  # (mV). 1e3 factor converts from V
 
-        # pH difference
-        d_pH = 0
+        # Nernst equation for pH difference
+        # -2.3 * k * T / e  # -2.3 Boltzmann constant * temperature
+        # expected d_pH = -50 mV
+        d_pH = -50  # (mV) for cells grown at pH 7. (Berg, H. "E. coli in motion", pg 105)
 
         # proton motive force
         PMF = d_V + d_pH
@@ -214,9 +225,9 @@ def plot_mem_potential(saved_state, out_dir='out'):
             ax.title.set_text(str(key) + ': ' + mol_id)
             ax.set_xlabel('time (hrs)')
 
-            if key is 'internal':
-                ax.set_yticks([0.0, 1.0])
-                ax.set_yticklabels(["False", "True"])
+            # if key is 'internal':
+            #     ax.set_yticks([0.0, 1.0])
+            #     ax.set_yticklabels(["False", "True"])
 
             plot_idx += 1
 
