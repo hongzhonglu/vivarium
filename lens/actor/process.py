@@ -245,14 +245,14 @@ def merge_default_states(processes):
     initial_state = {}
     for process_id, process in merge_dicts(processes).items():
         default = process.default_state()
-        initial_state = dict_merge(dict(initial_state), default)
+        initial_state = deep_merge(dict(initial_state), default)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
     for process_id, process in merge_dicts(processes).items():
         process_updaters = process.default_updaters()
-        updaters = dict_merge(dict(updaters), process_updaters)
+        updaters = deep_merge(dict(updaters), process_updaters)
     return updaters
 
 def merge_dicts(dicts):
@@ -261,15 +261,15 @@ def merge_dicts(dicts):
         merge.update(d)
     return merge
 
-def dict_merge(dct, merge_dct):
+def deep_merge(dct, merge_dct):
     '''
     Recursive dict merge
     This mutates dct - the contents of merge_dct are added to dct (which is also returned).
-    If you want to keep dct you could call it like dict_merge(dict(dct), merge_dct)'''
+    If you want to keep dct you could call it like deep_merge(dict(dct), merge_dct)'''
     for k, v in merge_dct.items():
         if (k in dct and isinstance(dct[k], dict)
                 and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
+            deep_merge(dct[k], merge_dct[k])
         else:
             dct[k] = merge_dct[k]
     return dct

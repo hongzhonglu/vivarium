@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 
 from lens.analysis.analysis import Analysis, get_compartment
-from lens.actor.process import dict_merge
+from lens.actor.process import deep_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
 DEFAULT_COLOR = [220/360, 100.0/100.0, 50.0/100.0]  # HSV
@@ -36,7 +36,7 @@ class Snapshots(Analysis):
             time_dict = {time: {} for time in times}
             for tag, series in tags_history.iteritems():
                 tag_hist = {time: {'tags': {tag: state}} for time, state in zip(times,series)}
-                time_dict = dict_merge(dict(time_dict), tag_hist)
+                time_dict = deep_merge(dict(time_dict), tag_hist)
 
             return time_dict
 
@@ -124,7 +124,7 @@ class Snapshots(Analysis):
                     tdata = tags_data[agent_id]
                     tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
                     agent_tags[agent_id] = tags
-                agent_data = dict_merge(dict(agent_data), agent_tags)
+                agent_data = deep_merge(dict(agent_data), agent_tags)
 
             if field_ids:
                 # plot fields

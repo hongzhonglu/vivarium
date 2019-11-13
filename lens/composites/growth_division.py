@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import random
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge
 
 # processes
 from lens.processes.derive_volume import DeriveVolume
@@ -82,7 +82,7 @@ def compose_growth_division(config):
 
     states = {
         compartment_roles[role]: State(
-            initial_state=dict_merge(
+            initial_state=deep_merge(
                 default_states.get(role, {}),
                 dict(initial_state.get(compartment_roles[role], {}))),
             updaters=default_updaters.get(role, {}))

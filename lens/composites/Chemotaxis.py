@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, dict_merge, merge_dicts
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge, merge_dicts
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -40,7 +40,7 @@ def compose_chemotaxis(config):
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
-    default_states = dict_merge(default_states, initial_exchanges)
+    default_states = deep_merge(default_states, initial_exchanges)
 
     # set states according to the compartment_roles mapping.
     # This will not generalize to composites with processes that have different roles
@@ -50,7 +50,7 @@ def compose_chemotaxis(config):
 
     states = {
         compartment_roles[role]: State(
-            initial_state=dict_merge(
+            initial_state=deep_merge(
                 default_states.get(role, {}),
                 dict(initial_state.get(compartment_roles[role], {}))),
             updaters=default_updaters.get(role, {}))
