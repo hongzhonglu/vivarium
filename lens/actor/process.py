@@ -178,13 +178,12 @@ class State(object):
 
 
 class Process(object):
-    def __init__(self, roles, parameters=None, deriver=False):
+    def __init__(self, roles, parameters=None):
         ''' Declare what roles this process expects. '''
 
         self.roles = roles
         self.parameters = parameters or {}
         self.states = None
-        self.deriver = deriver
 
     def default_state(self):
         return {}
@@ -428,7 +427,7 @@ def test_compartment():
                 'compartment': ['MASS', 'DENSITY', 'VOLUME']}
             parameters = {}
 
-            super(DeriveVolume, self).__init__(roles, parameters, deriver=True)
+            super(DeriveVolume, self).__init__(roles, parameters)
 
         def next_update(self, timestep, states):
             volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
