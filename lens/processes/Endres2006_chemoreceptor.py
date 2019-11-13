@@ -246,7 +246,7 @@ def plot_output(output, out_dir='out'):
 
 if __name__ == '__main__':
     output = test_receptor()
-    out_dir = os.path.join('out', 'Endres2006_chemoreceptor')
+    out_dir = os.path.join('out', 'tests', 'Endres2006_chemoreceptor')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_output(output, out_dir)
