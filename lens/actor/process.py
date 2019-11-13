@@ -243,17 +243,23 @@ def connect_topology(process_layers, states, topology):
 
 def merge_default_states(processes):
     initial_state = {}
-    for process_id, process in processes.items():
+    for process_id, process in merge_dicts(processes).items():
         default = process.default_state()
         initial_state = dict_merge(dict(initial_state), default)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
-    for process_id, process in processes.items():
+    for process_id, process in merge_dicts(processes).items():
         process_updaters = process.default_updaters()
         updaters = dict_merge(dict(updaters), process_updaters)
     return updaters
+
+def merge_dicts(dicts):
+    merge = {}
+    for d in dicts:
+        merge.update(d)
+    return merge
 
 def dict_merge(dct, merge_dct):
     '''
@@ -308,7 +314,6 @@ class Compartment(object):
         self.emitter = configuration['emitter'].get('object')
 
         connect_topology(processes, self.states, self.topology)
-        self.run_derivers(0)
 
         # log experiment configuration
         emit_config = {
@@ -353,7 +358,7 @@ class Compartment(object):
     def current_parameters(self):
         return {
             name: process.parameters
-            for name, process in self.processes.items()}
+            for name, process in merge_dicts(self.processes).items()}
 
     def time(self):
         return self.initial_time + self.local_time
@@ -432,12 +437,6 @@ def test_compartment():
 
             return update
 
-    # declare the processes
-    # processes = {
-    #     'metabolism': Metabolism(initial_parameters={'mass_conversion_rate': 0.5}), # example of overriding default parameters
-    #     'transport': Transport(),
-    #     'external_volume': DeriveVolume(),
-    #     'internal_volume': DeriveVolume()}
     processes = [
         {'metabolism': Metabolism(
             initial_parameters={
