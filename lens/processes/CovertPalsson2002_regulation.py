@@ -225,7 +225,7 @@ def plot_regulation_output(saved_state, out_dir='out'):
 
 if __name__ == '__main__':
     saved_state = test_covert2002_regulation()
-    out_dir = os.path.join('out', 'CovertPalsson2002_regulation')
+    out_dir = os.path.join('out', 'tests', 'CovertPalsson2002_regulation')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_regulation_output(saved_state, out_dir)

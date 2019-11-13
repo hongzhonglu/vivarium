@@ -2,49 +2,93 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
+import scipy.constants as constants
 
-from lens.actor.process import Process
+from lens.actor.process import Process, dict_merge
 from lens.utils.units import units
 
+# (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
+# Schultz, Stanley G., and A. K. Solomon. "Cation Transport in Escherichia coli" (1961)
+# TODO -- add Mg2+, Ca2+
+DEFAULT_STATE = {
+    'internal': {
+        'K': 300,  # (mmol) 30-300
+        'Na': 10,  # (mmol) 10
+        'Cl': 10},  # (mmol) 10-200 media-dependent
+    'external': {
+        'K': 5,
+        'Na': 145,
+        'Cl': 110}  # (mmol)
+    }
+
+# TODO -- get references on these
+DEFAULT_PARAMETERS = {
+    'p_K': 1,  # unitless, relative membrane permeability of K
+    'p_Na': 0.05,  # unitless, relative membrane permeability of Na
+    'p_Cl': 0.05,  # unitless, relative membrane permeability of Cl
+    }
+
+PERMEABILITY_MAP = {
+    'K': 'p_K',
+    'Na': 'p_Na',
+    'Cl': 'p_Cl'
+    }
+
+CHARGE_MAP = {
+    'K': '+',
+    'Na': '+',
+    'Cl': '-'
+    }
+
+class NoChargeError(Exception):
+    pass
 
 class MembranePotential(Process):
     '''
     Need to add a boot method for this process to lens/environment/boot.py for it to run on its own
     '''
-    def __init__(self, initial_parameters={}):
+    def __init__(self, config={}):
 
+        # set states
+        self.initial_states = config.get('states', DEFAULT_STATE)
+
+        # set parameters
         parameters = {
-            'R': 8.314462618,  # (J * K^-1 * mol^-1) gas constant
-            'F': 96485.33289, # (charge * mol^-1)  Faraday constant
-            'p_K': 0.05,  # (unitless, relative permeability) membrane permeability of K
-            'p_Na': 0.05,  # (unitless, relative permeability) membrane permeability of Na
-            'p_Cl': 0.05,  # (unitless, relative permeability) membrane permeability of Cl
-        }
+            'R': constants.gas_constant,  # (J * K^-1 * mol^-1) gas constant
+            'F': constants.physical_constants['Faraday constant'][0], # (C * mol^-1) Faraday constant
+            'k': constants.Boltzmann, # (J * K^-1) Boltzmann constant
+            }
+        parameters.update(config.get('parameters', DEFAULT_PARAMETERS))
 
+        self.permeability = config.get('permeability', PERMEABILITY_MAP)
+        self.charge = config.get('charge', CHARGE_MAP)
+
+        # set roles
         roles = {
             'internal': ['c_in'],
-            'membrane': ['V_m'],
+            'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
             'external': ['c_out'],
         }
-        parameters.update(initial_parameters)
 
         super(MembranePotential, self).__init__(roles, parameters)
 
     def default_state(self):
-        # TODO -- get real concentrations.
-        return {
-            'internal': {'K': 30, 'Na': 10, 'Cl': 10},  # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
-            'external': {'K': 1, 'Na': 1, 'Cl': 1, 'T': 310.15}  # temperature in Kelvin
-        }
+        config = {'external': {'T': 310.15}}
+        default_state = dict_merge((self.initial_states), config)
+        return default_state
 
     def default_emitter_keys(self):
         keys = {
-            'membrane': ['V_m'],
+            'membrane': ['d_V', 'd_pH', 'PMF'],
         }
         return keys
 
     def default_updaters(self):
-        keys = {'membrane': {'V_m': 'set'}}
+        keys = {'membrane': {
+            'd_V': 'set',
+            'd_pH': 'set',
+            'PMF': 'set',
+        }}
         return keys
 
     def next_update(self, timestep, states):
@@ -54,33 +98,70 @@ class MembranePotential(Process):
         # parameters
         R = self.parameters['R']
         F = self.parameters['F']
-        p_K = self.parameters['p_K']
-        p_Na = self.parameters['p_Na']
-        p_Cl = self.parameters['p_Cl']
+        k = self.parameters['k']
 
         # state
-        K_in = internal_state['K']
-        Na_in = internal_state['Na']
-        Cl_in = internal_state['Cl']
-        K_out = external_state['K']
-        Na_out = external_state['Na']
-        Cl_out = external_state['Cl']
-
         T = external_state['T']  # temperature
+        # e = 1 # proton charge # TODO -- get proton charge from state
 
-        # Goldman equation
-        numerator = p_K * K_out + p_Na * Na_out + p_Cl * Cl_in
-        denominator = p_K * K_in + p_Na * Na_in + p_Cl * Cl_out
-        V_m = (R * T) / (F) * np.log(numerator / denominator)
+        # Membrane potential.
+        numerator = 0
+        denominator = 0
+        for ion_id, p_ion_id in self.permeability.iteritems():
+            charge = self.charge[ion_id]
+            p_ion = self.parameters[p_ion_id]
+
+            # ions states
+            internal = internal_state[ion_id]
+            external = external_state[ion_id]
+
+            if charge is '+':
+                numerator += p_ion * external
+                denominator += p_ion * internal
+            elif charge is '-':
+                numerator += p_ion * internal
+                denominator += p_ion * external
+            else:
+                raise NoChargeError(
+                    "No charge given for {}".format(ion_id))
+
+        # Goldman equation for membrane potential
+        # expected d_V = -120 mV
+        d_V = (R * T) / (F) * np.log(numerator / denominator) * 1e3  # (mV). 1e3 factor converts from V
+
+        # Nernst equation for pH difference
+        # -2.3 * k * T / e  # -2.3 Boltzmann constant * temperature
+        # expected d_pH = -50 mV
+        d_pH = -50  # (mV) for cells grown at pH 7. (Berg, H. "E. coli in motion", pg 105)
+
+        # proton motive force
+        PMF = d_V + d_pH
 
         update = {
-            # 'internal': {},
-            'membrane': {'V_m': V_m},
-            # 'external': {},
-        }
+            'membrane': {
+                'd_V': d_V,
+                'd_pH': d_pH,
+                'PMF': PMF,
+            }}
         return update
 
 def test_mem_potential():
+
+    initial_parameters = {
+        'states': DEFAULT_STATE,
+        'parameters': DEFAULT_PARAMETERS,
+        'permeability': PERMEABILITY_MAP,
+        'charge': CHARGE_MAP,
+    }
+
+    # configure process
+    mp = MembranePotential(initial_parameters)
+
+    # get initial state and parameters
+    state = mp.default_state()
+    saved_state = {'internal': {}, 'external': {}, 'membrane': {}, 'time': []}
+
+    ## Simulation
     timeline = [
         (0, {'external': {
             'Na': 1}
@@ -91,14 +172,6 @@ def test_mem_potential():
         (500, {}),
     ]
 
-    # configure process
-    mp = MembranePotential({})
-
-    # get initial state and parameters
-    state = mp.default_state()
-    saved_state = {'internal': {}, 'external': {}, 'membrane': {}, 'time': []}
-
-    # run simulation
     time = 0
     timestep = 1  # sec
     while time < timeline[-1][0]:
@@ -152,9 +225,9 @@ def plot_mem_potential(saved_state, out_dir='out'):
             ax.title.set_text(str(key) + ': ' + mol_id)
             ax.set_xlabel('time (hrs)')
 
-            if key is 'internal':
-                ax.set_yticks([0.0, 1.0])
-                ax.set_yticklabels(["False", "True"])
+            # if key is 'internal':
+            #     ax.set_yticks([0.0, 1.0])
+            #     ax.set_yticklabels(["False", "True"])
 
             plot_idx += 1
 
@@ -166,7 +239,7 @@ def plot_mem_potential(saved_state, out_dir='out'):
 
 if __name__ == '__main__':
     saved_state = test_mem_potential()
-    out_dir = os.path.join('out', 'membrane_potential')
+    out_dir = os.path.join('out', 'tests', 'membrane_potential')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_mem_potential(saved_state, out_dir)

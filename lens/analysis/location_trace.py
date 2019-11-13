@@ -22,10 +22,12 @@ class LatticeTrace(Analysis):
 
         agent_ids = [key for key in history_data.keys() if key is not 'time']
         time_vec = [t / 3600 for t in history_data['time']]  # convert to hours
-        edge_length = experiment_config['edge_length']
+        edge_x = experiment_config['edge_length_x']
+        edge_y = experiment_config['edge_length_y']
+        scaling = 8 / min(edge_x, edge_y)
 
         # plot trajectories
-        fig = plt.figure(figsize=(8, 8))
+        fig = plt.figure(figsize=(scaling*edge_x, scaling*edge_y))
         for agent_id in agent_ids:
             # get locations and convert to 2D array
             locations = history_data[agent_id]['location']
@@ -37,13 +39,17 @@ class LatticeTrace(Analysis):
             plt.plot(x_coord[0], y_coord[0], color=(0.0,0.8,0.0), marker='*')  # starting point
             plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  #  ending point
 
-        plt.xlim((0, edge_length))
-        plt.ylim((0, edge_length))
+        plt.xlim((0, edge_x))
+        plt.ylim((0, edge_y))
         start = mlines.Line2D([], [], color=(0.0,0.8,0.0), marker='*', linestyle='None',
                                   markersize=10, label='start')
         end = mlines.Line2D([], [], color='r', marker='*', linestyle='None',
                                   markersize=10, label='end')
         plt.legend(handles=[start, end])
+
+        # specify the number of ticks
+        plt.locator_params(axis='y', nbins=int(edge_y/10))
+        plt.locator_params(axis='x', nbins=int(edge_x/10))
 
         plt.savefig(output_dir + '/location_trace')
         plt.close(fig)

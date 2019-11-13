@@ -323,7 +323,7 @@ def test_transport():
         # (0, {'external': {
         #     'GLC': 1}
         # }),
-        (7.5*60*60, {}),
+        (60 * 60, {}), # (7.5*60*60, {}),  # Kremling runs sim for 7.5 hours
     ]
 
     # configure process
@@ -401,7 +401,7 @@ def plot_transport(saved_state, out_dir='out'):
 
 if __name__ == '__main__':
     saved_state = test_transport()
-    out_dir = os.path.join('out', 'Kremling2007_transport')
+    out_dir = os.path.join('out', 'tests', 'Kremling2007_transport')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_transport(saved_state, out_dir)
