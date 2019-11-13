@@ -5,20 +5,21 @@ from lens.actor.process import State, merge_default_states, merge_default_update
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
-from lens.processes.derive_volume import DeriveVolume
+from lens.processes.membrane_potential import MembranePotential
 
 
-def compose_chemotaxis(config):
+def compose_pmf_chemotaxis(config):
     exchange_key = config.get('exchange_key')
 
     # declare the processes
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
-    # deriver = DeriveVolume(config)
+    PMF = MembranePotential(config)
+
     processes = {
         'receptor': receptor,
         'motor': motor,
-        # 'deriver': deriver
+        'PMF': PMF,
     }
 
     # initialize the states
@@ -46,7 +47,7 @@ def compose_chemotaxis(config):
     # This will not generalize to composites with processes that have different roles
     compartment_roles = {
         'external': 'environment',
-        'internal': 'cell'}
+        'internal': 'cytoplasm'}
 
     states = {
         compartment_roles[role]: State(
@@ -60,19 +61,21 @@ def compose_chemotaxis(config):
     topology = {
         'receptor': {
             'external': 'environment',
-            'internal': 'cell'},
+            'internal': 'cytoplasm'},
         'motor': {
             'external': 'environment',
-            'internal': 'cell'},
-        # 'deriver': {
-        #     'internal': 'cell'},
+            'internal': 'cytoplasm'},
+        'PMF': {
+            'external': 'environment',
+            'membrane': 'membrane',
+            'internal': 'cytoplasm'},
         }
 
     options = {
         'topology': topology,
 		'initial_time': initial_time,
         'environment': 'environment',
-        'compartment': 'cell',
+        'compartment': 'cell',   # TODO -- does this include cytoplasm and membrane?
         'environment_ids': environment_ids,
     }
 

@@ -44,7 +44,8 @@ from lens.processes.membrane_potential import MembranePotential
 from lens.composites.Covert2002_rFBA import compose_covert2002
 from lens.composites.Covert2008_iFBA import compose_covert2008
 from lens.composites.growth_division import compose_growth_division
-from lens.composites.Chemotaxis import compose_chemotaxis
+from lens.composites.Vladimirov2008_chemotaxis import compose_vladimirov_chemotaxis
+from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -399,7 +400,8 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'covert2002': wrap_boot(wrap_init_composite(compose_covert2002), {'volume': 1.0}),
             'covert2008': wrap_boot(wrap_init_composite(compose_covert2008), {'volume': 1.0}),
-            'chemotaxis': wrap_boot(wrap_init_composite(compose_chemotaxis), {'volume': 1.0})
+            'chemotaxis': wrap_boot(wrap_init_composite(compose_vladimirov_chemotaxis), {'volume': 1.0})
+            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0})
             }
 
 def run():
