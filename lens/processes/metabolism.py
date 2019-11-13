@@ -419,7 +419,7 @@ def save_metabolic_network(out_dir='out'):
 
 if __name__ == '__main__':
     saved_data = test_metabolism()
-    out_dir = os.path.join('out', 'general_metabolism')
+    out_dir = os.path.join('out', 'tests', 'metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_metabolism_output(saved_data, out_dir)

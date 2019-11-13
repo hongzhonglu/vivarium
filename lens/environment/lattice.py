@@ -11,8 +11,6 @@ A two-dimensional lattice environmental model
 # rotational diffusion in liquid medium with viscosity = 1 mPa.s: Dr = 3.5+/-0.3 rad^2/s (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
 # translational diffusion in liquid medium with viscosity = 1 mPa.s: Dt=100 micrometers^2/s (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
 
-
-@organization: Covert Lab, Department of Bioengineering, Stanford University
 """
 
 from __future__ import absolute_import, division, print_function
@@ -33,8 +31,6 @@ PI = math.pi
 CELL_DENSITY = 1100
 
 # Lattice parameters
-N_DIMS = 2
-
 TRANSLATION_JITTER = 0.1
 ROTATION_JITTER = 0.05
 
@@ -47,34 +43,36 @@ def gaussian(deviation, distance):
 
 class EnvironmentSpatialLattice(EnvironmentSimulation):
     def __init__(self, config):
+
+        ## Simulation Parameters
         self._time = 0
         self._timestep = 1.0
         self._max_time = 10e6
-
-        # constants
-        self.cell_density = CELL_DENSITY  # TODO (Eran) -- get mass from cell sim rather than using density to convert volume to mass
-
-        # configured parameters
         self.output_dir = config.get('output_dir')
         self.run_for = config.get('run_for', 5.0)
-        self.edge_length = config.get('edge_length', 10.0)
-        self.patches_per_edge = config.get('patches_per_edge', 10)
-        self.cell_radius = config.get('cell_radius', 0.5)
-        self.static_concentrations = config.get('static_concentrations', False)
-        self.diffusion = config.get('diffusion', 0.1)
-        self.gradient = {
-            'seed': False,
-            'molecules': {
-                'GLC':{
-                    'center': [0.5, 0.5],
-                    'deviation': 10.0},
-            }}
-        self.gradient.update(config.get('gradient', {}))
+
+        ## Cell Parameters
+        self.cell_density = CELL_DENSITY  # TODO -- get density from cell sim, or just get mass
+        self.cell_radius = config.get('cell_radius', 0.5)  # TODO -- this should be a property of cells.
         self.translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
         self.rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
-        self.depth = config.get('depth', 3000.0)  # um
 
-        # configure media
+        ## Lattice Parameters
+        # if edge_length_y not provided, assume it is equal to edge_length_x.
+        # adjust provided edge_length_y to make dx=dy for easier diffusion.
+        self.edge_length_x = config.get('edge_length_x', 10.0)
+        edge_length_y = config.get('edge_length_y', self.edge_length_x)
+        self.patches_per_edge_x = config.get('patches_per_edge_x', 10)
+        self.patches_per_edge_y = int(edge_length_y * self.patches_per_edge_x / self.edge_length_x)
+        self.edge_length_y = self.patches_per_edge_y * self.edge_length_x / self.patches_per_edge_x
+        self.depth = config.get('depth', 3000.0)  # um
+        self.total_volume = (self.depth * self.edge_length_x * self.edge_length_y) * (10 ** -15) # (L)
+        self.patch_volume = self.total_volume / (self.edge_length_x * self.edge_length_y)
+        self.dx = self.edge_length_x / self.patches_per_edge_x
+        self.dy = self.edge_length_y / self.patches_per_edge_y
+        self.dx2 = self.dx * self.dy
+
+        ## Media and Timeline Parameters
         self.make_media = Media()
         self.media_id = config.get('media_id', 'minimal')
         self.timeline = ()
@@ -83,7 +81,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         get_concentrations = config.get('concentrations',{})
         self.end_timeline = False
 
-        # add new media
+        # add a new media
         for new_media_id, media_dict in new_media.iteritems():
             media_id = self.make_media.add_media(media_dict, new_media_id)
 
@@ -104,38 +102,38 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.molecule_index = {molecule: index for index, molecule in enumerate(self._molecule_ids)}
         self.fill_lattice(media)
 
-        # Add gradient
+        ## Concentration and Gradient Parameters
+        self.static_concentrations = config.get('static_concentrations', False)
+        self.diffusion = config.get('diffusion', 0.1)
+        self.gradient = config.get('gradient', {'seed': False})
+
+        # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the theoretical upper limit)
+        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
+
+        # add a gradient
         if self.gradient['seed']:
             for molecule_id, specs in self.gradient['molecules'].iteritems():
-                center = [x * self.edge_length for x in specs['center']]
+                center = [specs['center'][0] * self.edge_length_x,
+                          specs['center'][1] * self.edge_length_y]
                 deviation = specs['deviation']
-                for x_patch in xrange(self.patches_per_edge):
-                    for y_patch in xrange(self.patches_per_edge):
+                for x_patch in xrange(self.patches_per_edge_x):
+                    for y_patch in xrange(self.patches_per_edge_y):
                         # distance from middle of patch to center coordinates
-                        dx = (x_patch + 0.5) * self.edge_length / self.patches_per_edge - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length / self.patches_per_edge - center[1]
+                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
+                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
                         distance = np.sqrt(dx ** 2 + dy ** 2)
                         scale = gaussian(deviation, distance)
                         # multiply gradient by scale
                         self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
 
-        # derived parameters
-        self.total_volume = (self.depth * self.edge_length ** 2) * (10 ** -15) # (L)
-        self.patch_volume = self.total_volume / (self.patches_per_edge ** 2)
-        # intervals in x- directions (assume y- direction equivalent)
-        self.dx = self.edge_length / self.patches_per_edge
-        self.dx2 = self.dx * self.dx
-        # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the upper limit)
-        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
-
-        # initialize dicts
+        ## Initialize dictionaries
         self.simulations = {}       # map of agent_id to simulation state
         self.locations = {}         # map of agent_id to center location and orientation
         self.corner_locations = {}  # map of agent_id to corner location, for Lens visualization and multi-cell physics engine
         self.motile_forces = {}	    # map of agent_id to motile force, with magnitude and relative orientation
 
         # make physics object by passing in bounds and jitter
-        bounds = [self.edge_length, self.edge_length]
+        bounds = [self.edge_length_x, self.edge_length_y]
         self.multicell_physics = MultiCellPhysics(
             bounds,
             self.translation_jitter,
@@ -192,8 +190,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
             # enforce boundaries # TODO (Eran) -- make pymunk handle this
-            self.locations[agent_id][0:2][self.locations[agent_id][0:2] > self.edge_length] = self.edge_length - self.dx / 2
             self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
+            if self.locations[agent_id][0] > self.edge_length_x:
+                self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
+            if self.locations[agent_id][1] > self.edge_length_y:
+                self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
+
+
 
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''
@@ -236,7 +239,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def fill_lattice(self, media):
         # Create lattice and fill each site with concentrations dictionary
         # Molecule identities are defined along the major axis, with spatial dimensions along the other two axes.
-        self.lattice = np.empty([len(self._molecule_ids)] + [self.patches_per_edge for dim in xrange(N_DIMS)], dtype=np.float64)
+        self.lattice = np.empty([len(self._molecule_ids)] + [self.patches_per_edge_x, self.patches_per_edge_y], dtype=np.float64)
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
 
@@ -333,8 +336,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 location = daughter_locations[index]
             else:
                 # Place cell at either the provided or a random initial location
+                random_location = np.array([
+                    np.random.uniform(0, self.edge_length_x),
+                    np.random.uniform(0, self.edge_length_y)])
                 location = simulation['agent_config'].get(
-                    'location', np.random.uniform(0, self.edge_length, N_DIMS))
+                    'location', random_location)
                 orientation = simulation['agent_config'].get(
                     'orientation', np.random.uniform(0, 2 * PI))
 
@@ -361,7 +367,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                     self.motile_forces[agent_id] = state['motile_force']
 
                 if not self.static_concentrations:
-                    location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
+                    location = np.array([
+                        self.locations[agent_id][0] * self.patches_per_edge_x / self.edge_length_x,
+                        self.locations[agent_id][1] * self.patches_per_edge_y / self.edge_length_y
+                    ])
+
                     patch_site = tuple(np.floor(location).astype(int))
 
                     for molecule, count in state['environment_change'].iteritems():
@@ -376,11 +386,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # only provide concentrations if we have reached this simulation's time point.
             if simulation['time'] <= now:
                 # get concentration from cell's given bin
-                location = self.locations[agent_id][0:2] * self.patches_per_edge / self.edge_length
+                location = np.array([
+                    self.locations[agent_id][0] * self.patches_per_edge_x / self.edge_length_x,
+                    self.locations[agent_id][1] * self.patches_per_edge_y / self.edge_length_y
+                ])
                 patch_site = tuple(np.floor(location).astype(int))
 
-                assert (0 <= patch_site[0] < self.patches_per_edge)
-                assert (0 <= patch_site[1] < self.patches_per_edge)
+                assert (0 <= patch_site[0] < self.patches_per_edge_x)
+                assert (0 <= patch_site[1] < self.patches_per_edge_y)
 
                 update[agent_id] = {}
                 update[agent_id]['concentrations'] = dict(zip(
@@ -451,8 +464,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         data = {
             'type': 'lattice',
             'cell_radius': self.cell_radius,
-            'edge_length': self.edge_length,
-            'patches_per_edge': self.patches_per_edge,
+            'edge_length_x': self.edge_length_x,
+            'edge_length_y': self.edge_length_y,
+            'patches_per_edge_x': self.patches_per_edge_x,
+            'patches_per_edge_y': self.patches_per_edge_y,
             'total_volume': self.total_volume,
             'timeline': self.timeline}
 

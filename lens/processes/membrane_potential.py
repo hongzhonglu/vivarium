@@ -166,7 +166,7 @@ def plot_mem_potential(saved_state, out_dir='out'):
 
 if __name__ == '__main__':
     saved_state = test_mem_potential()
-    out_dir = os.path.join('out', 'membrane_potential')
+    out_dir = os.path.join('out', 'tests', 'membrane_potential')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_mem_potential(saved_state, out_dir)

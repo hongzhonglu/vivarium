@@ -31,7 +31,8 @@ class ShepherdControl(ActorControl):
         media_id = args.get('media', 'minimal')
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 {}, 14400 end'.format(media_id)
+            timeline_str = '0 {}, 3600 end'.format(media_id)
+            # timeline_str = '0 {}, 14400 end'.format(media_id)
 
         emit_field = ['GLC']
 
@@ -41,8 +42,48 @@ class ShepherdControl(ActorControl):
             'emit_fields': emit_field,
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
-            'edge_length': 20.0,
-            'patches_per_edge': 10,
+            'edge_length_x': 20.0,
+            'patches_per_edge_x': 10,
+            'translation_jitter': 0.1,
+            'rotation_jitter': 0.01}
+
+        self.add_agent(experiment_id, 'lattice', lattice_config)
+
+        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'lookup', {
+                'boot': args.get('agent_boot', 'lens.environment.boot'),
+                'boot_config': {},
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
+    def long_lattice_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id()
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        # make media
+        media_id = args.get('media', 'minimal')
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        emit_field = ['GLC']
+
+        lattice_config = {
+            'timeline_str': timeline_str,
+            'media_id': media_id,
+            'emit_fields': emit_field,
+            'boot': 'lens.environment.boot',
+            'run_for': 4.0,
+            'edge_length_x': 80.0,
+            'edge_length_y': 20.0,
+            'patches_per_edge_x': 8,
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
 
@@ -78,8 +119,8 @@ class ShepherdControl(ActorControl):
             'media_id': media_id,
             'emit_fields': emit_field,
             'run_for': 2.0,
-            'edge_length': 50.0,
-            'patches_per_edge': 10,
+            'edge_length_x': 50.0,
+            'patches_per_edge_x': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
@@ -112,8 +153,8 @@ class ShepherdControl(ActorControl):
             'timeline_str': timeline_str,
             'run_for': 2.0,
             'emit_fields': emit_field,
-            'edge_length': 10.0,
-            'patches_per_edge': 10,
+            'edge_length_x': 10.0,
+            'patches_per_edge_x': 10,
         }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
@@ -162,28 +203,30 @@ class ShepherdControl(ActorControl):
         media = {'GLC': 20.0,
                  'MeAsp': 1.0}
         new_media = {media_id: media}
-        timeline_str = '0 {}, 3600 end'.format(media_id)
+        timeline_str = '0 {}, 14400 end'.format(media_id)
 
         chemotaxis_config = {
             'timeline_str': timeline_str,
             'new_media': new_media,
             'run_for' : 2.0,
+            'emit_fields': ['MeAsp', 'GLC'],
             'static_concentrations': True,
             'gradient': {
                 'seed': True,
                 'molecules': {
                     'GLC':{
-                        'center': [0.5, 0.5],
+                        'center': [0.75, 0.5],
                         'deviation': 30.0},
                     'MeAsp': {
-                        'center': [0.5, 0.5],
+                        'center': [0.25, 0.5],
                         'deviation': 30.0}
                 }},
             'diffusion': 0.0,
-            # 'translation_jitter': 0.5,
-            'rotation_jitter': 0.005,
-            'edge_length': 200.0,
-            'patches_per_edge': 50}
+            # 'translation_jitter': 0.1,
+            # 'rotation_jitter': 0.05,
+            'edge_length_x': 200.0,
+            'edge_length_y': 50.0,
+            'patches_per_edge_x': 40}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells
@@ -224,7 +267,8 @@ class EnvironmentCommand(AgentCommand):
     ''' + description
 
         full_choices = [
-			'large-experiment',
+            'long-experiment',
+            'large-experiment',
             'small-experiment',
             'chemotaxis-experiment',
             'glc-g6p-experiment'] + choices
@@ -237,6 +281,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.lattice_experiment(args)
+        control.shutdown()
+
+    def long_experiment(self, args):
+        self.require(args, 'number', 'working_dir')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.long_lattice_experiment(args)
         control.shutdown()
 
     def large_experiment(self, args):
