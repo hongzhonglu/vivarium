@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge, merge_dicts
 
 # processes
 from lens.processes.CovertPalsson2002_metabolism import Covert2002Metabolism
@@ -17,11 +17,11 @@ def compose_covert2008(config):
     metabolism = Covert2002Metabolism(config)
     regulation = Regulation(config)
     deriver = DeriveVolume(config)
-    processes = {
-        'transport': transport,
-        'regulation': regulation,
-        'metabolism': metabolism,
-        'deriver': deriver}
+    processes = [
+        {'transport': transport,
+         'regulation': regulation,
+         'metabolism': metabolism},
+        {'deriver': deriver}]
 
     # initialize the states
     default_states = merge_default_states(processes)
@@ -32,7 +32,7 @@ def compose_covert2008(config):
     # get environment ids, and make exchange_ids for external state
     environment_ids = []
     initial_exchanges = {}
-    for process_id, process in processes.iteritems():
+    for process_id, process in merge_dicts(processes).iteritems():
         roles = {role: {} for role in process.roles.keys()}
         initial_exchanges.update(roles)
 

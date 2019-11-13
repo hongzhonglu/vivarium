@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import random
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge, merge_dicts
 
 # processes
 from lens.processes.derive_volume import DeriveVolume
@@ -42,12 +42,11 @@ def compose_growth_division(config):
     division = Division(config)
     expression = ProteinExpression(config)
     deriver = DeriveVolume(config)
-    processes = {
-        'growth': growth,
-        'division': division,
-        'expression': expression,
-        'deriver': deriver,
-    }
+    processes = [
+        {'growth': growth,
+         'division': division,
+         'expression': expression},
+        {'deriver': deriver}]
 
     # configure the states to the roles for each process
     topology = {
@@ -70,7 +69,7 @@ def compose_growth_division(config):
     # get environment ids, and make exchange_ids for external state
     environment_ids = []
     initial_exchanges = {}
-    for process_id, process in processes.iteritems():
+    for process_id, process in merge_dicts(processes).iteritems():
         roles = {role: {} for role in process.roles.keys()}
         initial_exchanges.update(roles)
 

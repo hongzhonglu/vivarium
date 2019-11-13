@@ -70,7 +70,7 @@ def compose_chemotaxis(config):
 
     options = {
         'topology': topology,
-		'initial_time': initial_time,
+        'initial_time': initial_time,
         'environment': 'environment',
         'compartment': 'cell',
         'environment_ids': environment_ids,
