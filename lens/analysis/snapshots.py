@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 
 from lens.analysis.analysis import Analysis, get_compartment
@@ -81,8 +82,8 @@ class Snapshots(Analysis):
             return time_dict
 
     def analyze(self, experiment_config, data, output_dir):
-        # number of snapshots to be plotted
-        n_snapshots = 6  #8
+
+        n_snapshots = 6  # number of snapshots
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
@@ -91,16 +92,13 @@ class Snapshots(Analysis):
         time_vec = time_data.keys()
         edge_length_x = experiment_config['edge_length_x']
         edge_length_y = experiment_config['edge_length_y']
-        patches_per_edge_x = experiment_config['patches_per_edge_x']
-        patches_per_edge_y = experiment_config['patches_per_edge_y']
         cell_radius = experiment_config['cell_radius']
-        lattice_scaling = patches_per_edge_x / edge_length_x
 
-        # get the time steps that will be used
+        # time steps that will be used
         plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
         snapshot_times = [time_vec[i] for i in plot_steps]
 
-        # get number of fields
+        # number of fields
         field_ids = time_data[time_vec[0]].get('fields',{}).keys()
         n_fields = max(len(field_ids),1)
 
@@ -112,6 +110,7 @@ class Snapshots(Analysis):
         for agent_id in initial_agents:
             agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
+        # make figure
         fig = plt.figure(figsize=(20*n_snapshots, 10*n_fields))
         grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.01)
         plt.rcParams.update({'font.size': 36})
@@ -133,8 +132,8 @@ class Snapshots(Analysis):
 
                     ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
                     ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time)/60./60., field_id))
-                    ax.set_xlim([0, patches_per_edge_x])
-                    ax.set_ylim([0, patches_per_edge_y])
+                    ax.set_xlim([0, edge_length_x])
+                    ax.set_ylim([0, edge_length_y])
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
@@ -142,19 +141,19 @@ class Snapshots(Analysis):
                     field = np.rot90(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
                                origin='lower',
-                               extent=[0,patches_per_edge_x,0,patches_per_edge_y],
+                               extent=[0, edge_length_x, 0, edge_length_y],
                                interpolation='nearest',
                                cmap='YlGn')
-                    self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
+                    self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
-                ax.set_xlim([0, patches_per_edge_x])
-                ax.set_ylim([0, patches_per_edge_y])
+                ax.set_xlim([0, edge_length_x])
+                ax.set_ylim([0, edge_length_y])
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
-                self.plot_agents(ax, agent_data, lattice_scaling, cell_radius, agent_colors)
+                self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
         figname = '/snapshots'
@@ -164,24 +163,17 @@ class Snapshots(Analysis):
         plt.close(fig)
 
 
-    def plot_agents(self, ax, agent_data, scale, cell_radius, agent_colors):
+    def plot_agents(self, ax, agent_data, cell_radius, agent_colors):
 
         for agent_id, data in agent_data.iteritems():
 
             # location, orientation, length
             volume = data['volume']
-            location = data['location']
-            x = location[0]
-            y = location[1]
-            theta = location[2] #+ np.pi/2  # rotate 90 degrees to match field
+            x = data['location'][0]
+            y = data['location'][1]
+            theta = data['location'][2] / np.pi * 180 + 90 # rotate 90 degrees to match field
             length = volume_to_length(volume, cell_radius)
-
-            # plot cell as a 2D line
-            width = linewidth_from_data_units(cell_radius * 2, ax) * scale
-            body_width = width * 0.95
-            # TODO get body_length
-            dx = length / 2 * np.cos(theta+np.pi/2)
-            dy = length / 2 * np.sin(theta+np.pi/2)
+            width = cell_radius * 2
 
             # colors and flourescent tags
             agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
@@ -192,24 +184,9 @@ class Snapshots(Analysis):
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)
 
-            # x_vec = [x - dx, x + dx]
-            # y_vec = [y - dy, y + dy]
-            # l_scale = ((x_vec[0]-x_vec[1])**2 + (y_vec[0]-y_vec[1])**2)**0.5
-
-            x_scaled = [scale*x - scale*dx, scale*x + scale*dx]
-            y_scaled = [scale*y - scale*dy, scale*y + scale*dy]
-
-            # plot outline
-            ax.plot(x_scaled, y_scaled,
-                    linewidth=width,
-                    color='k',
-                    solid_capstyle='butt')
-
-            # plot body
-            ax.plot(x_scaled, y_scaled,
-                    linewidth=body_width,
-                    color=rgb,
-                    solid_capstyle='butt')
+            # Create a rectangle
+            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='k', facecolor=rgb)
+            ax.add_patch(rect)
 
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
