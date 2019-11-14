@@ -56,6 +56,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.cell_radius = config.get('cell_radius', 0.5)  # TODO -- this should be a property of cells.
         self.translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
         self.rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
+        self.cell_placement = config.get('cell_placement')
 
         ## Lattice Parameters
         # if edge_length_y not provided, assume it is equal to edge_length_x.
@@ -334,6 +335,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 daughter_locations = self.daughter_locations(parent_location, parent_length, orientation)
                 location = daughter_locations[index]
+            elif self.cell_placement:
+                placement = np.array([
+                    self.cell_placement[0] * self.edge_length_x,
+                    self.cell_placement[1] * self.edge_length_y])
+                location = simulation['agent_config'].get(
+                    'location', placement)
+                orientation = simulation['agent_config'].get(
+                    'orientation', np.random.uniform(0, 2 * PI))
             else:
                 # Place cell at either the provided or a random initial location
                 random_location = np.array([

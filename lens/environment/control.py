@@ -239,6 +239,42 @@ class ShepherdControl(ActorControl):
                 'seed': index})
 
 
+    def swarm_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('chemotaxis')
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        media_id = 'MeAsp'
+        media = {'GLC': 20.0,
+                 'MeAsp': 1.0}
+        new_media = {media_id: media}
+        timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        swarm_config = {
+            'cell_placement': [0.5, 0.5], # place cells at center of lattice
+            'timeline_str': timeline_str,
+            'new_media': new_media,
+            'run_for' : 2.0,
+            'emit_fields': ['MeAsp', 'GLC'],
+            'static_concentrations': False,
+            'diffusion': 0.001,
+            'edge_length_x': 100.0,
+            'edge_length_y': 100.0,
+            'patches_per_edge_x': 50}
+        self.add_agent(experiment_id, 'lattice', swarm_config)
+
+        # give lattice time before adding the cells
+        time.sleep(15)
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'chemotaxis', {
+                'boot': 'lens.environment.boot',
+                'outer_id': experiment_id,
+                'seed': index})
+
 class EnvironmentCommand(AgentCommand):
     """
     Extend `AgentCommand` with new commands related to the lattice and ecoli experiments
@@ -271,6 +307,7 @@ class EnvironmentCommand(AgentCommand):
             'large-experiment',
             'small-experiment',
             'chemotaxis-experiment',
+            'swarm-experiment',
             'glc-g6p-experiment'] + choices
 
         super(EnvironmentCommand, self).__init__(
@@ -311,6 +348,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.chemotaxis_experiment(args)
+        control.shutdown()
+
+    def swarm_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.swarm_experiment(args)
         control.shutdown()
 
     def add_arguments(self, parser):

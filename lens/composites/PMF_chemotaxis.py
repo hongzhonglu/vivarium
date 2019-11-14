@@ -15,6 +15,7 @@ def compose_pmf_chemotaxis(config):
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
     PMF = MembranePotential(config)
+    # TODO -- add flagella process.  for now assume fixed flagella.
 
     processes = {
         'receptor': receptor,
@@ -75,7 +76,7 @@ def compose_pmf_chemotaxis(config):
         'topology': topology,
 		'initial_time': initial_time,
         'environment': 'environment',
-        'compartment': 'cell',   # TODO -- does this include cytoplasm and membrane?
+        'compartment': 'cytoplasm',   # TODO -- should this include both cytoplasm and membrane?
         'environment_ids': environment_ids,
     }
 
