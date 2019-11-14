@@ -112,7 +112,7 @@ class Snapshots(Analysis):
 
         # make figure
         fig = plt.figure(figsize=(20*n_snapshots, 10*n_fields))
-        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.01)
+        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times, 0):
             field_data = time_data[time].get('fields')

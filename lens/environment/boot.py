@@ -26,6 +26,8 @@ from lens.actor.inner import Inner
 from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
 from lens.actor.emitter import get_emitter, configure_emitter
+
+# environment
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.environment.lattice_compartment import LatticeCompartment, generate_lattice_compartment
 

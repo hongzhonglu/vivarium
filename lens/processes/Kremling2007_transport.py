@@ -134,7 +134,7 @@ class Transport(Process):
 
         return {
             'external': external,
-            'internal': merge_dicts(internal, {'volume': 1})}  #TODO -- get volume with deriver?
+            'internal': merge_dicts([internal, {'volume': 1}])}  #TODO -- get volume with deriver?
 
     def default_emitter_keys(self):
         keys = {

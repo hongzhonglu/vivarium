@@ -4,6 +4,8 @@ import time
 import uuid
 
 from lens.actor.control import ActorControl, AgentCommand
+from lens.environment.make_media import Media
+from lens.utils.units import units
 
 
 class ShepherdControl(ActorControl):
@@ -247,9 +249,24 @@ class ShepherdControl(ActorControl):
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        media_id = 'MeAsp'
-        media = {'GLC': 20.0,
-                 'MeAsp': 1.0}
+        ## Make media: GLC_G6P with MeAsp
+        # get GLC_G6P media
+        make_media = Media()
+        media_id = 'GLC_G6P'
+        media1 = make_media.get_saved_media('GLC_G6P', True)
+
+        # make MeAsp media
+        ingredients = {
+            'MeAsp': {
+                'counts': 1.0 * units.mmol,
+                'volume': 0.001 * units.L}}
+        media2 = make_media.make_recipe(ingredients, True)
+
+        # combine the medias
+        media = make_media.combine_media(media1, 0.999 * units.L, media2, 0.001 * units.L)
+        media_id = 'GLC_G6P_MeAsp'
+
+        # make timeline with new media
         new_media = {media_id: media}
         timeline_str = '0 {}, 3600 end'.format(media_id)
 

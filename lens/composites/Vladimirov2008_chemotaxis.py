@@ -14,10 +14,9 @@ def compose_vladimirov_chemotaxis(config):
     # declare the processes
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
-    processes = [{
-        'receptor': receptor,
-        'motor': motor,
-    }]
+    processes = [
+        {'receptor': receptor},
+        {'motor': motor}]
 
     # initialize the states
     default_states = merge_default_states(processes)
