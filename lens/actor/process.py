@@ -5,6 +5,8 @@ import numpy as np
 import lens.actor.emitter as emit
 import random
 
+from lens.utils.dict_utils import merge_dicts
+
 
 target_key = '__target'
 exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
@@ -253,12 +255,6 @@ def merge_default_updaters(processes):
         process_updaters = process.default_updaters()
         updaters = deep_merge(dict(updaters), process_updaters)
     return updaters
-
-def merge_dicts(dicts):
-    merge = {}
-    for d in dicts:
-        merge.update(d)
-    return merge
 
 def deep_merge(dct, merge_dct):
     '''
