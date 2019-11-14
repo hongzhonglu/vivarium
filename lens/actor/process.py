@@ -11,9 +11,6 @@ from lens.utils.dict_utils import merge_dicts
 target_key = '__target'
 exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
 
-class StateError(Exception):
-    pass
-
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
@@ -96,8 +93,7 @@ class State(object):
             return np.array([])
         if not all([item for item in np.isin(keys, self.keys)]):
             invalid_states = np.setdiff1d(keys, self.keys)
-            raise StateError("no state for {}".format(invalid_states))
-
+            print("no state for {}".format(invalid_states))
         return np.searchsorted(self.keys, keys)
 
     def assign_values(self, values_dict):
