@@ -5,7 +5,7 @@ from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 
 from lens.analysis.analysis import Analysis, get_compartment
-from lens.actor.process import dict_merge
+from lens.actor.process import deep_merge
 
 class MultigenCompartment(Analysis):
     def __init__(self):

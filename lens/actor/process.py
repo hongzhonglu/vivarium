@@ -5,17 +5,16 @@ import numpy as np
 import lens.actor.emitter as emit
 import random
 
+from lens.utils.dict_utils import merge_dicts
+
 
 target_key = '__target'
 exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
 
-class StateError(Exception):
-    pass
-
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
-    ordered = [[key, value] for key, value in d.iteritems()]
+    ordered = [[key, value] for key, value in d.items()]
     keys = [key for key, _ in ordered]
     values = np.array([value for _, value in ordered], np.float64)
 
@@ -92,10 +91,9 @@ class State(object):
     def index_for(self, keys):
         if self.keys.size == 0:
             return np.array([])
-        if not all(item == True for item in np.isin(keys, self.keys)):
+        if not all([item for item in np.isin(keys, self.keys)]):
             invalid_states = np.setdiff1d(keys, self.keys)
-            raise StateError("no state for {}".format(invalid_states))
-
+            print("no state for {}".format(invalid_states))
         return np.searchsorted(self.keys, keys)
 
     def assign_values(self, values_dict):
@@ -141,7 +139,7 @@ class State(object):
                 self.new_state[index],
                 value)
 
-            for other_key, other_value in other_updates.iteritems():
+            for other_key, other_value in other_updates.items():
                 other_index = self.index_for(other_key)
                 self.new_state[other_index] = other_value
 
@@ -178,13 +176,12 @@ class State(object):
 
 
 class Process(object):
-    def __init__(self, roles, parameters=None, deriver=False):
+    def __init__(self, roles, parameters=None):
         ''' Declare what roles this process expects. '''
 
         self.roles = roles
         self.parameters = parameters or {}
         self.states = None
-        self.deriver = deriver
 
     def default_state(self):
         return {}
@@ -205,7 +202,7 @@ class Process(object):
         Roles and States must have the same keys. '''
 
         self.states = states
-        for role, state in self.states.iteritems():
+        for role, state in self.states.items():
             state.declare_state(self.roles[role])
 
     def update_for(self, timestep):
@@ -213,7 +210,7 @@ class Process(object):
 
         states = {
             role: self.states[role].state_for(self.roles[role])
-            for role, values in self.roles.iteritems()}
+            for role, values in self.roles.items()}
 
         return self.next_update(timestep, states)
 
@@ -225,44 +222,45 @@ class Process(object):
 
         return {
             role: {}
-            for role, values in self.roles.iteritems()}
+            for role, values in self.roles.items()}
 
 
-def connect_topology(processes, states, topology):
+def connect_topology(process_layers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the roles in each process to the state they refer to.'''
 
-    for name, process in processes.iteritems():
-        connections = topology[name]
-        roles = {
-            role: states[key]
-            for role, key in connections.iteritems()}
+    for processes in process_layers:
+        for name, process in processes.items():
+            connections = topology[name]
+            roles = {
+                role: states[key]
+                for role, key in connections.items()}
 
-        process.assign_roles(roles)
+            process.assign_roles(roles)
 
 def merge_default_states(processes):
     initial_state = {}
-    for process_id, process in processes.iteritems():
+    for process_id, process in merge_dicts(processes).items():
         default = process.default_state()
-        initial_state = dict_merge(dict(initial_state), default)
+        initial_state = deep_merge(dict(initial_state), default)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
-    for process_id, process in processes.iteritems():
+    for process_id, process in merge_dicts(processes).items():
         process_updaters = process.default_updaters()
-        updaters = dict_merge(dict(updaters), process_updaters)
+        updaters = deep_merge(dict(updaters), process_updaters)
     return updaters
 
-def dict_merge(dct, merge_dct):
+def deep_merge(dct, merge_dct):
     '''
     Recursive dict merge
     This mutates dct - the contents of merge_dct are added to dct (which is also returned).
-    If you want to keep dct you could call it like dict_merge(dict(dct), merge_dct)'''
-    for k, v in merge_dct.iteritems():
+    If you want to keep dct you could call it like deep_merge(dict(dct), merge_dct)'''
+    for k, v in merge_dct.items():
         if (k in dct and isinstance(dct[k], dict)
                 and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
+            deep_merge(dct[k], merge_dct[k])
         else:
             dct[k] = merge_dct[k]
     return dct
@@ -295,16 +293,7 @@ class Compartment(object):
         self.local_time = 0.0
         self.time_step = configuration.get('time_step', 1.0)
 
-        self.derivers = {
-            name: process
-            for name, process in processes.iteritems()
-            if process.deriver}
-
-        self.processes = {
-            name: process
-            for name, process in processes.iteritems()
-            if not process.deriver}
-
+        self.processes = processes
         self.states = states
         self.topology = configuration['topology']
 
@@ -316,7 +305,6 @@ class Compartment(object):
         self.emitter = configuration['emitter'].get('object')
 
         connect_topology(processes, self.states, self.topology)
-        self.run_derivers(0)
 
         # log experiment configuration
         emit_config = {
@@ -324,37 +312,27 @@ class Compartment(object):
             'data': {'topology': self.topology}}
         self.emitter.emit(emit_config)
 
-    def run_derivers(self, timestep):
-        ''' Run each deriver process to set up state for subsequent processes. '''
-
-        for name, deriver in self.derivers.iteritems():
-            all_updates = deriver.update_for(timestep)
-            for role, update in all_updates.iteritems():
-                key = self.topology[name][role]
-                self.states[key].assign_values(update)
-
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
-        updates = {}
-        for name, process in self.processes.iteritems():
-            update = process.update_for(timestep)
-            for role, update_dict in update.iteritems():
-                key = self.topology[name][role]
-                if not updates.get(key):
-                    updates[key] = []
-                updates[key].append(update_dict)
+        for processes in self.processes:
+            updates = {}
+            for name, process in processes.items():
+                update = process.update_for(timestep)
+                for role, update_dict in update.items():
+                    key = self.topology[name][role]
+                    if not updates.get(key):
+                        updates[key] = []
+                    updates[key].append(update_dict)
 
-        for key in self.states.keys():
-            self.states[key].prepare()
+            for key in self.states.keys():
+                self.states[key].prepare()
 
-        for key, update in updates.iteritems():
-            self.states[key].apply_updates(update)
+            for key, update in updates.items():
+                self.states[key].apply_updates(update)
 
-        for key in self.states.keys():
-            self.states[key].proceed()
-
-        self.run_derivers(timestep)
+            for key in self.states.keys():
+                self.states[key].proceed()
 
         self.local_time += timestep
 
@@ -366,19 +344,19 @@ class Compartment(object):
 
         return {
             key: state.to_dict()
-            for key, state in self.states.iteritems()}
+            for key, state in self.states.items()}
 
     def current_parameters(self):
         return {
             name: process.parameters
-            for name, process in self.processes.iteritems()}
+            for name, process in merge_dicts(self.processes).items()}
 
     def time(self):
         return self.initial_time + self.local_time
 
     def emit_data(self):
         data = {}
-        for role_key, emit_keys in self.emitter_keys.iteritems():
+        for role_key, emit_keys in self.emitter_keys.items():
             data[role_key] = self.states[role_key].state_for(emit_keys)
 
         data.update({
@@ -441,7 +419,7 @@ def test_compartment():
                 'compartment': ['MASS', 'DENSITY', 'VOLUME']}
             parameters = {}
 
-            super(DeriveVolume, self).__init__(roles, parameters, deriver=True)
+            super(DeriveVolume, self).__init__(roles, parameters)
 
         def next_update(self, timestep, states):
             volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
@@ -450,12 +428,13 @@ def test_compartment():
 
             return update
 
-    # declare the processes
-    processes = {
-        'metabolism': Metabolism(initial_parameters={'mass_conversion_rate': 0.5}), # example of overriding default parameters
-        'transport': Transport(),
-        'external_volume': DeriveVolume(),
-        'internal_volume': DeriveVolume()}
+    processes = [
+        {'metabolism': Metabolism(
+            initial_parameters={
+                'mass_conversion_rate': 0.5}), # example of overriding default parameters
+         'transport': Transport()},
+        {'external_volume': DeriveVolume(),
+         'internal_volume': DeriveVolume()}]
 
     def update_mass(key, state, current, new):
         return current / (current + new), {}
@@ -464,10 +443,10 @@ def test_compartment():
     states = {
         'periplasm': State(
             initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10},
-            updaters={'MASS': update_mass}),
+            updaters={'MASS': update_mass, 'VOLUME': 'set'}),
         'cytoplasm': State(
             initial_state={'MASS': 3, 'DENSITY': 10},
-            updaters={'DENSITY': 'set'})}
+            updaters={'VOLUME': 'set'})}
 
     # hook up the states to the roles in each process
     topology = {

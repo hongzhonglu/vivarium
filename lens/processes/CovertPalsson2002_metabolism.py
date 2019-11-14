@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from lens.actor.process import dict_merge
+from lens.actor.process import deep_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import get_mols_from_stoich, get_mols_from_reg_logic
 

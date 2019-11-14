@@ -5,6 +5,7 @@ from confluent_kafka import Producer
 import json
 
 from lens.actor.actor import delivery_report
+from lens.utils.dict_utils import merge_dicts
 
 HISTORY_INDEXES = [
     'time',
@@ -46,9 +47,10 @@ def get_emitter(config):
         'object': emitter,
         'keys': config.get('keys')}
 
-def get_emitter_keys(processes, topology):
+def get_emitter_keys(process, topology):
     emitter_keys = {}
-    for process_id, process_object in processes.iteritems():
+
+    for process_id, process_object in merge_dicts(process).items():
         process_roles = topology[process_id]
         process_keys = process_object.default_emitter_keys()
         for role, keys in process_keys.iteritems():

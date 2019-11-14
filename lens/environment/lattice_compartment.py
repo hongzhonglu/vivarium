@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from lens.actor.process import Compartment, State, dict_merge
+from lens.actor.process import Compartment, State, deep_merge
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
 
@@ -136,11 +136,11 @@ def generate_lattice_compartment(process, config):
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
-    default_states = dict_merge(default_states, initial_exchanges)
+    default_states = deep_merge(default_states, initial_exchanges)
 
     states = {
         role: State(
-            initial_state=dict_merge(
+            initial_state=deep_merge(
                 default_states.get(role, {}),
                 dict(initial_state.get(role, {}))),
             updaters=default_updaters.get(role, {}))
