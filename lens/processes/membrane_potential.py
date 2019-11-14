@@ -4,7 +4,7 @@ import os
 import numpy as np
 import scipy.constants as constants
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 
 # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
@@ -74,7 +74,7 @@ class MembranePotential(Process):
 
     def default_state(self):
         config = {'external': {'T': 310.15}}
-        default_state = dict_merge((self.initial_states), config)
+        default_state = deep_merge((self.initial_states), config)
         return default_state
 
     def default_emitter_keys(self):

@@ -7,6 +7,8 @@ from scipy.integrate import odeint
 from lens.actor.process import Process
 from lens.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from lens.environment.make_media import Media
+from lens.utils.dict_utils import merge_dicts
+
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
@@ -74,11 +76,6 @@ MOLECULAR_WEIGHTS = {
     'GLC': 180.16,
 }
 
-
-def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
 
 
 class Transport(Process):

@@ -4,7 +4,7 @@ import os
 import numpy as np
 import random
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import Process, deep_merge
 
 
 TUMBLE_JITTER = 1.0  # (radians)
@@ -73,7 +73,7 @@ class MotorActivity(Process):
         internal = INITIAL_STATE
         return {
             'external': {},
-            'internal': dict_merge(internal, {'volume': 1})}
+            'internal': deep_merge(internal, {'volume': 1})}
 
     def default_emitter_keys(self):
         keys = {
