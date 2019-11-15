@@ -205,7 +205,8 @@ class ShepherdControl(ActorControl):
         media = {'GLC': 20.0,
                  'MeAsp': 1.0}
         new_media = {media_id: media}
-        timeline_str = '0 {}, 14400 end'.format(media_id)
+        # timeline_str = '0 {}, 14400 end'.format(media_id)
+        timeline_str = '0 {}, 7200 end'.format(media_id)
 
         chemotaxis_config = {
             'timeline_str': timeline_str,
@@ -214,14 +215,14 @@ class ShepherdControl(ActorControl):
             'emit_fields': ['MeAsp', 'GLC'],
             'static_concentrations': True,
             'gradient': {
-                'seed': True,
+                'type': 'linear',
                 'molecules': {
                     'GLC':{
-                        'center': [0.75, 0.5],
-                        'deviation': 30.0},
+                        'center': [0.0, 0.0],
+                        'slope': -1.0/150.0},
                     'MeAsp': {
-                        'center': [0.25, 0.5],
-                        'deviation': 30.0}
+                        'center': [1.0, 1.0],
+                        'slope': -1.0/150.0}
                 }},
             'diffusion': 0.0,
             # 'translation_jitter': 0.1,

@@ -270,7 +270,7 @@ def initialize_measp(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'seed': True,
+            'type': 'gaussian',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],
@@ -300,14 +300,14 @@ def initialize_measp_long(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'seed': True,
+            'type': 'linear',
             'molecules': {
                 'GLC': {
-                    'center': [0.25, 0.5],
-                    'deviation': 30.0},
+                    'center': [0.0, 0.0],
+                    'slope': -1.0/150.0},
                 'MeAsp': {
-                    'center': [0.75, 0.5],
-                    'deviation': 30.0}
+                    'center': [1.0, 1.0],
+                    'slope': -1.0/150.0}
             }},
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
@@ -331,7 +331,7 @@ def initialize_measp_large(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'seed': True,
+            'type': 'gaussian',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],

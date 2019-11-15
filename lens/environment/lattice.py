@@ -106,17 +106,33 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
         self.diffusion = config.get('diffusion', 0.1)
-        self.gradient = config.get('gradient', {'seed': False})
+        self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the theoretical upper limit)
         self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
 
         # add a gradient
-        if self.gradient['seed']:
+        if self.gradient.get('type') == 'gaussian':
+            # gaussian gradient multiplies the basal concentration of the given molecule
+            # by a gaussian function of distance from center and deviation
+            #
+            # 'gradient': {
+            #     'type': 'gradient',
+            #     'molecules': {
+            #         'mol_id1':{
+            #             'center': [0.25, 0.5],
+            #             'deviation': 30},
+            #         'mol_id2': {
+            #             'center': [0.75, 0.5],
+            #             'deviation': 30}
+            #     }},
+
             for molecule_id, specs in self.gradient['molecules'].iteritems():
+                mol_index = self._molecule_ids.index(molecule_id)
                 center = [specs['center'][0] * self.edge_length_x,
                           specs['center'][1] * self.edge_length_y]
                 deviation = specs['deviation']
+
                 for x_patch in xrange(self.patches_per_edge_x):
                     for y_patch in xrange(self.patches_per_edge_y):
                         # distance from middle of patch to center coordinates
@@ -125,7 +141,42 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         distance = np.sqrt(dx ** 2 + dy ** 2)
                         scale = gaussian(deviation, distance)
                         # multiply gradient by scale
-                        self.lattice[self._molecule_ids.index(molecule_id)][x_patch][y_patch] *= scale
+                        self.lattice[mol_index][x_patch][y_patch] *= scale
+
+        elif self.gradient.get('type') == 'linear':
+            # linear gradient adds to the basal concentration of the given molecule
+            # as a function of distance from center and slope.
+            #
+            # 'gradient': {
+            #     'type': 'linear',
+            #     'molecules': {
+            #         'mol_id1':{
+            #             'center': [0.0, 0.0],
+            #             'slope': -10},
+            #         'mol_id2': {
+            #             'center': [1.0, 1.0],
+            #             'slope': -5}
+            #     }},
+
+            for molecule_id, specs in self.gradient['molecules'].iteritems():
+                mol_index = self._molecule_ids.index(molecule_id)
+                center = [specs['center'][0] * self.edge_length_x,
+                          specs['center'][1] * self.edge_length_y]
+                slope = specs['slope']
+
+                for x_patch in xrange(self.patches_per_edge_x):
+                    for y_patch in xrange(self.patches_per_edge_y):
+                        # distance from middle of patch to center coordinates
+                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
+                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
+                        distance = np.sqrt(dx ** 2 + dy ** 2)
+                        added = distance * slope
+                        # add gradient to basal concentration
+                        self.lattice[mol_index][x_patch][y_patch] += added
+
+                self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+
+
 
         ## Initialize dictionaries
         self.simulations = {}       # map of agent_id to simulation state
