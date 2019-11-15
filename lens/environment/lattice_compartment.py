@@ -60,7 +60,10 @@ class LatticeCompartment(Compartment, Simulation):
         self.last_update = update
         environment = self.states.get(self.environment)
         if environment:
-            environment.assign_values(update['concentrations'])
+            # update only the keys defined in environment
+            env_keys = environment.keys
+            local_environment = {key : update['concentrations'][key] for key in env_keys}
+            environment.assign_values(local_environment)
             environment.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
 
     def generate_daughters(self):
