@@ -476,3 +476,29 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             'data': data}
 
         self.emitter.emit(emit_config)
+
+
+
+def test_lattice():
+
+    media_id = 'GLC_G6P'
+    make_media = Media()
+    media = make_media.get_saved_media(media_id)
+
+    boot_config = {
+        'concentrations': media,
+        'run_for': 10.0,
+        'depth': 0.0001,  # 3000 um is default
+        'edge_length': 10.0,
+        'patches_per_edge': 1,
+    }
+
+    # TODO -- what if no emitter?
+
+    lattice = EnvironmentSpatialLattice(boot_config)
+
+    import ipdb; ipdb.set_trace()
+
+
+if __name__ == '__main__':
+    output = test_lattice()
