@@ -196,8 +196,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             if self.locations[agent_id][1] > self.edge_length_y:
                 self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
 
-
-
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''
 
@@ -480,10 +478,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
 def test_lattice():
+    from lens.actor.emitter import get_emitter
 
+    # get media
     media_id = 'GLC_G6P'
     make_media = Media()
     media = make_media.get_saved_media(media_id)
+
+    # get emitter
+    emitter = get_emitter({})
 
     boot_config = {
         'concentrations': media,
@@ -491,13 +494,48 @@ def test_lattice():
         'depth': 0.0001,  # 3000 um is default
         'edge_length': 10.0,
         'patches_per_edge': 1,
+        'emitter': emitter
     }
 
-    # TODO -- what if no emitter?
-
+    # configure lattice
     lattice = EnvironmentSpatialLattice(boot_config)
 
+    # get simulations
+    simulations = lattice.simulations
+
+    # add cell simulation
+    agent_id = '1'
+    simulation = simulations.setdefault(agent_id, {})
+
+    agent_state = {'volume': 1.0}
+
+    agent_config = {
+        'location': np.array([0.0, 0.0]),
+        'orientation': np.array([0.0]),
+    }
+
+    simulation.update({
+        'time': lattice.time(),
+        'state': agent_state,
+        'agent_config': agent_config,
+        })
+
+    lattice.add_simulation(agent_id, simulation)
+
+    # apply forces
+    run_for = 1.0
+    force = [1.0, 1.0]
+    lattice.motile_forces[agent_id] = force
+
+    # run lattice and get new locations
+    lattice.run_incremental(run_for)
+    locations = lattice.locations  # new location
+
     import ipdb; ipdb.set_trace()
+
+    # diffusion
+
+    # division
 
 
 if __name__ == '__main__':
