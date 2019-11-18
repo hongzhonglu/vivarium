@@ -9,7 +9,7 @@ from lens.analysis.analysis import Analysis, get_compartment
 from lens.actor.process import deep_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
-DEFAULT_COLOR = [220/360, 100.0/100.0, 50.0/100.0]  # HSV
+DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 # TODO (Eran) -- min/max should be an argument
@@ -137,8 +137,8 @@ class Snapshots(Analysis):
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
-                    # rotate field and plot
-                    field = np.rot90(np.array(field_data[field_id])).tolist()
+                    # transpose field to align with agent
+                    field = np.transpose(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
                                origin='lower',
                                extent=[0, edge_length_x, 0, edge_length_y],
@@ -185,7 +185,7 @@ class Snapshots(Analysis):
             rgb = hsv_to_rgb(agent_color)
 
             # Create a rectangle
-            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='k', facecolor=rgb)
+            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
             ax.add_patch(rect)
 
 
