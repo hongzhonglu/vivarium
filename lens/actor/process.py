@@ -229,6 +229,7 @@ class Process(object):
 def connect_topology(process_layers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the roles in each process to the state they refer to.'''
+
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]
