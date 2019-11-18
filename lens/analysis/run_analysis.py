@@ -9,6 +9,7 @@ from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.location_trace import LatticeTrace
 from lens.analysis.chemotaxis_trace import ChemotaxisTrace
 from lens.analysis.snapshots import Snapshots
+from lens.analysis.topology import Topology
 
 
 # classes for run_analysis to cycle through
@@ -18,6 +19,7 @@ analysis_classes = {
     'multigen': MultigenCompartment,
     'location': LatticeTrace,
     'snapshots': Snapshots,
+    'topology': Topology,
 }
 
 # mongoDB local url
@@ -131,8 +133,12 @@ class Analyze(object):
 
             if all(processes in active_processes for processes in required_processes):
 
-                # run the compartment analysis for each simulation in simulation_ids
-                if analysis.analysis_type is 'compartment':
+                if analysis.analysis_type is 'experiment':
+                    environment_data = analysis.get_data(history_client, query.copy())
+                    analysis.analyze(experiment_config, environment_data, output_dir)
+
+                elif analysis.analysis_type is 'compartment':
+                    # Run the compartment analysis for each simulation in simulation_ids
                     # A compartment analysis is run on a single compartment.
                     # It expects to run queries on the compartment tables in the DB.
                     # Output is saved to the compartment's directory.
