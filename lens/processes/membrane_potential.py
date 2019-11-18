@@ -63,11 +63,15 @@ class MembranePotential(Process):
         self.permeability = config.get('permeability', PERMEABILITY_MAP)
         self.charge = config.get('charge', CHARGE_MAP)
 
+        # get list of internal and external states
+        internal_states = self.initial_states['internal'].keys()
+        external_states = self.initial_states['external'].keys()
+
         # set roles
         roles = {
-            'internal': ['c_in'],
+            'internal': internal_states + ['c_in'],
             'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
-            'external': ['c_out'],
+            'external': external_states + ['c_out', 'T'],
         }
 
         super(MembranePotential, self).__init__(roles, parameters)

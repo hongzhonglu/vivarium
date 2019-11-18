@@ -8,7 +8,7 @@ from lens.utils.dict_utils import merge_dicts
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
-# from lens.processes.membrane_potential import MembranePotential
+from lens.processes.membrane_potential import MembranePotential
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.division import Division
@@ -44,16 +44,15 @@ def compose_pmf_chemotaxis(config):
     receptor_parameters.update(config)
 
     # declare the processes
-    # TODO -- add flagella process.  for now assume fixed flagella.
     receptor = ReceptorCluster(receptor_parameters)
     motor = MotorActivity(config)
-    # PMF = MembranePotential(config)
+    PMF = MembranePotential(config)
     transport = Transport(config)
     deriver = DeriveVolume(config)
     division = Division(config)
 
     processes = [
-        # {'PMF': PMF},
+        {'PMF': PMF},
         {'receptor': receptor,
          'transport': transport},
         {'motor': motor},
@@ -86,6 +85,7 @@ def compose_pmf_chemotaxis(config):
     # This will not generalize to composites with processes that have different roles
     compartment_roles = {
         'external': 'environment',
+        'membrane': 'membrane',
         'internal': 'cell'}
 
     states = {
@@ -107,6 +107,10 @@ def compose_pmf_chemotaxis(config):
         'motor': {
             'external': 'environment',
             'internal': 'cell'},
+        'PMF': {
+            'external': 'environment',
+            'membrane': 'membrane',
+            'internal': 'cell'},
         'deriver': {
             'internal': 'cell'},
         'division': {
@@ -127,3 +131,33 @@ def compose_pmf_chemotaxis(config):
         'processes': processes,
         'states': states,
         'options': options}
+
+
+def test_PMF_chemotaxis():
+    import numpy as np
+    from lens.environment.lattice_compartment import LatticeCompartment
+
+    exchange_key = '__exchange'
+
+    boot_config = {'exchange_key': exchange_key}
+    composite_config = compose_pmf_chemotaxis(boot_config)
+    processes = composite_config['processes']
+    states = composite_config['states']
+    options = composite_config['options']
+    options.update({'exchange_key': exchange_key})
+
+    # make compartment
+    compartment = LatticeCompartment(processes, states, options)
+
+    print(compartment.current_parameters())
+    print(compartment.current_state())
+
+    # evaluate compartment
+    timestep = 1
+    for steps in np.arange(13):
+        compartment.update(timestep)
+        print(compartment.current_state())
+
+
+if __name__ == '__main__':
+    saved_state = test_PMF_chemotaxis()

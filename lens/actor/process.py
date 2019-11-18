@@ -302,8 +302,13 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        self.emitter_keys = configuration['emitter'].get('keys')
-        self.emitter = configuration['emitter'].get('object')
+        if configuration.get('emitter'):
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
+        else:
+            emitter = emit.get_emitter({})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
 
         connect_topology(processes, self.states, self.topology)
 

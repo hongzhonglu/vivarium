@@ -402,5 +402,3 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_transport(saved_state, out_dir)
-
-
