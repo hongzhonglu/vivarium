@@ -15,6 +15,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import os
 import math
 import numpy as np
 from scipy import constants
@@ -536,7 +537,24 @@ def test_lattice():
     # diffusion
 
     # division
+    return {}
+
+def plot_lattice(output, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    # plot
+    plt.figure()
+
+    fig_path = os.path.join(out_dir, 'lattice')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'lattice')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
     output = test_lattice()
+    plot_lattice(output, out_dir)
