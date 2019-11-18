@@ -140,7 +140,8 @@ class State(object):
                 value)
 
             for other_key, other_value in other_updates.items():
-                other_index = self.index_for(other_key)
+                # one key at a time
+                other_index = self.index_for([other_key])
                 self.new_state[other_index] = other_value
 
     def apply_updates(self, updates):
@@ -228,7 +229,6 @@ class Process(object):
 def connect_topology(process_layers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the roles in each process to the state they refer to.'''
-
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]

@@ -60,9 +60,11 @@ class LatticeCompartment(Compartment, Simulation):
         self.last_update = update
         environment = self.states.get(self.environment)
         if environment:
-            # update only the keys defined in environment
-            env_keys = environment.keys
-            local_environment = {key : update['concentrations'][key] for key in env_keys}
+            # update only the keys defined in both compartment's environment and the external environment
+            local_env_keys = environment.keys
+            env_keys = update['concentrations'].keys()
+            local_environment = {key : update['concentrations'][key] for key in local_env_keys if key in env_keys}
+
             environment.assign_values(local_environment)
             environment.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
 
@@ -174,4 +176,5 @@ def generate_lattice_compartment(process, config):
     options.update(config['compartment_options'])
 
     # create the compartment
-    return LatticeCompartment(processes, states, options)
+    # processes go in a list to support process_layers
+    return LatticeCompartment([processes], states, options)
