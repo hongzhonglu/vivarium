@@ -4,6 +4,8 @@ import time
 import uuid
 
 from lens.actor.control import ActorControl, AgentCommand
+from lens.environment.make_media import Media
+from lens.utils.units import units
 
 
 class ShepherdControl(ActorControl):
@@ -203,7 +205,8 @@ class ShepherdControl(ActorControl):
         media = {'GLC': 20.0,
                  'MeAsp': 1.0}
         new_media = {media_id: media}
-        timeline_str = '0 {}, 14400 end'.format(media_id)
+        # timeline_str = '0 {}, 14400 end'.format(media_id)
+        timeline_str = '0 {}, 7200 end'.format(media_id)
 
         chemotaxis_config = {
             'timeline_str': timeline_str,
@@ -212,14 +215,14 @@ class ShepherdControl(ActorControl):
             'emit_fields': ['MeAsp', 'GLC'],
             'static_concentrations': True,
             'gradient': {
-                'seed': True,
+                'type': 'linear',
                 'molecules': {
                     'GLC':{
-                        'center': [0.75, 0.5],
-                        'deviation': 30.0},
+                        'center': [0.0, 0.0],
+                        'slope': -1.0/150.0},
                     'MeAsp': {
-                        'center': [0.25, 0.5],
-                        'deviation': 30.0}
+                        'center': [1.0, 1.0],
+                        'slope': -1.0/150.0}
                 }},
             'diffusion': 0.0,
             # 'translation_jitter': 0.1,
@@ -238,6 +241,57 @@ class ShepherdControl(ActorControl):
                 'outer_id': experiment_id,
                 'seed': index})
 
+
+    def swarm_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('chemotaxis')
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        ## Make media: GLC_G6P with MeAsp
+        # get GLC_G6P media
+        make_media = Media()
+        media_id = 'GLC_G6P'
+        media1 = make_media.get_saved_media('GLC_G6P', True)
+
+        # make MeAsp media
+        ingredients = {
+            'MeAsp': {
+                'counts': 1.0 * units.mmol,
+                'volume': 0.001 * units.L}}
+        media2 = make_media.make_recipe(ingredients, True)
+
+        # combine the medias
+        media = make_media.combine_media(media1, 0.999 * units.L, media2, 0.001 * units.L)
+        media_id = 'GLC_G6P_MeAsp'
+
+        # make timeline with new media
+        new_media = {media_id: media}
+        timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        swarm_config = {
+            'cell_placement': [0.5, 0.5], # place cells at center of lattice
+            'timeline_str': timeline_str,
+            'new_media': new_media,
+            'run_for' : 2.0,
+            'emit_fields': ['MeAsp', 'GLC'],
+            'static_concentrations': False,
+            'diffusion': 0.001,
+            'edge_length_x': 100.0,
+            'edge_length_y': 100.0,
+            'patches_per_edge_x': 50}
+        self.add_agent(experiment_id, 'lattice', swarm_config)
+
+        # give lattice time before adding the cells
+        time.sleep(15)
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'chemotaxis', {
+                'boot': 'lens.environment.boot',
+                'outer_id': experiment_id,
+                'seed': index})
 
 class EnvironmentCommand(AgentCommand):
     """
@@ -271,6 +325,7 @@ class EnvironmentCommand(AgentCommand):
             'large-experiment',
             'small-experiment',
             'chemotaxis-experiment',
+            'swarm-experiment',
             'glc-g6p-experiment'] + choices
 
         super(EnvironmentCommand, self).__init__(
@@ -311,6 +366,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config})
         control.chemotaxis_experiment(args)
+        control.shutdown()
+
+    def swarm_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.swarm_experiment(args)
         control.shutdown()
 
     def add_arguments(self, parser):

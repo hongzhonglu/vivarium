@@ -26,8 +26,12 @@ from lens.actor.inner import Inner
 from lens.actor.outer import Outer
 from lens.actor.boot import BootAgent
 from lens.actor.emitter import get_emitter, configure_emitter
+
+# environment
 from lens.environment.lattice import EnvironmentSpatialLattice
 from lens.environment.lattice_compartment import LatticeCompartment, generate_lattice_compartment
+from lens.environment.make_media import Media
+from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
@@ -44,7 +48,8 @@ from lens.processes.membrane_potential import MembranePotential
 from lens.composites.Covert2002_rFBA import compose_covert2002
 from lens.composites.Covert2008_iFBA import compose_covert2008
 from lens.composites.growth_division import compose_growth_division
-from lens.composites.Chemotaxis import compose_chemotaxis
+from lens.composites.Vladimirov2008_chemotaxis import compose_vladimirov_chemotaxis
+from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -267,7 +272,7 @@ def initialize_measp(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'seed': True,
+            'type': 'gaussian',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],
@@ -297,14 +302,14 @@ def initialize_measp_long(agent_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'seed': True,
+            'type': 'linear',
             'molecules': {
                 'GLC': {
-                    'center': [0.25, 0.5],
-                    'deviation': 30.0},
+                    'center': [0.0, 0.0],
+                    'slope': -1.0/150.0},
                 'MeAsp': {
-                    'center': [0.75, 0.5],
-                    'deviation': 30.0}
+                    'center': [1.0, 1.0],
+                    'slope': -1.0/150.0}
             }},
         'diffusion': 0.0,
         'rotation_jitter': 0.005,
@@ -317,30 +322,42 @@ def initialize_measp_long(agent_config):
 
 
 def initialize_measp_large(agent_config):
-    media_id = 'MeAsp_media'
-    media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
+    # media_id = 'MeAsp_media'
+    # media = {'GLC': 20.0,  # assumes mmol/L
+    #          'MeAsp': 1.0}
+    # new_media = {media_id: media}
+    # timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+
+    ## Make media: GLC_G6P with MeAsp
+    # get GLC_G6P media
+    make_media = Media()
+    media1 = make_media.get_saved_media('GLC_G6P', True)
+
+    # make MeAsp media
+    ingredients = {
+        'MeAsp': {
+            'counts': 1.0 * units.mmol,
+            'volume': 0.001 * units.L}}
+    media2 = make_media.make_recipe(ingredients, True)
+
+    # combine the medias
+    media = make_media.combine_media(media1, 0.999 * units.L, media2, 0.001 * units.L)
+    media_id = 'GLC_G6P_MeAsp'
+
+    # make timeline with new media
     new_media = {media_id: media}
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 3600 end'.format(media_id)
+
     boot_config = {
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
-        'static_concentrations': True,
-        'gradient': {
-            'seed': True,
-            'molecules': {
-                'GLC': {
-                    'center': [0.5, 0.5],
-                    'deviation': 30.0},
-                'MeAsp': {
-                    'center': [0.5, 0.5],
-                    'deviation': 30.0}
-            }},
-        'diffusion': 0.0,
+        'cell_placement': [0.5, 0.5],  # place cells at center of lattice
+        'emit_fields': ['GLC', 'MeAsp'],
+        'diffusion': 0.001,
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
-        'patches_per_edge_x': 40}
+        'patches_per_edge_x': 50}
     boot_config.update(agent_config)
 
     return boot_config
@@ -399,7 +416,8 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'covert2002': wrap_boot(wrap_init_composite(compose_covert2002), {'volume': 1.0}),
             'covert2008': wrap_boot(wrap_init_composite(compose_covert2008), {'volume': 1.0}),
-            'chemotaxis': wrap_boot(wrap_init_composite(compose_chemotaxis), {'volume': 1.0})
+            'chemotaxis': wrap_boot(wrap_init_composite(compose_vladimirov_chemotaxis), {'volume': 1.0}),
+            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             }
 
 def run():

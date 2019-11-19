@@ -6,17 +6,17 @@ from lens.utils.units import units
 
 class DeriveVolume(Process):
     def __init__(self, initial_parameters={}):
-        self.density = 1100 #* units.g / units.L
+        parameters = {'density': 1100}  # * units.g / units.L
         roles = {
             'internal': ['mass', 'volume'],
         }
-        parameters = {}
+        parameters.update(initial_parameters)
 
-        super(DeriveVolume, self).__init__(roles, parameters, deriver=True)
+        super(DeriveVolume, self).__init__(roles, parameters)
 
     def default_state(self):
         mass = 1339 * units.fg  # 1.339e-12 g  # 1339 (wet mass in fg)
-        density = self.density * units.g / units.L
+        density = self.parameters['density'] * units.g / units.L
         volume = mass/density
 
         default_state = {
@@ -24,9 +24,7 @@ class DeriveVolume(Process):
             'volume': volume.to('fL').magnitude,
         }
 
-        return {
-            'internal': default_state,
-        }
+        return {'internal': default_state}
 
     def default_emitter_keys(self):
         keys = {'internal': ['mass', 'volume']}
@@ -34,7 +32,7 @@ class DeriveVolume(Process):
 
     def next_update(self, timestep, states):
         mass = states['internal']['mass'] * units.fg
-        density = self.density * units.g / units.L
+        density = self.parameters['density'] * units.g / units.L
         volume =  mass / density
         update = {'internal': {'volume': volume.to('fL').magnitude}}
 

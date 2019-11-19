@@ -140,7 +140,8 @@ class State(object):
                 value)
 
             for other_key, other_value in other_updates.items():
-                other_index = self.index_for(other_key)
+                # one key at a time
+                other_index = self.index_for([other_key])
                 self.new_state[other_index] = other_value
 
     def apply_updates(self, updates):
@@ -301,8 +302,13 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        self.emitter_keys = configuration['emitter'].get('keys')
-        self.emitter = configuration['emitter'].get('object')
+        if configuration.get('emitter'):
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
+        else:
+            emitter = emit.get_emitter({})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
 
         connect_topology(processes, self.states, self.topology)
 

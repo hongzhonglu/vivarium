@@ -134,7 +134,7 @@ class Transport(Process):
 
         return {
             'external': external,
-            'internal': merge_dicts(internal, {'volume': 1})}  #TODO -- get volume with deriver?
+            'internal': merge_dicts([internal, {'volume': 1}])}  #TODO -- get volume with deriver?
 
     def default_emitter_keys(self):
         keys = {
@@ -402,5 +402,3 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_transport(saved_state, out_dir)
-
-
