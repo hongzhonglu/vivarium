@@ -282,6 +282,47 @@ def default_divide_state(compartment):
     print('divided {}'.format(divided))
     return divided
 
+def initialize_state(process_layers, topology, initial_state):
+    processes = merge_dicts(process_layers)
+
+    # make a dict with the compartment's default states {roles: states}
+    compartment_states = {}
+    compartment_updaters = {}
+    for process_id, roles_map in topology.iteritems():
+        process_roles = processes[process_id].roles
+
+        default_process_states = processes[process_id].default_state()
+        default_process_updaters = processes[process_id].default_updaters()
+
+        for process_role, states in process_roles.iteritems():
+            compartment_role = topology[process_id][process_role]
+
+            # initialize the default states
+            default_states = {state: 0 for state in states}
+            default_states.update(default_process_states.get(process_role, {}))
+
+            # initialize the default updaters
+            default_updaters = {state: 'delta' for state in states}  # default updater is delta
+            default_updaters.update(default_process_updaters.get(process_role, {}))
+
+            # update the states
+            c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
+            compartment_states[compartment_role] = c_states
+
+            # update the updaters
+            c_updaters = deep_merge(default_updaters, compartment_updaters.get(compartment_role, {}))
+            compartment_updaters[compartment_role] = c_updaters
+
+    # initialize state for each compartment role
+    initialized_state = {}
+    for compartment_role, states in compartment_states.iteritems():
+        updaters = compartment_updaters[compartment_role]
+        make_state = State(
+            initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),
+            updaters=updaters)
+        initialized_state[compartment_role] = make_state
+
+    return initialized_state
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''

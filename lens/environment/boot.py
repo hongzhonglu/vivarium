@@ -348,12 +348,14 @@ def initialize_measp_large(agent_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)
 
+    emit_field = ['GLC', 'MeAsp']
+
     boot_config = {
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'emit_fields': ['GLC', 'MeAsp'],
+        'emit_fields': emit_field,
         'diffusion': 0.001,
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,

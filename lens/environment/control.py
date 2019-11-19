@@ -178,9 +178,17 @@ class ShepherdControl(ActorControl):
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
+        media_id = 'GLC_G6P'
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 3600 end'.format(media_id)
+
+        emit_field = ['GLC', 'G6P']
+
         experiment_config = {
+            'timeline_str': timeline_str,
             'run_for': 2.0,
-            'media_id': 'GLC_G6P'}
+            'emit_fields': emit_field}
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
