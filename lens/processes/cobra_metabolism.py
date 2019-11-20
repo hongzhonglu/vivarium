@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from scipy import constants
-from cobra import Model, Reaction, Metabolite
+from cobra import Model, Reaction, Metabolite, Configuration
 
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
@@ -19,6 +19,9 @@ def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     return reverse_stoichiometry
 
 def build_model(stoichiometry, objective):
+    model = Model('metabolism')
+    model.compartments = {'c': 'cytoplasm'}
+
     metabolite_keys = {}
     for reaction_key, chemistry in stoichiometry.items():
         metabolite_keys.update(chemistry)
@@ -27,6 +30,8 @@ def build_model(stoichiometry, objective):
         metabolite: Metabolite(metabolite, name=metabolite, compartment='c')
         for metabolite in metabolite_keys.keys()}
 
+    model.add_metabolites(metabolites.values())
+
     reactions = {}
     for reaction_key, chemistry in stoichiometry.items():
         reaction = Reaction(reaction_key, name=reaction_key)
@@ -34,9 +39,9 @@ def build_model(stoichiometry, objective):
             metabolites[metabolite]: value
             for metabolite, value in chemistry.items()}
         reaction.add_metabolites(chemistry_model)
+        reaction.gene_reaction_rule = 'X'
         reactions[reaction_key] = reaction
 
-    model = Model('metabolism')
     model.add_reactions(reactions.values())
 
     model.objective = {
@@ -46,6 +51,8 @@ def build_model(stoichiometry, objective):
     return model
 
 class CobraMetabolism(Process):
+    cobra_configuration = Configuration()
+
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
@@ -64,6 +71,24 @@ class CobraMetabolism(Process):
         self.objective_declaration = {reaction: 1.0 for reaction in self.objective.keys()}
         self.model = build_model(self.stoichiometry, self.objective_declaration)
 
+def test_minimal():
+    stoichiometry = {
+        "R1": {"A": -1, "B": 1}}
+
+    objective = {
+        "R2": {"B": -1, "C": 1}}
+
+    initial_state = {
+        "A": 5,
+        "B": 0,
+        "C": 0}
+
+    metabolism = CobraMetabolism({
+        'stoichiometry': stoichiometry,
+        'objective': objective,
+        'initial_state': initial_state})
+
+    return metabolism
 
 def test_metabolism():
     stoichiometry = {
@@ -79,7 +104,7 @@ def test_metabolism():
         "R8b": {"G": 1, "ATP": 1, "NADH": 2, "H": -1},
         "Rres": {"NADH": -1, "O2": -1, "ATP": 1}}
 
-    objective = {"v_biomass": {"C": 1, "F": 1, "H": 1, "ATP": 10}}
+    objective = {"v_biomass": {"C": -1, "F": -1, "H": -1, "ATP": -10, "BIOMASS": 1}}
 
     initial_state = {
         'internal': {
@@ -101,8 +126,14 @@ def test_metabolism():
     return metabolism
 
 if __name__ == '__main__':
-    metabolism = test_metabolism()
+    # metabolism = test_metabolism()
+    metabolism = test_minimal()
     print(metabolism.model)
     print(metabolism.model.reactions)
     print(metabolism.model.metabolites)
     print(metabolism.model.genes)
+    print(metabolism.model.compartments)
+    print(metabolism.model.solver)
+    print(metabolism.model.objective.expression)
+
+    print(metabolism.model.optimize().objective_value)
