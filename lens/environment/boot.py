@@ -328,11 +328,6 @@ def initialize_measp_long(agent_config):
 
 
 def initialize_measp_large(agent_config):
-    # media_id = 'MeAsp_media'
-    # media = {'GLC': 20.0,  # assumes mmol/L
-    #          'MeAsp': 1.0}
-    # new_media = {media_id: media}
-    # timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
 
     ## Make media: GLC_G6P with MeAsp
     # get GLC_G6P media
@@ -362,7 +357,18 @@ def initialize_measp_large(agent_config):
         'run_for': 1.0,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'emit_fields': emit_field,
-        'diffusion': 0.001,
+        'static_concentrations': False,
+        'gradient': {
+            'type': 'linear',
+            'molecules': {
+                'GLC': {
+                    'center': [0.0, 0.0],
+                    'slope': -1.0 / 250.0},
+                'MeAsp': {
+                    'center': [1.0, 1.0],
+                    'slope': -1.0 / 250.0}
+            }},
+        # 'diffusion': 0.001,
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
         'patches_per_edge_x': 50}
