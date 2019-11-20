@@ -88,6 +88,7 @@ class Transport(Process):
 
         roles = {
             'external': external_state.keys(),
+            'exchange': external_state.keys(),
             'internal': internal_state.keys()}
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
@@ -133,8 +134,10 @@ class Transport(Process):
         self.environment_ids = external.keys()
 
         return {
+            'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
             'external': external,
-            'internal': merge_dicts([internal, {'volume': 1}])}  #TODO -- get volume with deriver?
+            'exchange': {state_id: 0.0 for state_id in self.environment_ids}
+        }
 
     def default_emitter_keys(self):
         keys = {
@@ -149,8 +152,10 @@ class Transport(Process):
         The default updater is to pass a delta'''
 
         updater_types = {
-            'internal': {state_id: 'set' for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
-            'external': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
+            'internal': {state_id: 'set'
+                         for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
+            'external': {},  # reactions set values directly
+            'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
 
         return updater_types
 
@@ -286,7 +291,6 @@ class Transport(Process):
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
 
-
         internal_update = {}
         external_update = {}
         for state_idx, state_id in enumerate(state_keys):
@@ -300,8 +304,6 @@ class Transport(Process):
                 delta_count = millimolar_to_counts(delta_conc, volume)
                 external_update[state_id.replace('[e]','')] = delta_count
 
-                # print('{} | delta_conc: {} | delta_count: {}'.format(state_id, delta_conc, delta_count))
-
             elif state_id is 'volume':
                 # skip volume
                 continue
@@ -309,9 +311,9 @@ class Transport(Process):
                 # set internal directly
                 internal_update[state_id] = final_conc
 
-
+        # TODO -- make an optional 'external' update to set external concentrations directly.  set updater to null in composition.
         return {
-            'external': external_update,
+            'exchange': external_update,
             'internal': internal_update}
 
 # test and analysis of process
