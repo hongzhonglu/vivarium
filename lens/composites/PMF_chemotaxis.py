@@ -81,9 +81,8 @@ def compose_pmf_chemotaxis(config):
     options = {
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
-        'environment': 'environment',
-        'compartment': 'cell',
-        'environment_ids': environment_ids,
+        'environment_role': 'environment',
+        # 'exchange_role': 'exchange',
         # 'divide_condition': divide_condition,
         # 'divide_state': divide_state
     }

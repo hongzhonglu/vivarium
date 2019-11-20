@@ -86,14 +86,12 @@ def wrap_init_basic(make_process):
 
 def wrap_init_composite(make_composite):
     def initialize(boot_config):
-        # configure the emitter and exchange_key
-        exchange_key = '__exchange'
+        # configure the emitter
         boot_config.update({
             'emitter': {
                 'type': 'database',
                 'url': 'localhost:27017',
                 'database': 'simulations'},
-            'exchange_key': exchange_key,
             })
 
         # set up the the composite
@@ -105,10 +103,7 @@ def wrap_init_composite(make_composite):
 
         # update options
         emitter = configure_emitter(boot_config, processes, topology)
-        options.update({
-            'emitter': emitter,
-            'exchange_key': exchange_key,
-            })
+        options.update({'emitter': emitter})
 
         # create the compartment
         return LatticeCompartment(processes, states, options)

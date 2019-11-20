@@ -8,9 +8,6 @@ import random
 from lens.utils.dict_utils import merge_dicts
 
 
-target_key = '__target'
-exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
-
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
@@ -26,18 +23,15 @@ def update_delta(key, state_dict, current_value, new_value):
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-def update_target(key, state_dict, current_value, new_value):
-    return current_value, {key + target_key: new_value}
-
-def accumulate_delta(key, state_dict, current_value, new_value):
-    new_key = key + exchange_key
-    return current_value, {new_key: state_dict[new_key] + new_value}
+# def accumulate_delta(key, state_dict, current_value, new_value):
+#     new_key = key + exchange_key
+#     return current_value, {new_key: state_dict[new_key] + new_value}
 
 updater_library = {
     'delta': update_delta,
     'set': update_set,
-    'target': update_target,
-    'accumulate': accumulate_delta}
+    'accumulate': update_delta,  # TODO -- remove accumulate
+}
 
 
 KEY_TYPE = 'U31'

@@ -132,8 +132,7 @@ class Snapshots(Analysis):
 
                     ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
                     ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time)/60./60., field_id))
-                    ax.set_xlim([0, edge_length_x])
-                    ax.set_ylim([0, edge_length_y])
+                    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
@@ -149,8 +148,7 @@ class Snapshots(Analysis):
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
-                ax.set_xlim([0, edge_length_x])
-                ax.set_ylim([0, edge_length_y])
+                ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
                 self.plot_agents(ax, agent_data, cell_radius, agent_colors)

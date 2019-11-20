@@ -2,15 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from lens.actor.process import Compartment, State, deep_merge, initialize_state
+from lens.actor.process import Compartment, initialize_state
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
 
 DEFAULT_COLOR = [color/255 for color in [153, 204, 255]]
 
-exchange_key = '__exchange'  # TODO -- this is declared in multiple locations
 
-
+# TODO -- remove these functions once all key manipulation is gone
 def add_str_in_list(molecule_ids, key_str):
    return [mol_id + key_str for mol_id in molecule_ids]
 
@@ -27,28 +26,28 @@ def add_str_to_keys(dct, key_str):
            new_dct[key + key_str] = value
    return new_dct
 
-def remove_str_from_keys(dct, key_str):
-    ''' convert dictionary keys by removing key_str'''
-    new_dct = {}
-    for key, value in dct.iteritems():
-        if key_str in key:
-            new_key = key.replace(key_str, '')
-            new_dct[new_key] = value
-        else:
-            new_dct[key] = value
-    return new_dct
-
 
 
 class LatticeCompartment(Compartment, Simulation):
     def __init__(self, processes, states, configuration):
-        self.environment = configuration['environment']
-        self.compartment = configuration['compartment']
-        self.exchange_key = configuration['exchange_key']
-        self.environment_ids = configuration['environment_ids']
-        self.exchange_ids = [state_id + self.exchange_key for state_id in self.environment_ids]
-        self.configuration = configuration
         self.color = DEFAULT_COLOR
+        self.exchange_role = configuration.get('exchange_role', 'exchange')
+        self.environment_role = configuration.get('environment_role', 'environment')  # TODO -- this needs to be configurable.
+
+        # set up exchange with lattice
+        if self.exchange_role in states.keys():
+            exchange_state = states[self.exchange_role]
+            self.exchange_ids = exchange_state.keys
+
+        # find roles that contain volume and motile_force
+        self.volume_role = False
+        self.motile_role = False
+        for role, state in states.iteritems():
+            state_ids = state.keys
+            if 'volume' in state_ids:
+                self.volume_role = role
+            if all(item in state_ids for item in ['motile_force', 'motile_torque']):
+                self.motile_role = role
 
         super(LatticeCompartment, self).__init__(processes, states, configuration)
 
@@ -58,19 +57,21 @@ class LatticeCompartment(Compartment, Simulation):
 
     def apply_outer_update(self, update):
         self.last_update = update
-        environment = self.states.get(self.environment)
+        environment = self.states.get(self.environment_role)
+        exchange = self.states.get(self.exchange_role)
+
         if environment:
-            # update only the keys defined in both compartment's environment and the external environment
-            local_env_keys = environment.keys
+            # update only the states defined in both exchange and the external environment
             env_keys = update['concentrations'].keys()
-            local_environment = {key : update['concentrations'][key] for key in local_env_keys if key in env_keys}
+            local_environment = {key : update['concentrations'][key]
+                                 for key in self.exchange_ids if key in env_keys}
 
             environment.assign_values(local_environment)
-            environment.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
+            exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
 
     def generate_daughters(self):
         states = self.divide_state(self)
-        volume = states[0][self.compartment]['volume']
+        volume = states[0][self.volume_role]['volume']
 
         return [
             dict(
@@ -83,26 +84,26 @@ class LatticeCompartment(Compartment, Simulation):
             for daughter_state in states]
 
     def generate_inner_update(self):
-        environment = self.states.get(self.environment)
-        if environment:
-            changes = environment.state_for(self.exchange_ids)
-            environment_change = {
-                mol_id.replace(self.exchange_key, ''): value
-                for mol_id, value in changes.items()}
+        values = {}
+        volume = 1.0
+        motile_force = [0.0, 0.0]
+
+        exchange = self.states.get(self.exchange_role)
+        if exchange:
+            environment_change = exchange.state_for(self.exchange_ids)
         else:
             environment_change = {}
 
-        state = self.states[self.compartment]
-        values = state.state_for(['volume'])
+        if self.volume_role:
+            volume_state = self.states[self.volume_role].state_for(['volume'])
+            volume = volume_state['volume']
 
-        # check if state has motile_force and motile_torque
-        if 'motile_force' in state.keys and 'motile_torque' in state.keys:
-            forces = state.state_for(['motile_force', 'motile_torque'])
+        if self.motile_role:
+            motile_state = self.states.get(self.motile_role)
+            forces = motile_state.state_for(['motile_force', 'motile_torque'])
             motile_force = [
                 forces['motile_force'],
                 forces['motile_torque']]
-        else:
-            motile_force = [0.0, 0.0]
 
         if self.divide_condition(self):
             values['division'] = self.generate_daughters()
@@ -114,52 +115,26 @@ class LatticeCompartment(Compartment, Simulation):
                 'data': daughters})
 
         values.update({
-            'motile_force': motile_force, # TODO -- get motile_force from compartment state
+            'volume': volume,
+            'motile_force': motile_force,
             'color': self.color,
             'environment_change': environment_change})
 
         return values
 
+
 def generate_lattice_compartment(process, config):
-    # declare the processes
+    # declare the processes layers (with a single layer)
     processes = [{'process': process}]
 
-    # make topology, pointing 'exchange' roles to 'external'
+    # make a simple topology mapping 'role' to 'role'
     process_roles = process.roles.keys()
-    # process_roles_dict = dict(zip(process_roles, process_roles))
-    # if 'external' in process_roles_dict:
-    #     process_roles_dict['external'] = 'environment' # TODO -- can 'environment' be specified more generally? might use a different key
-    # # if 'exchange' in process_roles_dict:
-    # #     process_roles_dict['exchange'] = 'environment'
-    # topology = {'process': process_roles_dict}
+    topology = {'process': {role: role for role in process_roles}}
 
-    topology = {
-        'process': {
-            role: role
-            for role in process_roles}}
+    # initialize the states for each role
+    states = initialize_state(processes, topology, config.get('initial_state', {}))
 
-
-
-    # initialize keys for accumulate_delta updater
-    # assumes all environmental updates have been set as `accumulate` updaters
-    # TODO -- remove this
-    default_updaters = process.default_updaters()
-    environment_ids = []
-    initial_exchanges = {role: {} for role in process.roles.keys()}
-    for role, state_ids in default_updaters.iteritems():
-        for state_id, updater in state_ids.iteritems():
-            if updater is 'accumulate':
-                environment_ids.append(state_id)
-                initial_exchanges[role].update({state_id + exchange_key: 0.0})
-
-
-    # initialize states
-    states = initialize_state(processes, topology, initial_exchanges)  # TODO -- don't use initial_exchanges, latticeCompartment to hand exchanges
-    # states = initialize_state(processes, topology, config.get('initial_state', {}))
-
-
-
-    # configure emitter
+    # configure the emitter
     emitter_config = config.get('emitter', {})
     emitter_config['keys'] = process.default_emitter_keys()
     emitter_config['experiment_id'] = config.get('experiment_id')
@@ -170,13 +145,11 @@ def generate_lattice_compartment(process, config):
         'topology': topology,
         'emitter': emitter,
         'initial_time': config.get('initial_time', 0.0),
-        'environment_ids': environment_ids,
-        'exchange_key': exchange_key,
-        'environment': config.get('environment', 'external'),
-        'compartment': config.get('compartment', 'internal')}
+        'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
+        'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
+    }
 
     options.update(config['compartment_options'])
 
-    # create the compartment
-    # processes go in a list to support process_layers
+    # create the lattice compartment
     return LatticeCompartment(processes, states, options)
