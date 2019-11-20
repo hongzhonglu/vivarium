@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from lens.actor.process import Compartment, State, deep_merge
+from lens.actor.process import Compartment, State, deep_merge, initialize_state
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
 
@@ -122,17 +122,28 @@ class LatticeCompartment(Compartment, Simulation):
 
 def generate_lattice_compartment(process, config):
     # declare the processes
-    processes = {
-        'process': process}
+    processes = [{'process': process}]
 
-    # initialize states
-    default_states = process.default_state()
-    default_updaters = process.default_updaters()
-    initial_state = config.get('initial_state', {})
-    initial_time = config.get('initial_time', 0.0)
+    # make topology, pointing 'exchange' roles to 'external'
+    process_roles = process.roles.keys()
+    # process_roles_dict = dict(zip(process_roles, process_roles))
+    # if 'external' in process_roles_dict:
+    #     process_roles_dict['external'] = 'environment' # TODO -- can 'environment' be specified more generally? might use a different key
+    # # if 'exchange' in process_roles_dict:
+    # #     process_roles_dict['exchange'] = 'environment'
+    # topology = {'process': process_roles_dict}
+
+    topology = {
+        'process': {
+            role: role
+            for role in process_roles}}
+
+
 
     # initialize keys for accumulate_delta updater
     # assumes all environmental updates have been set as `accumulate` updaters
+    # TODO -- remove this
+    default_updaters = process.default_updaters()
     environment_ids = []
     initial_exchanges = {role: {} for role in process.roles.keys()}
     for role, state_ids in default_updaters.iteritems():
@@ -141,21 +152,12 @@ def generate_lattice_compartment(process, config):
                 environment_ids.append(state_id)
                 initial_exchanges[role].update({state_id + exchange_key: 0.0})
 
-    default_states = deep_merge(default_states, initial_exchanges)
 
-    states = {
-        role: State(
-            initial_state=deep_merge(
-                default_states.get(role, {}),
-                dict(initial_state.get(role, {}))),
-            updaters=default_updaters.get(role, {}))
-            for role in process.roles.keys()}
+    # initialize states
+    states = initialize_state(processes, topology, initial_exchanges)  # TODO -- don't use initial_exchanges, latticeCompartment to hand exchanges
+    # states = initialize_state(processes, topology, config.get('initial_state', {}))
 
-    # configure the states to the roles for each process
-    topology = {
-        'process': {
-            role: role
-            for role in process.roles.keys()}}
+
 
     # configure emitter
     emitter_config = config.get('emitter', {})
@@ -167,7 +169,7 @@ def generate_lattice_compartment(process, config):
     options = {
         'topology': topology,
         'emitter': emitter,
-        'initial_time': initial_time,
+        'initial_time': config.get('initial_time', 0.0),
         'environment_ids': environment_ids,
         'exchange_key': exchange_key,
         'environment': config.get('environment', 'external'),
@@ -177,4 +179,4 @@ def generate_lattice_compartment(process, config):
 
     # create the compartment
     # processes go in a list to support process_layers
-    return LatticeCompartment([processes], states, options)
+    return LatticeCompartment(processes, states, options)
