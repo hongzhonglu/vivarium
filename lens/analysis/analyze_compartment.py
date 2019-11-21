@@ -11,25 +11,33 @@ class Compartment(Analysis):
         super(Compartment, self).__init__(analysis_type='compartment')
 
     def get_data(self, client, query):
+        sim_id = query['simulation_id']
         query.update({'type': 'compartment'})
         history_data = client.find(query)
         history_data.sort('time')
         compartment_history = get_compartment(history_data)
 
+        # put sim_id back into data
+        compartment_history['sim_id'] = sim_id
+
         return compartment_history
 
     def analyze(self, experiment_config, data_dict, output_dir):
+
+        skip_keys = ['time', 'sim_id']
+        sim_id = data_dict['sim_id']
+
         # remove series with all zeros
         zero_state = []
         for key1 in data_dict.iterkeys():
-            if key1 is not 'time':
+            if key1 not in skip_keys:
                 for key2, series in data_dict[key1].iteritems():
                     if all(v == 0 for v in series):
                         zero_state.append((key1, key2))
         for (key1, key2) in zero_state:
             del data_dict[key1][key2]
 
-        data_keys = [key for key in data_dict.keys() if key is not 'time']
+        data_keys = [key for key in data_dict.keys() if key not in skip_keys]
         time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
 
         # make figure, with grid for subplots
@@ -40,6 +48,7 @@ class Compartment(Analysis):
         n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))  # zero_state ids per additional subplot
 
         fig = plt.figure(figsize=(n_cols*8, n_rows*2.5))
+        fig.suptitle('{}'.format(sim_id), fontsize=12)
         grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.4, hspace=1.5)
 
         # plot data
