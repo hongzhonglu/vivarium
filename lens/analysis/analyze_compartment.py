@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import math
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
@@ -32,28 +33,35 @@ class Compartment(Analysis):
         time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
 
         # make figure, with grid for subplots
+        n_rows_base = 10
         n_data = [len(data_dict[key].keys()) for key in data_keys]
         n_zeros = len(zero_state)
-        n_rows = sum(n_data) + int(n_zeros/20)  # 20 zero_state ids per additional subplot
+        n_cols = int(math.ceil(sum(n_data)/float(n_rows_base)))
+        n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))  # zero_state ids per additional subplot
 
-        fig = plt.figure(figsize=(8, n_rows * 2.5))
-        grid = plt.GridSpec(n_rows+1, 1, wspace=0.4, hspace=1.5)
+        fig = plt.figure(figsize=(n_cols*8, n_rows*2.5))
+        grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.4, hspace=1.5)
 
         # plot data
-        plot_idx = 0
+        row_idx = 0
+        col_idx = 0
         for key in data_keys:
             for mol_id, series in sorted(data_dict[key].iteritems()):
-                ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+                ax = fig.add_subplot(grid[row_idx, col_idx])
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
                 ax.set_xlabel('time (hrs)')
-                plot_idx += 1
+
+                row_idx += 1
+                if row_idx > n_rows_base:
+                    row_idx = 0
+                    col_idx += 1
 
         # additional data as text
         if zero_state:
             zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
-            ax = fig.add_subplot(grid[plot_idx:, 0])
+            ax = fig.add_subplot(grid[n_rows_base:, :])
             ax.text(0.02, 0.1, 'states with all zeros: {}'.format(zeros), wrap=True)
             ax.axis('off')
 
