@@ -7,7 +7,7 @@ from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
 
 
-def compose_vladimirov_chemotaxis(config):
+def compose_simple_chemotaxis(config):
 
     # declare the processes
     receptor = ReceptorCluster(config)
