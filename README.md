@@ -34,6 +34,19 @@ runFitter manual runscript. In the wcEcoli directory:
 
    2. Open a browser window onto [http://localhost:33332](http://localhost:33332)
 
+
+## mongoDB
+    
+4. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
+    1. Run mongod as a service. To have launched start mongodb/brew/mongodb-community now and restart at login:
+    
+      `> brew services start mongodb/brew/mongodb-community`
+
+    2. Start mongod manually. Alternatively, if you don't want a background service you can just run:
+    
+      `> mongod --config /usr/local/etc/mongod.conf`
+
+
 ## One Agent Per Terminal Tab (esp. for debugging)
 
 **Note:** This section describes how to launch Environment and Cell agent processes directly

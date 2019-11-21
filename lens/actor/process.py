@@ -5,12 +5,11 @@ import numpy as np
 import lens.actor.emitter as emit
 import random
 
+from lens.utils.dict_utils import merge_dicts
+
 
 target_key = '__target'
 exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
-
-class StateError(Exception):
-    pass
 
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
@@ -94,8 +93,7 @@ class State(object):
             return np.array([])
         if not all([item for item in np.isin(keys, self.keys)]):
             invalid_states = np.setdiff1d(keys, self.keys)
-            raise StateError("no state for {}".format(invalid_states))
-
+            print("no state for {}".format(invalid_states))
         return np.searchsorted(self.keys, keys)
 
     def assign_values(self, values_dict):
@@ -142,7 +140,8 @@ class State(object):
                 value)
 
             for other_key, other_value in other_updates.items():
-                other_index = self.index_for(other_key)
+                # one key at a time
+                other_index = self.index_for([other_key])
                 self.new_state[other_index] = other_value
 
     def apply_updates(self, updates):
@@ -254,12 +253,6 @@ def merge_default_updaters(processes):
         updaters = deep_merge(dict(updaters), process_updaters)
     return updaters
 
-def merge_dicts(dicts):
-    merge = {}
-    for d in dicts:
-        merge.update(d)
-    return merge
-
 def deep_merge(dct, merge_dct):
     '''
     Recursive dict merge
@@ -309,8 +302,13 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        self.emitter_keys = configuration['emitter'].get('keys')
-        self.emitter = configuration['emitter'].get('object')
+        if configuration.get('emitter'):
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
+        else:
+            emitter = emit.get_emitter({})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
 
         connect_topology(processes, self.states, self.topology)
 

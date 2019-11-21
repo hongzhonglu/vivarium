@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import random
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge, merge_dicts
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge
+from lens.utils.dict_utils import merge_dicts
 
 # processes
 from lens.processes.derive_volume import DeriveVolume

@@ -1,25 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge, merge_dicts
+from lens.actor.process import State, merge_default_states, merge_default_updaters, deep_merge
+from lens.utils.dict_utils import merge_dicts
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
 from lens.processes.Vladimirov2008_motor import MotorActivity
-from lens.processes.derive_volume import DeriveVolume
 
 
-def compose_chemotaxis(config):
+def compose_vladimirov_chemotaxis(config):
     exchange_key = config.get('exchange_key')
 
     # declare the processes
     receptor = ReceptorCluster(config)
     motor = MotorActivity(config)
-    # deriver = DeriveVolume(config)
-    processes = [{
-        'receptor': receptor,
-        'motor': motor,
-        # 'deriver': deriver
-    }]
+    processes = [
+        {'receptor': receptor},
+        {'motor': motor}]
 
     # initialize the states
     default_states = merge_default_states(processes)
@@ -64,8 +61,6 @@ def compose_chemotaxis(config):
         'motor': {
             'external': 'environment',
             'internal': 'cell'},
-        # 'deriver': {
-        #     'internal': 'cell'},
         }
 
     options = {
