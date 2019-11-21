@@ -45,8 +45,6 @@ from lens.processes.Vladimirov2008_motor import MotorActivity
 from lens.processes.membrane_potential import MembranePotential
 
 # composites
-from lens.composites.Covert2002_rFBA import compose_covert2002
-from lens.composites.Covert2008_iFBA import compose_covert2008
 from lens.composites.growth_division import compose_growth_division
 from lens.composites.Vladimirov2008_chemotaxis import compose_vladimirov_chemotaxis
 from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
@@ -86,14 +84,12 @@ def wrap_init_basic(make_process):
 
 def wrap_init_composite(make_composite):
     def initialize(boot_config):
-        # configure the emitter and exchange_key
-        exchange_key = '__exchange'
+        # configure the emitter
         boot_config.update({
             'emitter': {
                 'type': 'database',
                 'url': 'localhost:27017',
                 'database': 'simulations'},
-            'exchange_key': exchange_key,
             })
 
         # set up the the composite
@@ -105,10 +101,7 @@ def wrap_init_composite(make_composite):
 
         # update options
         emitter = configure_emitter(boot_config, processes, topology)
-        options.update({
-            'emitter': emitter,
-            'exchange_key': exchange_key,
-            })
+        options.update({'emitter': emitter})
 
         # create the compartment
         return LatticeCompartment(processes, states, options)
@@ -243,13 +236,19 @@ def initialize_custom_small(agent_config):
 
 def initialize_glc_g6p(agent_config):
     timeline_str = '0 GLC_G6P, 3600 end'
-    boot_config = {'timeline_str': timeline_str}
+    boot_config = {
+        'timeline_str': timeline_str,
+        'emit_fields': ['GLC', 'G6P']
+    }
     boot_config.update(agent_config)
     return boot_config
 
 def initialize_glc_lct(agent_config):
     timeline_str = '0 GLC_LCT, 3600 end'
-    boot_config = {'timeline_str': timeline_str}
+    boot_config = {
+        'timeline_str': timeline_str,
+        'emit_fields': ['GLC', 'LCTS']
+    }
     boot_config.update(agent_config)
     return boot_config
 
@@ -322,11 +321,6 @@ def initialize_measp_long(agent_config):
 
 
 def initialize_measp_large(agent_config):
-    # media_id = 'MeAsp_media'
-    # media = {'GLC': 20.0,  # assumes mmol/L
-    #          'MeAsp': 1.0}
-    # new_media = {media_id: media}
-    # timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
 
     ## Make media: GLC_G6P with MeAsp
     # get GLC_G6P media
@@ -348,13 +342,26 @@ def initialize_measp_large(agent_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)
 
+    emit_field = ['GLC', 'MeAsp']
+
     boot_config = {
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'emit_fields': ['GLC', 'MeAsp'],
-        'diffusion': 0.001,
+        'emit_fields': emit_field,
+        'static_concentrations': False,
+        'gradient': {
+            'type': 'linear',
+            'molecules': {
+                'GLC': {
+                    'center': [0.0, 0.0],
+                    'slope': -1.0 / 250.0},
+                'MeAsp': {
+                    'center': [1.0, 1.0],
+                    'slope': -1.0 / 250.0}
+            }},
+        # 'diffusion': 0.001,
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
         'patches_per_edge_x': 50}
@@ -414,8 +421,6 @@ class BootEnvironment(BootAgent):
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
-            'covert2002': wrap_boot(wrap_init_composite(compose_covert2002), {'volume': 1.0}),
-            'covert2008': wrap_boot(wrap_init_composite(compose_covert2008), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_vladimirov_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             }
