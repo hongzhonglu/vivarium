@@ -67,14 +67,16 @@ class LatticeCompartment(Compartment, Simulation):
         if len(self.exchange_ids) > 0:
             # update only the states defined in both exchange and the external environment
             exchange = self.states.get(self.exchange_role)
-            local_environment = {key : update['concentrations'][key]
-                                 for key in self.exchange_ids if key in env_keys}
-            environment.assign_values(local_environment)
+            local_env_keys = self.exchange_ids
             exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
         elif environment:
-            local_environment = {key : update['concentrations'][key]
-                                 for key in environment.keys if key in env_keys}
-            environment.assign_values(local_environment)
+            local_env_keys = environment.keys
+        else:
+            local_env_keys = []
+
+        local_environment = {key : update['concentrations'][key]
+                             for key in local_env_keys if key in env_keys}
+        environment.assign_values(local_environment)
 
     def generate_daughters(self):
         states = self.divide_state(self)
@@ -153,6 +155,7 @@ def generate_lattice_compartment(process, config):
         'initial_time': config.get('initial_time', 0.0),
         'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
         'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
+        'topology': topology,
     }
     options.update(config['compartment_options'])
 

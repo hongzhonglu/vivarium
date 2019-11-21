@@ -330,7 +330,7 @@ def test_transport():
 
     # get initial state and parameters
     state = transport.default_state()
-    saved_state = {'internal': {}, 'external': {}, 'time': []}
+    saved_state = {'internal': {}, 'exchange': {}, 'time': []}
 
     # run simulation
     time = 0
@@ -351,12 +351,12 @@ def test_transport():
 
         # apply external update
         volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
-        for mol_id, delta_count in update['external'].iteritems():
+        for mol_id, delta_count in update['exchange'].iteritems():
             delta_conc = counts_to_millimolar(delta_count, volume)
-            state['external'][mol_id] += delta_conc
+            state['exchange'][mol_id] += delta_conc
 
         # save state
-        for role in ['internal', 'external']:
+        for role in ['internal', 'exchange']:
              for state_id, value in state[role].iteritems():
                  if state_id in saved_state[role].keys():
                      saved_state[role][state_id].append(value)

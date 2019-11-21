@@ -293,13 +293,9 @@ def initialize_state(process_layers, topology, initial_state):
 
             # initialize the default states
             default_states = default_process_states.get(process_role, {})
-            # default_states = {state: 0 for state in states}
-            # default_states.update(default_process_states.get(process_role, {}))
 
             # initialize the default updaters
             default_updaters = default_process_updaters.get(process_role, {})
-            # default_updaters = {state: 'delta' for state in states}  # default updater is delta
-            # default_updaters.update(default_process_updaters.get(process_role, {}))
 
             # update the states
             c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
