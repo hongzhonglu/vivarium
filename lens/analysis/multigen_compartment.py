@@ -34,7 +34,7 @@ class MultigenCompartment(Analysis):
         compartments = data['compartments']
 
         if not compartments:
-            print('no tags for multigen_compartment analysis')
+            print('no tags for multigen_compartment analysis. specify tag with "-t tag_id"')
             return
 
         # find initial cells in phylogeny

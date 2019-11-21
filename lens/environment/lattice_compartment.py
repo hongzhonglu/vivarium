@@ -31,23 +31,27 @@ def add_str_to_keys(dct, key_str):
 class LatticeCompartment(Compartment, Simulation):
     def __init__(self, processes, states, configuration):
         self.color = DEFAULT_COLOR
-        self.exchange_role = configuration.get('exchange_role', 'exchange')
-        self.environment_role = configuration.get('environment_role', 'environment')  # TODO -- this needs to be configurable.
+        self.exchange_role = configuration.get('exchange_role', '')
+        self.environment_role = configuration.get('environment_role', '')
 
         # set up exchange with lattice
+        self.exchange_ids = False
         if self.exchange_role in states.keys():
             exchange_state = states[self.exchange_role]
             self.exchange_ids = exchange_state.keys
 
-        # find roles that contain volume and motile_force
+        # find roles that contain volume, motile_force, division
         self.volume_role = False
         self.motile_role = False
+        self.division_role = False
         for role, state in states.iteritems():
             state_ids = state.keys
             if 'volume' in state_ids:
                 self.volume_role = role
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
                 self.motile_role = role
+            if 'division' in state_ids:
+                self.division_role = role
 
         super(LatticeCompartment, self).__init__(processes, states, configuration)
 
@@ -57,30 +61,33 @@ class LatticeCompartment(Compartment, Simulation):
 
     def apply_outer_update(self, update):
         self.last_update = update
+        env_keys = update['concentrations'].keys()
         environment = self.states.get(self.environment_role)
-        exchange = self.states.get(self.exchange_role)
 
-        if environment:
+        if self.exchange_ids:
             # update only the states defined in both exchange and the external environment
-            env_keys = update['concentrations'].keys()
+            exchange = self.states.get(self.exchange_role)
             local_environment = {key : update['concentrations'][key]
                                  for key in self.exchange_ids if key in env_keys}
-
             environment.assign_values(local_environment)
             exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
+        elif environment:
+            local_environment = {key : update['concentrations'][key]
+                                 for key in environment.keys if key in env_keys}
+            environment.assign_values(local_environment)
 
     def generate_daughters(self):
         states = self.divide_state(self)
-        volume = states[0][self.volume_role]['volume']
+        volume = states[0][self.volume_role]['volume']  # TODO -- same volume for both daughters?
 
         return [
             dict(
                 id=str(uuid.uuid1()),
-                volume=volume,
+                volume=volume,  # daughter_state[self.volume_role]['volume'],
                 boot_config=dict(
                     initial_time=self.time(),
                     initial_state=daughter_state,
-                    volume=volume))
+                    volume=volume))  # daughter_state[self.volume_role]['volume']))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -142,13 +149,11 @@ def generate_lattice_compartment(process, config):
     emitter = get_emitter(emitter_config)
 
     options = {
-        'topology': topology,
         'emitter': emitter,
         'initial_time': config.get('initial_time', 0.0),
         'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
         'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
     }
-
     options.update(config['compartment_options'])
 
     # create the lattice compartment

@@ -33,7 +33,7 @@ class ShepherdControl(ActorControl):
         media_id = args.get('media', 'minimal')
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 {}, 3600 end'.format(media_id)
+            timeline_str = '0 {}, 7200 end'.format(media_id)
             # timeline_str = '0 {}, 14400 end'.format(media_id)
 
         emit_field = ['GLC']
@@ -112,7 +112,7 @@ class ShepherdControl(ActorControl):
         media_id = args.get('media', 'minimal')
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 {}, 3600 end'.format(media_id)
+            timeline_str = '0 {}, 7200 end'.format(media_id)
 
         emit_field = ['GLC']
 
@@ -123,6 +123,13 @@ class ShepherdControl(ActorControl):
             'run_for': 2.0,
             'edge_length_x': 50.0,
             'patches_per_edge_x': 10,
+            'gradient': {
+                'type': 'linear',
+                'molecules': {
+                    'GLC': {
+                        'center': [0.0, 0.0],
+                        'slope': -1.0 / 250.0},
+                }},
         }
 
         self.add_agent(experiment_id, 'lattice', lattice_config)

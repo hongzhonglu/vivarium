@@ -12,9 +12,9 @@ from lens.actor.process import deep_merge
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
-# TODO (Eran) -- min/max should be an argument
-MIN_PROTEIN = 75  # any value less than this shows no flourescence
-MAX_PROTEIN = 110  # if a tagged protein has a value over this, it is fully saturated
+# TODO (Eran) -- min/max should be configured
+MIN_TAG = 75  # any value less than this shows no flourescence
+MAX_TAG = 110  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -177,8 +177,8 @@ class Snapshots(Analysis):
             agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
             tags = data.get('tags')
             if tags:
-                intensity = max((tags[tags.keys()[0]] - MIN_PROTEIN), 0)
-                intensity = min(intensity / (MAX_PROTEIN - MIN_PROTEIN), 1)  # only use first tag TODO -- multiple tags?
+                intensity = max((tags[tags.keys()[0]] - MIN_TAG), 0)
+                intensity = min(intensity / (MAX_TAG - MIN_TAG), 1)  # only use first tag TODO -- multiple tags?
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)
 

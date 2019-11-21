@@ -21,9 +21,9 @@ def compose_growth_division(config):
     # place processes in layers
     processes = [
         {'growth': growth,
-         'division': division,
          'expression': expression},
-        {'deriver': deriver}]
+        {'deriver': deriver,
+         'division': division}]
 
     # make the topology.
     # for each process, map process roles to compartment roles
@@ -41,16 +41,9 @@ def compose_growth_division(config):
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
-    # get environment ids, and make exchange_ids for external state
-    # TODO -- remove this
-    environment_ids = []
-
     options = {
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
-        'environment': 'environment',
-        'compartment': 'cell',
-        'environment_ids': environment_ids,
         'divide_condition': divide_condition,
         'divide_state': divide_state}
 
@@ -58,3 +51,53 @@ def compose_growth_division(config):
         'processes': processes,
         'states': states,
         'options': options}
+
+
+def test_division():
+    import numpy as np
+    from lens.actor.process import Compartment
+    from lens.environment.lattice_compartment import LatticeCompartment
+
+    boot_config = {}
+    composite_config = compose_growth_division(boot_config)
+    processes = composite_config['processes']
+    states = composite_config['states']
+    options = composite_config['options']
+
+    # make compartment
+    compartment = LatticeCompartment(processes, states, options)
+
+    print(compartment.current_parameters())
+    print(compartment.current_state())
+
+    # test compartment
+    compartment = Compartment(processes, states, options)
+
+    print('compartment current_parameters: {}'.format(compartment.current_parameters()))
+    print('compartment current_state: {}'.format(compartment.current_state()))
+
+    # # evaluate compartment
+    # timestep = 1
+    # for steps in np.arange(13):
+    #     compartment.update(timestep)
+    #     print(compartment.current_state())
+
+
+    # make lattice_compartment
+    lattice_compartment = LatticeCompartment(processes, states, options)
+
+    print(lattice_compartment.current_parameters())
+    print(lattice_compartment.current_state())
+
+    # evaluate compartment
+    timestep = 1
+    for steps in np.arange(1300):
+        lattice_compartment.update(timestep)
+        print('lattice_compartment current_state: {}'.format(lattice_compartment.current_state()))
+
+        # lattice_compartment.states['cell'].updaters
+        # import ipdb; ipdb.set_trace()
+
+
+if __name__ == '__main__':
+    saved_state = test_division()

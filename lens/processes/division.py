@@ -6,8 +6,9 @@ from lens.actor.process import Process
 
 
 def divide_condition(compartment):
-    division = compartment.states['cell'].state_for(['division'])
-    if division.get('division', 0) == 0:  # 0 is false
+    division_role = compartment.division_role
+    division = compartment.states[division_role].state_for(['division'])
+    if division.get('division', 0) == 0:  # 0 means false
         divide = False
     else:
         divide = True
@@ -23,6 +24,7 @@ def divide_state(compartment):
                 if key == 'division':
                     divided[index][state_key][key] = 0
                 else:
+                    # TODO -- this should not divide everything. if 'set' updater, just set value
                     divided[index][state_key][key] = value // 2 + (value % 2 if index == left else 0)
 
     print('divided {}'.format(divided))
@@ -34,8 +36,12 @@ class Division(Process):
     def __init__(self, initial_parameters={}):
         self.division = 0
 
+        initial_volume = initial_parameters.get('initial_volume', 1.2)
+        division_volume = initial_volume * 2
+
         roles = {'internal': ['volume', 'division']}
-        parameters = {'division_volume': 2.4}  # TODO -- make division at 2X initial_volume?  Pass this in from initial_parameters
+
+        parameters = {'division_volume': division_volume}  # TODO -- make division at 2X initial_volume?  Pass this in from initial_parameters
         parameters.update(initial_parameters)
 
         super(Division, self).__init__(roles, parameters)
