@@ -41,6 +41,7 @@ def compose_pmf_chemotaxis(config):
             'external': 'environment',
             'internal': 'cell'},
         'transport': {
+            'exchange': 'exchange',
             'external': 'environment',
             'internal': 'cell'},
         'motor': {
