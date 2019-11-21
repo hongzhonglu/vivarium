@@ -13,7 +13,6 @@ from lens.processes.division import Division, divide_condition, divide_state  # 
 
 
 def compose_pmf_chemotaxis(config):
-    exchange_key = config.get('exchange_key')
     receptor_parameters = {'ligand': 'GLC'}
     receptor_parameters.update(config)
 
@@ -31,7 +30,7 @@ def compose_pmf_chemotaxis(config):
         {'receptor': receptor, 'transport': transport},
         {'motor': motor},
         {'deriver': deriver,
-         # 'division': division
+         'division': division
          },
     ]
 
@@ -53,38 +52,20 @@ def compose_pmf_chemotaxis(config):
             'internal': 'cell'},
         'deriver': {
             'internal': 'cell'},
-        # 'division': {
-        #     'internal': 'cell'},
+        'division': {
+            'internal': 'cell'},
         }
 
-
-    # TODO -- remove this
-    default_updaters = merge_default_updaters(processes)
-    environment_ids = []
-    initial_exchanges = {'cell': {}, 'environment': {}} #role: {} for role in process.roles.keys()}
-    for roleP, state_ids in default_updaters.iteritems():
-        if roleP is 'external':
-            role = 'environment'
-        elif roleP is 'internal':
-            role = 'cell'
-        for state_id, updater in state_ids.iteritems():
-            if updater is 'accumulate':
-                environment_ids.append(state_id)
-                initial_exchanges[role].update({state_id + exchange_key: 0.0})
-
-
-
     # initialize the states
-    states = initialize_state(processes, topology, initial_exchanges)  # TODO -- dont use initial_exchanges
-    # states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
-        # 'divide_condition': divide_condition,
-        # 'divide_state': divide_state
+        'exchange_role': 'exchange',
+        'divide_condition': divide_condition,
+        'divide_state': divide_state
     }
 
     return {
