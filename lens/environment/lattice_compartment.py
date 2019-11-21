@@ -35,7 +35,7 @@ class LatticeCompartment(Compartment, Simulation):
         self.environment_role = configuration.get('environment_role', '')
 
         # set up exchange with lattice
-        self.exchange_ids = False
+        self.exchange_ids = []
         if self.exchange_role in states.keys():
             exchange_state = states[self.exchange_role]
             self.exchange_ids = exchange_state.keys
@@ -64,7 +64,7 @@ class LatticeCompartment(Compartment, Simulation):
         env_keys = update['concentrations'].keys()
         environment = self.states.get(self.environment_role)
 
-        if self.exchange_ids:
+        if len(self.exchange_ids) > 0:
             # update only the states defined in both exchange and the external environment
             exchange = self.states.get(self.exchange_role)
             local_environment = {key : update['concentrations'][key]
