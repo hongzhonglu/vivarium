@@ -538,7 +538,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
 
-def test_lattice():
+def test_lattice(total_time=100):
     from lens.actor.emitter import get_emitter
 
     # get media
@@ -583,29 +583,54 @@ def test_lattice():
 
     lattice.add_simulation(agent_id, simulation)
 
-    # apply forces
-    run_for = 1.0
-    force = [1.0, 1.0]
-    lattice.motile_forces[agent_id] = force
+    # run simulation
+    saved_state = {'location': []}
 
-    # run lattice and get new locations
-    lattice.run_incremental(run_for)
-    locations = lattice.locations  # new location
+    time = 0
+    timestep = 2  # sec
+    while time < total_time:
 
-    import ipdb; ipdb.set_trace()
+        # apply forces
+        force = [1.0, 1.0]
+        lattice.motile_forces[agent_id] = force
+
+        # run lattice and get new locations
+        lattice.run_incremental(timestep)
+        locations = lattice.locations  # new location
+
+        saved_state['location'].append(list(locations[agent_id]))
+        time += timestep
 
     # diffusion
 
     # division
-    return {}
 
-def plot_lattice(output, out_dir='out'):
+    data = {
+        'saved_state': saved_state,
+    }
+    return data
+
+def plot_lattice(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
+    saved_state = data['saved_state']
+    locations = saved_state['location']
+
     # plot
     plt.figure()
+
+    # get locations and convert to 2D array
+    locations_array = np.array(locations)
+    x_coord = locations_array[:, 0]
+    y_coord = locations_array[:, 1]
+    plt.plot(x_coord, y_coord, 'b-')  # trajectory
+    plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+    plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+    # plt.xlim((0, edge_x))
+    # plt.ylim((0, edge_y))
 
     fig_path = os.path.join(out_dir, 'lattice')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
