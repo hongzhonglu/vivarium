@@ -154,9 +154,9 @@ class Snapshots(Analysis):
                 self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
-        figname = '/snapshots'
+        figname = '/snap_out'
         if tags_data:
-            figname = '/snapshots_tagged'
+            figname = '/snap_out_tagged'
         plt.savefig(output_dir + figname, bbox_inches='tight')
         plt.close(fig)
 
