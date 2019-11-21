@@ -547,7 +547,7 @@ def test_lattice(total_time=100):
     media = make_media.get_saved_media(media_id)
 
     # get emitter
-    emitter = get_emitter({})
+    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
 
     boot_config = {
         'concentrations': media,
@@ -564,23 +564,19 @@ def test_lattice(total_time=100):
     # get simulations
     simulations = lattice.simulations
 
-    # add cell simulation
+    # add a cell simulation
     agent_id = '1'
     simulation = simulations.setdefault(agent_id, {})
-
     agent_state = {'volume': 1.0}
-
     agent_config = {
         'location': np.array([0.0, 0.0]),
         'orientation': np.array([0.0]),
     }
-
     simulation.update({
         'time': lattice.time(),
         'state': agent_state,
         'agent_config': agent_config,
         })
-
     lattice.add_simulation(agent_id, simulation)
 
     # run simulation
