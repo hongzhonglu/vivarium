@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import csv
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import Process, deep_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import get_mols_from_reg_logic
 import lens.utils.regulation_logic as rl
@@ -56,7 +56,7 @@ class Regulation(Process):
         # TODO -- which states should be boolean?
         internal_molecules = {key: 0 for key in self.internal}
         external_molecules = {key: 0 for key in self.external}
-        internal = dict_merge(internal_molecules, {'volume': 1})
+        internal = deep_merge(internal_molecules, {'volume': 1})
 
         return {
             'external': external_molecules,
@@ -83,7 +83,7 @@ class Regulation(Process):
     def next_update(self, timestep, states):
         internal_state = states['internal']
         external_state = add_str_to_keys(states['external'], self.external_key)
-        total_state = dict_merge(internal_state, external_state)
+        total_state = deep_merge(internal_state, external_state)
         boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
 
         regulatory_state = {mol_id: regulatory_logic(boolean_state)

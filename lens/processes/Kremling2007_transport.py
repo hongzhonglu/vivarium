@@ -7,6 +7,8 @@ from scipy.integrate import odeint
 from lens.actor.process import Process
 from lens.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from lens.environment.make_media import Media
+from lens.utils.dict_utils import merge_dicts
+
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
@@ -75,11 +77,6 @@ MOLECULAR_WEIGHTS = {
 }
 
 
-def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
-
 
 class Transport(Process):
     def __init__(self, initial_parameters={}):
@@ -137,7 +134,7 @@ class Transport(Process):
 
         return {
             'external': external,
-            'internal': merge_dicts(internal, {'volume': 1})}  #TODO -- get volume with deriver?
+            'internal': merge_dicts([internal, {'volume': 1}])}  #TODO -- get volume with deriver?
 
     def default_emitter_keys(self):
         keys = {
@@ -405,5 +402,3 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     plot_transport(saved_state, out_dir)
-
-

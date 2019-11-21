@@ -6,10 +6,10 @@ import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 
 from lens.analysis.analysis import Analysis, get_compartment
-from lens.actor.process import dict_merge
+from lens.actor.process import deep_merge
 
 # DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
-DEFAULT_COLOR = [220/360, 100.0/100.0, 50.0/100.0]  # HSV
+DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 # TODO (Eran) -- min/max should be an argument
@@ -36,7 +36,7 @@ class Snapshots(Analysis):
             time_dict = {time: {} for time in times}
             for tag, series in tags_history.iteritems():
                 tag_hist = {time: {'tags': {tag: state}} for time, state in zip(times,series)}
-                time_dict = dict_merge(dict(time_dict), tag_hist)
+                time_dict = deep_merge(dict(time_dict), tag_hist)
 
             return time_dict
 
@@ -112,7 +112,7 @@ class Snapshots(Analysis):
 
         # make figure
         fig = plt.figure(figsize=(20*n_snapshots, 10*n_fields))
-        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.01)
+        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times, 0):
             field_data = time_data[time].get('fields')
@@ -124,7 +124,7 @@ class Snapshots(Analysis):
                     tdata = tags_data[agent_id]
                     tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
                     agent_tags[agent_id] = tags
-                agent_data = dict_merge(dict(agent_data), agent_tags)
+                agent_data = deep_merge(dict(agent_data), agent_tags)
 
             if field_ids:
                 # plot fields
@@ -137,8 +137,8 @@ class Snapshots(Analysis):
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
-                    # rotate field and plot
-                    field = np.rot90(np.array(field_data[field_id])).tolist()
+                    # transpose field to align with agent
+                    field = np.transpose(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
                                origin='lower',
                                extent=[0, edge_length_x, 0, edge_length_y],
@@ -185,7 +185,7 @@ class Snapshots(Analysis):
             rgb = hsv_to_rgb(agent_color)
 
             # Create a rectangle
-            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='k', facecolor=rgb)
+            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
             ax.add_patch(rect)
 
 

@@ -40,8 +40,7 @@ DEFAULT_PARAMETERS = {
 class ReceptorCluster(Process):
     def __init__(self, initial_parameters={}):
 
-        self.ligand_id = LIGAND_ID
-
+        self.ligand_id = initial_parameters.get('ligand', LIGAND_ID)
         roles = {
             'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
             'external': [self.ligand_id]

@@ -4,7 +4,7 @@ import os
 from scipy import constants
 import numpy as np
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 from lens.utils.modular_fba import FluxBalanceAnalysis
 from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
@@ -90,7 +90,7 @@ class Metabolism(Process):
         internal.update(flux_targets)
         return {
             'external':  self.initial_state.get('external'),
-            'internal': dict_merge(dict(internal), self.initial_state.get('internal'))}
+            'internal': deep_merge(dict(internal), self.initial_state.get('internal'))}
 
     def default_emitter_keys(self):
         keys = {
@@ -126,7 +126,7 @@ class Metabolism(Process):
 
         ## Regulation
         # get the regulatory state of the reactions TODO -- are reversible reactions regulated?
-        total_state = dict_merge(dict(internal_state), external_state)
+        total_state = deep_merge(dict(internal_state), external_state)
         boolean_state = {mol_id: (value>1e-5) for mol_id, value in total_state.iteritems()}  # TODO -- generalize the threshold
         regulatory_state = {rxn_id: regulatory_logic(boolean_state)
                             for rxn_id, regulatory_logic in self.regulation.iteritems()}
@@ -175,7 +175,7 @@ class Metabolism(Process):
         rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
 
         update = {
-            'internal': dict_merge(dict(new_mass), rxn_dict),
+            'internal': deep_merge(dict(new_mass), rxn_dict),
             'external': environment_deltas}
         return update
 

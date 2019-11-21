@@ -4,7 +4,7 @@ import os
 import numpy as np
 import scipy.constants as constants
 
-from lens.actor.process import Process, dict_merge
+from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 
 # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
@@ -63,18 +63,22 @@ class MembranePotential(Process):
         self.permeability = config.get('permeability', PERMEABILITY_MAP)
         self.charge = config.get('charge', CHARGE_MAP)
 
+        # get list of internal and external states
+        internal_states = self.initial_states['internal'].keys()
+        external_states = self.initial_states['external'].keys()
+
         # set roles
         roles = {
-            'internal': ['c_in'],
+            'internal': internal_states + ['c_in'],
             'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
-            'external': ['c_out'],
+            'external': external_states + ['c_out', 'T'],
         }
 
         super(MembranePotential, self).__init__(roles, parameters)
 
     def default_state(self):
         config = {'external': {'T': 310.15}}
-        default_state = dict_merge((self.initial_states), config)
+        default_state = deep_merge((self.initial_states), config)
         return default_state
 
     def default_emitter_keys(self):
@@ -218,23 +222,33 @@ def plot_mem_potential(saved_state, out_dir='out'):
     # plot data
     plot_idx = 0
     for key in data_keys:
-        for mol_id, series in sorted(saved_state[key].iteritems()):
+
+        if key in ['internal', 'external']:
             ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+            for mol_id, series in sorted(saved_state[key].iteritems()):
+                # if mol_id is 'T':
+                #     pass
+                # else:
+                ax.plot(time_vec, series, label=mol_id)
 
-            ax.plot(time_vec, series)
-            ax.title.set_text(str(key) + ': ' + mol_id)
+            ax.title.set_text(key)
+            ax.set_yscale('log')
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
             ax.set_xlabel('time (hrs)')
-
-            # if key is 'internal':
-            #     ax.set_yticks([0.0, 1.0])
-            #     ax.set_yticklabels(["False", "True"])
-
             plot_idx += 1
+
+        else:
+            for mol_id, series in sorted(saved_state[key].iteritems()):
+                ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+                ax.plot(time_vec, series)
+                ax.title.set_text(str(key) + ': ' + mol_id)
+                ax.set_xlabel('time (hrs)')
+                plot_idx += 1
 
     # save figure
     fig_path = os.path.join(out_dir, 'membrane_potential')
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
-    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
