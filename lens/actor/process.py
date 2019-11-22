@@ -181,18 +181,6 @@ class Process(object):
     def default_settings(self):
         return {}
 
-    def default_state(self):
-        return {}
-
-    def default_emitter_keys(self):
-        return {}
-
-    def default_updaters(self):
-        return {}
-
-    # def default_parameters(self):
-    #     return {}
-
     def assign_roles(self, states):
         '''
         Provide States for some or all of the roles this Process expects.
@@ -239,15 +227,17 @@ def connect_topology(process_layers, states, topology):
 def merge_default_states(processes):
     initial_state = {}
     for process_id, process in merge_dicts(processes).items():
-        default = process.default_state()
-        initial_state = deep_merge(dict(initial_state), default)
+        settings = process.default_settings()
+        default_state = settings['state']
+        initial_state = deep_merge(dict(initial_state), default_state)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
     for process_id, process in merge_dicts(processes).items():
-        process_updaters = process.default_updaters()
-        updaters = deep_merge(dict(updaters), process_updaters)
+        settings = process.default_settings()
+        default_updaters = settings['updaters']
+        updaters = deep_merge(dict(updaters), default_updaters)
     return updaters
 
 def deep_merge(dct, merge_dct):
@@ -288,8 +278,9 @@ def initialize_state(process_layers, topology, initial_state):
     for process_id, roles_map in topology.iteritems():
         process_roles = processes[process_id].roles
 
-        default_process_states = processes[process_id].default_state()
-        default_process_updaters = processes[process_id].default_updaters()
+        settings = processes[process_id].default_settings()
+        default_process_states = settings['state']
+        default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.iteritems():
             compartment_role = topology[process_id][process_role]
