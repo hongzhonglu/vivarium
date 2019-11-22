@@ -282,13 +282,13 @@ def initialize_state(process_layers, topology, initial_state):
     # make a dict with the compartment's default states {roles: states}
     compartment_states = {}
     compartment_updaters = {}
-    for process_id, roles_map in topology.iteritems():
+    for process_id, roles_map in topology.items():
         process_roles = processes[process_id].roles
 
         default_process_states = processes[process_id].default_state()
         default_process_updaters = processes[process_id].default_updaters()
 
-        for process_role, states in process_roles.iteritems():
+        for process_role, states in process_roles.items():
             compartment_role = topology[process_id][process_role]
 
             # initialize the default states
@@ -307,7 +307,7 @@ def initialize_state(process_layers, topology, initial_state):
 
     # initialize state for each compartment role
     initialized_state = {}
-    for compartment_role, states in compartment_states.iteritems():
+    for compartment_role, states in compartment_states.items():
         updaters = compartment_updaters[compartment_role]
         make_state = State(
             initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),

@@ -6,8 +6,21 @@
 
 from __future__ import absolute_import, division, print_function
 
-from itertools import izip
+
+
 import warnings
+
+# python 3 basestring
+try:
+	basestring
+except:
+	basestring = (str, bytes)
+
+# python 3 zip
+try:
+    from itertools import izip as zip
+except ImportError: # we are in python 3
+    pass
 
 import numpy as np
 
@@ -314,7 +327,7 @@ class FluxBalanceAnalysis(object):
 
         for reactionID in sorted(reactionStoich):
             stoichiometry = reactionStoich[reactionID]
-            for moleculeID, stoichCoeff in stoichiometry.viewitems():
+            for moleculeID, stoichCoeff in stoichiometry.items():
                 self._solver.setFlowMaterialCoeff(
                     reactionID,
                     moleculeID,
@@ -411,7 +424,7 @@ class FluxBalanceAnalysis(object):
         the standard objective, all molecules must be created/destroyed in
         prescribed ratios."""
 
-        for moleculeID in objective.viewkeys():
+        for moleculeID in objective.keys():
             objectiveEquivID = self._generatedID_moleculeEquivalents.format(moleculeID)
 
             self._solver.setFlowMaterialCoeff(
@@ -457,7 +470,7 @@ class FluxBalanceAnalysis(object):
             )
 
         # Create fraction and biomass outputs
-        for moleculeID in objective.viewkeys():
+        for moleculeID in objective.keys():
             fractionID = self._generatedID_moleculeEquivalents.format(moleculeID)
 
             # Biomass out
@@ -486,7 +499,7 @@ class FluxBalanceAnalysis(object):
         # Create fraction differences (leading - other), used in objective and constraints
         leadingMoleculeToFractionID = self._generatedID_moleculesToEquivalents.format(leadingMoleculeID)
 
-        for moleculeID in objective.viewkeys():
+        for moleculeID in objective.keys():
             if moleculeID == leadingMoleculeID:
                 continue
 
@@ -521,7 +534,7 @@ class FluxBalanceAnalysis(object):
 
         # Create biomass differences (fraction - biomass), used in constraints
 
-        for moleculeID in objective.viewkeys():
+        for moleculeID in objective.keys():
             fractionDifferenceBiomassID = self._generatedID_fractionalDifferenceBiomass.format(moleculeID)
 
             moleculeToFractionID = self._generatedID_moleculesToEquivalents.format(moleculeID)
@@ -690,7 +703,7 @@ class FluxBalanceAnalysis(object):
             upperBound=1,
             )
 
-        for reactionID, expectedFlux in objective.iteritems():
+        for reactionID, expectedFlux in objective.items():
             if expectedFlux < 0:
                 raise FBAError("Target flux for reaction {} is negative. Kinetic targets must be positive - set the value for the (reverse) reaction if a negative flux is desired.".format(reactionID))
 
@@ -911,7 +924,7 @@ class FluxBalanceAnalysis(object):
             -1
             )
 
-        for moleculeID, stoichCoeff in maintenanceReaction.viewitems():
+        for moleculeID, stoichCoeff in maintenanceReaction.items():
             self._solver.setFlowMaterialCoeff(
                 self._reactionID_GAM,
                 moleculeID,
@@ -954,7 +967,7 @@ class FluxBalanceAnalysis(object):
         levels_array = np.empty(len(self._externalMoleculeIDs))
         levels_array[:] = levels
 
-        for moleculeID, level in izip(self._externalMoleculeIDs, levels_array):
+        for moleculeID, level in zip(self._externalMoleculeIDs, levels_array):
             flowID = self._generatedID_externalExchange.format(moleculeID)
 
             if level < 0:
@@ -982,7 +995,7 @@ class FluxBalanceAnalysis(object):
         if (levels_array < 0).any():
             raise InvalidBoundaryError("Negative molecule levels not allowed")
 
-        for moleculeID, level in izip(self._internalMoleculeIDs, levels_array):
+        for moleculeID, level in zip(self._internalMoleculeIDs, levels_array):
             flowID = self._generatedID_internalExchange.format(moleculeID)
 
             if self._forceInternalExchange:
@@ -1098,7 +1111,7 @@ class FluxBalanceAnalysis(object):
         change = np.zeros(len(self._outputMoleculeIDs))
 
         for i, stoich in enumerate(self._outputMoleculeCoeffs):
-            flowRates = self._solver.getFlowRates(stoich.viewkeys())
+            flowRates = self._solver.getFlowRates(stoich.keys())
             coeffs = stoich.values()
             change[i] = np.dot(flowRates, coeffs)
 
@@ -1215,7 +1228,7 @@ class FluxBalanceAnalysis(object):
             unity_ids = np.array([self._generatedID_quadFluxRelax.format(rxn) for rxn in reactionIDs])
         else:
             unity_ids = np.hstack([[self._generatedID_amountUnder.format(rxn), self._generatedID_amountOver.format(rxn)] for rxn in reactionIDs])
-        fluxes = {rxn: flux for rxn, flux in izip(unity_ids, self.getReactionFluxes(unity_ids))}
+        fluxes = {rxn: flux for rxn, flux in zip(unity_ids, self.getReactionFluxes(unity_ids))}
 
         for idx, reactionID in enumerate(reactionIDs):
             if reactionID not in self._kineticTargetFluxes:
@@ -1252,7 +1265,7 @@ class FluxBalanceAnalysis(object):
             raise FBAError("Rate targets cannot be negative. {} were provided with targets of {}".format(np.array(reactionIDs)[np.array(reactionTargets) < 0], np.array(reactionTargets)[np.array(reactionTargets) < 0]))
 
         # Change the objective normalization
-        for reactionID, reactionTarget in izip(reactionIDs,reactionTargets):
+        for reactionID, reactionTarget in zip(reactionIDs,reactionTargets):
             if reactionID not in self._kineticTargetFluxes:
                 raise FBAError("Kinetic targets can only be set for reactions initialized to be kinetic targets. {} is not set up for it.".format(reactionID))
 

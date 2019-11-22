@@ -34,7 +34,7 @@ class Snapshots(Analysis):
 
             # arrange data by time, for easy integration with environment data
             time_dict = {time: {} for time in times}
-            for tag, series in tags_history.iteritems():
+            for tag, series in tags_history.items():
                 tag_hist = {time: {'tags': {tag: state}} for time, state in zip(times,series)}
                 time_dict = deep_merge(dict(time_dict), tag_hist)
 
@@ -163,7 +163,7 @@ class Snapshots(Analysis):
 
     def plot_agents(self, ax, agent_data, cell_radius, agent_colors):
 
-        for agent_id, data in agent_data.iteritems():
+        for agent_id, data in agent_data.items():
 
             # location, orientation, length
             volume = data['volume']

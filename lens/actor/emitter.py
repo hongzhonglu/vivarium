@@ -53,14 +53,14 @@ def get_emitter_keys(process, topology):
     for process_id, process_object in merge_dicts(process).items():
         process_roles = topology[process_id]
         process_keys = process_object.default_emitter_keys()
-        for role, keys in process_keys.iteritems():
+        for role, keys in process_keys.items():
             compartment_name = process_roles[role]
             if compartment_name in emitter_keys.keys():
                 emitter_keys[compartment_name].extend(keys)
             else:
                 emitter_keys[compartment_name] = keys
     # remove redundant keys
-    for compartment_name, keys in emitter_keys.iteritems():
+    for compartment_name, keys in emitter_keys.items():
         emitter_keys[compartment_name] = list(set(keys))
 
     return emitter_keys

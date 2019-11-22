@@ -35,6 +35,12 @@ import numpy as np
 from scipy.sparse import coo_matrix
 import swiglpk as glp
 
+# python 3 basestring
+try:
+	basestring
+except:
+	basestring = (str, bytes)
+
 from ._base import NetworkFlowProblemBase
 
 class MessageLevel(Enum):
@@ -372,7 +378,7 @@ class NetworkFlowGLPK(NetworkFlowProblemBase):
             raise Exception("Equality constraints not yet built. Finish construction of the problem before accessing S matrix.")
         A = np.zeros((len(self._materialCoeffs), len(self._flows)))
         self._materialIdxLookup = {}
-        for materialIdx, (material, pairs) in enumerate(sorted(self._materialCoeffs.viewitems())):
+        for materialIdx, (material, pairs) in enumerate(sorted(self._materialCoeffs.items())):
             self._materialIdxLookup[material] = materialIdx
             for pair in pairs:
                 A[materialIdx, pair[1]] = pair[0]
@@ -407,7 +413,7 @@ class NetworkFlowGLPK(NetworkFlowProblemBase):
         A = np.zeros((n_coeffs, n_flows))
         # avoid creating duplicate constraints
         self._materialIdxLookup = {}
-        for materialIdx, (material, pairs) in enumerate(sorted(self._materialCoeffs.viewitems())):
+        for materialIdx, (material, pairs) in enumerate(sorted(self._materialCoeffs.items())):
             self._materialIdxLookup[material] = materialIdx
             for pair in pairs:
                 A[materialIdx, pair[1]] = pair[0]
@@ -418,7 +424,7 @@ class NetworkFlowGLPK(NetworkFlowProblemBase):
         data = _toDoubleArray(A_coo.data)
         n_elems = len(A_coo.row)
 
-        for row in xrange(1, self._n_eq_constraints + 1):
+        for row in range(1, self._n_eq_constraints + 1):
             glp.glp_set_row_bnds(self._lp, row, glp.GLP_FX, 0.0, 0.0)
         glp.glp_load_matrix(self._lp, n_elems, rowIdxs, colIdxs, data)
 

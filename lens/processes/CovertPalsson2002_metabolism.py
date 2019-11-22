@@ -137,8 +137,8 @@ def test_covert2002(total_time=3600):
     nAvogadro = metabolism.nAvogadro
 
     saved_state = {
-        'internal': {state_id: [value] for state_id, value in state['internal'].iteritems()},
-        'external': {state_id: [value] for state_id, value in state['external'].iteritems()},
+        'internal': {state_id: [value] for state_id, value in state['internal'].items()},
+        'external': {state_id: [value] for state_id, value in state['external'].items()},
         'time': [0]}
 
     # run simulation
@@ -158,7 +158,7 @@ def test_covert2002(total_time=3600):
 
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
-        for mol_id, exchange in external_update.iteritems():
+        for mol_id, exchange in external_update.items():
             exchange_rate = exchange / mmolToCount  # TODO -- per second?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
@@ -171,7 +171,7 @@ def test_covert2002(total_time=3600):
 
         # # get new flux targets
         # target_fluxes = {}
-        # for rxn_id, rate_law in transport_rates.iteritems():
+        # for rxn_id, rate_law in transport_rates.items():
         #     target_flux = rate_law(state['external'])
         #     target_fluxes[rxn_id + target_key] = target_flux
         # state['internal'].update(target_fluxes)
@@ -179,9 +179,9 @@ def test_covert2002(total_time=3600):
         # save state
         saved_state['time'].append(time)
         # saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
-        for state_id, value in state['internal'].iteritems():
+        for state_id, value in state['internal'].items():
             saved_state['internal'][state_id].append(value)
-        for state_id, value in state['external'].iteritems():
+        for state_id, value in state['external'].items():
             saved_state['external'][state_id].append(value)
 
     # check that mass values are strictly increasing
@@ -215,7 +215,7 @@ def plot_environment_output(data, out_dir='out'):
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = 'tab:blue'
-    for state_id, series in external_data.iteritems():
+    for state_id, series in external_data.items():
         ax2.plot(time_vec, series, label=state_id)
     ax2.set_ylabel('env concentrations (mmol/L)', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
@@ -248,7 +248,7 @@ def plot_metabolism_output(data, out_dir='out'):
     fig = plt.figure(figsize=(n_col * 8, n_rows * 2.5))
     plot_idx = 1
     for key in data_keys:
-        for state_id, series in sorted(saved_state[key].iteritems()):
+        for state_id, series in sorted(saved_state[key].items()):
             if state_id not in target_rxn_ids:
                 ax = fig.add_subplot(n_rows, n_col, plot_idx)
                 ax.plot(time_vec, series)

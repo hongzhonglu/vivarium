@@ -339,7 +339,7 @@ def test_transport():
         time += timestep
         for (t, change_dict) in timeline:
             if time >= t:
-                for key, change in change_dict.iteritems():
+                for key, change in change_dict.items():
                     state[key].update(change)
 
         # get update
@@ -351,13 +351,13 @@ def test_transport():
 
         # apply external update
         volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
-        for mol_id, delta_count in update['exchange'].iteritems():
+        for mol_id, delta_count in update['exchange'].items():
             delta_conc = counts_to_millimolar(delta_count, volume)
             state['exchange'][mol_id] += delta_conc
 
         # save state
         for role in ['internal', 'exchange']:
-             for state_id, value in state[role].iteritems():
+             for state_id, value in state[role].items():
                  if state_id in saved_state[role].keys():
                      saved_state[role][state_id].append(value)
                  else:
@@ -382,7 +382,7 @@ def plot_transport(saved_state, out_dir='out'):
     # plot data
     plot_idx = 0
     for key in data_keys:
-        for mol_id, series in sorted(saved_state[key].iteritems()):
+        for mol_id, series in sorted(saved_state[key].items()):
             ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
 
             ax.plot(time_vec, series)

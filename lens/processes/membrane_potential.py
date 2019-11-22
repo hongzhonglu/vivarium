@@ -111,7 +111,7 @@ class MembranePotential(Process):
         # Membrane potential.
         numerator = 0
         denominator = 0
-        for ion_id, p_ion_id in self.permeability.iteritems():
+        for ion_id, p_ion_id in self.permeability.items():
             charge = self.charge[ion_id]
             p_ion = self.parameters[p_ion_id]
 
@@ -182,7 +182,7 @@ def test_mem_potential():
         time += timestep
         for (t, change_dict) in timeline:
             if time >= t:
-                for key, change in change_dict.iteritems():
+                for key, change in change_dict.items():
                     state[key].update(change)
 
         update = mp.next_update(timestep, state)
@@ -190,14 +190,14 @@ def test_mem_potential():
 
         # update external state
         for role in ['internal', 'external']:
-            for state_id, value in state[role].iteritems():
+            for state_id, value in state[role].items():
                 if state_id in saved_state[role].keys():
                     saved_state[role][state_id].append(value)
                 else:
                     saved_state[role][state_id] = [value]
 
         # update membrane state from update
-        for state_id, value in update['membrane'].iteritems():
+        for state_id, value in update['membrane'].items():
             if state_id in saved_state['membrane'].keys():
                 saved_state['membrane'][state_id].append(value)
             else:
@@ -225,7 +225,7 @@ def plot_mem_potential(saved_state, out_dir='out'):
 
         if key in ['internal', 'external']:
             ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
-            for mol_id, series in sorted(saved_state[key].iteritems()):
+            for mol_id, series in sorted(saved_state[key].items()):
                 # if mol_id is 'T':
                 #     pass
                 # else:
@@ -238,7 +238,7 @@ def plot_mem_potential(saved_state, out_dir='out'):
             plot_idx += 1
 
         else:
-            for mol_id, series in sorted(saved_state[key].iteritems()):
+            for mol_id, series in sorted(saved_state[key].items()):
                 ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)

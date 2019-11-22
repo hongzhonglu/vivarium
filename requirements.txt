@@ -1,5 +1,6 @@
 Arpeggio==1.9.1
 cffi==1.13.2
+cobra==0.17.1
 confluent-kafka==0.11.5
 matplotlib==2.2.2
 numpy==1.14.6

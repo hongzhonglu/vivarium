@@ -153,7 +153,7 @@ class EnvironmentAgent(Outer):
                 'corner_location': self.environment.corner_locations[agent_id][0:2].tolist(),
                 'orientation': self.environment.locations[agent_id][2],
                 'parent_id': simulation.get('parent_id', '')}
-            for agent_id, simulation in self.environment.simulations.iteritems()}
+            for agent_id, simulation in self.environment.simulations.items()}
 
         return {
             'outer_id': self.agent_id,

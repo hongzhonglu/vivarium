@@ -19,7 +19,7 @@ def remove_str_in_list(molecule_ids, key_str):
 def add_str_to_keys(dct, key_str):
    ''' convert dictionary keys by adding key_str'''
    new_dct = {}
-   for key, value in dct.iteritems():
+   for key, value in dct.items():
        if key_str in key:
            new_dct[key] = value
        else:
@@ -44,7 +44,7 @@ class LatticeCompartment(Compartment, Simulation):
         self.volume_role = False
         self.motile_role = False
         self.division_role = False
-        for role, state in states.iteritems():
+        for role, state in states.items():
             state_ids = state.keys
             if 'volume' in state_ids:
                 self.volume_role = role

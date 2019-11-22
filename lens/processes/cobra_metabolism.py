@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import cobra
+import cobra.test
+
 from scipy import constants
 from cobra import Model, Reaction, Metabolite, Configuration
 
@@ -15,7 +18,7 @@ def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     for rxn_id in reversible_reactions:
         forward_stoich = stoichiometry[rxn_id]
         reverse_stoichiometry[rxn_id + reverse_key] = {
-            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.iteritems()}
+            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.items()}
     return reverse_stoichiometry
 
 def build_model(stoichiometry, objective):
@@ -125,9 +128,111 @@ def test_metabolism():
 
     return metabolism
 
+class JsonFBA(object):
+    def __init__(self, path):
+        self.model = cobra.io.load_json_model(path)
+
+def test_canonical():
+    metabolism = JsonFBA('models/e_coli_core.json')
+    return metabolism
+
+def test_test():
+    metabolism = JsonFBA('models/test_model.json')
+    return metabolism
+
+def test_demo():
+    model = Model('example_model')
+
+    reaction = Reaction('3OAS140')
+    reaction.name = '3 oxoacyl acyl carrier protein synthase n C140 '
+    reaction.subsystem = 'Cell Envelope Biosynthesis'
+    reaction.lower_bound = 0.  # This is the default
+    reaction.upper_bound = 1000.  # This is the default
+
+    ACP_c = Metabolite(
+        'ACP_c',
+        formula='C11H21N2O7PRS',
+        name='acyl-carrier-protein',
+        compartment='c')
+    omrsACP_c = Metabolite(
+        '3omrsACP_c',
+        formula='C25H45N2O9PRS',
+        name='3-Oxotetradecanoyl-acyl-carrier-protein',
+        compartment='c')
+    co2_c = Metabolite('co2_c', formula='CO2', name='CO2', compartment='c')
+    malACP_c = Metabolite(
+        'malACP_c',
+        formula='C14H22N2O10PRS',
+        name='Malonyl-acyl-carrier-protein',
+        compartment='c')
+    h_c = Metabolite('h_c', formula='H', name='H', compartment='c')
+    ddcaACP_c = Metabolite(
+        'ddcaACP_c',
+        formula='C23H43N2O8PRS',
+        name='Dodecanoyl-ACP-n-C120ACP',
+        compartment='c')    
+
+    reaction.add_metabolites({
+        malACP_c: -1.0,
+        h_c: -1.0,
+        ddcaACP_c: -1.0,
+        co2_c: 1.0,
+        ACP_c: 1.0,
+        omrsACP_c: 1.0
+    })
+
+    print(reaction.reaction)  # This gives a string representation of the reaction
+
+    reaction.gene_reaction_rule = '( STM2378 or STM1197 )'
+    print(reaction.genes)
+
+    model.add_reactions([reaction])
+
+    # Now there are things in the model
+    print('%i reaction' % len(model.reactions))
+    print('%i metabolites' % len(model.metabolites))
+    print('%i genes' % len(model.genes))
+
+    # Iterate through the the objects in the model
+    print("Reactions")
+    print("---------")
+    for x in model.reactions:
+        print("%s : %s" % (x.id, x.reaction))
+
+    print("")
+    print("Metabolites")
+    print("-----------")
+    for x in model.metabolites:
+        print('%9s : %s' % (x.id, x.formula))
+
+    print("")
+    print("Genes")
+    print("-----")
+    for x in model.genes:
+        associated_ids = (i.id for i in x.reactions)
+        print("%s is associated with reactions: %s" %
+              (x.id, "{" + ", ".join(associated_ids) + "}"))
+
+    model.objective = '3OAS140'
+
+    print(model.objective.expression)
+    print(model.objective.direction)
+
+    class DemoFBA(object):
+        def __init__(self, model):
+            self.model = model
+
+    return DemoFBA(model)
+
 if __name__ == '__main__':
     # metabolism = test_metabolism()
-    metabolism = test_minimal()
+    # metabolism = test_minimal()
+    # metabolism = test_canonical()
+    # metabolism = test_demo()
+    metabolism = test_test()
+
+    # cobra.io.save_json_model(metabolism.model, 'test_model.json')
+
     print(metabolism.model)
     print(metabolism.model.reactions)
     print(metabolism.model.metabolites)

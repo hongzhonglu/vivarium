@@ -20,12 +20,12 @@ def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     for rxn_id in reversible_reactions:
         forward_stoich = stoichiometry[rxn_id]
         reverse_stoichiometry[rxn_id + reverse_key] = {
-            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.iteritems()}
+            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.items()}
     return reverse_stoichiometry
 
 def get_molecules_from_stoich(stoichiometry):
     molecules = set()
-    for reaction, stoich in stoichiometry.iteritems():
+    for reaction, stoich in stoichiometry.items():
         molecules.update(stoich.keys())
     return list(molecules)
 
@@ -78,14 +78,14 @@ class Metabolism(Process):
         # assign internal and external state ids
         roles = {
             'external': self.external_molecule_ids,
-            'internal': self.stoichiometry.keys() + ['volume', 'mass']}
+            'internal': list(self.stoichiometry.keys()) + ['volume', 'mass']}
         parameters = {}
         parameters.update(initial_parameters)
 
         super(Metabolism, self).__init__(roles, parameters)
 
     def default_state(self):
-        internal = {state_id: 0 for state_id in self.stoichiometry.iterkeys()}
+        internal = {state_id: 0 for state_id in self.stoichiometry.keys()}
         flux_targets = {state_id: 0 for state_id in self.flux_targets}
         internal.update(flux_targets)
         return {
@@ -127,9 +127,9 @@ class Metabolism(Process):
         ## Regulation
         # get the regulatory state of the reactions TODO -- are reversible reactions regulated?
         total_state = deep_merge(dict(internal_state), external_state)
-        boolean_state = {mol_id: (value>1e-5) for mol_id, value in total_state.iteritems()}  # TODO -- generalize the threshold
+        boolean_state = {mol_id: (value>1e-5) for mol_id, value in total_state.items()}  # TODO -- generalize the threshold
         regulatory_state = {rxn_id: regulatory_logic(boolean_state)
-                            for rxn_id, regulatory_logic in self.regulation.iteritems()}
+                            for rxn_id, regulatory_logic in self.regulation.items()}
 
         # set reaction flux bounds, based on default bounds and regulatory_state
         # TODO -- set default_flux_bounds in init
@@ -270,8 +270,8 @@ def test_metabolism(total_time=3600):
     nAvogadro = metabolism.nAvogadro
 
     saved_state = {
-        'internal': {state_id: [value] for state_id, value in state['internal'].iteritems()},
-        'external': {state_id: [value] for state_id, value in state['external'].iteritems()},
+        'internal': {state_id: [value] for state_id, value in state['internal'].items()},
+        'external': {state_id: [value] for state_id, value in state['external'].items()},
         'time': [0]}
 
     # run simulation
@@ -287,9 +287,11 @@ def test_metabolism(total_time=3600):
         state['internal'] = update['internal']
         growth_rate = metabolism.fba.getObjectiveValue()
 
+        print(growth_rate)
+
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
-        for mol_id, exchange in update['external'].iteritems():
+        for mol_id, exchange in update['external'].items():
             exchange_rate = exchange / mmolToCount  # TODO -- per second?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
             state['external'][mol_id] += delta_conc * 0.001  # TODO -- scaling?
@@ -298,7 +300,7 @@ def test_metabolism(total_time=3600):
 
         # get new flux targets
         target_fluxes = {}
-        for rxn_id, rate_law in transport_rates.iteritems():
+        for rxn_id, rate_law in transport_rates.items():
             target_flux = rate_law(state['external'])
             target_fluxes[rxn_id + target_key] = target_flux
         state['internal'].update(target_fluxes)
@@ -306,9 +308,9 @@ def test_metabolism(total_time=3600):
         # save state
         saved_state['time'].append(time)
         saved_state['internal']['volume'].append(volume_t0.magnitude)  # TODO -- get new volume
-        for state_id, value in state['internal'].iteritems():
+        for state_id, value in state['internal'].items():
             saved_state['internal'][state_id].append(value)
-        for state_id, value in state['external'].iteritems():
+        for state_id, value in state['external'].items():
             saved_state['external'][state_id].append(value)
 
     # get select timeseries
@@ -358,7 +360,7 @@ def plot_metabolism_output(data, out_dir='out'):
     fig = plt.figure(figsize=(n_col * 8, n_rows * 2.5))
     plot_idx = 1
     for key in data_keys:
-        for state_id, series in sorted(saved_state[key].iteritems()):
+        for state_id, series in sorted(saved_state[key].items()):
             if state_id not in target_rxn_ids:
                 ax = fig.add_subplot(n_rows, n_col, plot_idx)
                 ax.plot(time_vec, series)

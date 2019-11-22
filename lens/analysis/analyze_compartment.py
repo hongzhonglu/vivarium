@@ -22,7 +22,7 @@ class Compartment(Analysis):
         zero_state = []
         for key1 in data_dict.iterkeys():
             if key1 is not 'time':
-                for key2, series in data_dict[key1].iteritems():
+                for key2, series in data_dict[key1].items():
                     if all(v == 0 for v in series):
                         zero_state.append((key1, key2))
         for (key1, key2) in zero_state:
@@ -42,7 +42,7 @@ class Compartment(Analysis):
         # plot data
         plot_idx = 0
         for key in data_keys:
-            for mol_id, series in sorted(data_dict[key].iteritems()):
+            for mol_id, series in sorted(data_dict[key].items()):
                 ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)
