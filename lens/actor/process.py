@@ -8,9 +8,6 @@ import random
 from lens.utils.dict_utils import merge_dicts
 
 
-target_key = '__target'
-exchange_key = '__exchange'  # TODO exchange key is also being set in lattice_compartment
-
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
@@ -26,18 +23,15 @@ def update_delta(key, state_dict, current_value, new_value):
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-def update_target(key, state_dict, current_value, new_value):
-    return current_value, {key + target_key: new_value}
-
-def accumulate_delta(key, state_dict, current_value, new_value):
-    new_key = key + exchange_key
-    return current_value, {new_key: state_dict[new_key] + new_value}
+# def accumulate_delta(key, state_dict, current_value, new_value):
+#     new_key = key + exchange_key
+#     return current_value, {new_key: state_dict[new_key] + new_value}
 
 updater_library = {
     'delta': update_delta,
     'set': update_set,
-    'target': update_target,
-    'accumulate': accumulate_delta}
+    'accumulate': update_delta,  # TODO -- remove accumulate
+}
 
 
 KEY_TYPE = 'U31'
@@ -282,6 +276,45 @@ def default_divide_state(compartment):
     print('divided {}'.format(divided))
     return divided
 
+def initialize_state(process_layers, topology, initial_state):
+    processes = merge_dicts(process_layers)
+
+    # make a dict with the compartment's default states {roles: states}
+    compartment_states = {}
+    compartment_updaters = {}
+    for process_id, roles_map in topology.iteritems():
+        process_roles = processes[process_id].roles
+
+        default_process_states = processes[process_id].default_state()
+        default_process_updaters = processes[process_id].default_updaters()
+
+        for process_role, states in process_roles.iteritems():
+            compartment_role = topology[process_id][process_role]
+
+            # initialize the default states
+            default_states = default_process_states.get(process_role, {})
+
+            # initialize the default updaters
+            default_updaters = default_process_updaters.get(process_role, {})
+
+            # update the states
+            c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
+            compartment_states[compartment_role] = c_states
+
+            # update the updaters
+            c_updaters = deep_merge(default_updaters, compartment_updaters.get(compartment_role, {}))
+            compartment_updaters[compartment_role] = c_updaters
+
+    # initialize state for each compartment role
+    initialized_state = {}
+    for compartment_role, states in compartment_states.iteritems():
+        updaters = compartment_updaters[compartment_role]
+        make_state = State(
+            initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),
+            updaters=updaters)
+        initialized_state[compartment_role] = make_state
+
+    return initialized_state
 
 class Compartment(object):
     ''' Track a set of processes and states and the connections between them. '''

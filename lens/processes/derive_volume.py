@@ -30,6 +30,10 @@ class DeriveVolume(Process):
         keys = {'internal': ['mass', 'volume']}
         return keys
 
+    def default_updaters(self):
+        updater_types = {'internal': {'volume': 'set'}}
+        return updater_types
+
     def next_update(self, timestep, states):
         mass = states['internal']['mass'] * units.fg
         density = self.parameters['density'] * units.g / units.L
