@@ -152,8 +152,8 @@ class Analyze(object):
                     analysis.analyze(experiment_config, data, output_dir)
 
                 elif analysis.analysis_type is 'compartment':
-                    # Run the compartment analysis for each simulation in simulation_ids
-                    # A compartment analysis is run on a single compartment.
+                    # Run a compartment analysis for each simulation in simulation_ids
+                    # A 'compartment' analysis is run on a single compartment.
                     # It expects to run queries on the compartment tables in the DB.
                     # Output is saved to the compartment's directory.
 
@@ -163,18 +163,20 @@ class Analyze(object):
                         analysis.analyze(experiment_config, data, sim_out_dir)
 
                 elif analysis.analysis_type is 'environment':
-                    # A environment analysis is run on the environment.
+                    # A 'environment' analysis is run on the environment.
                     # It expects to run queries on the environment (lattice) tables in the DB.
                     # Output is saved to the experiment's base directory.
 
                     data = environment_query(query, analysis, history_client)
                     analysis.analyze(experiment_config, data, output_dir)
 
-                elif analysis.analysis_type is 'both':
-                    # A both analysis is run on the environment AND compartments.
+                elif analysis.analysis_type is 'env_with_compartment':
+                    # An 'env_with_compartment' analysis is run on the environment AND compartments,
+                    # from the point of view of the environment.
                     # It expects to run queries on the environment (lattice) tables in the DB,
                     # but if an option is passed with simulation id, it will query those as well.
-                    # Output is saved to the experiment's base directory.
+                    # A single output is saved to the experiment's base directory.
+
                     compartment_data = {}
                     for sim_id in simulation_ids:
                         options = {
@@ -190,6 +192,29 @@ class Analyze(object):
                         'environment': environment_data}
 
                     analysis.analyze(experiment_config, data, output_dir)
+
+                elif analysis.analysis_type is 'compartment_with_env':
+                    # An 'compartment_with_env' analysis is run on the environment AND compartments,
+                    # from the point of view of a compartment.
+                    # It expects to run queries on the environment (lattice) tables in the DB,
+                    # but if an option is passed with simulation id, it will query those as well.
+                    # Output is saved to each compartment's directory.
+
+                    for sim_id in simulation_ids:
+                        env_query = query.copy()
+                        env_query.update({'agent_id': sim_id})
+                        options = {'type': 'environment'}
+                        environment_data = environment_query(env_query, analysis, history_client, options)
+                        data = {'environment': environment_data}
+
+                        options = {
+                            'type': 'compartment',
+                            'tags': self.tags}
+                        compartment_data = compartment_query(query, analysis, history_client, sim_id, options)
+                        data['compartment'] = compartment_data
+
+                        sim_out_dir = os.path.join(output_dir, sim_id)
+                        analysis.analyze(experiment_config, data, sim_out_dir)
 
                 print('completed analysis: {}'.format(analysis_class.__name__))
 

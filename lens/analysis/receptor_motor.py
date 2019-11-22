@@ -39,11 +39,5 @@ class ReceptorMotor(Analysis):
         rows = 4
         fig = plt.figure(figsize=(6 * cols, 1 * rows))
 
-
-
-        import ipdb; ipdb.set_trace()
-
-
-
         plt.savefig(output_dir + '/receptor_motor', bbox_inches='tight')
         plt.close(fig)

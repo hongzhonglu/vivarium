@@ -18,7 +18,7 @@ MAX_TAG = 110  # if a tagged protein has a value over this, it is fully saturate
 
 class Snapshots(Analysis):
     def __init__(self):
-        super(Snapshots, self).__init__(analysis_type='both')
+        super(Snapshots, self).__init__(analysis_type='env_with_compartment')
 
     def get_data(self, client, query, options={}):
 
