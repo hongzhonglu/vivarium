@@ -7,14 +7,14 @@ from pymongo import MongoClient
 from lens.analysis.analyze_compartment import Compartment
 from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.location_trace import LatticeTrace
-from lens.analysis.chemotaxis_trace import ChemotaxisTrace
+from lens.analysis.chemotaxis_analysis import Chemotaxis
 from lens.analysis.snapshots import Snapshots
 from lens.analysis.topology import Topology
 
 
 # classes for run_analysis to cycle through
 analysis_classes = {
-    # 'chemotaxis': ChemotaxisTrace,
+    'chemotaxis': Chemotaxis,
     'compartment': Compartment,
     'multigen': MultigenCompartment,
     'location': LatticeTrace,
@@ -69,6 +69,16 @@ def get_sims_from_exp(client, experiment_id):
             simulation_ids.add(simulation_id)
 
     return list(simulation_ids)
+
+def compartment_query(query, analysis, history_client, sim_id, options={}):
+    compartment_query = query.copy()
+    compartment_query.update({'simulation_id': sim_id})
+    data = analysis.get_data(history_client, compartment_query, options)
+    return data
+
+def environment_query(query, analysis, history_client, options={}):
+    data = analysis.get_data(history_client, query.copy(), options)
+    return data
 
 
 class Analyze(object):
@@ -134,8 +144,8 @@ class Analyze(object):
             if all(processes in active_processes for processes in required_processes):
 
                 if analysis.analysis_type is 'experiment':
-                    environment_data = analysis.get_data(history_client, query.copy())
-                    analysis.analyze(experiment_config, environment_data, output_dir)
+                    data = analysis.get_data(history_client, query.copy())
+                    analysis.analyze(experiment_config, data, output_dir)
 
                 elif analysis.analysis_type is 'compartment':
                     # Run the compartment analysis for each simulation in simulation_ids
@@ -144,10 +154,7 @@ class Analyze(object):
                     # Output is saved to the compartment's directory.
 
                     for sim_id in simulation_ids:
-                        compartment_query = query.copy()
-                        compartment_query.update({'simulation_id': sim_id})
-                        data = analysis.get_data(history_client, compartment_query)
-
+                        data = compartment_query(query, analysis, history_client, sim_id)
                         sim_out_dir = os.path.join(output_dir, sim_id)
                         analysis.analyze(experiment_config, data, sim_out_dir)
 
@@ -156,8 +163,8 @@ class Analyze(object):
                     # It expects to run queries on the environment (lattice) tables in the DB.
                     # Output is saved to the experiment's base directory.
 
-                    environment_data = analysis.get_data(history_client, query.copy())
-                    analysis.analyze(experiment_config, environment_data, output_dir)
+                    data = environment_query(query, analysis, history_client)
+                    analysis.analyze(experiment_config, data, output_dir)
 
                 elif analysis.analysis_type is 'both':
                     # A both analysis is run on the environment AND compartments.
@@ -165,14 +172,14 @@ class Analyze(object):
                     # but if an option is passed with simulation id, it will query those as well.
                     # Output is saved to the experiment's base directory.
                     compartment_data = {}
-                    if self.tags:
-                        for sim_id in simulation_ids:
-                            compartment_query = query.copy()
-                            compartment_query.update({'simulation_id': sim_id})
-                            options = {'tags': self.tags}
-                            compartment_data[sim_id] = analysis.get_data(history_client, compartment_query, options)
+                    for sim_id in simulation_ids:
+                        options = {
+                            'type': 'compartment',
+                            'tags': self.tags}
+                        compartment_data[sim_id] = compartment_query(query, analysis, history_client, sim_id, options)
 
-                    environment_data = analysis.get_data(history_client, query.copy())
+                    options = {'type': 'environment'}
+                    environment_data = environment_query(query, analysis, history_client, options)
 
                     data = {
                         'compartments': compartment_data,

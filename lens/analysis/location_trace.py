@@ -10,7 +10,7 @@ class LatticeTrace(Analysis):
     def __init__(self):
         super(LatticeTrace, self).__init__(analysis_type='environment')
 
-    def get_data(self, client, query):
+    def get_data(self, client, query, options={}):
         query.update({'type': 'lattice'})
         history_data = client.find(query)
         history_data.sort('time')
@@ -30,6 +30,7 @@ class LatticeTrace(Analysis):
 
         # plot trajectories
         fig = plt.figure(figsize=(scaling*edge_x, scaling*edge_y))
+        plt.rcParams.update({'font.size': 12, "font.family":"Times New Roman"})
         for agent_id in agent_ids:
             # get locations and convert to 2D array
             locations = history_data[agent_id]['location']
@@ -44,6 +45,8 @@ class LatticeTrace(Analysis):
         # set limits
         plt.xlim((0, edge_x))
         plt.ylim((0, edge_y))
+        plt.xlabel(u'\u03bcm')
+        plt.ylabel(u'\u03bcm')
         # specify the number of ticks
         plt.locator_params(axis='y', nbins=int(edge_y/10))
         plt.locator_params(axis='x', nbins=int(edge_x/10))

@@ -10,7 +10,7 @@ class Compartment(Analysis):
     def __init__(self):
         super(Compartment, self).__init__(analysis_type='compartment')
 
-    def get_data(self, client, query):
+    def get_data(self, client, query, options={}):
         sim_id = query['simulation_id']
         query.update({'type': 'compartment'})
         history_data = client.find(query)
@@ -49,6 +49,7 @@ class Compartment(Analysis):
 
         fig = plt.figure(figsize=(n_cols*8, n_rows*2.5))
         fig.suptitle('{}'.format(sim_id), fontsize=12)
+        plt.rcParams.update({'font.size': 12})
         grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.4, hspace=1.5)
 
         # plot data
