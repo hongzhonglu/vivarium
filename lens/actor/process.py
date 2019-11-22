@@ -178,6 +178,9 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
+    def default_settings(self):
+        return {}
+
     def default_state(self):
         return {}
 

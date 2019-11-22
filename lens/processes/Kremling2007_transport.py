@@ -76,13 +76,12 @@ MOLECULAR_WEIGHTS = {
     'GLC': 180.16,
 }
 
-
-
 class Transport(Process):
     def __init__(self, initial_parameters={}):
         self.dt = 0.001  # timestep for ode integration (seconds)
 
-        default_state = self.default_state()
+        default_settings = self.default_settings()
+        default_state = default_settings['state']
         internal_state = default_state['internal']
         external_state = default_state['external']
 
@@ -95,12 +94,9 @@ class Transport(Process):
 
         super(Transport, self).__init__(roles, parameters)
 
-    def default_state(self):
-        '''
-        returns dictionary with:
-            - external (dict) -- external states with default initial values, will be overwritten by environment
-            - internal (dict) -- internal states with default initial values
-        '''
+    def default_settings(self):
+
+        # default state
         # TODO -- select state based on media
         glc_g6p = True
         glc_lct = False
@@ -130,34 +126,33 @@ class Transport(Process):
                 'PYR': 0.1,  # [\mu mol gDCW]
                 'XP': 0.01,  # [fraction phosphorylation]
             }
-
         self.environment_ids = external.keys()
 
-        return {
+        default_state = {
             'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
             'external': external,
             'exchange': {state_id: 0.0 for state_id in self.environment_ids}
         }
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP'],
-            'external': ['G6P', 'GLC', 'LAC']
-        }
-        return keys
+            'external': ['G6P', 'GLC', 'LAC']}
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
-
-        updater_types = {
+        # default updaters
+        default_updaters = {
             'internal': {state_id: 'set'
                          for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
             'external': {},  # reactions set values directly
             'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
 
-        return updater_types
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
 
@@ -329,7 +324,8 @@ def test_transport():
     transport = Transport({})
 
     # get initial state and parameters
-    state = transport.default_state()
+    settings = transport.default_settings()
+    state = settings['state']
     saved_state = {'internal': {}, 'exchange': {}, 'time': []}
 
     # run simulation
