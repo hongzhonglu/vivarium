@@ -59,12 +59,14 @@ class Motor(Analysis):
             speed_vec.append(distance/dt)  # um/sec
             previous_time = time
             previous_loc = location
+        avg_speed = sum(speed_vec) / len(speed_vec)
 
         # make figure
         n_cols = 1
         n_rows = 4
         fig = plt.figure(figsize=(6 * n_cols, 2 * n_rows))
-        fig.suptitle('{}'.format(sim_id), fontsize=12)
+        plt.rcParams.update({'font.size': 10})
+        fig.suptitle('{}'.format(sim_id))
 
         # define subplots
         ax1 = plt.subplot(n_rows, n_cols, 1)
@@ -77,6 +79,7 @@ class Motor(Analysis):
         ax2.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
         ax2.plot(ccw_to_cw_vec, 'g', label='ccw_to_cw')
         ax3.plot(speed_vec)
+        ax3.axhline(y=avg_speed, color='r', linestyle='dashed', label='mean')
 
         # get length of runs, tumbles
         run_lengths = []
@@ -101,14 +104,16 @@ class Motor(Analysis):
 
         # labels
         ax1.set_xticklabels([])
-        ax1.set_ylabel("CheY_P", fontsize=8)
+        ax1.set_ylabel("CheY_P")
         ax2.set_xticklabels([])
-        ax2.set_ylabel("motor bias", fontsize=8)
+        ax2.set_ylabel("motor bias")
         ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        ax3.set_ylabel(u"speed ('\u03bcm/sec')", fontsize=8)
-        ax3.set_xlabel('time', fontsize=10)
+        ax3.set_ylabel(u'speed (\u03bcm/sec)')
+        ax3.set_xlabel('time')
+        ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax4.set_xlabel("motor state length (sec)")
         ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        ax4.set_xlabel("motor state length (sec)", fontsize=10)
+
 
         plt.savefig(output_dir + '/motor', bbox_inches='tight')
         plt.close(fig)
