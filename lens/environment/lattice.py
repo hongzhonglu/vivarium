@@ -15,6 +15,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import os
 import math
 import numpy as np
 from scipy import constants
@@ -247,8 +248,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
             if self.locations[agent_id][1] > self.edge_length_y:
                 self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
-
-
 
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''
@@ -536,3 +535,107 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             'data': data}
 
         self.emitter.emit(emit_config)
+
+
+
+def test_lattice(total_time=100):
+    from lens.actor.emitter import get_emitter
+
+    # get media
+    media_id = 'GLC_G6P'
+    make_media = Media()
+    media = make_media.get_saved_media(media_id)
+
+    # get emitter
+    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
+
+    boot_config = {
+        'concentrations': media,
+        'run_for': 10.0,
+        'depth': 0.0001,  # 3000 um is default
+        'edge_length': 10.0,
+        'patches_per_edge': 1,
+        'emitter': emitter
+    }
+
+    # configure lattice
+    lattice = EnvironmentSpatialLattice(boot_config)
+
+    # get simulations
+    simulations = lattice.simulations
+
+    # add a cell simulation
+    agent_id = '1'
+    simulation = simulations.setdefault(agent_id, {})
+    agent_state = {'volume': 1.0}
+    agent_config = {
+        'location': np.array([0.0, 0.0]),
+        'orientation': np.array([0.0]),
+    }
+    simulation.update({
+        'time': lattice.time(),
+        'state': agent_state,
+        'agent_config': agent_config,
+        })
+    lattice.add_simulation(agent_id, simulation)
+
+    # run simulation
+    saved_state = {'location': []}
+
+    time = 0
+    timestep = 2  # sec
+    while time < total_time:
+
+        # apply forces
+        force = [1.0, 1.0]
+        lattice.motile_forces[agent_id] = force
+
+        # run lattice and get new locations
+        lattice.run_incremental(timestep)
+        locations = lattice.locations  # new location
+
+        saved_state['location'].append(list(locations[agent_id]))
+        time += timestep
+
+    # diffusion
+
+    # division
+
+    data = {
+        'saved_state': saved_state,
+    }
+    return data
+
+def plot_lattice(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    saved_state = data['saved_state']
+    locations = saved_state['location']
+
+    # plot
+    plt.figure()
+
+    # get locations and convert to 2D array
+    locations_array = np.array(locations)
+    x_coord = locations_array[:, 0]
+    y_coord = locations_array[:, 1]
+    plt.plot(x_coord, y_coord, 'b-')  # trajectory
+    plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+    plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+    # plt.xlim((0, edge_x))
+    # plt.ylim((0, edge_y))
+
+    fig_path = os.path.join(out_dir, 'lattice')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'lattice')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    output = test_lattice()
+    plot_lattice(output, out_dir)
