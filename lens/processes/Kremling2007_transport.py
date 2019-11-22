@@ -78,7 +78,7 @@ MOLECULAR_WEIGHTS = {
 
 class Transport(Process):
     def __init__(self, initial_parameters={}):
-        self.dt = 0.001  # timestep for ode integration (seconds)
+        self.dt = 0.01  # timestep for ode integration (seconds)
 
         default_settings = self.default_settings()
         default_state = default_settings['state']
@@ -286,6 +286,7 @@ class Transport(Process):
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
 
+        # apply updates
         internal_update = {}
         external_update = {}
         for state_idx, state_id in enumerate(state_keys):
@@ -312,21 +313,20 @@ class Transport(Process):
             'internal': internal_update}
 
 # test and analysis of process
-def test_transport():
+def test_transport(sim_time = 3600):
+    # Kremling 2007 runs sim for 7.5 hours
     timeline = [
         # (0, {'external': {
         #     'GLC': 1}
         # }),
-        (7.5*60*60, {}),  # Kremling runs sim for 7.5 hours
+        (sim_time, {}),
     ]
 
-    # configure process
+    # get process, initial state, and saved state
     transport = Transport({})
-
-    # get initial state and parameters
     settings = transport.default_settings()
     state = settings['state']
-    saved_state = {'internal': {}, 'exchange': {}, 'time': []}
+    saved_state = {'internal': {}, 'external': {}, 'time': []}
 
     # run simulation
     time = 0
@@ -338,21 +338,20 @@ def test_transport():
                 for key, change in change_dict.iteritems():
                     state[key].update(change)
 
-        # get update
+        # get update and apply to state
         update = transport.next_update(timestep, state)
-
-        # apply update to state
         saved_state['time'].append(time)
         state['internal'].update(update['internal'])
 
-        # apply external update
+        # use exchange to update external state, reset exchange
         volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
         for mol_id, delta_count in update['exchange'].iteritems():
             delta_conc = counts_to_millimolar(delta_count, volume)
-            state['exchange'][mol_id] += delta_conc
+            state['external'][mol_id] += delta_conc
+            state['exchange'][mol_id] = 0
 
         # save state
-        for role in ['internal', 'exchange']:
+        for role in ['internal', 'external']:
              for state_id, value in state[role].iteritems():
                  if state_id in saved_state[role].keys():
                      saved_state[role][state_id].append(value)
@@ -365,28 +364,35 @@ def plot_transport(saved_state, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
+    import math
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
 
     # make figure, with grid for subplots
+    n_rows = 10
     n_data = [len(saved_state[key].keys()) for key in data_keys]
-    n_rows = sum(n_data)
-    fig = plt.figure(figsize=(8, n_rows * 2.5))
-    grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
+    n_cols = int(math.ceil(sum(n_data) / float(n_rows)))
+
+    fig = plt.figure(figsize=(n_cols * 8, n_rows * 2.5))
+    grid = plt.GridSpec(n_rows + 1, n_cols, wspace=0.4, hspace=1.5)
 
     # plot data
-    plot_idx = 0
+    row_idx = 0
+    col_idx = 0
     for key in data_keys:
         for mol_id, series in sorted(saved_state[key].iteritems()):
-            ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
+            ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             ax.plot(time_vec, series)
             ax.title.set_text(str(key) + ': ' + mol_id)
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.set_xlabel('time (hrs)')
 
-            plot_idx += 1
+            row_idx += 1
+            if row_idx > n_rows:
+                row_idx = 0
+                col_idx += 1
 
     # save figure
     fig_path = os.path.join(out_dir, 'transport')
@@ -395,7 +401,7 @@ def plot_transport(saved_state, out_dir='out'):
 
 
 if __name__ == '__main__':
-    saved_state = test_transport()
+    saved_state = test_transport(7.5*60*60)
     out_dir = os.path.join('out', 'tests', 'Kremling2007_transport')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
