@@ -1,4 +1,5 @@
 Arpeggio==1.9.1
+cffi==1.13.2
 confluent-kafka==0.11.5
 matplotlib==2.2.2
 numpy==1.14.6
@@ -11,4 +12,5 @@ pytest==4.6.5
 pytest-benchmark==3.2.2
 scipy==1.0.1
 scs==2.0.2
+stochastic-arrow==0.2.0
 swiglpk==1.4.4

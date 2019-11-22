@@ -46,17 +46,27 @@ class Division(Process):
 
         super(Division, self).__init__(roles, parameters)
 
-    def default_state(self):
-        default_state = {
+    def default_settings(self):
+
+        # default state
+        internal = {
             'volume': 1,
             'division': False}
-        return {
-            'internal': default_state}
+        default_state = {'internal': internal}
 
-    def default_updaters(self):
-        updater_types = {
+        # default emitter keys
+        default_emitter_keys = {}
+
+        # default updaters
+        default_updaters = {
             'internal': {'division': 'set'}}
-        return updater_types
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         volume = states['internal']['volume']

@@ -17,41 +17,46 @@ class Template(Process):
 
         super(Template, self).__init__(roles, parameters)
 
-    def default_state(self):
+    def default_settings(self):
         '''
-        returns dictionary with:
+        state is a dictionary with:
         default_state = {
             'external': states (dict) -- external states ids with default initial values
             'internal': states (dict) -- internal states ids with default initial values
-        '''
-        internal_state = {}
-        external_state = {}
-        return {
-            'internal': internal_state,
-            'external': external_state,
-        }
 
-    def default_emitter_keys(self):
-        '''
-        returns dictionary with:
+        emitter_keys is a dictionary with:
         keys = {
             'internal': states (list), # a list of states to emit from internal
             'external': states (list), # a list of states to emit from external
         }
-        '''
-        keys = {
-            'internal': ['states'],
-            'external': ['states'],
-        }
-        return keys
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
+        updaters defines the updater type for each state in roles.
         The default updater is to pass a delta,
-        which is accumulated and passed to the environment at every exchange step'''
-        keys = {'state': 'accumulate'}
-        return keys
+        which is accumulated and passed to the environment at every exchange step
+        '''
+
+        # default state
+        internal_state = {}
+        external_state = {}
+        default_state = {
+            'internal': internal_state,
+            'external': external_state}
+
+        # default emitter keys
+        default_emitter_keys = {
+            'internal': ['states'],
+            'external': ['states']}
+
+        # default updaters
+        default_updaters = {'state': 'accumulate'}
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
+
 
     def next_update(self, timestep, states):
         internal_state = states['internal']

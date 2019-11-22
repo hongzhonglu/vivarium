@@ -50,38 +50,32 @@ class ReceptorCluster(Process):
 
         super(ReceptorCluster, self).__init__(roles, parameters)
 
-    def default_state(self):
-        '''
-        returns dictionary with:
-            - external (dict) -- external states with default initial values, will be overwritten by environment
-            - internal (dict) -- internal states with default initial values
-        '''
+    def default_settings(self):
 
+        # default state
         internal = INITIAL_STATE
         internal.update({'volume': 1})
         external = {self.ligand_id: 0.1}
-
-        return {
+        default_state = {
             'external': external,
             'internal': internal}
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': ['chemoreceptor_activity', 'n_methyl'],
-            'external': [self.ligand_id],
-        }
-        return keys
+            'external': [self.ligand_id]}
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
-
-        updater_types = {
+        # default updaters
+        default_updaters = {
             'internal': {state_id: 'set' for state_id in ['chemoreceptor_activity', 'n_methyl']},
             'external': {}}
 
-        return updater_types
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         '''
@@ -172,7 +166,8 @@ def test_receptor():
 
     # initialize process
     receptor = ReceptorCluster()
-    state = receptor.default_state()
+    settings = receptor.default_settings()
+    state = settings['state']
     ligand_id = receptor.ligand_id
 
     # run simulation

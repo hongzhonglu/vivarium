@@ -143,9 +143,12 @@ def generate_lattice_compartment(process, config):
     # initialize the states for each role
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
+    # get default settings
+    default_settings = process.default_settings()
+
     # configure the emitter
     emitter_config = config.get('emitter', {})
-    emitter_config['keys'] = process.default_emitter_keys()
+    emitter_config['keys'] = default_settings['emitter_keys']
     emitter_config['experiment_id'] = config.get('experiment_id')
     emitter_config['simulation_id'] = config.get('simulation_id')
     emitter = get_emitter(emitter_config)

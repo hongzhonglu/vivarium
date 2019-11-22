@@ -14,25 +14,29 @@ class DeriveVolume(Process):
 
         super(DeriveVolume, self).__init__(roles, parameters)
 
-    def default_state(self):
+    def default_settings(self):
+
+        # default state
         mass = 1339 * units.fg  # 1.339e-12 g  # 1339 (wet mass in fg)
         density = self.parameters['density'] * units.g / units.L
         volume = mass/density
-
-        default_state = {
+        internal = {
             'mass': mass.magnitude,
-            'volume': volume.to('fL').magnitude,
-        }
+            'volume': volume.to('fL').magnitude}
+        default_state = {'internal': internal}
 
-        return {'internal': default_state}
+        # default emitter keys
+        default_emitter_keys = {'internal': ['mass', 'volume']}
 
-    def default_emitter_keys(self):
-        keys = {'internal': ['mass', 'volume']}
-        return keys
+        # default updaters
+        default_updaters = {'internal': {'volume': 'set'}}
 
-    def default_updaters(self):
-        updater_types = {'internal': {'volume': 'set'}}
-        return updater_types
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         mass = states['internal']['mass'] * units.fg
