@@ -9,6 +9,7 @@ from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.location_trace import LatticeTrace
 # from lens.analysis.chemotaxis_analysis import Chemotaxis
 from lens.analysis.motor import Motor
+from lens.analysis.receptor_motor import ReceptorMotor
 from lens.analysis.snapshots import Snapshots
 from lens.analysis.topology import Topology
 
@@ -17,6 +18,7 @@ from lens.analysis.topology import Topology
 analysis_classes = {
     # 'chemotaxis': Chemotaxis,
     'motor': Motor,
+    'receptor_motor': ReceptorMotor,
     'compartment': Compartment,
     'multigen': MultigenCompartment,
     'location': LatticeTrace,
