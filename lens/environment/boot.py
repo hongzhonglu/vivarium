@@ -73,9 +73,6 @@ def wrap_init_basic(make_process):
                 'url': 'localhost:27017',
                 'database': 'simulations',
                 },
-            'compartment_options':{
-                'time_step': 1.0,
-                },
             })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
         return generate_lattice_compartment(process, boot_config)

@@ -134,7 +134,7 @@ class Analyze(object):
         # get the phylogenetic tree in experiment config
         experiment_config['phylogeny'] = get_phylogeny(phylogeny_client, self.experiment_id)
 
-        # get list of analysis objects to run
+        # get list of analysis objects to run from self.analyses, or run all analyses
         if self.analyses:
             run_analyses = [analysis_classes[analysis_id] for analysis_id in self.analyses]
         else:

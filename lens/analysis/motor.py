@@ -40,15 +40,15 @@ class Motor(Analysis):
         expected_run = 0.42  # s (Berg) expected run length without chemotaxis
         expected_tumble = 0.14  # s (Berg)
 
-
         # compartment data
+        internal_role = experiment_config['topology']['motor']['internal']  # get the internal role
         compartment_data = data['compartment']
         sim_id = compartment_data['sim_id']
         time_vec = compartment_data['time']  # convert to hours
-        CheY_P_vec = compartment_data['cell']['CheY_P']
-        ccw_motor_bias_vec = compartment_data['cell']['ccw_motor_bias']
-        ccw_to_cw_vec = compartment_data['cell']['ccw_to_cw']
-        motor_state_vec = compartment_data['cell']['motor_state']
+        CheY_P_vec = compartment_data[internal_role]['CheY_P']
+        ccw_motor_bias_vec = compartment_data[internal_role]['ccw_motor_bias']
+        ccw_to_cw_vec = compartment_data[internal_role]['ccw_to_cw']
+        motor_state_vec = compartment_data[internal_role]['motor_state']
 
         # environment data for this sim
         env_time_vec = data['environment']['time']  # seconds

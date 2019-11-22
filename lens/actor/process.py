@@ -269,6 +269,18 @@ def default_divide_state(compartment):
     print('divided {}'.format(divided))
     return divided
 
+def get_compartment_timestep(process_layers):
+    # get the minimum time_step from all processes
+    processes = merge_dicts(process_layers)
+    minimum_step = 10
+
+    for process_id, process_object in processes.iteritems():
+        settings = process_object.default_settings()
+        time_step = settings.get('time_step', 1.0)
+        minimum_step = min(time_step, minimum_step)
+
+    return minimum_step
+
 def initialize_state(process_layers, topology, initial_state):
     processes = merge_dicts(process_layers)
 
