@@ -16,12 +16,15 @@ class Growth(Process):
 
     def default_settings(self):
 
+        # default state
         mass = 1339  # (wet mass in fg)
         internal = {'mass': mass}
         default_state = {'internal': internal}
 
+        # default emitter keys
         default_emitter_keys = {'internal': ['mass']}
 
+        # default updaters
         default_updaters = {'internal': {'mass': 'set'}}
 
         default_settings = {

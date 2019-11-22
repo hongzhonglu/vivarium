@@ -317,7 +317,7 @@ def test_transport():
         # (0, {'external': {
         #     'GLC': 1}
         # }),
-        (60 * 60, {}), # (7.5*60*60, {}),  # Kremling runs sim for 7.5 hours
+        (7.5*60*60, {}),  # Kremling runs sim for 7.5 hours
     ]
 
     # configure process

@@ -64,19 +64,16 @@ class MotorActivity(Process):
 
         super(MotorActivity, self).__init__(roles, parameters)
 
-    def default_state(self):
-        '''
-        returns dictionary with:
-            - external (dict) -- external states with default initial values, will be overwritten by environment
-            - internal (dict) -- internal states with default initial values
-        '''
+    def default_settings(self):
+
+        # default state
         internal = INITIAL_STATE
-        return {
+        default_state = {
             'external': {},
             'internal': deep_merge(internal, {'volume': 1})}
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': [
                 'ccw_motor_bias',
                 'ccw_to_cw',
@@ -87,12 +84,8 @@ class MotorActivity(Process):
                 'CheY_P'],
             'external': [],
         }
-        return keys
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
+        # default updaters
         set_states = [
             'ccw_motor_bias',
             'ccw_to_cw',
@@ -101,11 +94,16 @@ class MotorActivity(Process):
             'motor_state',
             'CheA',
             'CheY_P']
-        updater_types = {
+        default_updaters = {
             'internal': {state_id: 'set' for state_id in set_states},
             'external': {}}
 
-        return updater_types
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         '''
@@ -190,7 +188,8 @@ def test_motor_control():
     # TODO -- add asserts for test
 
     motor = MotorActivity()
-    state = motor.default_state()
+    settings = motor.default_settings()
+    state = settings['state']
     receptor_activity = 1./3.
     state['internal']['chemoreceptor_activity'] = receptor_activity
 
@@ -234,7 +233,8 @@ def test_variable_receptor():
     from numpy import linspace
 
     motor = MotorActivity()
-    state = motor.default_state()
+    settings = motor.default_settings()
+    state = settings['state']
     timestep = 1
     receptor_activities = linspace(0.0, 1.0, 501).tolist()
     CheY_P_vec = []
