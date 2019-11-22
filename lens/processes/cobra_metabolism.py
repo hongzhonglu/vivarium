@@ -137,7 +137,7 @@ def test_canonical():
     return metabolism
 
 def test_test():
-    metabolism = JsonFBA('models/test_model.json')
+    metabolism = JsonFBA('models/minimal_model.json')
     return metabolism
 
 def test_demo():
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     # metabolism = test_demo()
     metabolism = test_test()
 
-    # cobra.io.save_json_model(metabolism.model, 'test_model.json')
+    # cobra.io.save_json_model(metabolism.model, 'demo_model.json')
 
     print(metabolism.model)
     print(metabolism.model.reactions)
