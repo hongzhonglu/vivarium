@@ -7,18 +7,14 @@ from pymongo import MongoClient
 from lens.analysis.analyze_compartment import Compartment
 from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.location_trace import LatticeTrace
-# from lens.analysis.chemotaxis_analysis import Chemotaxis
 from lens.analysis.motor import Motor
-from lens.analysis.receptor_motor import ReceptorMotor
 from lens.analysis.snapshots import Snapshots
 from lens.analysis.topology import Topology
 
 
 # classes for run_analysis to cycle through
 analysis_classes = {
-    # 'chemotaxis': Chemotaxis,
     'motor': Motor,
-    'receptor_motor': ReceptorMotor,
     'compartment': Compartment,
     'multigen': MultigenCompartment,
     'location': LatticeTrace,
