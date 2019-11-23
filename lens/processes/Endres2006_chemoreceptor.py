@@ -71,9 +71,11 @@ class ReceptorCluster(Process):
             'external': {}}
 
         default_settings = {
+            'process_id': 'receptor',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'time_step': 1.0}
 
         return default_settings
 

@@ -15,6 +15,7 @@ A two-dimensional lattice environmental model
 
 from __future__ import absolute_import, division, print_function
 
+import os
 import math
 import numpy as np
 from scipy import constants
@@ -213,7 +214,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emit_data()
 
     def update_locations(self):
-        ''' Update location for all agent_ids '''
+        ''' Update the location of all agents '''
+
+        # update all agents in multicell physics
         for agent_id, location in self.locations.iteritems():
 
             # shape
@@ -222,22 +225,24 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             radius = self.cell_radius
             width = 2 * radius
             length = self.volume_to_length(volume, radius)
-            mass = agent_state.get('mass', 1.0)  # TODO -- pass mass through state message
+            mass = agent_state.get('mass', 1.0)  # TODO -- pass mass through message.
 
-            # update length, width, update in multicell_physics
+            # update length, width in multicell_physics
             agent_state['length'] = length
             agent_state['width'] = width
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
-            # Motile forces
+            # update motile forces in multicell_physics
             force = self.motile_forces[agent_id][0]
             torque = self.motile_forces[agent_id][1]
             self.multicell_physics.apply_motile_force(agent_id, force, torque)
 
+        # run multicell physics
         self.multicell_physics.run_incremental(self.run_for)
 
+        # set new agent location
         for agent_id, location in self.locations.iteritems():
-            # update location
+            # set location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
@@ -247,8 +252,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
             if self.locations[agent_id][1] > self.edge_length_y:
                 self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
-
-
 
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''
@@ -390,10 +393,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                 placement = np.array([
                     self.cell_placement[0] * self.edge_length_x,
                     self.cell_placement[1] * self.edge_length_y])
-                location = simulation['agent_config'].get(
-                    'location', placement)
-                orientation = simulation['agent_config'].get(
-                    'orientation', np.random.uniform(0, 2 * PI))
+                location = placement
+                orientation = np.random.uniform(0, 2 * PI)
             else:
                 # Place cell at either the provided or a random initial location
                 random_location = np.array([
@@ -536,3 +537,120 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             'data': data}
 
         self.emitter.emit(emit_config)
+
+
+
+def test_lattice(total_time=100):
+    from lens.actor.emitter import get_emitter
+
+    edge_length = 10.0
+
+    # get media
+    media_id = 'GLC_G6P'
+    make_media = Media()
+    media = make_media.get_saved_media(media_id)
+
+    # get emitter
+    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
+
+    boot_config = {
+        'translation_jitter': 0.0,
+        'rotation_jitter': 0.0,
+        'concentrations': media,
+        'run_for': 5.0,
+        'depth': 0.0001,  # 3000 um is default
+        'edge_length': edge_length,
+        'patches_per_edge': 1,
+        'cell_placement': [0.5, 0.5],  # place cells at center of lattice
+        'emitter': emitter
+    }
+
+    # configure lattice
+    lattice = EnvironmentSpatialLattice(boot_config)
+
+    # get simulations
+    simulations = lattice.simulations
+
+    # add a cell simulation
+    agent_id = '1'
+    simulation = simulations.setdefault(agent_id, {})
+    agent_state = {'volume': 1.0}
+    agent_config = {
+        'location': np.array([0.0, 0.0]),
+        'orientation': np.array([0.0]),
+    }
+    simulation.update({
+        'time': lattice.time(),
+        'state': agent_state,
+        'agent_config': agent_config,
+        })
+    lattice.add_simulation(agent_id, simulation)
+
+    # run simulation
+    saved_state = {'location': []}
+
+    time = 0
+    timestep = 2  # sec
+    while time < total_time:
+        time += timestep
+
+        # apply forces
+        force = 2.0
+        torque = np.random.normal(loc=0.0, scale=1.0)  # (radians)
+        motile_force = [force, torque]
+        lattice.motile_forces[agent_id] = motile_force
+
+        # run lattice and get new locations
+        lattice.run_incremental(time)
+        locations = lattice.locations  # new location
+
+        saved_state['location'].append(list(locations[agent_id]))
+
+
+    # diffusion
+
+    # division
+
+    data = {
+        'saved_state': saved_state,
+        'x_length': edge_length,
+        'y_length': edge_length,
+    }
+    return data
+
+def plot_lattice(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    x_length = data['x_length']
+    y_length = data['y_length']
+    saved_state = data['saved_state']
+    locations = saved_state['location']
+
+    # plot
+    plt.figure(figsize=(x_length, y_length))
+
+    # get locations and convert to 2D array
+    locations_array = np.array(locations)
+    x_coord = locations_array[:, 0]
+    y_coord = locations_array[:, 1]
+    plt.plot(x_coord, y_coord, 'b-')  # trajectory
+    plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+    plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+
+    plt.xlim((0, x_length))
+    plt.ylim((0, y_length))
+
+    fig_path = os.path.join(out_dir, 'lattice')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'lattice')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    output = test_lattice()
+    plot_lattice(output, out_dir)

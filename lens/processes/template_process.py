@@ -51,9 +51,11 @@ class Template(Process):
         default_updaters = {'state': 'accumulate'}
 
         default_settings = {
+            'process_id': 'template',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'time_step': 1.0}
 
         return default_settings
 

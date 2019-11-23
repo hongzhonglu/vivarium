@@ -99,9 +99,11 @@ class MotorActivity(Process):
             'external': {}}
 
         default_settings = {
+            'process_id': 'motor',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'time_step': 0.01}
 
         return default_settings
 
