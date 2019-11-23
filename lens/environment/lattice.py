@@ -36,6 +36,8 @@ CELL_DENSITY = 1100
 TRANSLATION_JITTER = 0.1
 ROTATION_JITTER = 0.05
 
+DEFAULT_TIMESTEP = 1.0
+
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
@@ -48,7 +50,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Simulation Parameters
         self._time = 0
-        self._timestep = 1.0
+        self._timestep = DEFAULT_TIMESTEP
         self._max_time = 10e6
         self.output_dir = config.get('output_dir')
         self.run_for = config.get('run_for', 5.0)
@@ -107,11 +109,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
-        self.diffusion = config.get('diffusion', 0.1)
+        self.diffusion = config.get('diffusion', 1e3)
         self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the theoretical upper limit)
-        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
+        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else DEFAULT_TIMESTEP
 
         # add a gradient
         if self.gradient.get('type') == 'gaussian':
@@ -300,20 +302,20 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.lattice[index].fill(media[molecule_id])
 
     def run_diffusion(self):
-        change_lattice = np.zeros(self.lattice.shape)
+        # change_lattice = np.zeros(self.lattice.shape)
         for index in xrange(len(self.lattice)):
             molecule = self.lattice[index]
-
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
-                change_lattice[index] = self.diffusion_timestep(molecule)
+                t=0.0
+                while t<self._timestep:
+                    molecule += self.diffusion_timestep(molecule, self.dt)
+                    t += self.dt
 
-        self.lattice += change_lattice
-
-    def diffusion_timestep(self, lattice):
+    def diffusion_timestep(self, field, dt):
         ''' calculate concentration changes cause by diffusion'''
-        change_lattice = self.diffusion * self._timestep * convolve(lattice, LAPLACIAN_2D, mode='reflect') / self.dx2
-        return change_lattice
+        change_field = self.diffusion * dt * convolve(field, LAPLACIAN_2D, mode='reflect') / self.dx2
+        return change_field
 
 
     ## Conversion functions
@@ -574,7 +576,7 @@ def test_lattice(total_time=100):
         'edge_length_x': edge_length,
         'patches_per_edge': 10,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'diffusion': 10.0,
+        'diffusion': 1.0,
         'gradient': {
             'type': 'linear',
             'molecules': {
@@ -613,6 +615,7 @@ def test_lattice(total_time=100):
         'time': [],
         'field': []}
 
+    # test run/tumble
     time = 0
     timestep = 0.01  # sec
     while time < total_time:
@@ -633,7 +636,6 @@ def test_lattice(total_time=100):
         saved_state['time'].append(time)
         saved_state['location'].append(list(locations[agent_id]))
         saved_state['field'].append(field.tolist())
-
 
     # TODO -- assert diffusion
     # TODO -- assert division
