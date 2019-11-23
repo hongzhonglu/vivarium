@@ -8,7 +8,7 @@ class Topology(Analysis):
     def __init__(self):
         super(Topology, self).__init__(analysis_type='experiment')
 
-    def get_data(self, client, query):
+    def get_data(self, client, query, options={}):
         return
 
     def analyze(self, experiment_config, history_data, output_dir):

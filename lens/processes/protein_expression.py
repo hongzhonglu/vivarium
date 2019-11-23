@@ -21,13 +21,24 @@ class ProteinExpression(Process):
 
         super(ProteinExpression, self).__init__(roles, parameters)
 
-    def default_state(self):
-        internal_state = {'protein': 0}
-        return {'internal': internal_state}
+    def default_settings(self):
 
-    def default_emitter_keys(self):
-        keys = {'internal': ['protein']}
-        return keys
+        # default state
+        internal_state = {'protein': 0}
+        default_state = {'internal': internal_state}
+
+        # default emitter keys
+        default_emitter_keys = {'internal': ['protein']}
+
+        # default updaters
+        default_updaters = {}
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         internal = states['internal']

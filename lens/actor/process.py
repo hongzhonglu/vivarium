@@ -178,17 +178,8 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
-    def default_state(self):
+    def default_settings(self):
         return {}
-
-    def default_emitter_keys(self):
-        return {}
-
-    def default_updaters(self):
-        return {}
-
-    # def default_parameters(self):
-    #     return {}
 
     def assign_roles(self, states):
         '''
@@ -236,15 +227,17 @@ def connect_topology(process_layers, states, topology):
 def merge_default_states(processes):
     initial_state = {}
     for process_id, process in merge_dicts(processes).items():
-        default = process.default_state()
-        initial_state = deep_merge(dict(initial_state), default)
+        settings = process.default_settings()
+        default_state = settings['state']
+        initial_state = deep_merge(dict(initial_state), default_state)
     return initial_state
 
 def merge_default_updaters(processes):
     updaters = {}
     for process_id, process in merge_dicts(processes).items():
-        process_updaters = process.default_updaters()
-        updaters = deep_merge(dict(updaters), process_updaters)
+        settings = process.default_settings()
+        default_updaters = settings['updaters']
+        updaters = deep_merge(dict(updaters), default_updaters)
     return updaters
 
 def deep_merge(dct, merge_dct):
@@ -276,6 +269,18 @@ def default_divide_state(compartment):
     print('divided {}'.format(divided))
     return divided
 
+def get_compartment_timestep(process_layers):
+    # get the minimum time_step from all processes
+    processes = merge_dicts(process_layers)
+    minimum_step = 10
+
+    for process_id, process_object in processes.iteritems():
+        settings = process_object.default_settings()
+        time_step = settings.get('time_step', 1.0)
+        minimum_step = min(time_step, minimum_step)
+
+    return minimum_step
+
 def initialize_state(process_layers, topology, initial_state):
     processes = merge_dicts(process_layers)
 
@@ -285,8 +290,9 @@ def initialize_state(process_layers, topology, initial_state):
     for process_id, roles_map in topology.iteritems():
         process_roles = processes[process_id].roles
 
-        default_process_states = processes[process_id].default_state()
-        default_process_updaters = processes[process_id].default_updaters()
+        settings = processes[process_id].default_settings()
+        default_process_states = settings['state']
+        default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.iteritems():
             compartment_role = topology[process_id][process_role]

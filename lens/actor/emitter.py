@@ -52,7 +52,9 @@ def get_emitter_keys(process, topology):
 
     for process_id, process_object in merge_dicts(process).items():
         process_roles = topology[process_id]
-        process_keys = process_object.default_emitter_keys()
+
+        default_settings = process_object.default_settings()
+        process_keys = default_settings['emitter_keys']
         for role, keys in process_keys.iteritems():
             compartment_name = process_roles[role]
             if compartment_name in emitter_keys.keys():

@@ -46,39 +46,33 @@ class Regulation(Process):
 
         super(Regulation, self).__init__(roles, parameters)
 
-    def default_state(self):
-        '''
-        returns dictionary with:
-            - external (dict) -- external states with default initial values, will be overwritten by environment
-            - internal (dict) -- internal states with default initial values
-        '''
 
-        # TODO -- which states should be boolean?
+    def default_settings(self):
+
+        # default state
         internal_molecules = {key: 0 for key in self.internal}
         external_molecules = {key: 0 for key in self.external}
         internal = deep_merge(internal_molecules, {'volume': 1})
-
-        return {
+        default_state = {
             'external': external_molecules,
             'internal': internal}
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': self.internal,
-            'external': self.external
-        }
-        return keys
+            'external': self.external}
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
-
-        updater_types = {
+        # default updaters
+        default_updaters = {
             'internal': {state_id: 'set' for state_id in self.regulation_logic.keys()},  # set updater for boolean values
             'external': {state_id: 'accumulate' for state_id in self.external}}  # all external values use default 'delta' udpater
 
-        return updater_types
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
@@ -141,7 +135,9 @@ def test_covert2002_regulation():
     regulation = Regulation({})
 
     # get initial state and parameters
-    state = regulation.default_state()
+    settings = regulation.default_settings()
+    state = settings['state']
+
     saved_state = {'internal': {}, 'external': {}, 'time': []}
 
     # run simulation
@@ -213,7 +209,6 @@ def plot_regulation_output(saved_state, out_dir='out'):
             if key is 'internal':
                 ax.set_yticks([0.0, 1.0])
                 ax.set_yticklabels(["False", "True"])
-
 
             plot_idx += 1
 

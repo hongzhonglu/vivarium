@@ -84,26 +84,33 @@ class Metabolism(Process):
 
         super(Metabolism, self).__init__(roles, parameters)
 
-    def default_state(self):
+    def default_settings(self):
+
+        # default state
         internal = {state_id: 0 for state_id in self.stoichiometry.iterkeys()}
         flux_targets = {state_id: 0 for state_id in self.flux_targets}
         internal.update(flux_targets)
-        return {
+        default_state = {
             'external':  self.initial_state.get('external'),
             'internal': deep_merge(dict(internal), self.initial_state.get('internal'))}
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': self.fba.getReactionIDs(),
             'external': self.fba.getExternalMoleculeIDs()}
-        return keys
 
-    def default_updaters(self):
+        # default updaters
         set_internal_states = self.stoichiometry.keys() + ['mass']
-        updater_types = {
+        default_updaters = {
             'internal': {state_id: 'set' for state_id in set_internal_states},
-            'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
-        return updater_types
+            'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         ''' timestep is assumed to be 1 second '''
@@ -265,7 +272,8 @@ def test_metabolism(total_time=3600):
     target_rxn_ids = metabolism.flux_targets
 
     # get initial state and parameters
-    state = metabolism.default_state()
+    settings = metabolism.default_settings()
+    state = settings['state']
     density = metabolism.density
     nAvogadro = metabolism.nAvogadro
 

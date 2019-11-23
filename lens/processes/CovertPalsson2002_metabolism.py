@@ -132,7 +132,8 @@ def test_covert2002(total_time=3600):
     external_key = metabolism.external_key
 
     # get initial state and parameters
-    state = metabolism.default_state()
+    settings = metabolism.default_settings()
+    state = settings['state']
     density = metabolism.density
     nAvogadro = metabolism.nAvogadro
 
