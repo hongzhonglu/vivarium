@@ -141,8 +141,8 @@ class Snapshots(Analysis):
                     # transpose field to align with agent
                     field = np.transpose(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
-                               vmin=0,
-                               vmax=20.0,
+                               # vmin=0,
+                               # vmax=None,
                                origin='lower',
                                extent=[0, edge_length_x, 0, edge_length_y],
                                interpolation='nearest',
