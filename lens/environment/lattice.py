@@ -17,6 +17,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import math
+import random
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
@@ -539,11 +540,22 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter.emit(emit_config)
 
 
+def tumble():
+    TUMBLE_JITTER = 1.0  # (radians)
+    force = 50.0 # 300.0 #2.0  # 5.0
+    torque = random.normalvariate(0, TUMBLE_JITTER)
+    return [force, torque]
+
+def run():
+    force = 4.0  # 15.0
+    torque = 0.0
+    return [force, torque]
 
 def test_lattice(total_time=100):
     from lens.actor.emitter import get_emitter
 
-    edge_length = 10.0
+    test_diffusion = 'GLC'
+    edge_length = 100.0
 
     # get media
     media_id = 'GLC_G6P'
@@ -557,19 +569,28 @@ def test_lattice(total_time=100):
         'translation_jitter': 0.0,
         'rotation_jitter': 0.0,
         'concentrations': media,
-        'run_for': 5.0,
+        'run_for': 1.0,
         'depth': 0.0001,  # 3000 um is default
-        'edge_length': edge_length,
-        'patches_per_edge': 1,
+        'edge_length_x': edge_length,
+        'patches_per_edge': 10,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
+        'diffusion': 10.0,
+        'gradient': {
+            'type': 'linear',
+            'molecules': {
+                test_diffusion: {
+                    'center': [0.5, 0.5],
+                    'slope': -1.0 / 5.0},
+            }},
         'emitter': emitter
     }
 
     # configure lattice
     lattice = EnvironmentSpatialLattice(boot_config)
 
-    # get simulations
+    # get simulations, test_diffusion field index
     simulations = lattice.simulations
+    test_diffusion_idx = lattice._molecule_ids.index(test_diffusion)
 
     # add a cell simulation
     agent_id = '1'
@@ -587,29 +608,36 @@ def test_lattice(total_time=100):
     lattice.add_simulation(agent_id, simulation)
 
     # run simulation
-    saved_state = {'location': []}
+    saved_state = {
+        'location': [],
+        'time': [],
+        'field': []}
 
     time = 0
-    timestep = 2  # sec
+    timestep = 0.01  # sec
     while time < total_time:
         time += timestep
 
         # apply forces
-        force = 2.0
-        torque = np.random.normal(loc=0.0, scale=1.0)  # (radians)
-        motile_force = [force, torque]
+        motile_force = tumble()
         lattice.motile_forces[agent_id] = motile_force
 
         # run lattice and get new locations
         lattice.run_incremental(time)
         locations = lattice.locations  # new location
 
+        # get field
+        field = lattice.lattice[test_diffusion_idx]
+
+        # save
+        saved_state['time'].append(time)
         saved_state['location'].append(list(locations[agent_id]))
+        saved_state['field'].append(field.tolist())
 
 
-    # diffusion
-
-    # division
+    # TODO -- assert diffusion
+    # TODO -- assert division
+    # TODO -- assert low reynolds number check
 
     data = {
         'saved_state': saved_state,
@@ -618,6 +646,52 @@ def test_lattice(total_time=100):
     }
     return data
 
+
+
+def plot_data(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    expected_speed = 14.2  # um/s (Berg)
+
+    saved_state = data['saved_state']
+    locations = saved_state['location']
+    times = saved_state['time']
+
+    # get speed
+    speed_vec = [0]
+    previous_time = times[0]
+    previous_loc = locations[0]
+    for time, location in zip(times[1:], locations[1:]):
+        dt = time - previous_time
+        distance = ((location[0] - previous_loc[0]) ** 2 + (location[1] - previous_loc[1]) ** 2) ** 0.5
+        speed_vec.append(distance / dt)  # um/sec
+        previous_time = time
+        previous_loc = location
+    avg_speed = sum(speed_vec) / len(speed_vec)
+
+    # plot results
+    cols = 1
+    rows = 2
+    plt.figure(figsize=(6 * cols, 1 * rows))
+
+    ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
+
+    ax1.plot(speed_vec)
+    ax1.axhline(y=avg_speed, color='r', linestyle='dashed', label='mean')
+    ax1.axhline(y=expected_speed, color='b', linestyle='dashed', label='expected mean')
+    ax1.set_ylabel(u'speed (\u03bcm/sec)')
+    ax1.set_xlabel('time')
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+
+    fig_path = os.path.join(out_dir, 'data')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+
+
 def plot_lattice(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
@@ -625,11 +699,14 @@ def plot_lattice(data, out_dir='out'):
 
     x_length = data['x_length']
     y_length = data['y_length']
+    y_ratio = y_length/x_length
     saved_state = data['saved_state']
     locations = saved_state['location']
+    fields = saved_state['field']
+    times = saved_state['time']
 
-    # plot
-    plt.figure(figsize=(x_length, y_length))
+    # plot trajectory
+    fig = plt.figure(figsize=(8, 8*y_ratio))
 
     # get locations and convert to 2D array
     locations_array = np.array(locations)
@@ -643,14 +720,55 @@ def plot_lattice(data, out_dir='out'):
     plt.xlim((0, x_length))
     plt.ylim((0, y_length))
 
-    fig_path = os.path.join(out_dir, 'lattice')
+    fig_path = os.path.join(out_dir, 'trajectory')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.close(fig)
+
+
+
+    # plot fields
+    time_vec = times
+    n_snapshots = 6
+    n_fields = 1
+    plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int).tolist()
+    snapshot_times = [time_vec[i] for i in plot_steps]
+
+    # make figure
+    fig = plt.figure(figsize=(20 * n_snapshots, 10))
+    grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.2)
+    plt.rcParams.update({'font.size': 36})
+    for index, time_index in enumerate(plot_steps, 0):
+
+        field_data = fields[time_index]
+
+        ax = fig.add_subplot(grid[0, index])  # grid is (row, column)
+        # ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id))
+        ax.set(xlim=[0, x_length], ylim=[0, y_length], aspect=1)
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+
+        plt.imshow(field_data,
+                   vmin=0,
+                   vmax=15.0,
+                   origin='lower',
+                   extent=[0, x_length, 0, y_length],
+                   interpolation='nearest',
+                   cmap='YlGn')
+
+    plt.colorbar()
+    fig_path = os.path.join(out_dir, 'field')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.close(fig)
+
+
 
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    output = test_lattice()
+    output = test_lattice(50)
     plot_lattice(output, out_dir)
+    plot_data(output, out_dir)

@@ -141,11 +141,15 @@ class Snapshots(Analysis):
                     # transpose field to align with agent
                     field = np.transpose(np.array(field_data[field_id])).tolist()
                     plt.imshow(field,
+                               vmin=0,
+                               vmax=20.0,
                                origin='lower',
                                extent=[0, edge_length_x, 0, edge_length_y],
                                interpolation='nearest',
                                cmap='YlGn')
                     self.plot_agents(ax, agent_data, cell_radius, agent_colors)
+
+                    # plt.colorbar()
 
             else:
                 ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
