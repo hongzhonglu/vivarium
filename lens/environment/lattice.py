@@ -50,10 +50,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Simulation Parameters
         self._time = 0
-        self._timestep = DEFAULT_TIMESTEP
         self._max_time = 10e6
         self.output_dir = config.get('output_dir')
-        self.run_for = config.get('run_for', 5.0)
+        self.run_for = config.get('run_for', DEFAULT_TIMESTEP)  # simulation time step
 
         ## Cell Parameters
         self.cell_density = CELL_DENSITY  # TODO -- get density from cell sim, or just get mass
@@ -113,7 +112,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the theoretical upper limit)
-        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else DEFAULT_TIMESTEP
+        self.diffusion_dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else DEFAULT_TIMESTEP
 
         # add a gradient
         if self.gradient.get('type') == 'gaussian':
@@ -202,13 +201,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emit_configuration()
 
 
-    def evolve(self):
+    def evolve(self, timestep):
         ''' Evolve environment '''
-        self.update_locations()
+        self.update_locations(timestep)
         self.update_media()
 
         if not self.static_concentrations:
-            self.run_diffusion()
+            self.run_diffusion(timestep)
 
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
@@ -216,7 +215,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # emit current state
         self.emit_data()
 
-    def update_locations(self):
+    def update_locations(self, timestep):
         ''' Update the location of all agents '''
 
         # update all agents in multicell physics
@@ -241,7 +240,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.multicell_physics.apply_motile_force(agent_id, force, torque)
 
         # run multicell physics
-        self.multicell_physics.run_incremental(self.run_for)
+        self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
         for agent_id, location in self.locations.iteritems():
@@ -301,16 +300,16 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
 
-    def run_diffusion(self):
+    def run_diffusion(self, timestep):
         # change_lattice = np.zeros(self.lattice.shape)
         for index in xrange(len(self.lattice)):
             molecule = self.lattice[index]
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
                 t=0.0
-                while t<self._timestep:
-                    molecule += self.diffusion_timestep(molecule, self.dt)
-                    t += self.dt
+                while t<timestep:
+                    molecule += self.diffusion_timestep(molecule, self.diffusion_dt)
+                    t += self.diffusion_dt
 
     def diffusion_timestep(self, field, dt):
         ''' calculate concentration changes cause by diffusion'''
@@ -375,8 +374,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def run_incremental(self, run_until):
         ''' Simulate until run_until '''
         while self._time < run_until:
-            self._time += self._timestep
-            self.evolve()
+            self.evolve(self.run_for)
+            self._time += self.run_for
 
     def add_simulation(self, agent_id, simulation):
         self.simulations.setdefault(agent_id, {}).update(simulation)
@@ -544,20 +543,26 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 def tumble():
     TUMBLE_JITTER = 1.0  # (radians)
-    force = 50.0 # 300.0 #2.0  # 5.0
+    force = 2.25
     torque = random.normalvariate(0, TUMBLE_JITTER)
     return [force, torque]
 
 def run():
-    force = 4.0  # 15.0
+    force = 4.0
     torque = 0.0
     return [force, torque]
 
-def test_lattice(total_time=100):
+
+def test_lattice(total_time=10):
     from lens.actor.emitter import get_emitter
 
+    timestep = 0.01  # sec
     test_diffusion = 'GLC'
     edge_length = 100.0
+
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
 
     # get media
     media_id = 'GLC_G6P'
@@ -571,12 +576,12 @@ def test_lattice(total_time=100):
         'translation_jitter': 0.0,
         'rotation_jitter': 0.0,
         'concentrations': media,
-        'run_for': 1.0,
+        'run_for': timestep,
         'depth': 0.0001,  # 3000 um is default
         'edge_length_x': edge_length,
         'patches_per_edge': 10,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'diffusion': 1.0,
+        'diffusion': 1e2,
         'gradient': {
             'type': 'linear',
             'molecules': {
@@ -617,7 +622,6 @@ def test_lattice(total_time=100):
 
     # test run/tumble
     time = 0
-    timestep = 0.01  # sec
     while time < total_time:
         time += timestep
 
@@ -677,6 +681,7 @@ def plot_data(data, out_dir='out'):
     cols = 1
     rows = 2
     plt.figure(figsize=(6 * cols, 1 * rows))
+    plt.rcParams.update({'font.size': 12})
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
@@ -771,6 +776,6 @@ if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    output = test_lattice(50)
+    output = test_lattice(10)
     plot_lattice(output, out_dir)
     plot_data(output, out_dir)
