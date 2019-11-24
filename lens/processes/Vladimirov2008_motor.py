@@ -185,7 +185,7 @@ class MotorActivity(Process):
         return [force, torque]
 
 
-def test_motor_control():
+def test_motor_control(total_time=10):
     # TODO -- add asserts for test
 
     initial_params = {
@@ -211,8 +211,7 @@ def test_motor_control():
     # run simulation
     time = 0
     timestep = 0.01  # sec
-    end_time = 100  # secs
-    while time < end_time:
+    while time < total_time:
         time += timestep
 
         update = motor.next_update(timestep, state)
@@ -224,7 +223,7 @@ def test_motor_control():
         # update motor state
         state['internal']['motor_state'] = motor_state
 
-        # print('t: {} | motor: {}'.format(time, motor_state))
+        # print('t: {} | motor: {}'.format(time, motor_state)) # 0 for run, 1 for tumble
 
         CheY_P_vec.append(CheY_P)
         ccw_motor_bias_vec.append(ccw_motor_bias)
@@ -322,19 +321,22 @@ def plot_motor_control(output, out_dir='out'):
                 state_start_time = time
         prior_state = state
 
+    avg_run_lengths = sum(run_lengths) / len(run_lengths)
+    avg_tumble_lengths = sum(tumble_lengths) / len(tumble_lengths)
+
     # plot run distributions
     max_length = max(run_lengths + [1])
-    bins = np.linspace(0, max_length, 10)
-    logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
-    ax3.hist([run_lengths], bins=logbins, label=['run_lengths'], color=['b'])
-    ax3.axvline(x=expected_run, color='b', linestyle='dashed', label='expected run')
+    bins = np.linspace(0, max_length, 30)
+    ax3.hist([run_lengths], bins=bins, label=['run_lengths'], color=['b'])
+    ax3.axvline(x=avg_run_lengths, color='k', linestyle='dashed', label='mean run')
+    ax3.axvline(x=expected_run, color='r', linestyle='dashed', label='expected run')
 
     # plot tumble distributions
     max_length = max(tumble_lengths + [1])
-    bins = np.linspace(0, max_length, 10)
-    logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
-    ax4.hist([tumble_lengths], bins=logbins, label=['tumble_lengths'], color=['m'])
-    ax4.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
+    bins = np.linspace(0, max_length, 30)
+    ax4.hist([tumble_lengths], bins=bins, label=['tumble_lengths'], color=['m'])
+    ax4.axvline(x=avg_tumble_lengths, color='k', linestyle='dashed', label='mean tumble')
+    ax4.axvline(x=expected_tumble, color='r', linestyle='dashed', label='expected tumble')
 
     # labels
     ax1.set_xticklabels([])
@@ -346,11 +348,9 @@ def plot_motor_control(output, out_dir='out'):
 
     ax3.set_xlabel("motor state length (sec)")
     ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax3.set_xscale('log')
 
     ax4.set_xlabel("motor state length (sec)")
     ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax4.set_xscale('log')
 
     # save the figure
     fig_path = os.path.join(out_dir, 'motor_control')
@@ -406,7 +406,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_motor_control()
+    output1 = test_motor_control(200)
     plot_motor_control(output1, out_dir)
 
     output2 = test_variable_receptor()

@@ -544,9 +544,10 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter.emit(emit_config)
 
 
+# tests
 def tumble():
     tumble_jitter = 0.4  # (radians)
-    force = 1.0  #22.5
+    force = 1.0
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
@@ -611,7 +612,6 @@ def test_diffusion(total_time=1):
         # get field
         field = lattice.lattice[test_diffusion_idx].copy()
 
-        # assert diffusion
         # center should go down
         assert field[center_patch[0]][center_patch[1]] < previous_field[center_patch[0]][center_patch[1]]
         # corner should go up
