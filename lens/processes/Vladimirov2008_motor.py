@@ -368,23 +368,20 @@ def plot_variable_receptor(output, out_dir='out'):
     CheY_P_vec = output['CheY_P_vec']
     ccw_motor_bias_vec = output['ccw_motor_bias_vec']
     ccw_to_cw_vec = output['ccw_to_cw_vec']
-    motor_state_vec = output['motor_state_vec']
 
     # plot results
     cols = 1
-    rows = 4
+    rows = 3
     plt.figure(figsize=(6 * cols, 1 * rows))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
-    ax4 = plt.subplot(rows, cols, 4)
 
     ax1.plot(receptor_activities, 'b')
     ax2.plot(CheY_P_vec, 'b')
     ax3.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
     ax3.plot(ccw_to_cw_vec, 'g', label='ccw_to_cw')
-    ax4.plot(motor_state_vec, '.b')
 
     ax1.set_xticklabels([])
     ax1.set_ylabel("receptor activity \n P(on) ", fontsize=10)
@@ -393,8 +390,6 @@ def plot_variable_receptor(output, out_dir='out'):
     ax3.set_xticklabels([])
     ax3.set_ylabel("motor bias", fontsize=10)
     ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax4.set_yticks([0.0, 1.0])
-    ax4.set_yticklabels(["run", "tumble"])
 
     fig_path = os.path.join(out_dir, 'motor_variable_receptor')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
