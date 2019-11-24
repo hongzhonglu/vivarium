@@ -305,7 +305,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.lattice[index].fill(media[molecule_id])
 
     def run_diffusion(self, timestep):
-        # change_lattice = np.zeros(self.lattice.shape)
         for index in xrange(len(self.lattice)):
             molecule = self.lattice[index]
             # run diffusion if molecule field is not uniform
@@ -557,7 +556,7 @@ def run():
     return [force, torque]
 
 
-def test_diffusion(total_time=2):
+def test_diffusion(total_time=1):
     from lens.actor.emitter import get_emitter
 
     timestep = 0.01  # sec
@@ -594,30 +593,36 @@ def test_diffusion(total_time=2):
 
     # get test_diffusion field index
     test_diffusion_idx = lattice._molecule_ids.index(test_diffusion)
+    center_patch = [int(boot_config['gradient']['molecules'][test_diffusion]['center'][0] * boot_config['patches_per_edge_x']),
+              int(boot_config['gradient']['molecules'][test_diffusion]['center'][1] * boot_config['patches_per_edge_x'])]
 
     # run simulation
-    saved_state = {
-        'field': [],
-        'time': []}
-
-    # test run/tumble
     time = 0
+    previous_field = lattice.lattice[test_diffusion_idx].copy()
+    saved_state = {
+        'field': [previous_field],
+        'time': [time]}
     while time < total_time:
+        time += timestep
 
         # run lattice and get new locations
         lattice.run_incremental(time)
 
         # get field
-        field = lattice.lattice[test_diffusion_idx]
+        field = lattice.lattice[test_diffusion_idx].copy()
 
-        # save
+        # assert diffusion
+        # center should go down
+        assert field[center_patch[0]][center_patch[1]] < previous_field[center_patch[0]][center_patch[1]]
+        # corner should go up
+        assert field[0][0] > previous_field[0][0]
+
+        # save current field for comparison
+        previous_field = field
+
+        # save state for plotting
         saved_state['time'].append(time)
         saved_state['field'].append(field.tolist())
-
-        # update time
-        time += timestep
-
-        # TODO -- assert diffusion
 
     data = {
         'saved_state': saved_state,
