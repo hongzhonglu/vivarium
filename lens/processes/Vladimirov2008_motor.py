@@ -141,8 +141,8 @@ class MotorActivity(Process):
 
         ## Motor switching
         # CCW corresponds to run. CW corresponds to tumble
-        ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)
-        ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)
+        ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)  # (1/s)
+        ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
 
         if motor_state == 0:  # 0 for run
             # switch to tumble?
@@ -189,7 +189,15 @@ class MotorActivity(Process):
 def test_motor_control():
     # TODO -- add asserts for test
 
-    motor = MotorActivity()
+    initial_params = {
+        # 'adaptPrecision': 1,
+        # motor
+        'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
+        'n_motors': 5,
+        'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
+    }
+
+    motor = MotorActivity(initial_params)
     settings = motor.default_settings()
     state = settings['state']
     receptor_activity = 1./3.
@@ -204,8 +212,9 @@ def test_motor_control():
     # run simulation
     time = 0
     timestep = 0.01  # sec
-    end_time = 360  # secs
+    end_time = 100  # secs
     while time < end_time:
+        time += timestep
 
         update = motor.next_update(timestep, state)
         CheY_P = update['internal']['CheY_P']
@@ -216,13 +225,14 @@ def test_motor_control():
         # update motor state
         state['internal']['motor_state'] = motor_state
 
+        # print('t: {} | motor: {}'.format(time, motor_state))
+
         CheY_P_vec.append(CheY_P)
         ccw_motor_bias_vec.append(ccw_motor_bias)
         ccw_to_cw_vec.append(ccw_to_cw)
         motor_state_vec.append(motor_state)
         time_vec.append(time)
 
-        time += timestep
 
     return {
         'CheY_P_vec': CheY_P_vec,
@@ -273,6 +283,9 @@ def plot_motor_control(output, out_dir='out'):
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
+    expected_run = 0.42  # s (Berg) expected run length without chemotaxis
+    expected_tumble = 0.14  # s (Berg)
+
     # receptor_activities = output['receptor_activities']
     CheY_P_vec = output['CheY_P_vec']
     ccw_motor_bias_vec = output['ccw_motor_bias_vec']
@@ -287,7 +300,8 @@ def plot_motor_control(output, out_dir='out'):
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
-    ax4 = plt.subplot(rows, cols, 3)
+    ax3 = plt.subplot(rows, cols, 3)
+    ax4 = plt.subplot(rows, cols, 4)
 
     ax1.plot(CheY_P_vec, 'b')
     ax2.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
@@ -309,20 +323,37 @@ def plot_motor_control(output, out_dir='out'):
                 state_start_time = time
         prior_state = state
 
-    # plot run/tumble distributions
-    max_length = max(run_lengths + tumble_lengths)
-    bins = np.linspace(0, max_length, 20)
-    ax4.hist([run_lengths, tumble_lengths], bins, label=['run_lengths', 'tumble_lengths'])
+    # plot run distributions
+    max_length = max(run_lengths + [1])
+    bins = np.linspace(0, max_length, 10)
+    logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
+    ax3.hist([run_lengths], bins=logbins, label=['run_lengths'], color=['b'])
+    ax3.axvline(x=expected_run, color='b', linestyle='dashed', label='expected run')
+
+    # plot tumble distributions
+    max_length = max(tumble_lengths + [1])
+    bins = np.linspace(0, max_length, 10)
+    logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
+    ax4.hist([tumble_lengths], bins=logbins, label=['tumble_lengths'], color=['m'])
+    ax4.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
 
     # labels
     ax1.set_xticklabels([])
     ax1.set_ylabel("CheY_P", fontsize=10)
+
     ax2.set_xticklabels([])
     ax2.set_ylabel("motor bias", fontsize=10)
     ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax4.set_xlabel("motor state length (sec)", fontsize=10)
 
+    ax3.set_xlabel("motor state length (sec)")
+    ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax3.set_xscale('log')
+
+    ax4.set_xlabel("motor state length (sec)")
+    ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax4.set_xscale('log')
+
+    # save the figure
     fig_path = os.path.join(out_dir, 'motor_control')
     plt.subplots_adjust(wspace=0.7, hspace=0.5)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
