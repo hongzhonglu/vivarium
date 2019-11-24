@@ -7,8 +7,6 @@ import random
 from lens.actor.process import Process, deep_merge
 
 
-TUMBLE_JITTER = 1.0  # (radians)
-
 # parameters
 DEFAULT_PARAMETERS = {
     # 'k_A': 5.0,  #
@@ -158,9 +156,9 @@ class MotorActivity(Process):
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
-                force, torque = self.run()
+                [force, torque] = self.run()
             else:
-                force, torque = self.tumble()
+                [force, torque] = self.tumble()
 
         # TODO -- should force/torque accumulate over exchange timestep?
         update = {
@@ -176,14 +174,15 @@ class MotorActivity(Process):
         return update
 
     def tumble(self):
-        force = 5.0  # 2.0
-        torque = random.normalvariate(0, TUMBLE_JITTER)
-        return force, torque
+        tumble_jitter = 0.4  # (radians)  # TODO -- put in parameters
+        force = 1.0  # 22.5
+        torque = random.normalvariate(0, tumble_jitter)
+        return [force, torque]
 
     def run(self):
-        force = 10.0  # 4.0
+        force = 2.1
         torque = 0.0
-        return force, torque
+        return [force, torque]
 
 
 def test_motor_control():

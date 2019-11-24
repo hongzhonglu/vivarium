@@ -546,13 +546,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
 def tumble():
-    TUMBLE_JITTER = 1.0  # (radians)
-    force = 22.5
-    torque = random.normalvariate(0, TUMBLE_JITTER)
+    tumble_jitter = 0.4  # (radians)
+    force = 1.0  #22.5
+    torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 40.0
+    force = 2.1
     torque = 0.0
     return [force, torque]
 
@@ -632,7 +632,7 @@ def test_lattice(total_time=10):
     from lens.actor.emitter import get_emitter
 
     timestep = 0.01  # sec
-    edge_length = 1000.0
+    edge_length = 100.0
 
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
@@ -734,56 +734,83 @@ def test_lattice(total_time=10):
     return data
 
 
-def plot_data(data, out_dir='out'):
+def plot_motility(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     expected_speed = 14.2  # um/s (Berg)
+    expected_angle_between_runs = 68 # degrees (Berg)
 
     saved_state = data['saved_state']
-    timestep = data['timestep']
+    # timestep = data['timestep']
     locations = saved_state['location']
-    motor_state = saved_state['motor_state']
-    times = [t/timestep for t in saved_state['time']] # convert to seconds
+    motor_state = saved_state['motor_state'] # 0 for run, 1 for tumble
+    times = saved_state['time']
 
-    # get speed
+    # get speed, angle between runs
     speed_vec = [0]
     previous_time = times[0]
     previous_loc = locations[0]
-    for time, location in zip(times[1:], locations[1:]):
+    previous_motor_state = motor_state[0]
+    run_angle = 0
+    angle_between_runs = []
+    for time, location, m_state in zip(times[1:], locations[1:], motor_state[1:]):
+
+        # get speed
         dt = time - previous_time
         distance = ((location[0] - previous_loc[0]) ** 2 + (location[1] - previous_loc[1]) ** 2) ** 0.5
         speed_vec.append(distance / dt)  # um/sec
+
+        # get change in angles between motor states
+        if m_state == 0 and previous_motor_state == 1:
+            angle_change = abs(location[2] - run_angle) / np.pi * 180 % 360 # convert to absolute degrees
+            angle_between_runs.append(angle_change)
+        elif m_state == 0:
+            run_angle = location[2]
+
+        # update previous states
         previous_time = time
         previous_loc = location
+        previous_motor_state = m_state
+
     avg_speed = sum(speed_vec) / len(speed_vec)
+    avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
 
     # plot results
     cols = 1
-    rows = 2
+    rows = 3
     plt.figure(figsize=(6 * cols, 1.5 * rows))
     plt.rcParams.update({'font.size': 12})
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
+    ax3 = plt.subplot(rows, cols, 3)
 
     ax1.plot(times, speed_vec)
-    ax1.axhline(y=avg_speed, color='r', linestyle='dashed', label='mean')
-    ax1.axhline(y=expected_speed, color='b', linestyle='dashed', label='expected mean')
+    ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
+    ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
     ax1.set_ylabel(u'speed (\u03bcm/sec)')
     # ax1.set_xlabel('time')
     ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
+    # plot change in direction between runs
+    ax2.plot(angle_between_runs)
+    ax2.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
+    ax2.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
+    ax2.set_ylabel('angle between runs')
+    ax2.set_xlabel('run #')
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
     # motile force
-    ax2.plot(times, motor_state)
-    ax2.set_xlabel('time (s)')
-    ax2.set_yticks([0.0, 1.0])
-    ax2.set_yticklabels(["run", "tumble"])
+    ax3.plot(times, motor_state)
+    ax3.set_xlabel('time (s)')
+    ax3.set_yticks([0.0, 1.0])
+    ax3.set_yticklabels(["run", "tumble"])
 
     # save figure
-    fig_path = os.path.join(out_dir, 'data')
-    plt.subplots_adjust(wspace=0.7, hspace=0.5)
+    fig_path = os.path.join(out_dir, 'motility')
+    plt.subplots_adjust(wspace=0.7, hspace=0.9)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
@@ -791,13 +818,14 @@ def plot_trajectory(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
 
     x_length = data['x_length']
     y_length = data['y_length']
     y_ratio = y_length/x_length
     saved_state = data['saved_state']
     locations = saved_state['location']
-    times = saved_state['time']
+    times = np.array(saved_state['time'])
 
     # plot trajectory
     fig = plt.figure(figsize=(8, 8*y_ratio))
@@ -807,15 +835,21 @@ def plot_trajectory(data, out_dir='out'):
     x_coord = locations_array[:, 0]
     y_coord = locations_array[:, 1]
 
+    # make multi-colored trajectory
+    points = np.array([x_coord, y_coord]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    lc = LineCollection(segments, cmap=plt.get_cmap('cool'))
+    lc.set_array(times)
+    lc.set_linewidth(3)
 
+    # plot line
+    line = plt.gca().add_collection(lc)
 
+    # color bar
+    cbar = plt.colorbar(line)
+    cbar.set_label('time', rotation=270)
 
-
-
-    
-
-
-    plt.plot(x_coord, y_coord, 'b-')  # trajectory
+    # plt.plot(x_coord, y_coord, 'b-')  # trajectory
     plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
     plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
 
@@ -880,8 +914,8 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_lattice(10)
-    plot_data(output1, out_dir)
+    output1 = test_lattice(50)
+    plot_motility(output1, out_dir)
     plot_trajectory(output1, out_dir)
 
     # output2 = test_diffusion(2)
