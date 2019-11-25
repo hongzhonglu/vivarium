@@ -95,7 +95,6 @@ class CobraMetabolism(Process):
 
 def test_minimal():
     stoichiometry = {
-        # 'EA': {'A': 1},
         'R1': {'A': -1, 'B': 1}}
 
     objective = {
