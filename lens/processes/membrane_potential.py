@@ -76,24 +76,28 @@ class MembranePotential(Process):
 
         super(MembranePotential, self).__init__(roles, parameters)
 
-    def default_state(self):
+    def default_settings(self):
+
+        # default state
         config = {'external': {'T': 310.15}}
         default_state = deep_merge((self.initial_states), config)
-        return default_state
 
-    def default_emitter_keys(self):
-        keys = {
-            'membrane': ['d_V', 'd_pH', 'PMF'],
-        }
-        return keys
+        # default emitter keys
+        default_emitter_keys = {'membrane': ['d_V', 'd_pH', 'PMF']}
 
-    def default_updaters(self):
-        keys = {'membrane': {
-            'd_V': 'set',
-            'd_pH': 'set',
-            'PMF': 'set',
-        }}
-        return keys
+        # default updaters
+        default_updaters = {
+            'membrane': {
+                'd_V': 'set',
+                'd_pH': 'set',
+                'PMF': 'set'}}
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
@@ -162,7 +166,8 @@ def test_mem_potential():
     mp = MembranePotential(initial_parameters)
 
     # get initial state and parameters
-    state = mp.default_state()
+    settings = mp.default_settings()
+    state = settings['state']
     saved_state = {'internal': {}, 'external': {}, 'membrane': {}, 'time': []}
 
     ## Simulation

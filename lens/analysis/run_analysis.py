@@ -7,14 +7,14 @@ from pymongo import MongoClient
 from lens.analysis.analyze_compartment import Compartment
 from lens.analysis.multigen_compartment import MultigenCompartment
 from lens.analysis.location_trace import LatticeTrace
-from lens.analysis.chemotaxis_trace import ChemotaxisTrace
+from lens.analysis.motor import Motor
 from lens.analysis.snapshots import Snapshots
 from lens.analysis.topology import Topology
 
 
 # classes for run_analysis to cycle through
 analysis_classes = {
-    # 'chemotaxis': ChemotaxisTrace,
+    'motor': Motor,
     'compartment': Compartment,
     'multigen': MultigenCompartment,
     'location': LatticeTrace,
@@ -70,6 +70,16 @@ def get_sims_from_exp(client, experiment_id):
 
     return list(simulation_ids)
 
+def compartment_query(query, analysis, history_client, sim_id, options={}):
+    compartment_query = query.copy()
+    compartment_query.update({'simulation_id': sim_id})
+    data = analysis.get_data(history_client, compartment_query, options)
+    return data
+
+def environment_query(query, analysis, history_client, options={}):
+    data = analysis.get_data(history_client, query.copy(), options)
+    return data
+
 
 class Analyze(object):
     '''
@@ -120,7 +130,7 @@ class Analyze(object):
         # get the phylogenetic tree in experiment config
         experiment_config['phylogeny'] = get_phylogeny(phylogeny_client, self.experiment_id)
 
-        # get list of analysis objects to run
+        # get list of analysis objects to run from self.analyses, or run all analyses
         if self.analyses:
             run_analyses = [analysis_classes[analysis_id] for analysis_id in self.analyses]
         else:
@@ -134,51 +144,73 @@ class Analyze(object):
             if all(processes in active_processes for processes in required_processes):
 
                 if analysis.analysis_type is 'experiment':
-                    environment_data = analysis.get_data(history_client, query.copy())
-                    analysis.analyze(experiment_config, environment_data, output_dir)
+                    data = analysis.get_data(history_client, query.copy())
+                    analysis.analyze(experiment_config, data, output_dir)
 
                 elif analysis.analysis_type is 'compartment':
-                    # Run the compartment analysis for each simulation in simulation_ids
-                    # A compartment analysis is run on a single compartment.
+                    # Run a compartment analysis for each simulation in simulation_ids
+                    # A 'compartment' analysis is run on a single compartment.
                     # It expects to run queries on the compartment tables in the DB.
                     # Output is saved to the compartment's directory.
 
                     for sim_id in simulation_ids:
-                        compartment_query = query.copy()
-                        compartment_query.update({'simulation_id': sim_id})
-                        data = analysis.get_data(history_client, compartment_query)
-
+                        data = compartment_query(query, analysis, history_client, sim_id)
                         sim_out_dir = os.path.join(output_dir, sim_id)
                         analysis.analyze(experiment_config, data, sim_out_dir)
 
                 elif analysis.analysis_type is 'environment':
-                    # A environment analysis is run on the environment.
+                    # A 'environment' analysis is run on the environment.
                     # It expects to run queries on the environment (lattice) tables in the DB.
                     # Output is saved to the experiment's base directory.
 
-                    environment_data = analysis.get_data(history_client, query.copy())
-                    analysis.analyze(experiment_config, environment_data, output_dir)
+                    data = environment_query(query, analysis, history_client)
+                    analysis.analyze(experiment_config, data, output_dir)
 
-                elif analysis.analysis_type is 'both':
-                    # A both analysis is run on the environment AND compartments.
+                elif analysis.analysis_type is 'env_with_compartment':
+                    # An 'env_with_compartment' analysis is run on the environment AND compartments,
+                    # from the point of view of the environment.
                     # It expects to run queries on the environment (lattice) tables in the DB,
                     # but if an option is passed with simulation id, it will query those as well.
-                    # Output is saved to the experiment's base directory.
-                    compartment_data = {}
-                    if self.tags:
-                        for sim_id in simulation_ids:
-                            compartment_query = query.copy()
-                            compartment_query.update({'simulation_id': sim_id})
-                            options = {'tags': self.tags}
-                            compartment_data[sim_id] = analysis.get_data(history_client, compartment_query, options)
+                    # A single output is saved to the experiment's base directory.
 
-                    environment_data = analysis.get_data(history_client, query.copy())
+                    compartment_data = {}
+                    for sim_id in simulation_ids:
+                        options = {
+                            'type': 'compartment',
+                            'tags': self.tags}
+                        compartment_data[sim_id] = compartment_query(query, analysis, history_client, sim_id, options)
+
+                    options = {'type': 'environment'}
+                    environment_data = environment_query(query, analysis, history_client, options)
 
                     data = {
                         'compartments': compartment_data,
                         'environment': environment_data}
 
                     analysis.analyze(experiment_config, data, output_dir)
+
+                elif analysis.analysis_type is 'compartment_with_env':
+                    # An 'compartment_with_env' analysis is run on the environment AND compartments,
+                    # from the point of view of a compartment.
+                    # It expects to run queries on the environment (lattice) tables in the DB,
+                    # but if an option is passed with simulation id, it will query those as well.
+                    # Output is saved to each compartment's directory.
+
+                    for sim_id in simulation_ids:
+                        env_query = query.copy()
+                        env_query.update({'agent_id': sim_id})
+                        options = {'type': 'environment'}
+                        environment_data = environment_query(env_query, analysis, history_client, options)
+                        data = {'environment': environment_data}
+
+                        options = {
+                            'type': 'compartment',
+                            'tags': self.tags}
+                        compartment_data = compartment_query(query, analysis, history_client, sim_id, options)
+                        data['compartment'] = compartment_data
+
+                        sim_out_dir = os.path.join(output_dir, sim_id)
+                        analysis.analyze(experiment_config, data, sim_out_dir)
 
                 print('completed analysis: {}'.format(analysis_class.__name__))
 

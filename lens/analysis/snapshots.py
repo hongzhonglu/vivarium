@@ -18,12 +18,13 @@ MAX_TAG = 110  # if a tagged protein has a value over this, it is fully saturate
 
 class Snapshots(Analysis):
     def __init__(self):
-        super(Snapshots, self).__init__(analysis_type='both')
+        super(Snapshots, self).__init__(analysis_type='env_with_compartment')
 
     def get_data(self, client, query, options={}):
 
+        type = options.get('type')
         tags = options.get('tags')
-        if tags:
+        if type is 'compartment' and tags:
             query.update({'type': 'compartment'})
             history_data = client.find(query)
             history_data.sort('time')
@@ -40,7 +41,7 @@ class Snapshots(Analysis):
 
             return time_dict
 
-        else:
+        elif type is 'environment':
             # get data about agent locations ('type': 'lattice')
             query_lattice = {'type': 'lattice'}
             query_lattice.update(query)
@@ -87,7 +88,8 @@ class Snapshots(Analysis):
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
-        tags_data = data['compartments']
+        compartment_data = data['compartments']
+        tags_present = all(d for d in compartment_data.values())  # are there tags?
 
         time_vec = time_data.keys()
         edge_length_x = experiment_config['edge_length_x']
@@ -118,10 +120,10 @@ class Snapshots(Analysis):
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
-            if tags_data:
+            if tags_present:
                 agent_tags = {}
                 for agent_id in agent_data.keys():
-                    tdata = tags_data[agent_id]
+                    tdata = compartment_data[agent_id]
                     tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
                     agent_tags[agent_id] = tags
                 agent_data = deep_merge(dict(agent_data), agent_tags)
@@ -154,9 +156,9 @@ class Snapshots(Analysis):
                 self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
         # plt.subplots_adjust(wspace=0.7, hspace=0.1)
-        figname = '/snapshots'
-        if tags_data:
-            figname = '/snapshots_tagged'
+        figname = '/snap_out'
+        if tags_present:
+            figname = '/snap_out_tagged'
         plt.savefig(output_dir + figname, bbox_inches='tight')
         plt.close(fig)
 

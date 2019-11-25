@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 # helper functions
 def get_compartment(data):
+    # get data on a single compartment
     skip_keys = [
         'type',
         'simulation_id',
@@ -31,6 +32,7 @@ def get_compartment(data):
 
 
 def get_lattice(data):
+    # get data on the lattice state
     skip_keys = [
         'type',
         'agent_id',

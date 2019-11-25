@@ -82,36 +82,36 @@ class TransportLookup(Process):
 
         super(TransportLookup, self).__init__(roles, parameters)
 
-    def default_state(self):
+
+    def default_settings(self):
+
+        # default state
         media_id = 'minimal_plus_amino_acids'
         make_media = Media()
         media = make_media.get_saved_media(media_id)
-
-        return {
+        default_state = {
             'internal': {'volume': 1},
             'external': media,
             'exchange': {state_id: 0.0 for state_id in self.external_molecule_ids}}
 
-    def default_emitter_keys(self):
-        keys = {
+        # default emitter keys
+        default_emitter_keys = {
             'internal': [],
             'external': self.external_molecule_ids,
-            'exchange': [],
-        }
-        return keys
+            'exchange': []}
 
-    def default_updaters(self):
-        '''
-        define the updater type for each state in roles.
-        The default updater is to pass a delta'''
-
-        updater_types = {
+        # default updaters
+        default_updaters = {
             'internal': {},  # reactions set values directly
             'external': {},  # reactions set values directly
             'exchange': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
-        # TODO -- 'exchange' can be made to accumulate automatically
 
-        return updater_types
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         external = states['external'] # TODO -- use external state? if concentrations near 0, cut off flux?

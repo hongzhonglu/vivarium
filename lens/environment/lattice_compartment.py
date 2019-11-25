@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from lens.actor.process import Compartment, initialize_state
+from lens.actor.process import Compartment, initialize_state, get_compartment_timestep
 from lens.actor.emitter import get_emitter
 from lens.actor.inner import Simulation
 
@@ -133,19 +133,27 @@ class LatticeCompartment(Compartment, Simulation):
 
 
 def generate_lattice_compartment(process, config):
+
+    # get the process' default settings
+    default_settings = process.default_settings()
+    process_id = default_settings.get('process_id', 'process')
+
     # declare the processes layers (with a single layer)
-    processes = [{'process': process}]
+    processes_layers = [{process_id: process}]
 
     # make a simple topology mapping 'role' to 'role'
     process_roles = process.roles.keys()
-    topology = {'process': {role: role for role in process_roles}}
+    topology = {process_id: {role: role for role in process_roles}}
 
     # initialize the states for each role
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(processes_layers, topology, config.get('initial_state', {}))
+
+    # get the time step
+    time_step = get_compartment_timestep(processes_layers)
 
     # configure the emitter
     emitter_config = config.get('emitter', {})
-    emitter_config['keys'] = process.default_emitter_keys()
+    emitter_config['keys'] = default_settings['emitter_keys']
     emitter_config['experiment_id'] = config.get('experiment_id')
     emitter_config['simulation_id'] = config.get('simulation_id')
     emitter = get_emitter(emitter_config)
@@ -153,11 +161,11 @@ def generate_lattice_compartment(process, config):
     options = {
         'emitter': emitter,
         'initial_time': config.get('initial_time', 0.0),
+        'time_step': time_step,
         'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
         'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
         'topology': topology,
     }
-    options.update(config['compartment_options'])
 
     # create the lattice compartment
-    return LatticeCompartment(processes, states, options)
+    return LatticeCompartment(processes_layers, states, options)

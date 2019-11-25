@@ -14,19 +14,25 @@ class Growth(Process):
         parameters.update(initial_parameters)
         super(Growth, self).__init__(roles, parameters)
 
-    def default_state(self):
+    def default_settings(self):
+
+        # default state
         mass = 1339  # (wet mass in fg)
-        default_state = {'mass': mass}
-        return {
-            'internal': default_state}
+        internal = {'mass': mass}
+        default_state = {'internal': internal}
 
-    def default_emitter_keys(self):
-        keys = {'internal': ['mass']}
-        return keys
+        # default emitter keys
+        default_emitter_keys = {'internal': ['mass']}
 
-    def default_updaters(self):
-        updater_types = {'internal': {'mass': 'set'}}
-        return updater_types
+        # default updaters
+        default_updaters = {'internal': {'mass': 'set'}}
+
+        default_settings = {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
+
+        return default_settings
 
     def next_update(self, timestep, states):
         mass = states['internal']['mass']
