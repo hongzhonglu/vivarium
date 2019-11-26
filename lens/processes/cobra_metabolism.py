@@ -100,6 +100,9 @@ class CobraMetabolism(Process):
 
         return levels
 
+    def read_external_levels(self):
+        return self.read_levels(self.external_molecules)
+
 def test_minimal():
     stoichiometry = {
         'R1': {'A': -1, 'B': 1}}
@@ -277,4 +280,4 @@ if __name__ == '__main__':
 
     print(metabolism.model.optimize().objective_value)
     print(metabolism.model.summary())
-    print(metabolism.read_levels(metabolism.external_molecules))
+    print(metabolism.read_external_levels())
