@@ -92,6 +92,13 @@ class CobraMetabolism(Process):
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
             reaction.lower_bound = -level
 
+    def read_levels(self, levels):
+        solution = self.model.optimize()
+        levels = {
+            external: solution.fluxes[external + EXTERNAL_SUFFIX]
+            for external in self.external_molecules}
+
+        return levels
 
 def test_minimal():
     stoichiometry = {
@@ -269,3 +276,5 @@ if __name__ == '__main__':
     print(metabolism.model.objective.expression)
 
     print(metabolism.model.optimize().objective_value)
+    print(metabolism.model.summary())
+    print(metabolism.read_levels(metabolism.external_molecules))
