@@ -92,8 +92,10 @@ class CobraMetabolism(Process):
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
             reaction.lower_bound = -level
 
+    def optimize(self):
+        return self.model.optimize()
+
     def read_levels(self, levels):
-        solution = self.model.optimize()
         levels = {
             external: solution.fluxes[external + EXTERNAL_SUFFIX]
             for external in self.external_molecules}
