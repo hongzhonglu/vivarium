@@ -17,6 +17,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import math
+import random
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
@@ -35,6 +36,8 @@ CELL_DENSITY = 1100
 TRANSLATION_JITTER = 0.1
 ROTATION_JITTER = 0.05
 
+DEFAULT_TIMESTEP = 1.0
+
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
@@ -47,10 +50,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Simulation Parameters
         self._time = 0
-        self._timestep = 1.0
         self._max_time = 10e6
         self.output_dir = config.get('output_dir')
-        self.run_for = config.get('run_for', 5.0)
+        self.run_for = config.get('run_for', DEFAULT_TIMESTEP)  # simulation time step
 
         ## Cell Parameters
         self.cell_density = CELL_DENSITY  # TODO -- get density from cell sim, or just get mass
@@ -106,11 +108,17 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
-        self.diffusion = config.get('diffusion', 0.1)
+        self.diffusion = config.get('diffusion', 1e3)
         self.gradient = config.get('gradient', {'type': False})
 
-        # upper limit on the time scale. dy is assumed to be the same as dx. (using 50% of the theoretical upper limit)
-        self.dt = 0.5 * self.dx2 * self.dx2 / (2 * self.diffusion * (self.dx2 + self.dx2)) if self.diffusion else 0
+        # upper limit on the time scale. (using 50% of the theoretical upper limit)
+        if self.diffusion:
+            self.diffusion_dt = 0.5 * self.dx**2 * self.dy**2 / (2 * self.diffusion * (self.dx**2 + self.dy**2))
+            if self.diffusion_dt > self.run_for:
+                # if large diffusion_dt, it still needs to be within self.run_for
+                self.diffusion_dt = self.run_for
+        else:
+            self.diffusion_dt = self.run_for
 
         # add a gradient
         if self.gradient.get('type') == 'gaussian':
@@ -177,8 +185,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
 
-
-
         ## Initialize dictionaries
         self.simulations = {}       # map of agent_id to simulation state
         self.locations = {}         # map of agent_id to center location and orientation
@@ -199,13 +205,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emit_configuration()
 
 
-    def evolve(self):
+    def evolve(self, timestep):
         ''' Evolve environment '''
-        self.update_locations()
+        self.update_locations(timestep)
         self.update_media()
 
         if not self.static_concentrations:
-            self.run_diffusion()
+            self.run_diffusion(timestep)
 
         # make sure all patches have concentrations of 0 or higher
         self.lattice[self.lattice < 0.0] = 0.0
@@ -213,7 +219,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         # emit current state
         self.emit_data()
 
-    def update_locations(self):
+    def update_locations(self, timestep):
         ''' Update the location of all agents '''
 
         # update all agents in multicell physics
@@ -238,7 +244,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.multicell_physics.apply_motile_force(agent_id, force, torque)
 
         # run multicell physics
-        self.multicell_physics.run_incremental(self.run_for)
+        self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
         for agent_id, location in self.locations.iteritems():
@@ -298,21 +304,20 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
 
-    def run_diffusion(self):
-        change_lattice = np.zeros(self.lattice.shape)
+    def run_diffusion(self, timestep):
         for index in xrange(len(self.lattice)):
             molecule = self.lattice[index]
-
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
-                change_lattice[index] = self.diffusion_timestep(molecule)
+                t=0.0
+                while t<timestep:
+                    molecule += self.diffusion_timestep(molecule, self.diffusion_dt)
+                    t += self.diffusion_dt
 
-        self.lattice += change_lattice
-
-    def diffusion_timestep(self, lattice):
+    def diffusion_timestep(self, field, dt):
         ''' calculate concentration changes cause by diffusion'''
-        change_lattice = self.diffusion * self._timestep * convolve(lattice, LAPLACIAN_2D, mode='reflect') / self.dx2
-        return change_lattice
+        change_field = self.diffusion * dt * convolve(field, LAPLACIAN_2D, mode='reflect') / self.dx2
+        return change_field
 
 
     ## Conversion functions
@@ -372,8 +377,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def run_incremental(self, run_until):
         ''' Simulate until run_until '''
         while self._time < run_until:
-            self._time += self._timestep
-            self.evolve()
+            self.evolve(self.run_for)
+            self._time += self.run_for
 
     def add_simulation(self, agent_id, simulation):
         self.simulations.setdefault(agent_id, {}).update(simulation)
@@ -539,11 +544,25 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter.emit(emit_config)
 
 
+# tests
+def tumble():
+    tumble_jitter = 0.4  # (radians)
+    force = 1.0
+    torque = random.normalvariate(0, tumble_jitter)
+    return [force, torque]
 
-def test_lattice(total_time=100):
+def run():
+    force = 2.1
+    torque = 0.0
+    return [force, torque]
+
+
+def test_diffusion(total_time=1):
     from lens.actor.emitter import get_emitter
 
-    edge_length = 10.0
+    timestep = 0.01  # sec
+    test_diffusion = 'GLC'
+    edge_length = 100.0
 
     # get media
     media_id = 'GLC_G6P'
@@ -554,13 +573,87 @@ def test_lattice(total_time=100):
     emitter = get_emitter({})  # TODO -- is an emitter really necessary?
 
     boot_config = {
+        'concentrations': media,
+        'run_for': timestep,
+        'depth': 0.01,  # 3000 um is default
+        'edge_length_x': edge_length,
+        'patches_per_edge_x': int(edge_length/2),
+        'diffusion': 1e3,
+        'gradient': {
+            'type': 'linear',
+            'molecules': {
+                test_diffusion: {
+                    'center': [0.5, 0.5],
+                    'slope': -20.0 / edge_length},
+            }},
+        'emitter': emitter
+    }
+
+    # configure lattice
+    lattice = EnvironmentSpatialLattice(boot_config)
+
+    # get test_diffusion field index
+    test_diffusion_idx = lattice._molecule_ids.index(test_diffusion)
+    center_patch = [int(boot_config['gradient']['molecules'][test_diffusion]['center'][0] * boot_config['patches_per_edge_x']),
+              int(boot_config['gradient']['molecules'][test_diffusion]['center'][1] * boot_config['patches_per_edge_x'])]
+
+    # run simulation
+    time = 0
+    previous_field = lattice.lattice[test_diffusion_idx].copy()
+    saved_state = {
+        'field': [previous_field],
+        'time': [time]}
+    while time < total_time:
+        time += timestep
+
+        # run lattice and get new locations
+        lattice.run_incremental(time)
+
+        # get field
+        field = lattice.lattice[test_diffusion_idx].copy()
+
+        # center should go down
+        assert field[center_patch[0]][center_patch[1]] < previous_field[center_patch[0]][center_patch[1]]
+        # corner should go up
+        assert field[0][0] > previous_field[0][0]
+
+        # save current field for comparison
+        previous_field = field
+
+        # save state for plotting
+        saved_state['time'].append(time)
+        saved_state['field'].append(field.tolist())
+
+    data = {
+        'saved_state': saved_state,
+        'timestep': timestep,
+        'x_length': edge_length,
+        'y_length': edge_length,
+    }
+    return data
+
+
+def test_lattice(total_time=10):
+    from lens.actor.emitter import get_emitter
+
+    timestep = 0.01  # sec
+    edge_length = 100.0
+
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
+
+    # get emitter
+    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
+
+    boot_config = {
         'translation_jitter': 0.0,
         'rotation_jitter': 0.0,
-        'concentrations': media,
-        'run_for': 5.0,
-        'depth': 0.0001,  # 3000 um is default
-        'edge_length': edge_length,
-        'patches_per_edge': 1,
+        'run_for': timestep,
+        'depth': 0.01,  # 3000 um is default
+        'static_concentrations': True,
+        'edge_length_x': edge_length,
+        'patches_per_edge_x': int(edge_length/2),
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'emitter': emitter
     }
@@ -571,7 +664,7 @@ def test_lattice(total_time=100):
     # get simulations
     simulations = lattice.simulations
 
-    # add a cell simulation
+    # add an agent
     agent_id = '1'
     simulation = simulations.setdefault(agent_id, {})
     agent_state = {'volume': 1.0}
@@ -587,38 +680,194 @@ def test_lattice(total_time=100):
     lattice.add_simulation(agent_id, simulation)
 
     # run simulation
-    saved_state = {'location': []}
+    saved_state = {
+        'location': [],
+        'time': [],
+        'motor_state': []}
 
+    # test run/tumble
     time = 0
-    timestep = 2  # sec
+    motor_state = 1 # 0 for run, 1 for tumble
+    time_in_motor_state = 0
     while time < total_time:
-        time += timestep
+
+        # get forces
+        if motor_state == 1: # tumble
+            if time_in_motor_state < tumble_time:
+                motile_force = tumble()
+                time_in_motor_state += timestep
+            else:
+                # switch
+                motile_force = run()
+                motor_state = 0
+                time_in_motor_state = 0
+
+        elif motor_state == 0:  # run
+            if time_in_motor_state < run_time:
+                motile_force = run()
+                time_in_motor_state += timestep
+            else:
+                # switch
+                motile_force = tumble()
+                motor_state = 1
+                time_in_motor_state = 0
 
         # apply forces
-        force = 2.0
-        torque = np.random.normal(loc=0.0, scale=1.0)  # (radians)
-        motile_force = [force, torque]
         lattice.motile_forces[agent_id] = motile_force
 
         # run lattice and get new locations
         lattice.run_incremental(time)
         locations = lattice.locations  # new location
 
+        # save
+        saved_state['time'].append(time)
         saved_state['location'].append(list(locations[agent_id]))
+        saved_state['motor_state'].append(motor_state)
 
+        # update time
+        time += timestep
 
-    # diffusion
-
-    # division
+    # TODO -- assert division
+    # TODO -- assert low reynolds number check
 
     data = {
         'saved_state': saved_state,
+        'timestep': timestep,
         'x_length': edge_length,
         'y_length': edge_length,
     }
     return data
 
-def plot_lattice(data, out_dir='out'):
+
+def plot_motility(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    expected_speed = 14.2  # um/s (Berg)
+    expected_angle_between_runs = 68 # degrees (Berg)
+
+    saved_state = data['saved_state']
+    # timestep = data['timestep']
+    locations = saved_state['location']
+    motor_state = saved_state['motor_state'] # 0 for run, 1 for tumble
+    times = saved_state['time']
+
+    # get speed, angle between runs
+    speed_vec = [0]
+    previous_time = times[0]
+    previous_loc = locations[0]
+    previous_motor_state = motor_state[0]
+    run_angle = 0
+    angle_between_runs = []
+    for time, location, m_state in zip(times[1:], locations[1:], motor_state[1:]):
+
+        # get speed
+        dt = time - previous_time
+        distance = ((location[0] - previous_loc[0]) ** 2 + (location[1] - previous_loc[1]) ** 2) ** 0.5
+        speed_vec.append(distance / dt)  # um/sec
+
+        # get change in angles between motor states
+        if m_state == 0 and previous_motor_state == 1:
+            angle_change = abs(location[2] - run_angle) / np.pi * 180 % 360 # convert to absolute degrees
+            angle_between_runs.append(angle_change)
+        elif m_state == 0:
+            run_angle = location[2]
+
+        # update previous states
+        previous_time = time
+        previous_loc = location
+        previous_motor_state = m_state
+
+    avg_speed = sum(speed_vec) / len(speed_vec)
+    avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+
+    # plot results
+    cols = 1
+    rows = 3
+    plt.figure(figsize=(6 * cols, 1.5 * rows))
+    plt.rcParams.update({'font.size': 12})
+
+    ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
+    ax3 = plt.subplot(rows, cols, 3)
+
+    ax1.plot(times, speed_vec)
+    ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
+    ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
+    ax1.set_ylabel(u'speed (\u03bcm/sec)')
+    # ax1.set_xlabel('time')
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    # plot change in direction between runs
+    ax2.plot(angle_between_runs)
+    ax2.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
+    ax2.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
+    ax2.set_ylabel('angle between runs')
+    ax2.set_xlabel('run #')
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    # motile force
+    ax3.plot(times, motor_state)
+    ax3.set_xlabel('time (s)')
+    ax3.set_yticks([0.0, 1.0])
+    ax3.set_yticklabels(["run", "tumble"])
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'motility')
+    plt.subplots_adjust(wspace=0.7, hspace=0.9)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+
+
+def plot_trajectory(data, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+
+    x_length = data['x_length']
+    y_length = data['y_length']
+    y_ratio = y_length/x_length
+    saved_state = data['saved_state']
+    locations = saved_state['location']
+    times = np.array(saved_state['time'])
+
+    # plot trajectory
+    fig = plt.figure(figsize=(8, 8*y_ratio))
+
+    # get locations and convert to 2D array
+    locations_array = np.array(locations)
+    x_coord = locations_array[:, 0]
+    y_coord = locations_array[:, 1]
+
+    # make multi-colored trajectory
+    points = np.array([x_coord, y_coord]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    lc = LineCollection(segments, cmap=plt.get_cmap('cool'))
+    lc.set_array(times)
+    lc.set_linewidth(3)
+
+    # plot line
+    line = plt.gca().add_collection(lc)
+
+    # color bar
+    cbar = plt.colorbar(line)
+    cbar.set_label('time', rotation=270)
+
+    # plt.plot(x_coord, y_coord, 'b-')  # trajectory
+    plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+    plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+    plt.xlim((0, x_length))
+    plt.ylim((0, y_length))
+
+    fig_path = os.path.join(out_dir, 'trajectory')
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.close(fig)
+
+
+def plot_field(data, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -626,31 +875,53 @@ def plot_lattice(data, out_dir='out'):
     x_length = data['x_length']
     y_length = data['y_length']
     saved_state = data['saved_state']
-    locations = saved_state['location']
+    fields = saved_state['field']
+    times = saved_state['time']
 
-    # plot
-    plt.figure(figsize=(x_length, y_length))
+     # plot fields
+    time_vec = times
+    n_snapshots = 6
+    n_fields = 1
+    plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int).tolist()
+    snapshot_times = [time_vec[i] for i in plot_steps]
 
-    # get locations and convert to 2D array
-    locations_array = np.array(locations)
-    x_coord = locations_array[:, 0]
-    y_coord = locations_array[:, 1]
-    plt.plot(x_coord, y_coord, 'b-')  # trajectory
-    plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
-    plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+    # make figure
+    fig = plt.figure(figsize=(20 * n_snapshots, 10))
+    grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.2)
+    plt.rcParams.update({'font.size': 36})
+    for index, time_index in enumerate(plot_steps, 0):
 
+        field_data = fields[time_index]
 
-    plt.xlim((0, x_length))
-    plt.ylim((0, y_length))
+        ax = fig.add_subplot(grid[0, index])  # grid is (row, column)
+        # ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id))
+        ax.set(xlim=[0, x_length], ylim=[0, y_length], aspect=1)
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
 
-    fig_path = os.path.join(out_dir, 'lattice')
+        plt.imshow(field_data,
+                   vmin=0,
+                   vmax=15.0,
+                   origin='lower',
+                   extent=[0, x_length, 0, y_length],
+                   interpolation='nearest',
+                   cmap='YlGn')
+
+    plt.colorbar()
+    fig_path = os.path.join(out_dir, 'field')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.close(fig)
 
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    output = test_lattice()
-    plot_lattice(output, out_dir)
+
+    output1 = test_lattice(50)
+    plot_motility(output1, out_dir)
+    plot_trajectory(output1, out_dir)
+
+    # output2 = test_diffusion(2)
+    # plot_field(output2, out_dir)
