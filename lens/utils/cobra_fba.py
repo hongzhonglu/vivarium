@@ -10,6 +10,7 @@ from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 
 EXTERNAL_SUFFIX = '_external'
+REVERSE_SUFFIX = '_REVERSE'
 
 def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     '''
@@ -24,7 +25,7 @@ def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     return reverse_stoichiometry
 
 def build_model(stoichiometry, objective, external_molecules):
-    model = Model('metabolism')
+    model = Model('fba')
     model.compartments = {'c': 'cytoplasm'}
 
     metabolite_keys = {}
@@ -62,72 +63,108 @@ def build_model(stoichiometry, objective, external_molecules):
 
     return model
 
-class CobraMetabolism(Process):
+class CobraFBA(object):
     cobra_configuration = Configuration()
 
-    def __init__(self, initial_parameters={}):
+    def __init__(self, config={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
 
-        self.initial_state = initial_parameters['initial_state']
-        self.stoichiometry = initial_parameters['stoichiometry']
-        self.external_molecules = initial_parameters['external_molecules']
+        self.initial_state = config['initial_state']
+        self.stoichiometry = config['stoichiometry']
+        self.external_molecules = config['external_molecules']
 
-        self.reverse_key = '_reverse'
-        self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
-        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, self.reverse_key)
-        self.stoichiometry.update(reverse_stoichiometry)
+        self.objective = config['objective']
 
-        self.objective = initial_parameters['objective']
-        self.stoichiometry.update(self.objective)
-
-        self.objective_declaration = {reaction: 1.0 for reaction in self.objective.keys()}
         self.model = build_model(
             self.stoichiometry,
-            self.objective_declaration,
+            self.objective,
             self.external_molecules)
+
+        self.solution = None
 
     def set_external_levels(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
             reaction.lower_bound = -level
 
+    def objective_value(self):
+        return self.solution.objective_value if self.solution else float('nan')
+
     def optimize(self):
-        return self.model.optimize()
+        self.solution = self.model.optimize()
+        return self.objective_value()
 
-    def read_levels(self, levels):
-        levels = {
-            external: solution.fluxes[external + EXTERNAL_SUFFIX]
-            for external in self.external_molecules}
+    def external_reactions(self):
+        return [
+            molecule + EXTERNAL_SUFFIX
+            for molecule in self.external_molecules]
 
-        return levels
+    def internal_reactions(self):
+        all_reactions = set(self.reaction_ids())
+        return all_reactions - set(self.external_reactions())
 
-    def read_external_levels(self):
-        return self.read_levels(self.external_molecules)
+    def read_levels(self, molecules, scale=1.0):
+        return {
+            molecule: self.solution.fluxes[molecule] * scale
+            for molecule in molecules}
+
+    def read_internal_levels(self):
+        return self.read_levels(self.internal_reactions())
+
+    def read_external_levels(self, scale=1.0):
+        external = self.external_reactions()
+        levels = self.read_levels(external)
+        return {
+            molecule[:len(molecule) - len(EXTERNAL_SUFFIX)]: level
+            for molecule, level in levels.items()}
+
+    def reaction_ids(self):
+        return [reaction.id for reaction in self.model.reactions]
+
+    def get_reactions(self, reactions=[]):
+        if not reactions:
+            reactions = self.reaction_ids()
+
+        return {
+            reaction: self.model.reactions.get_by_id(reaction)
+            for reaction in reactions}
+
+    def set_reaction_bounds(self, reaction_bounds):
+        reactions = self.get_reactions(reaction_bounds.keys())
+        for reaction, bounds in reaction_bounds.items():
+            reaction = reactions[reaction]
+            reaction.lower_bound, reaction.upper_bound = bounds
+
+    def get_reaction_bounds(self, reactions=[]):
+        return {
+            reaction_key: (reaction.lower_bound, reaction.upper_bound)
+            for reaction_key, reaction in self.get_reactions(reactions).items()}
+            
 
 def test_minimal():
     stoichiometry = {
-        'R1': {'A': -1, 'B': 1}}
-
-    objective = {
+        'R1': {'A': -1, 'B': 1},
         'EB': {'B': -1}}
+
+    objective = {'EB': 1.0}
 
     external_molecules = ['A']
 
     initial_state = {
         'A': 5}
 
-    metabolism = CobraMetabolism({
+    fba = CobraFBA({
         'stoichiometry': stoichiometry,
         'objective': objective,
         'external_molecules': external_molecules,
         'initial_state': initial_state})
 
-    metabolism.set_external_levels(initial_state)
+    fba.set_external_levels(initial_state)
 
-    return metabolism
+    return fba
 
-def test_metabolism():
+def test_fba():
     stoichiometry = {
         'R1': {'A': -1, 'ATP': -1, 'B': 1},
         'R2a': {'B': -1, 'ATP': 2, 'NADH': 2, 'C': 1},
@@ -139,11 +176,12 @@ def test_metabolism():
         'R7': {'C': -1, 'NADH': -4, 'E': 3},
         'R8a': {'G': -1, 'ATP': -1, 'NADH': -2, 'H': 1},
         'R8b': {'G': 1, 'ATP': 1, 'NADH': 2, 'H': -1},
-        'Rres': {'NADH': -1, 'O2': -1, 'ATP': 1}}
+        'Rres': {'NADH': -1, 'O2': -1, 'ATP': 1},
+        'v_biomass': {'C': -1, 'F': -1, 'H': -1, 'ATP': -10, 'BIOMASS': 1}}
 
     external_molecules = ['A', 'F', 'D', 'E', 'H', 'O2', 'BIOMASS']
 
-    objective = {'v_biomass': {'C': -1, 'F': -1, 'H': -1, 'ATP': -10, 'BIOMASS': 1}}
+    objective = {'v_biomass': 1.0}
 
     initial_state = {
         'internal': {
@@ -157,27 +195,27 @@ def test_metabolism():
             'H': 5.0,
             'O2': 100.0}}
 
-    metabolism = CobraMetabolism({
+    fba = CobraFBA({
         'stoichiometry': stoichiometry,
         'objective': objective,
         'external_molecules': external_molecules,
         'initial_state': initial_state})
 
-    metabolism.set_external_levels(initial_state['external'])
+    fba.set_external_levels(initial_state['external'])
 
-    return metabolism
+    return fba
 
 class JsonFBA(object):
     def __init__(self, path):
         self.model = cobra.io.load_json_model(path)
 
 def test_canonical():
-    metabolism = JsonFBA('models/e_coli_core.json')
-    return metabolism
+    fba = JsonFBA('models/e_coli_core.json')
+    return fba
 
 def test_test():
-    metabolism = JsonFBA('models/minimal_model.json')
-    return metabolism
+    fba = JsonFBA('models/minimal_model.json')
+    return fba
 
 def test_demo():
     model = Model('example_model')
@@ -264,22 +302,27 @@ def test_demo():
     return DemoFBA(model)
 
 if __name__ == '__main__':
-    metabolism = test_metabolism()
-    # metabolism = test_minimal()
-    # metabolism = test_canonical()
-    # metabolism = test_demo()
-    # metabolism = test_test()
+    fba = test_fba()
+    # fba = test_minimal()
+    # fba = test_canonical()
+    # fba = test_demo()
+    # fba = test_test()
 
-    # cobra.io.save_json_model(metabolism.model, 'demo_model.json')
+    # cobra.io.save_json_model(fba.model, 'demo_model.json')
 
-    print(metabolism.model)
-    print(metabolism.model.reactions)
-    print(metabolism.model.metabolites)
-    print(metabolism.model.genes)
-    print(metabolism.model.compartments)
-    print(metabolism.model.solver)
-    print(metabolism.model.objective.expression)
+    print(fba.model)
+    print(fba.model.reactions)
+    print(fba.model.metabolites)
+    print(fba.model.genes)
+    print(fba.model.compartments)
+    print(fba.model.solver)
+    print(fba.model.objective.expression)
 
-    print(metabolism.model.optimize().objective_value)
-    print(metabolism.model.summary())
-    print(metabolism.read_external_levels())
+    print(fba.optimize())
+    print(fba.model.summary())
+    print('internal: {}'.format(fba.internal_reactions()))
+    print('external: {}'.format(fba.external_reactions()))
+    print(fba.reaction_ids())
+    print(fba.get_reactions())
+    print(fba.get_reaction_bounds())
+    print(fba.read_external_levels())

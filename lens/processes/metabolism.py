@@ -6,7 +6,8 @@ import numpy as np
 
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
-from lens.utils.modular_fba import FluxBalanceAnalysis
+# from lens.utils.modular_fba import FluxBalanceAnalysis
+from lens.utils.cobra_fba import CobraFBA
 from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
 
 
@@ -68,12 +69,11 @@ class Metabolism(Process):
         # regulation
         self.regulation = initial_parameters.get('regulation')
 
-        self.fba = FluxBalanceAnalysis(
-            reactionStoich=self.stoichiometry,
-            externalExchangedMolecules=external_molecule_ids_e,
+        self.fba = CobraFBA(dict(
+            stoichiometry=self.stoichiometry,
+            external_molecules=self.external_molecule_ids,
             objective=self.objective,
-            objectiveType="standard",
-            solver="glpk-linear")
+            initial_state=self.initial_state))
 
         # assign internal and external state ids
         roles = {
@@ -96,11 +96,11 @@ class Metabolism(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': self.fba.getReactionIDs(),
-            'external': self.fba.getExternalMoleculeIDs()}
+            'internal': self.fba.reaction_ids(),
+            'external': self.fba.external_molecules}
 
         # default updaters
-        set_internal_states = self.stoichiometry.keys() + ['mass']
+        set_internal_states = list(self.stoichiometry.keys()) + ['mass']
         default_updaters = {
             'internal': {state_id: 'set' for state_id in set_internal_states},
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}
@@ -116,7 +116,7 @@ class Metabolism(Process):
         ''' timestep is assumed to be 1 second '''
 
         internal_state = states['internal']
-        external_state = add_str_to_keys(states['external'], self.external_key)
+        external_state = states['external'] # add_str_to_keys(states['external'], self.external_key)
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
@@ -127,9 +127,17 @@ class Metabolism(Process):
 
         # TODO -- define constrained, unconstrained (np.inf), and 0 exchanges
         # set external concentrations.
-        external_molecule_ids = self.fba.getExternalMoleculeIDs()
+        external_molecule_ids = self.fba.external_molecules
+
+        external_levels = {
+            molecule: external_state[molecule]
+            for molecule in external_molecule_ids}
+        print('external levels: {}'.format(external_levels))
+
+        self.fba.set_external_levels(external_levels)
         # self.fba.setExternalMoleculeLevels([external_state[molID] for molID in external_molecule_ids])
-        self.fba.setExternalMoleculeLevels([external_state[molID] / 3600 for molID in external_molecule_ids])  # TODO -- handle unit conversions (x/3600) separately
+        # self.fba.setExternalMoleculeLevels([external_state[molID] / 3600 for molID in external_molecule_ids])  
+        # TODO -- handle unit conversions (x/3600) separately
 
         ## Regulation
         # get the regulatory state of the reactions TODO -- are reversible reactions regulated?
@@ -141,17 +149,16 @@ class Metabolism(Process):
         # set reaction flux bounds, based on default bounds and regulatory_state
         # TODO -- set default_flux_bounds in init
         # TODO -- if negative, lower bounds should set bound on reverse reactions
-        default_flux_bounds = np.inf
-        flux_bounds = np.array([[0.0, default_flux_bounds] for rxn in self.reaction_ids])
-        for rxn_index, rxn_id in enumerate(self.reaction_ids):
-            if regulatory_state.get(rxn_id) is False:
-                flux_bounds[rxn_index] = [0.0, 0.0]
+        default_flux_bounds = 1000 # np.inf
+
+        print('regulatory state: ' + str(regulatory_state))
+        flux_bounds = {
+            reaction: (0.0, 0.0 if regulatory_state.get(reaction) == False else default_flux_bounds)
+            for reaction in self.reaction_ids}
 
         # pass flux bounds to FBA
-        self.fba.setReactionFluxBounds(
-            self.reaction_ids,
-            lowerBounds=flux_bounds[:,0],
-            upperBounds=flux_bounds[:,1])
+        print('flux bounds: ' + str(flux_bounds))
+        self.fba.set_reaction_bounds(flux_bounds)
 
         # # set flux bounds on targets.
         # # TODO -- only update fluxes that are different from the previous timestep
@@ -166,23 +173,28 @@ class Metabolism(Process):
         #             rev_reaction_id = reaction_id + self.reverse_key
         #             self.fba.setReactionFluxBounds(rev_reaction_id, 0, -flux_target)
 
+        # solve the problem!
+        growth_rate = self.fba.optimize()
+
         # get exchanges and growth
-        exchange_fluxes = self.fba.getExternalExchangeFluxes() * timestep #* mass.to('g').magnitude  # TODO -- scale by mass
-        growth_rate = self.fba.getBiomassReactionFlux()
+        exchange_fluxes = self.fba.read_external_levels(timestep)
+
+        # exchange_fluxes = self.fba.getExternalExchangeFluxes() * timestep #* mass.to('g').magnitude  # TODO -- scale by mass
         new_mass = {'mass': (mass.magnitude * np.exp(growth_rate * timestep))}
 
         # get delta counts for external molecules
         mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
-        delta_exchange_counts = (mmolToCount * exchange_fluxes).astype(int)
-        environment_deltas = dict(zip(remove_str_in_list(external_molecule_ids, self.external_key), delta_exchange_counts))
 
-        # get reaction flux
-        rxn_ids = self.fba.getReactionIDs()
-        rxn_fluxes = self.fba.getReactionFluxes()
-        rxn_dict = dict(zip(rxn_ids, rxn_fluxes))
+        environment_deltas = {
+            reaction: (flux * mmolToCount).magnitude
+            for reaction, flux in exchange_fluxes.items()}
+
+        print('environment deltas: {}'.format(environment_deltas))
+
+        fluxes = self.fba.read_internal_levels()
 
         update = {
-            'internal': deep_merge(dict(new_mass), rxn_dict),
+            'internal': deep_merge(dict(new_mass), fluxes),
             'external': environment_deltas}
         return update
 
@@ -196,29 +208,30 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def get_configuration():
     stoichiometry = {
-        "R1": {"A": -1, "ATP": -1, "B": 1},
-        "R2a": {"B": -1, "ATP": 2, "NADH": 2, "C": 1},
-        "R2b": {"C": -1, "ATP": -2, "NADH": -2, "B": 1},
-        "R3": {"B": -1, "F": 1},
-        "R4": {"C": -1, "G": 1},
-        "R5": {"G": -1, "C": 0.8, "NADH": 2},
-        "R6": {"C": -1, "ATP": 2, "D": 3},
-        "R7": {"C": -1, "NADH": -4, "E": 3},
-        "R8a": {"G": -1, "ATP": -1, "NADH": -2, "H": 1},
-        "R8b": {"G": 1, "ATP": 1, "NADH": 2, "H": -1},
-        "Rres": {"NADH": -1, "O2": -1, "ATP": 1}}
+        'R1': {'A': -1, 'ATP': -1, 'B': 1},
+        'R2a': {'B': -1, 'ATP': 2, 'NADH': 2, 'C': 1},
+        'R2b': {'C': -1, 'ATP': -2, 'NADH': -2, 'B': 1},
+        'R3': {'B': -1, 'F': 1},
+        'R4': {'C': -1, 'G': 1},
+        'R5': {'G': -1, 'C': 0.8, 'NADH': 2},
+        'R6': {'C': -1, 'ATP': 2, 'D': 3},
+        'R7': {'C': -1, 'NADH': -4, 'E': 3},
+        'R8a': {'G': -1, 'ATP': -1, 'NADH': -2, 'H': 1},
+        'R8b': {'G': 1, 'ATP': 1, 'NADH': 2, 'H': -1},
+        'Rres': {'NADH': -1, 'O2': -1, 'ATP': 1},
+        'v_biomass': {'C': -1, 'F': -1, 'H': -1, 'ATP': -10, 'BIOMASS': 1}}
 
-    external_molecules = ["A", "F", "D", "E", "H", "O2"]
+    external_molecules = ['A', 'F', 'D', 'E', 'H', 'O2', 'BIOMASS']
 
-    objective = {"v_biomass": {"C": 1, "F": 1, "H": 1, "ATP": 10}}
+    objective = {'v_biomass': 1.0}
 
     # transportLimits = {
-    #     "A": 21.,
-    #     "F": 5.0,
-    #     "D": -12.0,
-    #     "E": -12.0,
-    #     "H": 5.0,
-    #     "O2": 15.0,
+    #     'A': 21.,
+    #     'F': 5.0,
+    #     'D': -12.0,
+    #     'E': -12.0,
+    #     'H': 5.0,
+    #     'O2': 15.0,
     # }
 
     initial_state = {
@@ -226,18 +239,19 @@ def get_configuration():
             'mass': 1339,
             'volume': 1E-15},
         'external': {
-            "A": 21.0,
-            "F": 5.0,
-            "D": 12.0,
-            "E": 12.0,
-            "H": 5.0,
-            "O2": 100.0}}
+            'A': 21.0,
+            'F': 5.0,
+            'D': 12.0,
+            'E': 12.0,
+            'H': 5.0,
+            'O2': 100.0,
+            'BIOMASS': 30.0}}
 
     config = {
         'stoichiometry': stoichiometry,
         # 'reversible_reactions': stoichiometry.keys(),
         'external_molecules': external_molecules,
-        'objective': objective['v_biomass'],
+        'objective': objective,
         'initial_state': initial_state}
     return config
 
@@ -248,18 +262,18 @@ def test_metabolism(total_time=3600):
 
     # transport kinetics
     transport_rates = {
-        "R1": kinetic_rate("A", 1.2e-2, 20),   # A import
-        "R3": kinetic_rate("F", 2e-3, 5),  # F export
-        # "R6": kinetic_rate("D", 1e-3, 12),  # D export
-        # "R7": kinetic_rate("E", 1e-3, km),  # E export
-        "R8a": kinetic_rate("H", 2e-3, 4.5), # H export
-        # "R8b": kinetic_rate("H", 1e-5, 0.1),  # H import
-        # "Rres": kinetic_rate("O2", 4e-1, 200), # O2 import
+        'R1': kinetic_rate('A', 1.2e-2, 20),   # A import
+        'R3': kinetic_rate('F', 2e-3, 5),  # F export
+        # 'R6': kinetic_rate('D', 1e-3, 12),  # D export
+        # 'R7': kinetic_rate('E', 1e-3, km),  # E export
+        'R8a': kinetic_rate('H', 2e-3, 4.5), # H export
+        # 'R8b': kinetic_rate('H', 1e-5, 0.1),  # H import
+        # 'Rres': kinetic_rate('O2', 4e-1, 200), # O2 import
     }
 
     # regulation
     regulation = {
-        "R1": rl.build_rule('IF not (F)'),
+        'R1': rl.build_rule('IF not (F)'),
     }
 
     # configure process
@@ -293,9 +307,10 @@ def test_metabolism(total_time=3600):
         # get update
         update = metabolism.next_update(timestep, state)
         state['internal'] = update['internal']
-        growth_rate = metabolism.fba.getObjectiveValue()
+        growth_rate = metabolism.fba.objective_value()
 
-        print(growth_rate)
+        print('growth rate: {}'.format(growth_rate))
+        print('update: {}'.format(update))
 
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
