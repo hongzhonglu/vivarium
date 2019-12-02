@@ -221,12 +221,12 @@ class ShepherdControl(ActorControl):
                  'MeAsp': 1.0}
         new_media = {media_id: media}
         # timeline_str = '0 {}, 14400 end'.format(media_id)
-        timeline_str = '0 {}, 7200 end'.format(media_id)
+        timeline_str = '0 {}, 1800 end'.format(media_id)
 
         chemotaxis_config = {
             'timeline_str': timeline_str,
             'new_media': new_media,
-            'run_for' : 2.0,
+            'run_for' : 0.05,
             'emit_fields': ['MeAsp', 'GLC'],
             'static_concentrations': True,
             'gradient': {
@@ -242,9 +242,9 @@ class ShepherdControl(ActorControl):
             'diffusion': 0.0,
             # 'translation_jitter': 0.1,
             # 'rotation_jitter': 0.05,
-            'edge_length_x': 200.0,
-            'edge_length_y': 50.0,
-            'patches_per_edge_x': 40}
+            'edge_length_x': 500.0,
+            'edge_length_y': 100.0,
+            'patches_per_edge_x': 100}
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells
