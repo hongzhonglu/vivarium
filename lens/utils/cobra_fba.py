@@ -92,15 +92,15 @@ class CobraFBA(object):
         all_reactions = set(self.reaction_ids())
         return all_reactions - set(self.external_reactions())
 
-    def read_fluxes(self, molecules, scale=1.0):
+    def read_fluxes(self, molecules):
         return {
-            molecule: self.solution.fluxes[molecule] * scale
+            molecule: self.solution.fluxes[molecule]
             for molecule in molecules}
 
     def read_internal_fluxes(self):
         return self.read_fluxes(self.internal_reactions())
 
-    def read_external_fluxes(self, scale=1.0):
+    def read_external_fluxes(self):
         external = self.external_reactions()
         levels = self.read_fluxes(external)
         return {

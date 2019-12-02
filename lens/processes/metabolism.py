@@ -102,17 +102,19 @@ class Metabolism(Process):
         volume = mass.to('g') / self.density
 
         # set external constraints.
-        # v_external </= [external] / ([biomass] * timestep)
+        # v_ex </= [external] (mmol/L) / biomass (gDCW/L) / timestep (s)  --- flux in (mmol/g/s)
+        # mass is in g rather than g/L. So use density (g/L)
         external_molecule_ids = self.fba.external_molecules
         external_flux_constraint = {
-            molecule: external_state[molecule] / (mass.magnitude * timestep)
+            molecule: external_state[molecule] / (self.density.magnitude * timestep)
             for molecule in external_molecule_ids}
 
+        print('external_flux_constraint: {}'.format(external_flux_constraint))
         self.fba.constrain_external_flux(external_flux_constraint)
 
         ## solve the problem!
         growth_rate = self.fba.optimize()
-        exchange_fluxes = self.fba.read_external_fluxes(timestep)
+        exchange_fluxes = self.fba.read_external_fluxes()
         internal_fluxes = self.fba.read_internal_fluxes()
 
         # calculate the new mass
@@ -215,22 +217,17 @@ def test_toy(total_time=100):
 
         print('t = {} ------------------------'.format(time))
 
-
-        import ipdb; ipdb.set_trace()
-
-
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
         for mol_id, exchange in update['external'].items():
             exchange_rate = exchange / mmolToCount  # TODO -- per second?
 
-
             # TODO -- is growth rate needed here?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
 
-            print('{} external: {}'.format(mol_id, update['external']))
-            print('{} delta_conc: {}'.format(mol_id, delta_conc))
+            # print('{} external: {}'.format(mol_id, update['external']))
+            # print('{} delta_conc: {}'.format(mol_id, delta_conc))
 
 
             state['external'][mol_id] += delta_conc #* 0.00000001  # TODO -- scaling?
@@ -325,7 +322,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     ## test toy model
-    saved_data = test_toy(5)
+    saved_data = test_toy(3600)
     plot_metabolism_output(saved_data, out_dir)
 
     ## make network of toy model
