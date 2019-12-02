@@ -71,7 +71,7 @@ class CobraFBA(object):
 
         self.solution = None
 
-    def set_external_levels(self, levels):
+    def constrain_external_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
             reaction.lower_bound = -level
@@ -92,17 +92,17 @@ class CobraFBA(object):
         all_reactions = set(self.reaction_ids())
         return all_reactions - set(self.external_reactions())
 
-    def read_levels(self, molecules, scale=1.0):
+    def read_fluxes(self, molecules, scale=1.0):
         return {
             molecule: self.solution.fluxes[molecule] * scale
             for molecule in molecules}
 
-    def read_internal_levels(self):
-        return self.read_levels(self.internal_reactions())
+    def read_internal_fluxes(self):
+        return self.read_fluxes(self.internal_reactions())
 
-    def read_external_levels(self, scale=1.0):
+    def read_external_fluxes(self, scale=1.0):
         external = self.external_reactions()
-        levels = self.read_levels(external)
+        levels = self.read_fluxes(external)
         return {
             molecule[:len(molecule) - len(EXTERNAL_SUFFIX)]: level
             for molecule, level in levels.items()}
@@ -118,7 +118,7 @@ class CobraFBA(object):
             reaction: self.model.reactions.get_by_id(reaction)
             for reaction in reactions}
 
-    def set_reaction_bounds(self, reaction_bounds):
+    def constrain_reaction_bounds(self, reaction_bounds):
         reactions = self.get_reactions(reaction_bounds.keys())
         for reaction, bounds in reaction_bounds.items():
             reaction = reactions[reaction]
@@ -148,7 +148,7 @@ def test_minimal():
         'external_molecules': external_molecules,
         'initial_state': initial_state})
 
-    fba.set_external_levels(initial_state)
+    fba.constrain_external_flux(initial_state)
 
     return fba
 
@@ -189,7 +189,7 @@ def test_fba():
         'external_molecules': external_molecules,
         'initial_state': initial_state})
 
-    fba.set_external_levels(initial_state['external'])
+    fba.constrain_external_flux(initial_state['external'])
 
     return fba
 
@@ -313,4 +313,4 @@ if __name__ == '__main__':
     print(fba.reaction_ids())
     print(fba.get_reactions())
     print(fba.get_reaction_bounds())
-    print(fba.read_external_levels())
+    print(fba.read_external_fluxes())

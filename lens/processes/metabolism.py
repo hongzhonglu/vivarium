@@ -10,6 +10,7 @@ from lens.utils.cobra_fba import CobraFBA
 
 
 # helper functions
+# TODO -- make reverse in cobra_fba
 def get_reverse(stoichiometry, reversible_reactions, reverse_key):
     '''
     stoichiometry (dict) -- {mol_id (str): stoich (dict)}
@@ -31,10 +32,8 @@ class Metabolism(Process):
             {'external': external_state, 'internal': internal_state}
         - stoichiometry (dict) -- {reaction_id: stoichiometry dict}
         - objective (dict) -- stoichiometry dict to be optimized
-        - external_key (str) -- the key (typically [e]) designating external states in the FBA problem
-        - external molecules (list) -- the external molecules, without the added external_key
-        - target_key (TODO)
-        - flux_targets (TODO)
+        - external_molecules (list) -- the external molecules
+        - reversible_reactions (list)
     '''
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
@@ -44,34 +43,28 @@ class Metabolism(Process):
         self.objective = initial_parameters['objective']
 
         # make reverse reactions
-        self.reverse_key = '_reverse'
+        # TODO -- make reverse in cobra_fba
+        reverse_key = '_reverse'
         self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
-        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, self.reverse_key)
+        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, reverse_key)
         self.stoichiometry.update(reverse_stoichiometry)
         self.reaction_ids = self.stoichiometry.keys()
 
-        #  transport
+        # transport
         self.external_molecule_ids = initial_parameters['external_molecules']
 
-        # # self.transport_limits = initial_parameters.get('transport_limits')
-        # self.external_key = initial_parameters.get('external_key', '')
-        # self.target_key = initial_parameters.get('target_key', '')
-        # external_molecule_ids_e = add_str_in_list(self.external_molecule_ids, self.external_key)
-        # self.flux_targets = add_str_in_list(initial_parameters.get('flux_targets', []), self.target_key)
-        #
-        # # regulation
-        # self.regulation = initial_parameters.get('regulation')
-
+        # initialize fba
         self.fba = CobraFBA(dict(
             stoichiometry=self.stoichiometry,
             external_molecules=self.external_molecule_ids,
             objective=self.objective,
             initial_state=self.initial_state))
 
-        # assign internal and external state ids
+        # assign internal and external roles
         roles = {
             'external': self.external_molecule_ids,
             'internal': list(self.stoichiometry.keys()) + ['volume', 'mass']}
+
         parameters = {}
         parameters.update(initial_parameters)
 
@@ -96,12 +89,10 @@ class Metabolism(Process):
             'internal': {state_id: 'set' for state_id in set_internal_states},
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}
 
-        default_settings = {
+        return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters}
-
-        return default_settings
 
     def next_update(self, timestep, states):
 
@@ -110,39 +101,34 @@ class Metabolism(Process):
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
-        # set external concentrations.
+        # set external constraints.
+        # v_external </= [external] / ([biomass] * timestep)
         external_molecule_ids = self.fba.external_molecules
-
-        external_levels = {
-            molecule: external_state[molecule]
+        external_flux_constraint = {
+            molecule: external_state[molecule] / (mass.magnitude * timestep)
             for molecule in external_molecule_ids}
-        print('external levels: {}'.format(external_levels))
 
-        self.fba.set_external_levels(external_levels)
+        self.fba.constrain_external_flux(external_flux_constraint)
 
         ## solve the problem!
-        # get exchanges and growth
         growth_rate = self.fba.optimize()
-        exchange_fluxes = self.fba.read_external_levels(timestep)
+        exchange_fluxes = self.fba.read_external_fluxes(timestep)
+        internal_fluxes = self.fba.read_internal_fluxes()
 
         # calculate the new mass
+        # new_mass = {'mass': mass.magnitude}
         new_mass = {'mass': (mass.magnitude * np.exp(growth_rate * timestep))}
 
-        # get delta counts for external molecules
+        # calculate delta counts for external molecules based on exchange flux and volume
         mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
-
         environment_deltas = {
             reaction: (flux * mmolToCount).magnitude
             for reaction, flux in exchange_fluxes.items()}
 
-        print('environment deltas: {}'.format(environment_deltas))
-
-        fluxes = self.fba.read_internal_levels()
-
-        update = {
-            'internal': deep_merge(dict(new_mass), fluxes),
+        # return update
+        return {
+            'internal': deep_merge(dict(new_mass), internal_fluxes),
             'external': environment_deltas}
-        return update
 
 
 # tests and analyses of process
@@ -176,7 +162,7 @@ def get_toy_configuration():
 
     initial_state = {
         'internal': {
-            'mass': 1339,
+            'mass': 1.0, #1339,
             'volume': 1E-15},
         'external': {
             'A': 21.0,
@@ -198,7 +184,7 @@ def get_toy_configuration():
 
 def test_toy(total_time=100):
 
-    # configure process
+    # configure metabolism process
     config = get_toy_configuration()
     metabolism = Metabolism(config)
 
@@ -229,12 +215,18 @@ def test_toy(total_time=100):
 
         print('t = {} ------------------------'.format(time))
 
+
+        import ipdb; ipdb.set_trace()
+
+
         # apply external update
         mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
         for mol_id, exchange in update['external'].items():
             exchange_rate = exchange / mmolToCount  # TODO -- per second?
-            delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
+
+            # TODO -- is growth rate needed here?
+            delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
 
             print('{} external: {}'.format(mol_id, update['external']))
@@ -244,6 +236,7 @@ def test_toy(total_time=100):
             state['external'][mol_id] += delta_conc #* 0.00000001  # TODO -- scaling?
             if state['external'][mol_id] < 1e-9:  # this shouldn't be needed
                 state['external'][mol_id] = 1e-9
+
 
         # save state
         saved_data['time'].append(time)
@@ -261,8 +254,6 @@ def plot_metabolism_output(saved_state, out_dir='out'):
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
     import math
-
-    # import ipdb; ipdb.set_trace()
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
@@ -310,9 +301,6 @@ def save_metabolic_network(time_total=60, out_dir='out'):
     external = saved_state['external']
     internal = saved_state['internal']
 
-
-    # import ipdb; ipdb.set_trace()
-
     # save fluxes as node size
     reaction_fluxes = {}
     for rxn_id in reaction_ids:
@@ -337,8 +325,8 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     ## test toy model
-    saved_data = test_toy(10)
+    saved_data = test_toy(5)
     plot_metabolism_output(saved_data, out_dir)
 
-    # make network of toy model
+    ## make network of toy model
     # save_metabolic_network(2, out_dir)
