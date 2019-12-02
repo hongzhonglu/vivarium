@@ -17,11 +17,13 @@ DEFAULT_PARAMETERS = {
     'adaptPrecision': 3,
     # motor
     'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
-    'n_motors': 5,
+    # 'n_motors': 5,
     'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
 }
 
 ##initial state
+DEFAULT_N_FLAGELLA = 10
+
 INITIAL_STATE = {
     # response regulator proteins
     'CheY_tot': 9.7,  # (uM) #0.0097,  # (mM) 9.7 uM = 0.0097 mM
@@ -44,8 +46,18 @@ class FlagellaActivity(Process):
     '''
     def __init__(self, initial_parameters={}):
 
+        self.n_flagella = initial_parameters.get('n_flagella', DEFAULT_N_FLAGELLA)
+
+        # import ipdb; ipdb.set_trace()
+        # TODO -- make a role for each flagella?
+        # Each flagella just needs a motile_state
+
+
+
+
         roles = {
-            'internal': ['chemoreceptor_activity',
+            'internal': ['n_flagella',
+                         'chemoreceptor_activity',
                          'CheA',
                          'CheZ',
                          'CheY_tot',
@@ -68,7 +80,9 @@ class FlagellaActivity(Process):
         internal = INITIAL_STATE
         default_state = {
             'external': {},
-            'internal': deep_merge(internal, {'volume': 1})}
+            'internal': deep_merge(internal, {
+                'volume': 1,
+                'n_flagella': DEFAULT_N_FLAGELLA})}
 
         # default emitter keys
         default_emitter_keys = {
@@ -107,19 +121,26 @@ class FlagellaActivity(Process):
 
     def next_update(self, timestep, states):
 
+        n_flagella = states['internal']['n_flagella']
+
+
+        motor_state = self.update_flagellum(timestep, states)
+
+        import ipdb;
+        ipdb.set_trace()
+        # TODO -- determine behavior from motor states of all flagella
+
+
 
         # TODO -- should force/torque accumulate over exchange timestep?
         update = {}
+
         return update
 
 
 
-class Flagellum(object):
-    def __init__(self, config):
-        self.parameters = config.get('parameters', DEFAULT_PARAMETERS)
-        self.states = {}
 
-    def update(self, states, timestep):
+    def update_flagellum(self, timestep, states):
         '''
          CheY phosphorylation model from:
              Kollmann, M., Lovdok, L., Bartholome, K., Timmer, J., & Sourjik, V. (2005).
@@ -162,30 +183,14 @@ class Flagellum(object):
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
-                force, torque = tumble()
-            else:
-                force, torque = run()
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
-                [force, torque] = run()
-            else:
-                [force, torque] = tumble()
 
-        update = {
-            'internal': {
-                'ccw_motor_bias': ccw_motor_bias,
-                'ccw_to_cw': ccw_to_cw,
-                'motile_force': force,
-                'motile_torque': torque,
-                'motor_state': motor_state,
-                'CheY_P': CheY_P
-            }
-        }
-        return update
+        return motor_state
 
 
 def tumble():
@@ -208,7 +213,6 @@ def test_motor_control(total_time=10):
         # 'adaptPrecision': 1,
         # motor
         'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
-        'n_motors': 5,
         'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
     }
 
