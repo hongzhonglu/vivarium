@@ -12,18 +12,6 @@ from lens.utils.units import units
 EXTERNAL_SUFFIX = '_external'
 REVERSE_SUFFIX = '_REVERSE'
 
-def get_reverse(stoichiometry, reversible_reactions, reverse_key):
-    '''
-    stoichiometry (dict) -- {mol_id (str): stoich (dict)}
-    reversible_reactions (list) -- reactions that need a reverse stoichiometry
-    '''
-    reverse_stoichiometry = {}
-    for rxn_id in reversible_reactions:
-        forward_stoich = stoichiometry[rxn_id]
-        reverse_stoichiometry[rxn_id + reverse_key] = {
-            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.items()}
-    return reverse_stoichiometry
-
 def build_model(stoichiometry, objective, external_molecules):
     model = Model('fba')
     model.compartments = {'c': 'cytoplasm'}
