@@ -34,7 +34,6 @@ def load_data(data_dir, filenames):
     '''Load raw data from TSV files'''
 
     external_key = '[e]'
-    # rxn_key = '__RXN'
 
     data = {}
     for filename in filenames:
@@ -103,11 +102,9 @@ def load_data(data_dir, filenames):
 
     return {
         'stoichiometry': stoichiometry,
-        # 'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
-        'external_molecules': external_molecules,  # external molecules are for lattice environment
+        'reversible_reactions': reversible_reactions,
+        'external_molecules': external_molecules,
         'objective': objective,
-        # 'regulation': regulation_logic,
-        # 'transport_limits': transport_limits,
         'initial_state': initial_state}
 
 
@@ -177,12 +174,6 @@ def test_covert2002(total_time=3600):
             if state['external'][mol_id] < 0:  # this shouldn't be needed
                 state['external'][mol_id] = 0
 
-        # # get new flux targets
-        # target_fluxes = {}
-        # for rxn_id, rate_law in transport_rates.items():
-        #     target_flux = rate_law(state['external'])
-        #     target_fluxes[rxn_id + target_key] = target_flux
-        # state['internal'].update(target_fluxes)
 
         # save state
         saved_state['time'].append(time)
