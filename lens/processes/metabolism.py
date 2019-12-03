@@ -99,10 +99,6 @@ class Metabolism(Process):
         exchange_fluxes = self.fba.read_external_fluxes() # (units.mmol / units.L)
         internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
 
-
-        # import ipdb; ipdb.set_trace()
-
-
         # calculate the new mass
         # new_mass = {'mass': mass.magnitude}
         new_mass = {'mass': (mass.magnitude * np.exp(growth_rate * timestep))}
@@ -118,7 +114,8 @@ class Metabolism(Process):
             'external': environment_deltas}
 
 
-# tests and analyses of process
+
+# tests and analyses
 def get_toy_configuration():
     stoichiometry = {
         'R1': {'A': -1, 'ATP': -1, 'B': 1},
@@ -175,6 +172,29 @@ def test_toy(total_time=100):
     config = get_toy_configuration()
     metabolism = Metabolism(config)
 
+    print(metabolism.fba.model)
+    print(metabolism.fba.model.reactions)
+    print(metabolism.fba.model.metabolites)
+    print(metabolism.fba.model.genes)
+    print(metabolism.fba.model.compartments)
+    print(metabolism.fba.model.solver)
+    print(metabolism.fba.model.objective.expression)
+
+    print(metabolism.fba.optimize())
+    print(metabolism.fba.model.summary())
+    print('internal: {}'.format(metabolism.fba.internal_reactions()))
+    print('external: {}'.format(metabolism.fba.external_reactions()))
+    print(metabolism.fba.reaction_ids())
+    print(metabolism.fba.get_reactions())
+    print(metabolism.fba.get_reaction_bounds())
+    print(metabolism.fba.read_external_fluxes())
+
+    saved_data = simulate(metabolism, total_time)
+
+    return saved_data
+
+
+def simulate(metabolism, total_time=3600):
     # get initial state and parameters
     settings = metabolism.default_settings()
     state = settings['state']
@@ -199,9 +219,6 @@ def test_toy(total_time=100):
         state['internal'] = update['internal']
         growth_rate = metabolism.fba.objective_value()
 
-
-        print('t = {} ------------------------'.format(time))
-
         # apply external update
         mmol_to_count = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
         for mol_id, exchange in update['external'].items():
@@ -210,15 +227,9 @@ def test_toy(total_time=100):
             # TODO -- is growth rate needed here?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
 
-
-            # print('{} external: {}'.format(mol_id, update['external']))
-            # print('{} delta_conc: {}'.format(mol_id, delta_conc))
-
-
             state['external'][mol_id] += delta_conc #* 0.00000001  # TODO -- scaling?
             if state['external'][mol_id] < 1e-9:  # this shouldn't be needed
                 state['external'][mol_id] = 1e-9
-
 
         # save state
         saved_data['time'].append(time)
@@ -261,25 +272,23 @@ def plot_metabolism_output(saved_state, out_dir='out'):
     plt.subplots_adjust(wspace=0.5, hspace=0.9)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
-def save_metabolic_network(time_total=60, out_dir='out'):
+def save_metabolic_network(total_time=60, out_dir='out'):
     # TODO -- make this function into an analysis
     import math
     from lens.utils.make_network import make_network, save_network
 
-    # TODO -- make weigh based on average over time range?
-    # flux_simstep = 1 #10 # simulation step for flux edge weights
-
-    # # initialize process
+    # initialize the process
     config = get_toy_configuration()  # TODO -- make get_config() configurable
     metabolism = Metabolism(config)
+
     stoichiometry = metabolism.stoichiometry
     reaction_ids = stoichiometry.keys()
     external_mol_ids = config['external_molecules']
     objective = config['objective']
 
     # run test to get simulation output
-    saved_state = test_toy(time_total)  # TODO -- make test(sec) configurable
-    # saved_state = data['saved_state']
+    saved_state = simulate(metabolism, total_time)
+
     external = saved_state['external']
     internal = saved_state['internal']
 
@@ -309,8 +318,8 @@ if __name__ == '__main__':
     # TODO -- load 'lens/data/json_files/e_coli_core.json' and test it
 
     ## test toy model
-    saved_data = test_toy(1000)
+    saved_data = test_toy(600)
     plot_metabolism_output(saved_data, out_dir)
 
     ## make network of toy model
-    save_metabolic_network(2, out_dir)
+    save_metabolic_network(10, out_dir)
