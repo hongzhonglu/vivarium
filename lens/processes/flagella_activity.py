@@ -74,6 +74,7 @@ class FlagellaActivity(Process):
     def default_settings(self):
 
         # default state
+        # flagella motor state: 0 for CCW, 1 for CW
         internal = INITIAL_STATE
         default_state = {
             'external': {},
@@ -130,10 +131,17 @@ class FlagellaActivity(Process):
             new_motor_state = self.update_flagellum(internal, motor_state, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
-        force = 0.0
-        torque = 0.0
-        CheY_P = 0.0
+        # TODO -- if all CCW corresponds then run.
+        # TODO -- force and torque from motor state
+        fraction_CCW = flagella_update.values().count(0) / n_flagella
 
+        if fraction_CCW > 0.8:
+            force, torque = run()
+        else:
+            force, torque = tumble()
+
+
+        CheY_P = 0.0
         # TODO -- should force/torque accumulate over exchange timestep?
         return {
             'flagella': flagella_update,
