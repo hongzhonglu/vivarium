@@ -7,9 +7,8 @@ from cobra import Model, Reaction, Metabolite, Configuration
 
 
 EXTERNAL_SUFFIX = '_external'
-REVERSE_SUFFIX = '_REVERSE'
 
-def build_model(stoichiometry, objective, external_molecules):
+def build_model(stoichiometry, reversible, objective, external_molecules):
     model = Model('fba')
     model.compartments = {'c': 'cytoplasm'}
 
@@ -23,6 +22,7 @@ def build_model(stoichiometry, objective, external_molecules):
 
     model.add_metabolites(metabolites.values())
 
+    # make reactions
     reactions = {}
     for reaction_key, chemistry in stoichiometry.items():
         reaction = Reaction(reaction_key, name=reaction_key)
@@ -31,6 +31,9 @@ def build_model(stoichiometry, objective, external_molecules):
             for metabolite, value in chemistry.items()}
         reaction.add_metabolites(reaction_model)
         # reaction.gene_reaction_rule = 'X'
+        if reaction_key in reversible:
+            reaction.lower_bound = -reaction.upper_bound
+
         reactions[reaction_key] = reaction
 
     for external in external_molecules:
@@ -53,11 +56,13 @@ class CobraFBA(object):
 
     def __init__(self, config={}):
         self.stoichiometry = config['stoichiometry']
+        self.reversible = config.get('reversible', [])
         self.external_molecules = config['external_molecules']
         self.objective = config['objective']
 
         self.model = build_model(
             self.stoichiometry,
+            self.reversible,
             self.objective,
             self.external_molecules)
 
@@ -137,8 +142,10 @@ def test_minimal():
 
     fba = CobraFBA({
         'stoichiometry': stoichiometry,
+        'reversible': stoichiometry.keys(),
         'objective': objective,
         'external_molecules': external_molecules,
+        'initial_state': initial_state,
         })
 
     fba.constrain_external_flux(initial_state)
@@ -179,8 +186,10 @@ def test_fba():
 
     fba = CobraFBA({
         'stoichiometry': stoichiometry,
+        'reversible': stoichiometry.keys(),
         'objective': objective,
         'external_molecules': external_molecules,
+        'initial_state': initial_state,
     })
 
     fba.constrain_external_flux(initial_state['external'])
@@ -291,14 +300,13 @@ if __name__ == '__main__':
     # fba = test_test()
 
     # cobra.io.save_json_model(fba.model, 'demo_model.json')
-
-    print(fba.model)
-    print(fba.model.reactions)
-    print(fba.model.metabolites)
-    print(fba.model.genes)
-    print(fba.model.compartments)
-    print(fba.model.solver)
-    print(fba.model.objective.expression)
+    print('MODEL: {}'.format(fba.model))
+    print('REACTIONS: {}'.format(fba.model.reactions))
+    print('METABOLITES: {}'.format(fba.model.metabolites))
+    print('GENES: {}'.format(fba.model.genes))
+    print('COMPARTMENTS: {}'.format(fba.model.compartments))
+    print('SOLVER: {}'.format(fba.model.solver))
+    print('EXPRESSION: {}'.format(fba.model.objective.expression))
 
     print(fba.optimize())
     print(fba.model.summary())
