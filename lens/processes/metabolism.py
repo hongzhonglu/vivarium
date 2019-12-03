@@ -26,9 +26,9 @@ class Metabolism(Process):
 
         # get FBA configuration
         self.initial_state = initial_parameters['initial_state']
-        self.transport_limits = initial_parameters['transport_limits']
+        self.flux_bounds = initial_parameters.get('flux_bounds', {})
         self.stoichiometry = initial_parameters['stoichiometry']
-        self.reversible = initial_parameters['reversible']
+        self.reversible = initial_parameters.get('reversible', [])
         self.objective = initial_parameters['objective']
         self.external_molecules = initial_parameters['external_molecules']
         self.reaction_ids = self.stoichiometry.keys()
@@ -37,8 +37,7 @@ class Metabolism(Process):
         self.objective_molecules = []
         for reaction_id, coeff1 in self.objective.items():
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
-                if coeff2 < 0:
-                    self.objective_molecules.append(mol_id)
+                self.objective_molecules.append(mol_id)
         self.internal_state_ids = self.reaction_ids + self.objective_molecules + ['volume', 'mass']
 
         # initialize fba
@@ -104,7 +103,7 @@ class Metabolism(Process):
         external_molecule_ids = self.fba.external_molecules
         # TODO -- use transport limits. don't use density
         # external_flux_constraint = {
-        #     mol_id: min(external_state[mol_id] / timestep, self.transport_limits.get(mol_id, 1000))
+        #     mol_id: min(external_state[mol_id] / timestep, self.flux_bounds.get(mol_id, 1000))
         #     for mol_id in external_molecule_ids}
         external_flux_constraint = {
             molecule: external_state[molecule] / (self.density.magnitude * timestep)
@@ -121,8 +120,8 @@ class Metabolism(Process):
         internal_state_update = {}
         for reaction_id, coeff1 in self.objective.items():
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
-                if coeff2 < 0:
-                    internal_state_update[mol_id] = int(-(coeff1 * coeff2 * objective_exchange * mmol_to_count).magnitude)
+                # if coeff2 < 0:
+                internal_state_update[mol_id] = int(-(coeff1 * coeff2 * objective_exchange * mmol_to_count).magnitude)
 
         # calculate the new mass. TODO -- use objective_molecules individual mass
         new_mass = {'mass': (mass.magnitude * np.exp(objective_exchange * timestep))}
@@ -161,7 +160,7 @@ def get_toy_configuration():
 
     objective = {'v_biomass': 1.0}
 
-    transport_limits = {
+    flux_bounds = {
         'A': 0.02,
         'D': -0.01,
         'E': -0.01,
@@ -190,7 +189,7 @@ def get_toy_configuration():
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
-        'transport_limits': transport_limits}
+        'flux_bounds': flux_bounds}
 
     return config
 
@@ -281,7 +280,7 @@ def simulate_metabolism(metabolism, total_time=3600):
 
     return saved_data
 
-def plot_output(saved_state, out_dir='out'):
+def plot_output(saved_state, out_dir='out', filename='metabolism'):
     import os
     import matplotlib
     matplotlib.use('TkAgg')
@@ -308,7 +307,7 @@ def plot_output(saved_state, out_dir='out'):
             plot_idx += 1
 
     # make figure output directory and save figure
-    fig_path = os.path.join(out_dir, 'metabolism_dFBA')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.5, hspace=0.9)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
@@ -333,7 +332,6 @@ def save_network(metabolism, total_time=60, out_dir='out'):
     reaction_fluxes = {}
     for rxn_id in reaction_ids:
         flux = abs(np.mean(internal[rxn_id][1:]))
-        print('rxn_id: {} | flux: {}'.format(rxn_id, flux))
         reaction_fluxes[rxn_id] = math.log(1000 * flux + 1.1)
 
     # define node type
@@ -356,11 +354,11 @@ if __name__ == '__main__':
     get_config = get_toy_configuration
     metabolism = Metabolism(get_config())
 
-    # ## test toy model
-    # test_config(get_config)
+    ## test toy model
+    test_config(get_config)
 
     ## simulate toy model
-    saved_data = simulate_metabolism(metabolism, 1200)
+    saved_data = simulate_metabolism(metabolism, 3600)
     plot_output(saved_data, out_dir)
 
     ## make flux network from toy model
