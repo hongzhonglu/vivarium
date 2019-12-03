@@ -34,7 +34,7 @@ def load_data(data_dir, filenames):
     '''Load raw data from TSV files'''
 
     external_key = '[e]'
-    rxn_key = '__RXN'
+    # rxn_key = '__RXN'
 
     data = {}
     for filename in filenames:
@@ -54,11 +54,6 @@ def load_data(data_dir, filenames):
     # list of reversible reactions
     reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
 
-    # add rxn_key to all entries of stoichiometry and transport_stoichiometry
-    # this helps identify reactions in later analyses.
-    stoichiometry = add_str_to_keys(stoichiometry, rxn_key)
-    reversible_reactions = add_str_in_list(reversible_reactions, rxn_key)
-
     # get all molecules
     metabolites = get_mols_from_stoich(stoichiometry)
     enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
@@ -67,12 +62,12 @@ def load_data(data_dir, filenames):
 
     all_molecules = set(metabolites + enzymes + transporters + regulation_molecules)
     all_molecules.remove('mass')
-    external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
+    # external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
+    external_molecules = [mol_id for mol_id in all_molecules if external_key in mol_id]
     internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
 
     ## Objective
-    # objective = maintenance_stoichiometry['VGRO']
-    objective = {'mass': 1}  # TODO -- this is non-standard
+    objective = {'VGRO': 1}
 
     ## Flux bounds on reactions
     flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
@@ -108,11 +103,10 @@ def load_data(data_dir, filenames):
 
     return {
         'stoichiometry': stoichiometry,
-        'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
+        # 'reversible_reactions': stoichiometry.keys(),  #reversible_reactions,
         'external_molecules': external_molecules,  # external molecules are for lattice environment
-        'external_key': external_key,
         'objective': objective,
-        'regulation': regulation_logic,
+        # 'regulation': regulation_logic,
         # 'transport_limits': transport_limits,
         'initial_state': initial_state}
 
@@ -122,15 +116,28 @@ def test_covert2002(total_time=3600):
     import numpy as np
     from lens.utils.units import units
 
-    target_key = '__target'
-    # make kinetic rate laws to mimic transport kinetics
-    transport_rates = {}
-
     # configure process
     metabolism = Covert2002Metabolism({})
-    target_rxn_ids = metabolism.flux_targets
-    external_key = metabolism.external_key
 
+    print(metabolism.fba.model)
+    print(metabolism.fba.model.reactions)
+    print(metabolism.fba.model.metabolites)
+    print(metabolism.fba.model.genes)
+    print(metabolism.fba.model.compartments)
+    print(metabolism.fba.model.solver)
+    print(metabolism.fba.model.objective.expression)
+
+    print(metabolism.fba.optimize())
+    print(metabolism.fba.model.summary())
+    print('internal: {}'.format(metabolism.fba.internal_reactions()))
+    print('external: {}'.format(metabolism.fba.external_reactions()))
+    print(metabolism.fba.reaction_ids())
+    print(metabolism.fba.get_reactions())
+    print(metabolism.fba.get_reaction_bounds())
+    print(metabolism.fba.read_external_fluxes())
+
+
+    ## SIMULATE
     # get initial state and parameters
     settings = metabolism.default_settings()
     state = settings['state']

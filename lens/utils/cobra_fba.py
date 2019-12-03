@@ -3,11 +3,8 @@ from __future__ import absolute_import, division, print_function
 import cobra
 import cobra.test
 
-from scipy import constants
 from cobra import Model, Reaction, Metabolite, Configuration
 
-from lens.actor.process import Process, deep_merge
-from lens.utils.units import units
 
 EXTERNAL_SUFFIX = '_external'
 REVERSE_SUFFIX = '_REVERSE'
@@ -55,13 +52,8 @@ class CobraFBA(object):
     cobra_configuration = Configuration()
 
     def __init__(self, config={}):
-        self.nAvogadro = constants.N_A * 1/units.mol
-        self.density = 1100 * units.g/units.L
-
-        self.initial_state = config['initial_state']
         self.stoichiometry = config['stoichiometry']
         self.external_molecules = config['external_molecules']
-
         self.objective = config['objective']
 
         self.model = build_model(
@@ -74,6 +66,7 @@ class CobraFBA(object):
     def constrain_external_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
+            # reaction.upper_bound = level
             reaction.lower_bound = -level
 
     def objective_value(self):
@@ -146,7 +139,7 @@ def test_minimal():
         'stoichiometry': stoichiometry,
         'objective': objective,
         'external_molecules': external_molecules,
-        'initial_state': initial_state})
+        })
 
     fba.constrain_external_flux(initial_state)
 
@@ -165,7 +158,8 @@ def test_fba():
         'R8a': {'G': -1, 'ATP': -1, 'NADH': -2, 'H': 1},
         'R8b': {'G': 1, 'ATP': 1, 'NADH': 2, 'H': -1},
         'Rres': {'NADH': -1, 'O2': -1, 'ATP': 1},
-        'v_biomass': {'C': -1, 'F': -1, 'H': -1, 'ATP': -10, 'BIOMASS': 1}}
+        'v_biomass': {'C': -1, 'F': -1, 'H': -1, 'ATP': -10, 'BIOMASS': 1}
+    }
 
     external_molecules = ['A', 'F', 'D', 'E', 'H', 'O2', 'BIOMASS']
 
@@ -187,7 +181,7 @@ def test_fba():
         'stoichiometry': stoichiometry,
         'objective': objective,
         'external_molecules': external_molecules,
-        'initial_state': initial_state})
+    })
 
     fba.constrain_external_flux(initial_state['external'])
 
@@ -198,12 +192,12 @@ class JsonFBA(object):
         self.model = cobra.io.load_json_model(path)
 
 def test_canonical():
-    fba = JsonFBA('models/e_coli_core.json')
+    fba = JsonFBA('lens/data/json_files/e_coli_core.json')
     return fba
 
-def test_test():
-    fba = JsonFBA('models/minimal_model.json')
-    return fba
+# def test_test():
+#     fba = JsonFBA('models/minimal_model.json')
+#     return fba
 
 def test_demo():
     model = Model('example_model')

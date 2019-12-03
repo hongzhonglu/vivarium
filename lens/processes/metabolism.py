@@ -9,21 +9,6 @@ from lens.utils.units import units
 from lens.utils.cobra_fba import CobraFBA
 
 
-# helper functions
-# TODO -- make reverse in cobra_fba
-def get_reverse(stoichiometry, reversible_reactions, reverse_key):
-    '''
-    stoichiometry (dict) -- {mol_id (str): stoich (dict)}
-    reversible_reactions (list) -- reactions that need a reverse stoichiometry
-    '''
-    reverse_stoichiometry = {}
-    for rxn_id in reversible_reactions:
-        forward_stoich = stoichiometry[rxn_id]
-        reverse_stoichiometry[rxn_id + reverse_key] = {
-            mol_id: -1 * coeff for mol_id, coeff in forward_stoich.items()}
-    return reverse_stoichiometry
-
-
 class Metabolism(Process):
     '''
     A general metabolism process, which sets the FBA problem based on input configuration data.
@@ -41,13 +26,6 @@ class Metabolism(Process):
         self.initial_state = initial_parameters['initial_state']
         self.stoichiometry = initial_parameters['stoichiometry']
         self.objective = initial_parameters['objective']
-
-        # make reverse reactions
-        # TODO -- make reverse in cobra_fba
-        reverse_key = '_reverse'
-        self.reversible_reactions = initial_parameters.get('reversible_reactions', [])
-        reverse_stoichiometry = get_reverse(self.stoichiometry, self.reversible_reactions, reverse_key)
-        self.stoichiometry.update(reverse_stoichiometry)
         self.reaction_ids = self.stoichiometry.keys()
 
         # transport
@@ -101,6 +79,10 @@ class Metabolism(Process):
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
+        # Coefficient to convert between flux (mol/g DCW/hr) basis and concentration (M) basis
+        # coefficient = dry_mass / cell_mass * self.density * (timestep * units.s)
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
+
         # set external constraints.
         # v_ex </= [external] (mmol/L) / biomass (gDCW/L) / timestep (s)  --- flux in (mmol/g/s)
         # mass is in g rather than g/L. So use density (g/L)
@@ -114,17 +96,20 @@ class Metabolism(Process):
 
         ## solve the problem!
         growth_rate = self.fba.optimize()
-        exchange_fluxes = self.fba.read_external_fluxes()
-        internal_fluxes = self.fba.read_internal_fluxes()
+        exchange_fluxes = self.fba.read_external_fluxes() # (units.mmol / units.L)
+        internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
+
+
+        # import ipdb; ipdb.set_trace()
+
 
         # calculate the new mass
         # new_mass = {'mass': mass.magnitude}
         new_mass = {'mass': (mass.magnitude * np.exp(growth_rate * timestep))}
 
         # calculate delta counts for external molecules based on exchange flux and volume
-        mmolToCount = self.nAvogadro.to('1/mmol') * volume  # convert volume fL to L
         environment_deltas = {
-            reaction: (flux * mmolToCount).magnitude
+            reaction: (flux * mmol_to_count).magnitude
             for reaction, flux in exchange_fluxes.items()}
 
         # return update
@@ -173,11 +158,11 @@ def get_toy_configuration():
             'E': 12.0,
             'H': 5.0,
             'O2': 100.0,
-            'BIOMASS': 30.0}}
+            'BIOMASS': 30.0
+        }}
 
     config = {
         'stoichiometry': stoichiometry,
-        # 'reversible_reactions': stoichiometry.keys(),
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state}
@@ -218,9 +203,9 @@ def test_toy(total_time=100):
         print('t = {} ------------------------'.format(time))
 
         # apply external update
-        mmolToCount = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
+        mmol_to_count = (nAvogadro.to('1/mmol') * volume_t0).to('L/mmol').magnitude
         for mol_id, exchange in update['external'].items():
-            exchange_rate = exchange / mmolToCount  # TODO -- per second?
+            exchange_rate = exchange / mmol_to_count  # TODO -- per second?
 
             # TODO -- is growth rate needed here?
             delta_conc = exchange_rate / growth_rate * mass_t0 * (np.exp(growth_rate * timestep) - 1)
@@ -321,9 +306,11 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # TODO -- load 'lens/data/json_files/e_coli_core.json' and test it
+
     ## test toy model
-    saved_data = test_toy(3600)
+    saved_data = test_toy(1000)
     plot_metabolism_output(saved_data, out_dir)
 
     ## make network of toy model
-    # save_metabolic_network(2, out_dir)
+    save_metabolic_network(2, out_dir)
