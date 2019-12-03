@@ -25,20 +25,15 @@ class Metabolism(Process):
         self.density = 1100 * units.g/units.L
 
         # get FBA configuration
-        self.initial_state = initial_parameters['initial_state']
-        self.flux_bounds = initial_parameters.get('flux_bounds', {})
         self.stoichiometry = initial_parameters['stoichiometry']
-        self.reversible = initial_parameters.get('reversible', [])
         self.objective = initial_parameters['objective']
         self.external_molecules = initial_parameters['external_molecules']
         self.reaction_ids = self.stoichiometry.keys()
 
-        # get molecules from objective
-        self.objective_molecules = []
-        for reaction_id, coeff1 in self.objective.items():
-            for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
-                self.objective_molecules.append(mol_id)
-        self.internal_state_ids = self.reaction_ids + self.objective_molecules + ['volume', 'mass']
+        # additional options
+        self.initial_state = initial_parameters.get('initial_state', {})
+        self.reversible = initial_parameters.get('reversible', [])
+        self.flux_bounds = initial_parameters.get('flux_bounds', {})
 
         # initialize fba
         self.fba = CobraFBA(dict(
@@ -48,7 +43,14 @@ class Metabolism(Process):
             objective=self.objective,
             initial_state=self.initial_state))
 
+        # get molecule ids from objective
+        self.objective_molecules = []
+        for reaction_id, coeff1 in self.objective.items():
+            for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
+                self.objective_molecules.append(mol_id)
+
         # assign internal and external roles
+        self.internal_state_ids = self.reaction_ids + self.objective_molecules + ['volume', 'mass']
         roles = {
             'external': self.external_molecules,
             'internal': self.internal_state_ids,
@@ -66,23 +68,23 @@ class Metabolism(Process):
         default_state = {
             'external':  self.initial_state.get('external'),
             'internal': deep_merge(dict(internal), self.initial_state.get('internal')),
-            'flux_bounds': [],
-        }
+            'flux_bounds': []
+            }
 
         # default emitter keys
         default_emitter_keys = {
             'internal': self.reaction_ids + self.objective_molecules,
-            'external': self.fba.external_molecules,
-        }
+            'external': self.fba.external_molecules
+            }
 
         # default updaters
-        set_internal_states = {state_id: 'set' for state_id in self.reaction_ids + ['mass', 'volume']}
-        accumulate_internal_states = {state_id: 'accumulate' for state_id in self.objective_molecules}
+        set_internal_states = {state_id: 'set' for state_id in self.reaction_ids + ['volume']}
+        accumulate_internal_states = {state_id: 'accumulate' for state_id in self.objective_molecules + ['mass']}
         default_updaters = {
             'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecules},
             'flux_bounds': {rxn_id: 'set' for rxn_id in self.reaction_ids},
-        }
+            }
 
         return {
             'state': default_state,
@@ -92,7 +94,8 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = states['external']  # (units.mmol / units.L)
+        external_state = states['external']
+        flux_bounds = states['flux_bounds']
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
@@ -111,20 +114,20 @@ class Metabolism(Process):
 
         self.fba.constrain_external_flux(external_flux_constraint)
 
-        ## solve the fba problem
+        # solve the fba problem
         objective_exchange = self.fba.optimize()
         exchange_fluxes = self.fba.read_external_fluxes() # (units.mmol / units.L)
         internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
 
-        # update internal counts from objective flux
+        # update internal counts from objective flux # TODO -- remove BIOMASS
+        objective_count = (objective_exchange * mmol_to_count).magnitude
         internal_state_update = {}
         for reaction_id, coeff1 in self.objective.items():
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
-                # if coeff2 < 0:
-                internal_state_update[mol_id] = int(-(coeff1 * coeff2 * objective_exchange * mmol_to_count).magnitude)
+                internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
         # calculate the new mass. TODO -- use objective_molecules individual mass
-        new_mass = {'mass': (mass.magnitude * np.exp(objective_exchange * timestep))}
+        new_mass = {'mass': (mass.magnitude * np.exp(objective_exchange * timestep) - mass.magnitude)}
         # new_mass = {'mass': 0}
         internal_state_update.update(new_mass)
 
