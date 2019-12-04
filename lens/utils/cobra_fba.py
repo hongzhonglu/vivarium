@@ -78,6 +78,12 @@ class CobraFBA(object):
             reaction = self.model.reactions.get_by_id(external)
             reaction.upper_bound = level
 
+    def constrain_reaction_bounds(self, reaction_bounds):
+        reactions = self.get_reactions(reaction_bounds.keys())
+        for reaction, bounds in reaction_bounds.items():
+            reaction = reactions[reaction]
+            reaction.lower_bound, reaction.upper_bound = bounds
+
     def objective_value(self):
         return self.solution.objective_value if self.solution else float('nan')
 
@@ -119,12 +125,6 @@ class CobraFBA(object):
         return {
             reaction: self.model.reactions.get_by_id(reaction)
             for reaction in reactions}
-
-    def constrain_reaction_bounds(self, reaction_bounds):
-        reactions = self.get_reactions(reaction_bounds.keys())
-        for reaction, bounds in reaction_bounds.items():
-            reaction = reactions[reaction]
-            reaction.lower_bound, reaction.upper_bound = bounds
 
     def get_reaction_bounds(self, reactions=[]):
         return {

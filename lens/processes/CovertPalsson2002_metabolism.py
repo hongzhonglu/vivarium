@@ -76,9 +76,9 @@ def load_data(data_dir, filenames):
     objective = {'VGRO': 1}
 
     ## Flux bounds on reactions
-    flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
+    reaction_bounds = {flux['flux']: [flux['lower'], flux['upper']]
                    for flux in data['covert2002_GLC_G6P_flux_bounds']}
-    default_flux_bounds = flux_bounds.pop('default')
+    default_reaction_bounds = reaction_bounds.pop('default')
 
     ## Regulatory logic functions
     regulation_logic = {}
@@ -110,8 +110,8 @@ def load_data(data_dir, filenames):
     return {
         'stoichiometry': stoichiometry,
         'reversible': reversible_reactions,
-        'flux_bounds': flux_bounds,
-        'default_flux_bounds': default_flux_bounds,
+        # 'reaction_bounds': reaction_bounds,  # TODO -- option for reaction_bounds in metabolism
+        # 'default_reaction_bounds': default_reaction_bounds,
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,

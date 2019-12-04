@@ -34,7 +34,7 @@ class Metabolism(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
         self.reversible = initial_parameters.get('reversible', [])
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
-        self.reaction_bounds = initial_parameters.get('flux_bounds', {})
+        self.flux_bounds = initial_parameters.get('flux_bounds', {})
         self.default_flux_bounds = initial_parameters.get('default_flux_bounds', [])
 
         # initialize fba
@@ -47,7 +47,8 @@ class Metabolism(Process):
 
         # set bounds
         # TODO -- set default reaction bounds?
-        self.fba.constrain_reaction_bounds(self.reaction_bounds)
+        # TODO -- should flux bounds be placed on a molecule or a reaction?
+        self.fba.constrain_external_flux(self.flux_bounds)
 
         # get molecule ids from objective
         self.objective_molecules = []
@@ -112,17 +113,7 @@ class Metabolism(Process):
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        ## set external constraints. These are bounds on when the cell can uptake, in mmol/L/s
-        # external_molecule_ids = self.fba.external_molecules
-        # external_flux_constraint = {
-        #     mol_id: min(external_state[mol_id] / timestep, flux_bounds.get(mol_id, 1000))
-        #     for mol_id in external_molecule_ids}
-        # external_flux_constraint = {
-        #     molecule: external_state[molecule] / (self.density.magnitude * timestep)
-        #     for molecule in external_molecule_ids}
-        # self.fba.constrain_external_flux(external_flux_constraint)
-
-        # constrain with flux_bounds.
+        # set flux constraints.
         self.fba.constrain_flux(reaction_flux_bounds)
 
         # solve the fba problem
@@ -131,7 +122,7 @@ class Metabolism(Process):
         internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
 
         # update internal counts from objective flux
-        # calculate the new mass from objective_molecules individual mass
+        # calculate the new mass from the objective molecules' molecular weights
         objective_count = (objective_exchange * mmol_to_count).magnitude
         added_mass = 0.0
         internal_state_update = {}
@@ -139,7 +130,7 @@ class Metabolism(Process):
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
                 internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
-                # get mass added
+                # added mass
                 mol_mw = self.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
                 added_mass += mol_mass.to('fg').magnitude * 1e4  # to fg  TODO -- remove scaling
@@ -179,15 +170,22 @@ def get_toy_configuration():
 
     objective = {'v_biomass': 1.0}
 
-    flux_bounds = {
-        'A': [0.0, 0.02],
-        'D': [-0.01, 0.0],
-        'E': [-0.01, 0.0],
-        'F': [0.0, 0.005],
-        'H': [0.0, 0.005],
-        'O2': [0.0, 0.1]}
+    # reaction_bounds = {
+    #     'A': [0.0, 0.02],
+    #     'D': [-0.01, 0.0],
+    #     'E': [-0.01, 0.0],
+    #     'F': [0.0, 0.005],
+    #     'H': [0.0, 0.005],
+    #     'O2': [0.0, 0.1]}
+    # default_reaction_bounds = [-500.0, 500.0]
 
-    default_flux_bounds = [-500.0, 500.0]
+    flux_bounds = {
+        'A': 0.02,
+        'D': -0.01,
+        'E': -0.01,
+        'F': 0.005,
+        'H': 0.005,
+        'O2': 0.1}
 
     initial_state = {
         'internal': {
@@ -222,7 +220,7 @@ def get_toy_configuration():
         'objective': objective,
         'initial_state': initial_state,
         'flux_bounds': flux_bounds,
-        'default_flux_bounds': default_flux_bounds,
+        # 'default_flux_bounds': default_flux_bounds,
         'molecular_weights': molecular_weights,
         }
 
@@ -347,15 +345,20 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
     n_data = [len(saved_state[key].keys()) for key in data_keys]
 
-    n_col = 3
-    n_rows = math.ceil(sum(n_data) / n_col) + 1
+    n_cols = len(n_data)
+    n_rows = max(n_data) + 1
 
     # make figure
-    fig = plt.figure(figsize=(n_col * 6, n_rows * 2))
-    plot_idx = 1
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2))
+    plt.rcParams.update({'font.size': 12})
+    grid = plt.GridSpec(n_rows + 1, n_cols, wspace=0.4, hspace=1.5)
+
+    row_idx = 0
+    col_idx = 0
     for key in data_keys:
         for state_id, series in sorted(saved_state[key].items()):
-            ax = fig.add_subplot(n_rows, n_col, plot_idx)
+
+            ax = fig.add_subplot(grid[row_idx, col_idx])
             ax.plot(time_vec, series)
 
             # if state has target, plot series in red
@@ -367,7 +370,11 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
             ax.title.set_text(str(key) + ': ' + state_id)
             ax.ticklabel_format(style='sci',axis='y')
             ax.set_xlabel('time (hr)')
-            plot_idx += 1
+
+            row_idx += 1
+
+        col_idx += 1
+        row_idx = 0
 
     # make figure output directory and save figure
     fig_path = os.path.join(out_dir, filename)
@@ -415,12 +422,12 @@ if __name__ == '__main__':
     get_config = get_toy_configuration
     metabolism = Metabolism(get_config())
 
-    ## test toy model
-    test_config(get_config)
+    # ## test toy model
+    # test_config(get_config)
 
     ## simulate toy model
-    saved_data = simulate_metabolism(metabolism, 3600, toy_transport_kinetics())
+    saved_data = simulate_metabolism(metabolism, 2000, toy_transport_kinetics())
     plot_output(saved_data, out_dir)
 
-    ## make flux network from toy model
-    save_network(metabolism, 10, out_dir)
+    # ## make flux network from toy model
+    # save_network(metabolism, 10, out_dir)
