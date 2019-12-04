@@ -71,6 +71,7 @@ class CobraFBA(object):
         self.reversible = config.get('reversible', [])
         self.external_molecules = config['external_molecules']
         self.objective = config['objective']
+        flux_bounds = config.get('flux_bounds', {})
         default_upper_bound = config.get('default_upper_bound', 1000.0)
 
         self.model = build_model(
@@ -79,6 +80,8 @@ class CobraFBA(object):
             self.objective,
             self.external_molecules,
             default_upper_bound)
+
+        self.constrain_reaction_bounds(flux_bounds)
 
         self.solution = None
 

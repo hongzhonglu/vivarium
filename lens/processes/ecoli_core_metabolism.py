@@ -18,9 +18,13 @@ def EcoliCoreMetabolism(parameters):
 
     # get stoichiometry
     stoichiometry = {}
+    flux_bounds = {}
     for reaction in reactions:
         metabolites = reaction.metabolites
-        stoichiometry[reaction.id] = {metabolite.id: coeff for metabolite, coeff in metabolites.items()}
+        stoichiometry[reaction.id] = {
+            metabolite.id: coeff for metabolite, coeff in metabolites.items()}
+        # get flux bounds
+        flux_bounds[reaction.id] = list(reaction.bounds)
 
     # get external molecules
     external_molecules = []
@@ -39,31 +43,49 @@ def EcoliCoreMetabolism(parameters):
     for expression in objective_expression:
         exp_str = str(expression)
         coeff, reaction_id = exp_str.split('*')
-
-        # make sure reaction is in model
         try:
             reactions.get_by_id(reaction_id)
             objective[reaction_id] = float(coeff)
         except:
             pass
 
+    # initial state
+    initial_state = {
+        'internal': {
+            'mass': 1339,  # fg
+            'volume': 1E-15},  # fL
+        'external': {
+            state_id: 10.0 for state_id in external_molecules}
+        }
+
 
     config = {
         'stoichiometry': stoichiometry,
-    #     'reversible': reversible,
         'external_molecules': external_molecules,
         'objective': objective,
-    #     'initial_state': initial_state,
+        'initial_state': initial_state,
         'exchange_bounds': exchange_bounds,
+        'flux_bounds': flux_bounds,
     #     'default_upper_bound': default_reaction_bounds,
     #     'molecular_weights': molecular_weights,
         }
 
     return Metabolism(config)
 
+def kinetic_rate(mol_id, vmax, km=0.0):
+    def rate(state):
+        flux = (vmax * state[mol_id]) / (km + state[mol_id])
+        return flux
+    return rate
 
-# tests and analyses of process
-def test_core_ecoli():
+def toy_transport_kinetics():
+    transport_kinetics = {
+        "GLCpts": kinetic_rate('glc__D_e', 1e2, 5),  # glucose
+        # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
+    }
+    return transport_kinetics
+
+def test_ecoli_core():
     # configure process
     metabolism = EcoliCoreMetabolism({})
 
@@ -85,9 +107,22 @@ def test_core_ecoli():
     print(metabolism.fba.read_exchange_fluxes())
 
 
-
-
-
 if __name__ == '__main__':
+    from lens.processes.metabolism import simulate_metabolism, plot_output, save_network
+
+    out_dir = os.path.join('out', 'tests', 'e_coli_core_metabolism')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
     ## test model
-    test_core_ecoli()
+    test_ecoli_core()
+
+    ## set up metabolism with a toy configuration
+    metabolism = EcoliCoreMetabolism({})
+
+    ## simulate model
+    saved_data = simulate_metabolism(metabolism, 1000, toy_transport_kinetics())
+    plot_output(saved_data, out_dir)
+
+    ## make flux network from toy model
+    save_network(metabolism, 5, out_dir)

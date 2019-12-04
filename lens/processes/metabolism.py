@@ -34,6 +34,7 @@ class Metabolism(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
         reversible = initial_parameters.get('reversible', [])
+        flux_bounds = initial_parameters.get('flux_bounds', {})
         exchange_bounds = initial_parameters.get('exchange_bounds', {})
         default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
@@ -44,7 +45,10 @@ class Metabolism(Process):
             external_molecules=self.external_molecules,
             objective=self.objective,
             initial_state=self.initial_state,
+            flux_bounds = flux_bounds,
             default_upper_bound=default_upper_bound))
+
+        # print(self.fba.get_reaction_bounds())
 
         # set bounds on exchange fluxes
         self.fba.constrain_exchange_flux(exchange_bounds)
@@ -72,10 +76,11 @@ class Metabolism(Process):
     def default_settings(self):
 
         # default state
-        internal = {state_id: 0 for state_id in self.internal_state_ids}
+        internal = {state_id: 0.0 for state_id in self.internal_state_ids}
+        external = {state_id: 10.0 for state_id in self.external_molecules}
         default_state = {
-            'external':  self.initial_state.get('external'),
-            'internal': deep_merge(dict(internal), self.initial_state.get('internal')),
+            'external':  deep_merge(dict(external), self.initial_state.get('external', {})),
+            'internal': deep_merge(dict(internal), self.initial_state.get('internal', {})),
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchanges': {state_id: 0 for state_id in self.external_molecules},
             'flux_bounds': {}
@@ -270,6 +275,9 @@ def toy_transport_kinetics():
 
 def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
 
+    # set the environment's volume
+    env_volume = 1e-12 * units.L
+
     # get initial state and parameters
     settings = metabolism.default_settings()
     state = settings['state']
@@ -288,7 +296,6 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
         'time': [0]}
 
     # run simulation
-    env_volume = 1e-12 * units.L
     time = 0
     timestep = 1  # sec
     while time < total_time:
@@ -340,24 +347,37 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
     import matplotlib.pyplot as plt
     import math
 
-    data_keys = [key for key in saved_state.keys() if key not in ['time', 'flux_bounds']]
+    skip_keys = ['time', 'flux_bounds']
+
+    # remove series with all zeros
+    zero_state = []
+    for key1 in saved_state.iterkeys():
+        if key1 not in skip_keys:
+            for key2, series in saved_state[key1].items():
+                if all(v == 0 for v in series):
+                    zero_state.append((key1, key2))
+    for (key1, key2) in zero_state:
+        del saved_state[key1][key2]
+
+    data_keys = [key for key in saved_state.keys() if key not in skip_keys]
     flux_bounds_data = saved_state.get('flux_bounds')
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
+    n_zeros = len(zero_state)
     n_data = [len(saved_state[key].keys()) for key in data_keys]
 
     n_cols = len(n_data)
-    n_rows = max(n_data) + 1
+    n_rows_base = max(n_data) + 1
+    n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))
 
     # make figure
     fig = plt.figure(figsize=(n_cols * 6, n_rows * 2))
     plt.rcParams.update({'font.size': 12})
-    grid = plt.GridSpec(n_rows + 1, n_cols, wspace=0.4, hspace=1.5)
+    grid = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=1.5)
 
     row_idx = 0
     col_idx = 0
     for key in data_keys:
         for state_id, series in sorted(saved_state[key].items()):
-
             ax = fig.add_subplot(grid[row_idx, col_idx])
             ax.plot(time_vec, series)
 
@@ -375,6 +395,14 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
 
         col_idx += 1
         row_idx = 0
+
+    # # additional data as text
+    # if zero_state:
+    #     zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
+    #     zeros_text = 'states with all zeros: {}'.format(zeros)
+    #     ax = fig.add_subplot(grid[n_rows_base:, :])
+    #     ax.text(0.01, 0.99, zeros_text, ha='left', va='top', wrap=True)
+    #     ax.axis('off')
 
     # make figure output directory and save figure
     fig_path = os.path.join(out_dir, filename)
