@@ -71,8 +71,12 @@ class CobraFBA(object):
     def constrain_external_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
-            # reaction.upper_bound = level
             reaction.lower_bound = -level
+
+    def constrain_flux(self, levels):
+        for external, level in levels.items():
+            reaction = self.model.reactions.get_by_id(external)
+            reaction.upper_bound = level
 
     def objective_value(self):
         return self.solution.objective_value if self.solution else float('nan')

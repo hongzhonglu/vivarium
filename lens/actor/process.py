@@ -274,7 +274,7 @@ def get_compartment_timestep(process_layers):
     processes = merge_dicts(process_layers)
     minimum_step = 10
 
-    for process_id, process_object in processes.iteritems():
+    for process_id, process_object in processes.items():
         settings = process_object.default_settings()
         time_step = settings.get('time_step', 1.0)
         minimum_step = min(time_step, minimum_step)
