@@ -6,7 +6,7 @@ from lens.actor.process import deep_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import get_mols_from_stoich, get_mols_from_reg_logic
 
-from lens.environment.lattice_compartment import add_str_in_list, remove_str_in_list, add_str_to_keys
+from lens.environment.lattice_compartment import add_str_to_keys
 from lens.environment.make_media import Media
 import lens.utils.regulation_logic as rl
 
@@ -64,7 +64,6 @@ def load_data(data_dir, filenames):
 
     all_molecules = set(metabolites + enzymes + transporters + regulation_molecules)
     all_molecules.remove('mass')
-    # external_molecules = remove_str_in_list([mol_id for mol_id in all_molecules if external_key in mol_id], external_key)
     external_molecules = [mol_id for mol_id in all_molecules if external_key in mol_id]
     internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
 
@@ -111,7 +110,6 @@ def load_data(data_dir, filenames):
         'stoichiometry': stoichiometry,
         'reversible': reversible_reactions,
         # 'reaction_bounds': reaction_bounds,  # TODO -- option for reaction_bounds in metabolism
-        # 'default_reaction_bounds': default_reaction_bounds,
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
@@ -138,7 +136,7 @@ def test_covert2002():
     print(metabolism.fba.reaction_ids())
     print(metabolism.fba.get_reactions())
     print(metabolism.fba.get_reaction_bounds())
-    print(metabolism.fba.read_external_fluxes())
+    print(metabolism.fba.read_exchange_fluxes())
 
 
 if __name__ == '__main__':

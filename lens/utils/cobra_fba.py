@@ -6,9 +6,9 @@ import cobra.test
 from cobra import Model, Reaction, Metabolite, Configuration
 
 
-EXTERNAL_SUFFIX = '_external'
+EXTERNAL_SUFFIX = '_exchange'
 
-def build_model(stoichiometry, reversible, objective, external_molecules, default_reaction_bounds):
+def build_model(stoichiometry, reversible, objective, external_molecules, default_upper_bound=1000):
     model = Model('fba')
     model.compartments = {'c': 'cytoplasm'}
 
@@ -28,7 +28,7 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
         reaction = Reaction(reaction_key, name=reaction_key)
 
         # set reaction bounds
-        reaction.upper_bound = default_reaction_bounds
+        reaction.upper_bound = default_upper_bound
         if reaction_key in reversible:
             reaction.lower_bound = -reaction.upper_bound
 
@@ -40,13 +40,13 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
         reactions[reaction_key] = reaction
 
-    # make reactions for all external_molecules
+    # make exchange reactions for all external_molecules
     for external in external_molecules:
         external_key = external + EXTERNAL_SUFFIX
         reaction = Reaction(external_key, name=external_key)
 
         # set reaction bounds
-        reaction.upper_bound = default_reaction_bounds
+        reaction.upper_bound = default_upper_bound
 
         # make stoichiometry
         reaction_model = {metabolites[external]: -1}
@@ -70,18 +70,18 @@ class CobraFBA(object):
         self.reversible = config.get('reversible', [])
         self.external_molecules = config['external_molecules']
         self.objective = config['objective']
-        default_reaction_bounds = config.get('default_reaction_bounds', 1000.0)
+        default_upper_bound = config.get('default_upper_bound', 1000.0)
 
         self.model = build_model(
             self.stoichiometry,
             self.reversible,
             self.objective,
             self.external_molecules,
-            default_reaction_bounds)
+            default_upper_bound)
 
         self.solution = None
 
-    def constrain_external_flux(self, levels):
+    def constrain_exchange_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
             reaction.lower_bound = -level
@@ -121,7 +121,7 @@ class CobraFBA(object):
     def read_internal_fluxes(self):
         return self.read_fluxes(self.internal_reactions())
 
-    def read_external_fluxes(self):
+    def read_exchange_fluxes(self):
         external = self.external_reactions()
         levels = self.read_fluxes(external)
         return {
@@ -165,7 +165,7 @@ def test_minimal():
         'initial_state': initial_state,
         })
 
-    fba.constrain_external_flux(initial_state)
+    fba.constrain_exchange_flux(initial_state)
 
     return fba
 
@@ -209,7 +209,7 @@ def test_fba():
         'initial_state': initial_state,
     })
 
-    fba.constrain_external_flux(initial_state['external'])
+    fba.constrain_exchange_flux(initial_state['external'])
 
     return fba
 
@@ -332,4 +332,4 @@ if __name__ == '__main__':
     print(fba.reaction_ids())
     print(fba.get_reactions())
     print(fba.get_reaction_bounds())
-    print(fba.read_external_fluxes())
+    print(fba.read_exchange_fluxes())

@@ -34,8 +34,8 @@ class Metabolism(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
         reversible = initial_parameters.get('reversible', [])
-        flux_bounds = initial_parameters.get('flux_bounds', {})
-        default_reaction_bounds = initial_parameters.get('default_reaction_bounds', [])
+        exchange_bounds = initial_parameters.get('exchange_bounds', {})
+        default_upper_bound = initial_parameters.get('default_upper_bound', [])
 
         # initialize fba
         self.fba = CobraFBA(dict(
@@ -44,14 +44,12 @@ class Metabolism(Process):
             external_molecules=self.external_molecules,
             objective=self.objective,
             initial_state=self.initial_state,
-            default_reaction_bounds=default_reaction_bounds))
+            default_upper_bound=default_upper_bound))
 
-        # set bounds
-        # TODO -- set default reaction bounds?
-        # TODO -- should flux bounds be placed on a molecule or a reaction?
-        self.fba.constrain_external_flux(flux_bounds)
+        # set bounds on exchange fluxes
+        self.fba.constrain_exchange_flux(exchange_bounds)
 
-        # get molecule ids from objective
+        # get molecules in objective
         self.objective_molecules = []
         for reaction_id, coeff1 in self.objective.items():
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
@@ -63,6 +61,7 @@ class Metabolism(Process):
             'external': self.external_molecules,
             'internal': self.internal_state_ids,
             'reactions': self.reaction_ids,
+            'exchanges': self.external_molecules,
             'flux_bounds': self.reaction_ids}
 
         parameters = {}
@@ -78,6 +77,7 @@ class Metabolism(Process):
             'external':  self.initial_state.get('external'),
             'internal': deep_merge(dict(internal), self.initial_state.get('internal')),
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
+            'exchanges': {state_id: 0 for state_id in self.external_molecules},
             'flux_bounds': {}
             }
 
@@ -86,7 +86,8 @@ class Metabolism(Process):
             'internal': self.objective_molecules,
             'external': self.fba.external_molecules,
             'reactions': self.reaction_ids,
-            }
+            'exchanges': self.external_molecules,
+        }
 
         # default updaters
         set_internal_states = {state_id: 'set' for state_id in self.reaction_ids + ['volume']}
@@ -95,6 +96,7 @@ class Metabolism(Process):
             'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
             'external': {mol_id: 'accumulate' for mol_id in self.external_molecules},
             'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
+            'exchanges': {rxn_id: 'set' for rxn_id in self.external_molecules},
             'flux_bounds': {rxn_id: 'set' for rxn_id in self.reaction_ids},
             }
 
@@ -119,7 +121,7 @@ class Metabolism(Process):
 
         # solve the fba problem
         objective_exchange = self.fba.optimize()
-        exchange_fluxes = self.fba.read_external_fluxes() # (units.mmol / units.L)
+        exchange_fluxes = self.fba.read_exchange_fluxes() # (units.mmol / units.L)
         internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
 
         # update internal counts from objective flux
@@ -147,7 +149,9 @@ class Metabolism(Process):
         return {
             'internal': internal_state_update,
             'external': environment_deltas,
-            'reactions': internal_fluxes}
+            'reactions': internal_fluxes,
+            'exchanges': exchange_fluxes,
+        }
 
 
 
@@ -175,7 +179,7 @@ def get_toy_configuration():
 
     default_reaction_bounds = 1000.0
 
-    flux_bounds = {
+    exchange_bounds = {
         'A': 0.02,
         'D': -0.01,
         'E': -0.01,
@@ -215,8 +219,8 @@ def get_toy_configuration():
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
-        'flux_bounds': flux_bounds,
-        'default_reaction_bounds': default_reaction_bounds,
+        'exchange_bounds': exchange_bounds,
+        'default_upper_bound': default_reaction_bounds,
         'molecular_weights': molecular_weights,
         }
 
@@ -242,7 +246,7 @@ def test_config(get_config=get_toy_configuration):
     print(metabolism.fba.reaction_ids())
     print(metabolism.fba.get_reactions())
     print(metabolism.fba.get_reaction_bounds())
-    print(metabolism.fba.read_external_fluxes())
+    print(metabolism.fba.read_exchange_fluxes())
 
 def kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
@@ -273,11 +277,13 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
     density = metabolism.density
     nAvogadro = metabolism.nAvogadro
     reaction_ids = metabolism.reaction_ids
+    exchange_ids = metabolism.external_molecules
 
     saved_data = {
         'internal': {state_id: [value] for state_id, value in state['internal'].items()},
         'external': {state_id: [value] for state_id, value in state['external'].items()},
         'reactions': {rxn_id: [0] for rxn_id in reaction_ids},
+        'exchanges': {rxn_id: [0] for rxn_id in exchange_ids},
         'flux_bounds': {rxn_id: [0] for rxn_id, rxn_fun in transport_kinetics.items()},
         'time': [0]}
 
@@ -299,7 +305,10 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
 
         # get update
         update = metabolism.next_update(timestep, state)
+
+        # exchanges and reactions are set as is
         state['reactions'] = update['reactions']
+        state['exchanges'] = update['exchanges']
 
         # apply internal update
         for state_id, state_update in update['internal'].items():
@@ -318,14 +327,9 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
 
         # save state
         saved_data['time'].append(time)
-        for state_id, value in state['internal'].items():
-            saved_data['internal'][state_id].append(value)
-        for state_id, value in state['external'].items():
-            saved_data['external'][state_id].append(value)
-        for state_id, value in state['reactions'].items():
-            saved_data['reactions'][state_id].append(value)
-        for state_id, value in state['flux_bounds'].items():
-            saved_data['flux_bounds'][state_id].append(value)
+        for role in ['internal', 'external', 'reactions', 'exchanges', 'flux_bounds']:
+            for state_id, value in state[role].items():
+                saved_data[role][state_id].append(value)
 
     return saved_data
 
