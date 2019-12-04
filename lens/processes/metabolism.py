@@ -33,6 +33,7 @@ class Metabolism(Process):
         # additional options
         self.initial_state = initial_parameters.get('initial_state', {})
         self.reversible = initial_parameters.get('reversible', [])
+        self.molecular_weights = initial_parameters.get('molecular_weights', {})
         self.flux_bounds = initial_parameters.get('flux_bounds', {})
 
         # initialize fba
@@ -127,17 +128,21 @@ class Metabolism(Process):
         exchange_fluxes = self.fba.read_external_fluxes() # (units.mmol / units.L)
         internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
 
-        # update internal counts from objective flux # TODO -- remove BIOMASS
+        # update internal counts from objective flux
+        # calculate the new mass from objective_molecules individual mass
         objective_count = (objective_exchange * mmol_to_count).magnitude
+        added_mass = 0.0
         internal_state_update = {}
         for reaction_id, coeff1 in self.objective.items():
             for mol_id, coeff2 in self.stoichiometry[reaction_id].items():
                 internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
-        # calculate the new mass. TODO -- use objective_molecules individual mass
-        new_mass = {'mass': (mass.magnitude * np.exp(objective_exchange * timestep) - mass.magnitude)}
-        # new_mass = {'mass': 0}
-        internal_state_update.update(new_mass)
+                # get mass added
+                mol_mw = self.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
+                mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
+                added_mass += mol_mass.to('fg').magnitude * 1e4  # to fg  TODO -- remove scaling
+
+        internal_state_update.update({'mass': added_mass})
 
         # calculate delta counts for external molecules based on exchange flux and volume
         environment_deltas = {
@@ -178,8 +183,7 @@ def get_toy_configuration():
         'E': -0.01,
         'F': 0.005,
         'H': 0.005,
-        'O2': 0.1,
-    }
+        'O2': 0.1}
 
     initial_state = {
         'internal': {
@@ -194,13 +198,28 @@ def get_toy_configuration():
             'O2': 100.0,
         }}
 
+    # molecular weight units are (units.g / units.mol)
+    molecular_weights = {
+        'A': 100.0,
+        'B': 100.0,
+        'C': 100.0,
+        'D': 100.0,
+        'E': 100.0,
+        'F': 100.0,
+        'H': 1.00794,
+        'O2': 31.9988,
+        'ATP': 507.181,
+        'NADH': 664.425}
+
     config = {
         'stoichiometry': stoichiometry,
         'reversible': stoichiometry.keys(),
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
-        'flux_bounds': flux_bounds}
+        'flux_bounds': flux_bounds,
+        'molecular_weights': molecular_weights,
+        }
 
     return config
 
