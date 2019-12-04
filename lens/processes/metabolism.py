@@ -35,7 +35,7 @@ class Metabolism(Process):
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
         reversible = initial_parameters.get('reversible', [])
         exchange_bounds = initial_parameters.get('exchange_bounds', {})
-        default_upper_bound = initial_parameters.get('default_upper_bound', [])
+        default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # initialize fba
         self.fba = CobraFBA(dict(
@@ -177,7 +177,7 @@ def get_toy_configuration():
 
     reversible = ['R6', 'R7', 'Rres']
 
-    default_reaction_bounds = 1000.0
+    default_reaction_bounds = 500.0
 
     exchange_bounds = {
         'A': 0.02,

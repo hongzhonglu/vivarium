@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from lens.actor.process import deep_merge
 from lens.data.spreadsheets import load_tsv
 from lens.data.helper import get_mols_from_stoich, get_mols_from_reg_logic
 
@@ -51,15 +50,18 @@ def load_data(data_dir, filenames):
          for reaction in data['covert2002_exchange_fluxes']}
     stoichiometry.update(transport_stoichiometry)
     stoichiometry.update(maintenance_stoichiometry)
-    stoichiometry.update(exchange_stoichiometry)
+    # stoichiometry.update(exchange_stoichiometry)
 
     # list of reversible reactions
-    reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
+    reversible_reactions = [reaction['Reaction']
+        for reaction in data['covert2002_reactions'] if reaction['Reversible']]
 
     # get all molecules
     metabolites = get_mols_from_stoich(stoichiometry)
-    enzymes = [reaction['Protein'] for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
-    transporters = [reaction['Protein'] for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
+    enzymes = [reaction['Protein']
+        for reaction in data['covert2002_reactions'] if reaction['Protein'] is not '']
+    transporters = [reaction['Protein']
+        for reaction in data['covert2002_transport'] if reaction['Protein'] is not '']
     regulation_molecules = get_mols_from_reg_logic(data['covert2002_reactions'])
 
     all_molecules = set(metabolites + enzymes + transporters + regulation_molecules)
@@ -74,18 +76,25 @@ def load_data(data_dir, filenames):
     ## Objective
     objective = {'VGRO': 1}
 
-    ## Flux bounds on reactions
+    ## get reactions bounds, remove default, assigne bound to external molecule
     reaction_bounds = {flux['flux']: [flux['lower'], flux['upper']]
                    for flux in data['covert2002_GLC_G6P_flux_bounds']}
-    default_reaction_bounds = reaction_bounds.pop('default')
+    reaction_bounds.pop('default')
+    default_reaction_bounds = 500.0
 
-    ## Regulatory logic functions
-    regulation_logic = {}
-    for reaction in data['covert2002_reactions']:
-        reaction_id = reaction['Reaction']
-        rule = rl.build_rule(reaction['Regulatory Logic'])
-        if rule({}):
-            regulation_logic[reaction_id] = rule
+    exchange_bounds = {}
+    for exchange_id, bounds in reaction_bounds.items():
+        stoich = exchange_stoichiometry[exchange_id]
+        external_mol = stoich.keys()[0]
+        exchange_bounds[external_mol] = bounds
+
+    # ## Regulatory logic functions
+    # regulation_logic = {}
+    # for reaction in data['covert2002_reactions']:
+    #     reaction_id = reaction['Reaction']
+    #     rule = rl.build_rule(reaction['Regulatory Logic'])
+    #     if rule({}):
+    #         regulation_logic[reaction_id] = rule
 
     ## Initial state
     # external
@@ -109,11 +118,12 @@ def load_data(data_dir, filenames):
     return {
         'stoichiometry': stoichiometry,
         'reversible': reversible_reactions,
-        # 'reaction_bounds': reaction_bounds,  # TODO -- option for reaction_bounds in metabolism
+        # 'exchange_bounds': exchange_bounds,
+        'default_upper_bound': default_reaction_bounds,
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
-        'molecular_weights': molecular_weights,}
+        'molecular_weights': molecular_weights}
 
 
 # tests and analyses of process
@@ -121,13 +131,13 @@ def test_covert2002():
     # configure process
     metabolism = Covert2002Metabolism({})
 
-    print(metabolism.fba.model)
-    print(metabolism.fba.model.reactions)
-    print(metabolism.fba.model.metabolites)
-    print(metabolism.fba.model.genes)
-    print(metabolism.fba.model.compartments)
-    print(metabolism.fba.model.solver)
-    print(metabolism.fba.model.objective.expression)
+    print('MODEL: {}'.format(metabolism.fba.model))
+    print('REACTIONS: {}'.format(metabolism.fba.model.reactions))
+    print('METABOLITES: {}'.format(metabolism.fba.model.metabolites))
+    print('GENES: {}'.format(metabolism.fba.model.genes))
+    print('COMPARTMENTS: {}'.format(metabolism.fba.model.compartments))
+    print('SOLVER: {}'.format(metabolism.fba.model.solver))
+    print('EXPRESSION: {}'.format(metabolism.fba.model.objective.expression))
 
     print(metabolism.fba.optimize())
     print(metabolism.fba.model.summary())
@@ -148,15 +158,14 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     ## set up metabolism with a toy configuration
-    # get_config = get_toy_configuration
     metabolism = Covert2002Metabolism({})
 
     ## test model
     test_covert2002()
 
     ## simulate model
-    saved_data = simulate_metabolism(metabolism, 600)
+    saved_data = simulate_metabolism(metabolism, 100)
     plot_output(saved_data, out_dir)
 
     ## make flux network from toy model
-    save_network(metabolism, 10, out_dir)
+    save_network(metabolism, 5, out_dir)

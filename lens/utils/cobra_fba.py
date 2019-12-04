@@ -47,6 +47,7 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
         # set reaction bounds
         reaction.upper_bound = default_upper_bound
+        reaction.lower_bound = -default_upper_bound  # TODO -- should exchanges have symmetric bounds by default?
 
         # make stoichiometry
         reaction_model = {metabolites[external]: -1}
@@ -84,7 +85,13 @@ class CobraFBA(object):
     def constrain_exchange_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
-            reaction.lower_bound = -level
+
+            if type(level) is list:
+                reaction.upper_bound = -level[0]
+                reaction.lower_bound = -level[1]
+
+            elif isinstance(level, int) or isinstance(level, float):
+                reaction.lower_bound = -level
 
     def constrain_flux(self, levels):
         for external, level in levels.items():
