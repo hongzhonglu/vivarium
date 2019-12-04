@@ -32,23 +32,24 @@ class Metabolism(Process):
 
         # additional options
         self.initial_state = initial_parameters.get('initial_state', {})
-        self.reversible = initial_parameters.get('reversible', [])
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
-        self.flux_bounds = initial_parameters.get('flux_bounds', {})
-        self.default_flux_bounds = initial_parameters.get('default_flux_bounds', [])
+        reversible = initial_parameters.get('reversible', [])
+        flux_bounds = initial_parameters.get('flux_bounds', {})
+        default_reaction_bounds = initial_parameters.get('default_reaction_bounds', [])
 
         # initialize fba
         self.fba = CobraFBA(dict(
             stoichiometry=self.stoichiometry,
-            reversible=self.reversible,
+            reversible=reversible,
             external_molecules=self.external_molecules,
             objective=self.objective,
-            initial_state=self.initial_state))
+            initial_state=self.initial_state,
+            default_reaction_bounds=default_reaction_bounds))
 
         # set bounds
         # TODO -- set default reaction bounds?
         # TODO -- should flux bounds be placed on a molecule or a reaction?
-        self.fba.constrain_external_flux(self.flux_bounds)
+        self.fba.constrain_external_flux(flux_bounds)
 
         # get molecule ids from objective
         self.objective_molecules = []
@@ -170,14 +171,9 @@ def get_toy_configuration():
 
     objective = {'v_biomass': 1.0}
 
-    # reaction_bounds = {
-    #     'A': [0.0, 0.02],
-    #     'D': [-0.01, 0.0],
-    #     'E': [-0.01, 0.0],
-    #     'F': [0.0, 0.005],
-    #     'H': [0.0, 0.005],
-    #     'O2': [0.0, 0.1]}
-    # default_reaction_bounds = [-500.0, 500.0]
+    reversible = ['R6', 'R7', 'Rres']
+
+    default_reaction_bounds = 1000.0
 
     flux_bounds = {
         'A': 0.02,
@@ -215,12 +211,12 @@ def get_toy_configuration():
 
     config = {
         'stoichiometry': stoichiometry,
-        'reversible': stoichiometry.keys(),
+        'reversible': reversible,
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
         'flux_bounds': flux_bounds,
-        # 'default_flux_bounds': default_flux_bounds,
+        'default_reaction_bounds': default_reaction_bounds,
         'molecular_weights': molecular_weights,
         }
 
@@ -422,12 +418,12 @@ if __name__ == '__main__':
     get_config = get_toy_configuration
     metabolism = Metabolism(get_config())
 
-    # ## test toy model
-    # test_config(get_config)
+    ## test toy model
+    test_config(get_config)
 
     ## simulate toy model
     saved_data = simulate_metabolism(metabolism, 2000, toy_transport_kinetics())
     plot_output(saved_data, out_dir)
 
-    # ## make flux network from toy model
-    # save_network(metabolism, 10, out_dir)
+    ## make flux network from toy model
+    save_network(metabolism, 10, out_dir)

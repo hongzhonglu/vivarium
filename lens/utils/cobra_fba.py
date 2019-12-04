@@ -8,7 +8,7 @@ from cobra import Model, Reaction, Metabolite, Configuration
 
 EXTERNAL_SUFFIX = '_external'
 
-def build_model(stoichiometry, reversible, objective, external_molecules):
+def build_model(stoichiometry, reversible, objective, external_molecules, default_reaction_bounds):
     model = Model('fba')
     model.compartments = {'c': 'cytoplasm'}
 
@@ -26,21 +26,32 @@ def build_model(stoichiometry, reversible, objective, external_molecules):
     reactions = {}
     for reaction_key, chemistry in stoichiometry.items():
         reaction = Reaction(reaction_key, name=reaction_key)
+
+        # set reaction bounds
+        reaction.upper_bound = default_reaction_bounds
+        if reaction_key in reversible:
+            reaction.lower_bound = -reaction.upper_bound
+
+        # make stoichiometry
         reaction_model = {
             metabolites[metabolite]: value
             for metabolite, value in chemistry.items()}
         reaction.add_metabolites(reaction_model)
-        # reaction.gene_reaction_rule = 'X'
-        if reaction_key in reversible:
-            reaction.lower_bound = -reaction.upper_bound
 
         reactions[reaction_key] = reaction
 
+    # make reactions for all external_molecules
     for external in external_molecules:
         external_key = external + EXTERNAL_SUFFIX
         reaction = Reaction(external_key, name=external_key)
+
+        # set reaction bounds
+        reaction.upper_bound = default_reaction_bounds
+
+        # make stoichiometry
         reaction_model = {metabolites[external]: -1}
         reaction.add_metabolites(reaction_model)
+
         reactions[external_key] = reaction
 
     model.add_reactions(reactions.values())
@@ -59,12 +70,14 @@ class CobraFBA(object):
         self.reversible = config.get('reversible', [])
         self.external_molecules = config['external_molecules']
         self.objective = config['objective']
+        default_reaction_bounds = config.get('default_reaction_bounds', 1000.0)
 
         self.model = build_model(
             self.stoichiometry,
             self.reversible,
             self.objective,
-            self.external_molecules)
+            self.external_molecules,
+            default_reaction_bounds)
 
         self.solution = None
 
