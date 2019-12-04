@@ -47,8 +47,11 @@ def load_data(data_dir, filenames):
          for reaction in data['covert2002_transport']}
     maintenance_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
          for reaction in data['covert2002_maintenance_biomass_fluxes']}
+    exchange_stoichiometry = {reaction['Reaction']: reaction['Stoichiometry']
+         for reaction in data['covert2002_exchange_fluxes']}
     stoichiometry.update(transport_stoichiometry)
-    stoichiometry.update(maintenance_stoichiometry)  # TODO -- in standard FBA, this should only be needed in objective
+    stoichiometry.update(maintenance_stoichiometry)
+    stoichiometry.update(exchange_stoichiometry)
 
     # list of reversible reactions
     reversible_reactions = [reaction['Reaction'] for reaction in data['covert2002_reactions'] if reaction['Reversible']]
@@ -65,13 +68,17 @@ def load_data(data_dir, filenames):
     external_molecules = [mol_id for mol_id in all_molecules if external_key in mol_id]
     internal_molecules = [mol_id for mol_id in all_molecules if external_key not in mol_id]
 
+    # molecular weights
+    molecular_weights = {molecule['molecule id']: molecule['molecular weight']
+         for molecule in data['covert2002_ecoli_metabolism_met_mw']}
+
     ## Objective
     objective = {'VGRO': 1}
 
     ## Flux bounds on reactions
     flux_bounds = {flux['flux']: [flux['lower'], flux['upper']]
                    for flux in data['covert2002_GLC_G6P_flux_bounds']}
-    # default_flux_bounds = flux_bounds['default']
+    default_flux_bounds = flux_bounds.pop('default')
 
     ## Regulatory logic functions
     regulation_logic = {}
@@ -104,9 +111,11 @@ def load_data(data_dir, filenames):
         'stoichiometry': stoichiometry,
         'reversible': reversible_reactions,
         'flux_bounds': flux_bounds,
+        'default_flux_bounds': default_flux_bounds,
         'external_molecules': external_molecules,
         'objective': objective,
-        'initial_state': initial_state}
+        'initial_state': initial_state,
+        'molecular_weights': molecular_weights,}
 
 
 # tests and analyses of process
@@ -148,8 +157,8 @@ if __name__ == '__main__':
     test_covert2002()
 
     ## simulate model
-    saved_data = simulate_metabolism(metabolism, 1000)
+    saved_data = simulate_metabolism(metabolism, 600)
     plot_output(saved_data, out_dir)
 
     ## make flux network from toy model
-    save_network(metabolism, 20, out_dir)
+    save_network(metabolism, 10, out_dir)

@@ -34,7 +34,8 @@ class Metabolism(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
         self.reversible = initial_parameters.get('reversible', [])
         self.molecular_weights = initial_parameters.get('molecular_weights', {})
-        self.flux_bounds = initial_parameters.get('flux_bounds', {})
+        self.reaction_bounds = initial_parameters.get('flux_bounds', {})
+        self.default_flux_bounds = initial_parameters.get('default_flux_bounds', [])
 
         # initialize fba
         self.fba = CobraFBA(dict(
@@ -45,7 +46,8 @@ class Metabolism(Process):
             initial_state=self.initial_state))
 
         # set bounds
-        self.fba.constrain_external_flux(self.flux_bounds)
+        # TODO -- set default reaction bounds?
+        self.fba.constrain_reaction_bounds(self.reaction_bounds)
 
         # get molecule ids from objective
         self.objective_molecules = []
@@ -178,12 +180,14 @@ def get_toy_configuration():
     objective = {'v_biomass': 1.0}
 
     flux_bounds = {
-        'A': 0.02,
-        'D': -0.01,
-        'E': -0.01,
-        'F': 0.005,
-        'H': 0.005,
-        'O2': 0.1}
+        'A': [0.0, 0.02],
+        'D': [-0.01, 0.0],
+        'E': [-0.01, 0.0],
+        'F': [0.0, 0.005],
+        'H': [0.0, 0.005],
+        'O2': [0.0, 0.1]}
+
+    default_flux_bounds = [-500.0, 500.0]
 
     initial_state = {
         'internal': {
@@ -218,6 +222,7 @@ def get_toy_configuration():
         'objective': objective,
         'initial_state': initial_state,
         'flux_bounds': flux_bounds,
+        'default_flux_bounds': default_flux_bounds,
         'molecular_weights': molecular_weights,
         }
 
