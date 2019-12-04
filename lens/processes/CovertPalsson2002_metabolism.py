@@ -152,7 +152,6 @@ def test_covert2002():
 if __name__ == '__main__':
     from lens.processes.metabolism import simulate_metabolism, plot_output, save_network
 
-    saved_state = test_covert2002()
     out_dir = os.path.join('out', 'tests', 'CovertPalsson2002_metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
