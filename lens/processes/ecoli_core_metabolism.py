@@ -13,6 +13,7 @@ def EcoliCoreMetabolism(parameters):
     model = cobra.io.load_json_model(DATA_FILE)
 
     reactions = model.reactions
+    metabolites = model.metabolites
     boundary = model.boundary
     objective_expression = model.objective.expression.args
 
@@ -20,9 +21,9 @@ def EcoliCoreMetabolism(parameters):
     stoichiometry = {}
     flux_bounds = {}
     for reaction in reactions:
-        metabolites = reaction.metabolites
+        reaction_metabolites = reaction.metabolites
         stoichiometry[reaction.id] = {
-            metabolite.id: coeff for metabolite, coeff in metabolites.items()}
+            metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
         # get flux bounds
         flux_bounds[reaction.id] = list(reaction.bounds)
 
@@ -30,13 +31,18 @@ def EcoliCoreMetabolism(parameters):
     external_molecules = []
     exchange_bounds = {}
     for reaction in boundary:
-        metabolites = reaction.metabolites.keys()
-        assert len(metabolites) == 1
-        metabolite_id = metabolites[0].id
+        reaction_metabolites = reaction.metabolites.keys()
+        assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
+        metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
 
         # get exchange bounds
         exchange_bounds[metabolite_id] = list(reaction.bounds)
+
+    # get molecular weights
+    molecular_weights = {}
+    for metabolite in metabolites:
+        molecular_weights[metabolite.id] = metabolite.formula_weight
 
     # get objective
     objective = {}
@@ -58,7 +64,6 @@ def EcoliCoreMetabolism(parameters):
             state_id: 10.0 for state_id in external_molecules}
         }
 
-
     config = {
         'stoichiometry': stoichiometry,
         'external_molecules': external_molecules,
@@ -67,7 +72,7 @@ def EcoliCoreMetabolism(parameters):
         'exchange_bounds': exchange_bounds,
         'flux_bounds': flux_bounds,
     #     'default_upper_bound': default_reaction_bounds,
-    #     'molecular_weights': molecular_weights,
+        'molecular_weights': molecular_weights,
         }
 
     return Metabolism(config)
@@ -80,7 +85,8 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def toy_transport_kinetics():
     transport_kinetics = {
-        "GLCpts": kinetic_rate('glc__D_e', 1e2, 5),  # glucose
+        "GLCpts": kinetic_rate('glc__D_e', 1e1, 5),  # glucose
+        "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
         # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
     }
     return transport_kinetics
@@ -121,8 +127,12 @@ if __name__ == '__main__':
     metabolism = EcoliCoreMetabolism({})
 
     ## simulate model
-    saved_data = simulate_metabolism(metabolism, 1000, toy_transport_kinetics())
+    simulation_config = {
+        'total_time': 100,
+        'transport_kinetics': toy_transport_kinetics(),
+        'environment_volume': 1e-13}
+    saved_data = simulate_metabolism(metabolism, simulation_config)
     plot_output(saved_data, out_dir)
 
     ## make flux network from toy model
-    save_network(metabolism, 5, out_dir)
+    save_network(metabolism, 10, out_dir)

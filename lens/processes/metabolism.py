@@ -125,9 +125,9 @@ class Metabolism(Process):
         self.fba.constrain_flux(reaction_flux_bounds)
 
         # solve the fba problem
-        objective_exchange = self.fba.optimize()
-        exchange_fluxes = self.fba.read_exchange_fluxes() # (units.mmol / units.L)
-        internal_fluxes = self.fba.read_internal_fluxes() # (units.mmol / units.L)
+        objective_exchange = self.fba.optimize()  # (units.mmol / units.L)
+        exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L)
+        internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L)
 
         # update internal counts from objective flux
         # calculate the new mass from the objective molecules' molecular weights
@@ -141,11 +141,11 @@ class Metabolism(Process):
                 # added mass
                 mol_mw = self.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
-                added_mass += mol_mass.to('fg').magnitude * 1e4  # to fg  TODO -- remove scaling
+                added_mass += mol_mass.to('fg').magnitude # to fg
 
         internal_state_update.update({'mass': added_mass})
 
-        # calculate delta counts for external molecules based on exchange flux and volume
+        # convert exchange fluxes to counts with mmol_to_count
         environment_deltas = {
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
@@ -157,7 +157,6 @@ class Metabolism(Process):
             'reactions': internal_fluxes,
             'exchanges': exchange_fluxes,
         }
-
 
 
 # tests and analyses
@@ -180,9 +179,9 @@ def get_toy_configuration():
 
     objective = {'v_biomass': 1.0}
 
-    reversible = ['R6', 'R7', 'Rres']
+    reversible = stoichiometry.keys()  # ['R6', 'R7', 'Rres']
 
-    default_reaction_bounds = 500.0
+    default_reaction_bounds = 1000.0
 
     exchange_bounds = {
         'A': 0.02,
@@ -192,10 +191,14 @@ def get_toy_configuration():
         'H': 0.005,
         'O2': 0.1}
 
+
+    mass = 1339 * units.fg
+    density = 1100 * units.g/units.L
+    volume = mass.to('g') / density
     initial_state = {
         'internal': {
-            'mass': 1339,  # fg
-            'volume': 1E-15},  # fL
+            'mass': mass.magnitude,  # fg
+            'volume': volume.magnitude},  # L
         'external': {
             'A': 21.0,
             'F': 5.0,
@@ -207,12 +210,12 @@ def get_toy_configuration():
 
     # molecular weight units are (units.g / units.mol)
     molecular_weights = {
-        'A': 100.0,
-        'B': 100.0,
-        'C': 100.0,
-        'D': 100.0,
-        'E': 100.0,
-        'F': 100.0,
+        'A': 500.0,
+        'B': 500.0,
+        'C': 500.0,
+        'D': 500.0,
+        'E': 500.0,
+        'F': 500.0,
         'H': 1.00794,
         'O2': 31.9988,
         'ATP': 507.181,
@@ -262,21 +265,23 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 def toy_transport_kinetics():
     # transport kinetics
     transport_kinetics = {
-        "R1": kinetic_rate("A", 1.2e-2, 20),   # A import
-        "R3": kinetic_rate("F", 2e-3, 5),  # F export
+        "R1": kinetic_rate("A", 1e-1, 5),   # A import
+        "R3": kinetic_rate("F", 1e-1, 5),  # F export
         # "R6": kinetic_rate("D", 1e-3, 12),  # D export
         # "R7": kinetic_rate("E", 1e-3, km),  # E export
-        "R8a": kinetic_rate("H", 2e-3, 4.5), # H export
+        "R8a": kinetic_rate("H", 1e-1, 5), # H export
         # "R8b": kinetic_rate("H", 1e-5, 0.1),  # H import
         # "Rres": kinetic_rate("O2", 4e-1, 200), # O2 import
     }
 
     return transport_kinetics
 
-def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
+def simulate_metabolism(metabolism, config):
 
-    # set the environment's volume
-    env_volume = 1e-12 * units.L
+    # set the simulation
+    total_time = config.get('total_time', 3600)
+    transport_kinetics = config.get('transport_kinetics', {})
+    env_volume = config.get('environment_volume', 1e-12)  * units.L
 
     # get initial state and parameters
     settings = metabolism.default_settings()
@@ -299,8 +304,7 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
     time = 0
     timestep = 1  # sec
     while time < total_time:
-        # mass_t0 = state['internal']['mass']
-        # volume_t0 = (mass_t0 * units.fg).to('g') / density
+
         time += timestep
 
         # set flux bounds from transport kinetics
@@ -323,6 +327,11 @@ def simulate_metabolism(metabolism, total_time=3600, transport_kinetics={}):
                 state['internal'][state_id] += state_update
             else:
                 state['internal'][state_id] = state_update
+
+        # update volume
+        new_mass = state['internal']['mass'] * units.fg
+        new_volume = new_mass.to('g') / density
+        state['internal']['volume'] = new_volume.to('L').magnitude
 
         # apply external update -- use exchange without growth rate
         mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
@@ -359,14 +368,21 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
     for (key1, key2) in zero_state:
         del saved_state[key1][key2]
 
+    max_rows = 25
     data_keys = [key for key in saved_state.keys() if key not in skip_keys]
     flux_bounds_data = saved_state.get('flux_bounds')
     time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
     n_zeros = len(zero_state)
     n_data = [len(saved_state[key].keys()) for key in data_keys]
 
+    # limit number of rows to max_rows
     n_cols = len(n_data)
-    n_rows_base = max(n_data) + 1
+    n_rows_base = max(n_data)
+    for role in n_data:
+        new_rows = role / max_rows
+        if new_rows > 1:
+            n_cols += int(new_rows)
+            n_rows_base = max_rows
     n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))
 
     # make figure
@@ -392,6 +408,11 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
             ax.set_xlabel('time (hr)')
 
             row_idx += 1
+
+            # limit number of rows
+            if row_idx > max_rows:
+                col_idx += 1
+                row_idx = 0
 
         col_idx += 1
         row_idx = 0
@@ -421,7 +442,8 @@ def save_network(metabolism, total_time=60, out_dir='out'):
     objective = metabolism.objective
 
     # run test to get simulation output
-    saved_state = simulate_metabolism(metabolism, total_time)
+    simulation_config = {'total_time': total_time}
+    saved_state = simulate_metabolism(metabolism, simulation_config)
     reactions = saved_state['reactions']
 
     # save fluxes as node size
@@ -454,7 +476,11 @@ if __name__ == '__main__':
     test_config(get_config)
 
     ## simulate toy model
-    saved_data = simulate_metabolism(metabolism, 2000, toy_transport_kinetics())
+    simulation_config = {
+        'total_time': 7200,
+        'transport_kinetics': toy_transport_kinetics(),
+        'environment_volume': 5e-15}
+    saved_data = simulate_metabolism(metabolism, simulation_config)
     plot_output(saved_data, out_dir)
 
     ## make flux network from toy model
