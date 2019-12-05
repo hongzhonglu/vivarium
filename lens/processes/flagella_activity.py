@@ -63,6 +63,7 @@ class FlagellaActivity(Process):
                          'motile_force',
                          'motile_torque',
                          'motor_state'],
+            'membrane': ['PMF', 'PROTONS'],  # use PROTONS to count accumulated flux
             'flagella': self.flagella_ids,
             'external': []
         }
@@ -75,9 +76,11 @@ class FlagellaActivity(Process):
 
         # default state
         # flagella motor state: 0 for CCW, 1 for CW
+        # PMF range 180-200 mV
         internal = INITIAL_STATE
         default_state = {
             'external': {},
+            'membrane': {'PMF': 180, 'PROTONS': 0},
             'flagella': {flagella_id: random.choice([0, 1]) for flagella_id in self.flagella_ids},
             'internal': deep_merge(internal, {
                 'volume': 1,
@@ -98,14 +101,15 @@ class FlagellaActivity(Process):
         }
 
         # default updaters
-        set_states = [
+        internal_set_states = [
             'motile_force',
             'motile_torque',
             'motor_state',
             'CheA',
             'CheY_P']
         default_updaters = {
-            'internal': {state_id: 'set' for state_id in set_states},
+            'internal': {state_id: 'set' for state_id in internal_set_states},
+            'membrane': {'PROTONS': 'accumulate'},
             'flagella': {flagella_id: 'set' for flagella_id in self.flagella_ids},
             'external': {}}
 
@@ -123,6 +127,7 @@ class FlagellaActivity(Process):
         internal = states['internal']
         n_flagella = states['internal']['n_flagella']
         flagella = states['flagella']
+        membrane = states['membrane']
         # TODO add new flagella if n_flagella > len(flagella)
 
         # determine behavior from motor states of all flagella
@@ -132,7 +137,7 @@ class FlagellaActivity(Process):
             flagella_update.update({flagella_id: new_motor_state})
 
         # TODO -- if all CCW corresponds then run.
-        # TODO -- force and torque from motor state
+        # TODO -- force and torque from motor state, linear with PMF
         fraction_CCW = flagella_update.values().count(0) / n_flagella
 
         if fraction_CCW > 0.8:
@@ -261,6 +266,7 @@ def plot_motor_control(output, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
+    from matplotlib import colors
 
     expected_run = 0.42  # s (Berg) expected run length without chemotaxis
     expected_tumble = 0.14  # s (Berg)
@@ -272,21 +278,41 @@ def plot_motor_control(output, out_dir='out'):
     time_vec = output['time_vec']
 
     # get all flagella states
-    flagella_dict = {f_id: [] for f_id in flagella_vec[0].keys()}
-    for flagella_states in flagella_vec:
-        for f_id, state in flagella_states.items():
-            flagella_dict[f_id].append(state)
+    initial_flagella = flagella_vec[0].keys()
+    activity_grid = np.zeros((len(initial_flagella), len(time_vec)))
+    for time_index, flagella_states in enumerate(flagella_vec):
+        for flagella_id, motor_state in flagella_states.items():
+            flagella_index = initial_flagella.index(flagella_id)
+            activity_grid[flagella_index, time_index] = motor_state + 1
 
     # plot results
     cols = 1
-    rows = len(flagella_dict)
-    plt.figure(figsize=(8 * cols, 1.5 * rows))
-    plot_idx = 1
-    for f_id, states in flagella_dict.items():
-        ax = plt.subplot(rows, cols, plot_idx)
-        ax.plot(states)
+    rows = 2
+    plt.figure(figsize=(10 * cols, 2 * rows))
 
-        plot_idx += 1
+
+    ax1 = plt.subplot(rows, cols, 1)
+
+    ## plot all flagella states in grid
+    # make a color map of fixed colors
+    cmap = colors.ListedColormap(['white', 'red', 'blue'])
+    bounds = [0, 0.5, 1.5, 2]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+
+    # plot all flagella states in grid
+    im = ax1.imshow(activity_grid,
+               interpolation='nearest',
+               aspect='auto',
+               cmap=cmap,
+               norm=norm
+               )
+    cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
+    cbar.set_ticklabels(['none', 'run', 'tumble'])
+    plt.locator_params(axis='y', nbins=len(initial_flagella))
+    ax1.set_yticks([])
+    ax1.set_ylabel('flagella #')
+    ax1.set_xlabel('time')
+
 
     # save the figure
     fig_path = os.path.join(out_dir, 'motor_control')
@@ -301,6 +327,3 @@ if __name__ == '__main__':
 
     output1 = test_motor_control(200)
     plot_motor_control(output1, out_dir)
-    #
-    # output2 = test_variable_receptor()
-    # plot_variable_receptor(output2, out_dir)
