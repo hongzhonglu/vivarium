@@ -19,7 +19,8 @@ DEFAULT_PARAMETERS = {
     'adaptPrecision': 3,
     # motor
     'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
-    # 'n_motors': 5,
+    'protons_per_revolution': 1200,  # the number of protons for each motor revolution
+    'motors_active': 5,  # the number of MotAB for a given flagella. TODO -- this should be set for each flagella
     'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
 }
 
@@ -76,7 +77,7 @@ class FlagellaActivity(Process):
 
         # default state
         # flagella motor state: 0 for CCW, 1 for CW
-        # PMF range 180-200 mV
+        # PMF ranges 180-200 mV (Berg)
         internal = INITIAL_STATE
         default_state = {
             'external': {},
@@ -127,7 +128,7 @@ class FlagellaActivity(Process):
         internal = states['internal']
         n_flagella = states['internal']['n_flagella']
         flagella = states['flagella']
-        membrane = states['membrane']
+        PMF = states['membrane']['PMF']
         # TODO add new flagella if n_flagella > len(flagella)
 
         # determine behavior from motor states of all flagella
@@ -136,20 +137,26 @@ class FlagellaActivity(Process):
             new_motor_state = self.update_flagellum(internal, motor_state, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
+        # TODO -- how many revolutions in a given timestep?
+        # TODO -- each flagella requires its own motors_active
+        rotation_speed = PMF  # TODO -- linear function of PMF
+        proton_count = n_flagella * self.parameters['motors_active'] * self.parameters['protons_per_revolution']
+
         # TODO -- if all CCW corresponds then run.
         # TODO -- force and torque from motor state, linear with PMF
         fraction_CCW = flagella_update.values().count(0) / n_flagella
-
         if fraction_CCW > 0.8:
             force, torque = run()
         else:
             force, torque = tumble()
 
-
+        # TODO -- CheY_P dynamics
         CheY_P = 0.0
+
         # TODO -- should force/torque accumulate over exchange timestep?
         return {
             'flagella': flagella_update,
+            'membrane': {'PROTONS': proton_count},
             'internal': {
                 'motile_force': force,
                 'motile_torque': torque,
@@ -294,7 +301,6 @@ def plot_motor_control(output, out_dir='out'):
     ax1 = plt.subplot(rows, cols, 1)
 
     ## plot all flagella states in grid
-    # make a color map of fixed colors
     cmap = colors.ListedColormap(['white', 'red', 'blue'])
     bounds = [0, 0.5, 1.5, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
