@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import cobra
 
+from lens.environment.make_media import Media
+
 from lens.processes.metabolism import Metabolism
 
 DATA_FILE = os.path.join('lens', 'data', 'json_files', 'e_coli_core.json')
@@ -56,12 +58,13 @@ def EcoliCoreMetabolism(parameters):
             pass
 
     # initial state
+    make_media = Media()
+    ecoli_core_GLC_media = make_media.get_saved_media('ecoli_core_GLC')
     initial_state = {
         'internal': {
             'mass': 1339,  # fg
             'volume': 1E-15},  # fL
-        'external': {
-            state_id: 10.0 for state_id in external_molecules}
+        'external': ecoli_core_GLC_media,
         }
 
     config = {

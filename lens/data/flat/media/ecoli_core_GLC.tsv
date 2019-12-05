@@ -1,0 +1,22 @@
+# media for ecoli_core BiGG model metabolism
+"molecule id"	"concentration (units.mmol / units.L)"
+"ac_e"	0.0
+"acald_e"	0.0
+"akg_e"	0.0
+"co2_e"	100.0
+"etoh_e"	0.0
+"for_e"	0.0
+"fru_e"	0.0
+"fum_e"	0.0
+"glc__D_e"	12.2087
+"gln__L_e"	0.0
+"glu__L_e"	0.0
+"h_e"	Infinity
+"h2o_e"	Infinity
+"lac__D_e"	0.0
+"mal__L_e"	0.0
+"nh4_e"	20.0
+"o2_e"	100.0
+"pi_e"	100.0
+"pyr_e"	0.0
+"succ_e"	0.0

@@ -255,6 +255,15 @@ def initialize_glc_lct_shift(agent_config):
     boot_config.update(agent_config)
     return boot_config
 
+def initialize_ecoli_core_glc(agent_config):
+    timeline_str = '0 ecoli_core_GLC, 3600 end'
+    boot_config = {
+        'timeline_str': timeline_str,
+        'emit_fields': ['glc__D_e']
+    }
+    boot_config.update(agent_config)
+    return boot_config
+
 def initialize_measp(agent_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
@@ -399,6 +408,7 @@ class BootEnvironment(BootAgent):
             'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
             'sugar2': wrap_boot_environment(initialize_glc_lct),
             'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
+            'ecoli_core_glc': wrap_boot_environment(initialize_ecoli_core_glc),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
             'measp_long': wrap_boot_environment(initialize_measp_long),
