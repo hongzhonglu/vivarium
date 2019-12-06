@@ -35,7 +35,7 @@ from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
-from lens.processes.CovertPalsson2002_metabolism import Covert2002Metabolism
+from lens.processes.ecoli_core_metabolism import EcoliCoreMetabolism
 from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
@@ -48,6 +48,7 @@ from lens.processes.membrane_potential import MembranePotential
 from lens.composites.growth_division import compose_growth_division
 from lens.composites.simple_chemotaxis import compose_simple_chemotaxis
 from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
+from lens.composites.iFBA import compose_iFBA
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -417,7 +418,7 @@ class BootEnvironment(BootAgent):
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
-            'metabolism': wrap_boot(wrap_init_basic(Covert2002Metabolism), {'volume': 1.0}),
+            'metabolism': wrap_boot(wrap_init_basic(EcoliCoreMetabolism), {'volume': 1.0}),
             'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
@@ -430,6 +431,7 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
+            'iFBA_ecoli_core': wrap_boot(wrap_init_composite(compose_iFBA), {'volume': 1.0}),
             }
 
 def run():

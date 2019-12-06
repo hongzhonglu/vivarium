@@ -6,6 +6,15 @@ from matplotlib.ticker import FormatStrFormatter
 
 from lens.analysis.analysis import Analysis, get_compartment
 
+
+def set_axes(ax, show_xaxis=False):
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(right=False, top=False)
+    if not show_xaxis:
+        ax.spines['bottom'].set_visible(False)
+        ax.tick_params(bottom=False, labelbottom=False)
+
 class Compartment(Analysis):
     def __init__(self):
         super(Compartment, self).__init__(analysis_type='compartment')
@@ -41,16 +50,16 @@ class Compartment(Analysis):
         time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
 
         # make figure, with grid for subplots
-        n_rows_base = 10
+        n_rows_base = 15
         n_data = [len(data_dict[key].keys()) for key in data_keys]
         n_zeros = len(zero_state)
         n_cols = int(math.ceil(sum(n_data)/float(n_rows_base)))
         n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))  # zero_state ids per additional subplot
 
-        fig = plt.figure(figsize=(n_cols*8, n_rows*2.5))
+        fig = plt.figure(figsize=(n_cols*6, n_rows*2.5))
         fig.suptitle('{}'.format(sim_id), fontsize=12)
         plt.rcParams.update({'font.size': 12})
-        grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.4, hspace=1.5)
+        grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.3, hspace=1.2)
 
         # plot data
         row_idx = 0
@@ -60,13 +69,15 @@ class Compartment(Analysis):
                 ax = fig.add_subplot(grid[row_idx, col_idx])
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)
-                ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-                ax.set_xlabel('time (hrs)')
 
                 row_idx += 1
                 if row_idx > n_rows_base:
+                    set_axes(ax, True)
+                    ax.set_xlabel('time (hrs)')
                     row_idx = 0
                     col_idx += 1
+                else:
+                    set_axes(ax)
 
         # additional data as text
         if zero_state:

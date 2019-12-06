@@ -67,6 +67,10 @@ def EcoliCoreMetabolism(parameters):
         'external': ecoli_core_GLC_media,
         }
 
+    # adjustments
+    for exchange_id, [lb, ub] in exchange_bounds.items():
+        exchange_bounds[exchange_id] = [lb/100, ub/100]
+
     config = {
         'stoichiometry': stoichiometry,
         'external_molecules': external_molecules,
