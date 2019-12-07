@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import numpy as np
 import random
+import math
 import uuid
 
 from lens.actor.process import Process, deep_merge
@@ -113,9 +114,10 @@ class FlagellaActivity(Process):
         tau = self.parameters['tau']
         YP_ss = self.parameters['YP_ss']
         sigma = self.parameters['sigma2_Y']**0.5
-
         K_d = self.parameters['K_d']
         H = self.parameters['H']
+
+
 
         ## update CheY-P
         dYP = -(1 / tau) * (YP - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
@@ -125,11 +127,23 @@ class FlagellaActivity(Process):
         # An ultrasensitive bacterial motor revealed by monitoring signaling proteins in single cells.
         cw_bias = YP ** H / (K_d ** H + YP ** H)
 
+
+
+
+        # Vladimirov 2008 -- todo remove this!
+        mb_0 = 0.65,  # steady state motor bias (Cluzel et al 2000)
+        ccw_motor_bias = mb_0 / (YP * (1 - mb_0) + mb_0)  # (1/s)
+        # ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
+        ccw_bias = cw_bias / (1 / ccw_motor_bias - 1)
+
+
+
+
         ## update flagella
         # determine behavior from motor states of all flagella
         flagella_update = {}
         for flagella_id, motor_state in flagella.items():
-            new_motor_state = self.update_flagellum(motor_state, cw_bias, timestep)
+            new_motor_state = self.update_flagellum(motor_state, cw_bias, ccw_bias, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
         return {
@@ -139,39 +153,32 @@ class FlagellaActivity(Process):
                 'cw_bias': cw_bias,
             }}
 
-    def update_flagellum(self, motor_state, cw_bias, timestep):
+    def update_flagellum(self, motor_state, cw_bias, ccw_bias, timestep):
         '''
-        CheY phosphorylation model from:
-            Kollmann, M., Lovdok, L., Bartholome, K., Timmer, J., & Sourjik, V. (2005).
-            Design principles of a bacterial signalling network. Nature.
-        Motor switching model from:
-            Scharf, B. E., Fahrner, K. A., Turner, L., and Berg, H. C. (1998).
-            Control of direction of flagellar rotation in bacterial chemotaxis. PNAS.
-
-        An increase of attractant inhibits CheA activity (chemoreceptor_activity),
-        but subsequent methylation returns CheA activity to its original level.
-        TODO -- add CheB phosphorylation
+        Rotational state of an individual Flagella from:
+            Sneddon, M. W., Pontius, W., & Emonet, T. (2012).
+            Stochastic coordination of multiple actuators reduces
+            latency and improves chemotactic response in bacteria.
         '''
 
-        ccw_to_cw = self.parameters['ccw_to_cw']
-        cw_to_ccw = self.parameters['cw_to_ccw']
+        # TODO -- normal, semi, curly states from Sneddon
 
-        # import ipdb; ipdb.set_trace()
+        # g_0 = 40
+        # g_1 = 40  # TODO -- add to parameters
+        # K_D = 3.06
+        # omega = self.parameters['omega']  # (s) characteristic motor switch time
 
-        # # CCW corresponds to run. CW corresponds to tumble
-        # ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)  # (1/s)
-        # ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
-        if motor_state == 0:  # 0 for run
-            # switch to tumble?
-            prob_switch = ccw_to_cw * timestep
+        # switch_rate = omega * math.exp(g_0/4 - g_1/2 * ())
+
+        if motor_state == 0:  # 0 for CCW
+            prob_switch = cw_bias * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
             else:
                 new_motor_state = 0
 
-        elif motor_state == 1:  # 1 for tumble
-            # switch to run?
-            prob_switch = cw_to_ccw * timestep
+        elif motor_state == 1:  # 1 for CW
+            prob_switch = ccw_bias * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 0
             else:
@@ -219,8 +226,8 @@ def test_motor_control(total_time=10):
                 # accumulate
                 state['internal'][state_id] += value
 
-                if state['internal'][state_id] < 0:  # TODO -- why does CheY-P go below 0?
-                    state['internal'][state_id] = 0
+                if state['internal'][state_id] < 1e-10:  # TODO -- why does CheY-P go below 0?
+                    state['internal'][state_id] = 1e-10
             else:
                 # set
                 state['internal'][state_id] = value
@@ -312,5 +319,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_motor_control(20)
+    output1 = test_motor_control(25)
     plot_motor_control(output1, out_dir)
