@@ -12,15 +12,19 @@ from lens.actor.process import Process, deep_merge
 DEFAULT_N_FLAGELLA = 3
 DEFAULT_PMF = 180
 DEFAULT_PARAMETERS = {
-    'k_ccw->cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
-    'k_cw->ccw': 1.7,  # (1/s) Motor switching rate from CW->CCW
+    'ccw_to_cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
+    'cw_to_ccw': 1.7,  # (1/s) Motor switching rate from CW->CCW
     'CB': 0.13,  # average CW bias of wild-type motors
-    'YP_ss': 2.59,  # (uM) steady state concentration of CheY-P
     'omega': 0.5,  # (s) characteristic motor switch time
     'lambda': 0.68,  # (1/s) transition rate from semi-coiled to curly-w state
     # 'x': DEFAULT_N_FLAGELLA,  # number of flagella that must be normal for a run to occur
+
+    # CheY-P flucutations
+    'YP_ss': 2.59,  # (uM) steady state concentration of CheY-P
     'sigma2_Y': 1.0,  # (uM^2) variance in CheY-P
     'tau': 0.2,  # (s) characteristic time-scale fluctuations in [CheY-P]
+
+    # CW bias
     'K_d': 3.1,  # (uM) midpoint of CW bias vs CheY-P response curve
     'H': 10.3,  # Hill coefficient for CW bias vs CheY-P response curve
 }
@@ -109,6 +113,7 @@ class FlagellaActivity(Process):
         tau = self.parameters['tau']
         YP_ss = self.parameters['YP_ss']
         sigma = self.parameters['sigma2_Y']**0.5
+
         K_d = self.parameters['K_d']
         H = self.parameters['H']
 
@@ -124,25 +129,55 @@ class FlagellaActivity(Process):
         # determine behavior from motor states of all flagella
         flagella_update = {}
         for flagella_id, motor_state in flagella.items():
-            new_motor_state = motor_state  #self.update_flagellum(internal, motor_state, timestep)
+            new_motor_state = self.update_flagellum(motor_state, cw_bias, timestep)
             flagella_update.update({flagella_id: new_motor_state})
-
 
         return {
             'flagella': flagella_update,
             'internal' : {
                 'CheY_P': dYP,
                 'cw_bias': cw_bias,
-            }
-        }
-        #     'flagella': flagella_update,
-        #     'membrane': {'PROTONS': proton_count},
-        #     'internal': {
-        #         'motile_force': force,
-        #         'motile_torque': torque,
-        #         'CheY_P': CheY_P}
-        # }
+            }}
 
+    def update_flagellum(self, motor_state, cw_bias, timestep):
+        '''
+        CheY phosphorylation model from:
+            Kollmann, M., Lovdok, L., Bartholome, K., Timmer, J., & Sourjik, V. (2005).
+            Design principles of a bacterial signalling network. Nature.
+        Motor switching model from:
+            Scharf, B. E., Fahrner, K. A., Turner, L., and Berg, H. C. (1998).
+            Control of direction of flagellar rotation in bacterial chemotaxis. PNAS.
+
+        An increase of attractant inhibits CheA activity (chemoreceptor_activity),
+        but subsequent methylation returns CheA activity to its original level.
+        TODO -- add CheB phosphorylation
+        '''
+
+        ccw_to_cw = self.parameters['ccw_to_cw']
+        cw_to_ccw = self.parameters['cw_to_ccw']
+
+        # import ipdb; ipdb.set_trace()
+
+        # # CCW corresponds to run. CW corresponds to tumble
+        # ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)  # (1/s)
+        # ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
+        if motor_state == 0:  # 0 for run
+            # switch to tumble?
+            prob_switch = ccw_to_cw * timestep
+            if np.random.random(1)[0] <= prob_switch:
+                new_motor_state = 1
+            else:
+                new_motor_state = 0
+
+        elif motor_state == 1:  # 1 for tumble
+            # switch to run?
+            prob_switch = cw_to_ccw * timestep
+            if np.random.random(1)[0] <= prob_switch:
+                new_motor_state = 0
+            else:
+                new_motor_state = 1
+
+        return new_motor_state
 
 
 
@@ -174,17 +209,20 @@ def test_motor_control(total_time=10):
         time += timestep
 
         update = motor.next_update(timestep, state)
-        # motor_states = update['flagella']
+
+        # flagella state is set
+        state['flagella'] = update['flagella']
 
         # apply updates to internal state
         for state_id, value in update['internal'].items():
             if state_id in accumulate_internal_states:
+                # accumulate
                 state['internal'][state_id] += value
 
                 if state['internal'][state_id] < 0:  # TODO -- why does CheY-P go below 0?
                     state['internal'][state_id] = 0
-
             else:
+                # set
                 state['internal'][state_id] = value
 
         saved_data['time'].append(time)
@@ -211,19 +249,24 @@ def plot_motor_control(output, out_dir='out'):
     # get all flagella states into an activity grid
     flagella_ids = flagella.keys()
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
+    total_CW = np.zeros((len(time_vec)))
     for flagella_id, motor_states in flagella.items():
         flagella_index = flagella_ids.index(flagella_id)
         activity_grid[flagella_index, :] = [x + 1 for x in motor_states]
 
+        total_CW += np.array(motor_states)
+
     # plot results
     cols = 1
-    rows = 4
+    rows = 5
     plt.figure(figsize=(10 * cols, 2 * rows))
 
     # define subplots
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
+    ax3 = plt.subplot(rows, cols, 3)
     ax4 = plt.subplot(rows, cols, 4)
+    ax5 = plt.subplot(rows, cols, 5)
 
     # plot Che-P state
     ax1.plot(time_vec, CheY_P_vec)
@@ -233,8 +276,11 @@ def plot_motor_control(output, out_dir='out'):
     ax2.plot(time_vec, cw_bias_vec)
     ax2.set_ylabel('CW bias')
 
+    # plot cell state
+    ax3.set_ylabel('cell')
+
     # plot flagella states in a grid
-    cmap = colors.ListedColormap(['white', 'red', 'blue'])
+    cmap = colors.ListedColormap(['black', 'white', 'blue'])
     bounds = [0, 0.5, 1.5, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax4.imshow(activity_grid,
@@ -242,13 +288,17 @@ def plot_motor_control(output, out_dir='out'):
                aspect='auto',
                cmap=cmap,
                norm=norm)
-
-    cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
-    cbar.set_ticklabels(['none', 'run', 'tumble'])
+    # cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
+    # cbar.set_ticklabels(['none', 'CCW', 'CW'])
     plt.locator_params(axis='y', nbins=len(flagella_ids))
     ax4.set_yticks(list(range(len(flagella_ids))))
     ax4.set_ylabel('flagella #')
     ax4.set_xlabel('time')
+
+
+    # plot number of flagella CW
+    ax5.plot(time_vec, total_CW)
+    ax5.set_ylabel('number of flagella CW')
 
 
     # save figure
