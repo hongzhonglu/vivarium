@@ -29,6 +29,7 @@ DEFAULT_PARAMETERS = {
 INITIAL_STATE = {
     'CheY': 2.59,
     'CheY_P': 2.59,  # (uM) mean concentration of CheY-P
+    'cw_bias': 0.5,  # (made up)
 }
 
 class FlagellaActivity(Process):
@@ -78,8 +79,9 @@ class FlagellaActivity(Process):
         }
 
         # default updaters
+        internal_set_states = ['cw_bias']
         default_updaters = {
-            'internal': {},
+            'internal': {state_id: 'set' for state_id in internal_set_states},
             'membrane': {'PROTONS': 'accumulate'},
             'flagella': {flagella_id: 'set' for flagella_id in self.flagella_ids},
             'external': {}}
@@ -100,8 +102,6 @@ class FlagellaActivity(Process):
         flagella = states['flagella']
         PMF = states['membrane']['PMF']
 
-
-        ## update CheY-P
         # states
         YP = internal['CheY_P']
 
@@ -109,11 +109,16 @@ class FlagellaActivity(Process):
         tau = self.parameters['tau']
         YP_ss = self.parameters['YP_ss']
         sigma = self.parameters['sigma2_Y']**0.5
+        K_d = self.parameters['K_d']
+        H = self.parameters['H']
 
+        ## update CheY-P
         dYP = -(1 / tau) * (YP - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
 
         ## CW bias
-
+        # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
+        # An ultrasensitive bacterial motor revealed by monitoring signaling proteins in single cells.
+        cw_bias = YP ** H / (K_d ** H + YP ** H)
 
         ## update flagella
         # determine behavior from motor states of all flagella
@@ -127,6 +132,7 @@ class FlagellaActivity(Process):
             'flagella': flagella_update,
             'internal' : {
                 'CheY_P': dYP,
+                'cw_bias': cw_bias,
             }
         }
         #     'flagella': flagella_update,
@@ -158,6 +164,9 @@ def test_motor_control(total_time=10):
         'flagella': {state_id: [value] for state_id, value in state['flagella'].items()},
         'time': [0]}
 
+
+    accumulate_internal_states = ['CheY_P']
+
     # run simulation
     time = 0
     timestep = 0.001  # sec
@@ -165,18 +174,19 @@ def test_motor_control(total_time=10):
         time += timestep
 
         update = motor.next_update(timestep, state)
-        CheY_P = update['internal']['CheY_P']
-        motor_states = update['flagella']
+        # motor_states = update['flagella']
 
-        # apply updates
-        for state_id, delta in update['internal'].items():
-            state['internal'][state_id] += delta
+        # apply updates to internal state
+        for state_id, value in update['internal'].items():
+            if state_id in accumulate_internal_states:
+                state['internal'][state_id] += value
 
-            # import ipdb; ipdb.set_trace()
+                if state['internal'][state_id] < 0:  # TODO -- why does CheY-P go below 0?
+                    state['internal'][state_id] = 0
 
+            else:
+                state['internal'][state_id] = value
 
-        # flagella_vec.append(motor_states)
-        # CheY_P_vec.append(CheY_P)
         saved_data['time'].append(time)
         for role in ['internal', 'flagella',]:
             for state_id, value in state[role].items():
@@ -194,10 +204,11 @@ def plot_motor_control(output, out_dir='out'):
 
     # receptor_activities = output['receptor_activities']
     CheY_P_vec = output['internal']['CheY_P']
+    cw_bias_vec = output['internal']['cw_bias']
     flagella = output['flagella']
     time_vec = output['time']
 
-    # get all flagella states
+    # get all flagella states into an activity grid
     flagella_ids = flagella.keys()
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
     for flagella_id, motor_states in flagella.items():
@@ -211,34 +222,36 @@ def plot_motor_control(output, out_dir='out'):
 
     # define subplots
     ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
     ax4 = plt.subplot(rows, cols, 4)
 
     # plot Che-P state
     ax1.plot(time_vec, CheY_P_vec)
+    ax1.set_ylabel('[CheY-P] (uM)')
 
+    # plot CW bias
+    ax2.plot(time_vec, cw_bias_vec)
+    ax2.set_ylabel('CW bias')
 
-
-    # plot all flagella states in grid
+    # plot flagella states in a grid
     cmap = colors.ListedColormap(['white', 'red', 'blue'])
     bounds = [0, 0.5, 1.5, 2]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-
-    # plot all flagella states in grid
     im = ax4.imshow(activity_grid,
                interpolation='nearest',
                aspect='auto',
                cmap=cmap,
-               norm=norm
-               )
+               norm=norm)
+
     cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
     cbar.set_ticklabels(['none', 'run', 'tumble'])
     plt.locator_params(axis='y', nbins=len(flagella_ids))
-    ax4.set_yticks([])
+    ax4.set_yticks(list(range(len(flagella_ids))))
     ax4.set_ylabel('flagella #')
     ax4.set_xlabel('time')
 
 
-    # save the figure
+    # save figure
     fig_path = os.path.join(out_dir, 'motor_control')
     plt.subplots_adjust(wspace=0.7, hspace=0.5)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
