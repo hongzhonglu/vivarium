@@ -16,7 +16,7 @@ DEFAULT_PARAMETERS = {
     'ccw_to_cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
     'cw_to_ccw': 1.7,  # (1/s) Motor switching rate from CW->CCW
     'CB': 0.13,  # average CW bias of wild-type motors
-    'omega': 0.5,  # (s) characteristic motor switch time
+    'omega': 1.3,  # (1/s) characteristic motor switch time
     'lambda': 0.68,  # (1/s) transition rate from semi-coiled to curly-w state
     # 'x': DEFAULT_N_FLAGELLA,  # number of flagella that must be normal for a run to occur
 
@@ -117,33 +117,19 @@ class FlagellaActivity(Process):
         K_d = self.parameters['K_d']
         H = self.parameters['H']
 
-
-
         ## update CheY-P
         dYP = -(1 / tau) * (YP - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
+        CheY_P = YP + dYP
 
         ## CW bias
         # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
         # An ultrasensitive bacterial motor revealed by monitoring signaling proteins in single cells.
         cw_bias = YP ** H / (K_d ** H + YP ** H)
 
-
-
-
-        # Vladimirov 2008 -- todo remove this!
-        mb_0 = 0.65,  # steady state motor bias (Cluzel et al 2000)
-        ccw_motor_bias = mb_0 / (YP * (1 - mb_0) + mb_0)  # (1/s)
-        # ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
-        ccw_bias = cw_bias / (1 / ccw_motor_bias - 1)
-
-
-
-
         ## update flagella
-        # determine behavior from motor states of all flagella
         flagella_update = {}
         for flagella_id, motor_state in flagella.items():
-            new_motor_state = self.update_flagellum(motor_state, cw_bias, ccw_bias, timestep)
+            new_motor_state = self.update_flagellum(motor_state, cw_bias, YP, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
         return {
@@ -153,32 +139,37 @@ class FlagellaActivity(Process):
                 'cw_bias': cw_bias,
             }}
 
-    def update_flagellum(self, motor_state, cw_bias, ccw_bias, timestep):
+    def update_flagellum(self, motor_state, cw_bias, CheY_P, timestep):
         '''
-        Rotational state of an individual Flagella from:
+        Rotational state of an individual flagellum from:
             Sneddon, M. W., Pontius, W., & Emonet, T. (2012).
             Stochastic coordination of multiple actuators reduces
             latency and improves chemotactic response in bacteria.
-        '''
 
         # TODO -- normal, semi, curly states from Sneddon
+        '''
+        g_0 = 40
+        g_1 = 40  # TODO -- add to parameters
+        K_D = 3.06
+        omega = self.parameters['omega']  # (s) characteristic motor switch time
 
-        # g_0 = 40
-        # g_1 = 40  # TODO -- add to parameters
-        # K_D = 3.06
-        # omega = self.parameters['omega']  # (s) characteristic motor switch time
+        # the free energy barrier
+        delta_g = g_0 / 4 - g_1 / 2 * (CheY_P / (CheY_P + K_D))
 
-        # switch_rate = omega * math.exp(g_0/4 - g_1/2 * ())
+        # switching frequency
+        CW_to_CCW = omega * math.exp(delta_g)  # k+
+        CCW_to_CW = omega * math.exp(-delta_g)  # k-
+        switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
 
         if motor_state == 0:  # 0 for CCW
-            prob_switch = cw_bias * timestep
+            prob_switch = switch_freq * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
             else:
                 new_motor_state = 0
 
         elif motor_state == 1:  # 1 for CW
-            prob_switch = ccw_bias * timestep
+            prob_switch = switch_freq * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 0
             else:
