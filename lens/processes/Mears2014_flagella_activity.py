@@ -35,6 +35,7 @@ INITIAL_STATE = {
     'CheY': 2.59,
     'CheY_P': 2.59,  # (uM) mean concentration of CheY-P
     'cw_bias': 0.5,  # (made up)
+    'motile_state': 0, # 1 for tumble, 0 for run
 }
 
 class FlagellaActivity(Process):
@@ -53,7 +54,8 @@ class FlagellaActivity(Process):
                 'chemoreceptor_activity',
                 'CheY',
                 'CheY_P',
-                'cw_bias'
+                'cw_bias',
+                'motile_state',
             ],
             'membrane': ['PMF', 'protons_flux_accumulated'],
             'flagella': self.flagella_ids,
@@ -84,7 +86,7 @@ class FlagellaActivity(Process):
         }
 
         # default updaters
-        internal_set_states = ['cw_bias']
+        internal_set_states = ['cw_bias', 'motile_state']
         default_updaters = {
             'internal': {state_id: 'set' for state_id in internal_set_states},
             'membrane': {'PROTONS': 'accumulate'},
@@ -123,7 +125,6 @@ class FlagellaActivity(Process):
 
         ## CW bias
         # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
-        # An ultrasensitive bacterial motor revealed by monitoring signaling proteins in single cells.
         cw_bias = YP ** H / (K_d ** H + YP ** H)
 
         ## update flagella
@@ -132,11 +133,21 @@ class FlagellaActivity(Process):
             new_motor_state = self.update_flagellum(motor_state, cw_bias, YP, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
+        ## get cell motile state.
+        # if any flagella is rotating CW, the cell tumbles.
+        if any(flagella_update.values()) == 1:
+            motile_state = 1  # 1 for tumble
+        else:
+            motile_state = 0  # 0 for run
+
+        # TODO -- add motile forces as a function of motile state, number of motors, and PMF
+
         return {
             'flagella': flagella_update,
             'internal' : {
                 'CheY_P': dYP,
                 'cw_bias': cw_bias,
+                'motile_state': motile_state,
             }}
 
     def update_flagellum(self, motor_state, cw_bias, CheY_P, timestep):
@@ -241,6 +252,7 @@ def plot_motor_control(output, out_dir='out'):
     # receptor_activities = output['receptor_activities']
     CheY_P_vec = output['internal']['CheY_P']
     cw_bias_vec = output['internal']['cw_bias']
+    motile_state_vec = output['internal']['motile_state']
     flagella = output['flagella']
     time_vec = output['time']
 
@@ -251,8 +263,20 @@ def plot_motor_control(output, out_dir='out'):
     for flagella_id, motor_states in flagella.items():
         flagella_index = flagella_ids.index(flagella_id)
         activity_grid[flagella_index, :] = [x + 1 for x in motor_states]
-
         total_CW += np.array(motor_states)
+
+    # grid for cell state
+    cell_grid = np.zeros((1, len(time_vec)))
+    cell_grid[0, :] = motile_state_vec
+
+    # set up colormaps
+    cmap1 = colors.ListedColormap(['white', 'black'])
+    bounds1 = [0, 0.5, 1]
+    norm1 = colors.BoundaryNorm(bounds1, cmap1.N)
+
+    cmap2 = colors.ListedColormap(['black', 'white', 'blue'])
+    bounds2 = [0, 0.5, 1.5, 2]
+    norm2 = colors.BoundaryNorm(bounds2, cmap2.N)
 
     # plot results
     cols = 1
@@ -275,17 +299,21 @@ def plot_motor_control(output, out_dir='out'):
     ax2.set_ylabel('CW bias')
 
     # plot cell state
-    ax3.set_ylabel('cell')
+    # ax3.plot(time_vec, motile_state_vec)
+    ax3.imshow(cell_grid,
+               interpolation='nearest',
+               aspect='auto',
+               cmap=cmap1,
+               norm=norm1)
+    ax3.set_yticks([])
+    ax3.set_ylabel('cell motile state')
 
     # plot flagella states in a grid
-    cmap = colors.ListedColormap(['black', 'white', 'blue'])
-    bounds = [0, 0.5, 1.5, 2]
-    norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax4.imshow(activity_grid,
                interpolation='nearest',
                aspect='auto',
-               cmap=cmap,
-               norm=norm)
+               cmap=cmap2,
+               norm=norm2)
     # cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
     # cbar.set_ticklabels(['none', 'CCW', 'CW'])
     plt.locator_params(axis='y', nbins=len(flagella_ids))
