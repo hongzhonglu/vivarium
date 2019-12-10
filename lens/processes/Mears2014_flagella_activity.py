@@ -9,8 +9,8 @@ import uuid
 from lens.actor.process import Process, deep_merge
 
 
-DEFAULT_N_FLAGELLA = 3
-DEFAULT_PMF = 180
+DEFAULT_N_FLAGELLA = 5
+DEFAULT_PMF = 180  # PMF ranges 180-200 mV (Berg)
 DEFAULT_PARAMETERS = {
     # parameters from Mears, Koirala, Rao, Golding, Chemla (2014)
     'ccw_to_cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
@@ -35,13 +35,29 @@ DEFAULT_PARAMETERS = {
     'K_D': 3.06,  # binding constant of Chey-P to base of the motor
 }
 
-##initial state
+# initial state
 INITIAL_STATE = {
     'CheY': 2.59,
     'CheY_P': 2.59,  # (uM) mean concentration of CheY-P
     'cw_bias': 0.5,  # (made up)
     'motile_state': 0, # 1 for tumble, 0 for run
+    'motile_force': 0,
+    'motile_torque': 0,
 }
+
+
+
+def tumble():
+    tumble_jitter = 0.4  # TODO -- put in parameters
+    force = 1.0
+    torque = random.normalvariate(0, tumble_jitter)
+    return [force, torque]
+
+
+def run():
+    force = 2.1
+    torque = 0.0
+    return [force, torque]
 
 class FlagellaActivity(Process):
     '''
@@ -61,6 +77,8 @@ class FlagellaActivity(Process):
                 'CheY_P',
                 'cw_bias',
                 'motile_state',
+                'motile_force',
+                'motile_torque',
             ],
             'membrane': ['PMF', 'protons_flux_accumulated'],
             'flagella': self.flagella_ids,
@@ -75,7 +93,6 @@ class FlagellaActivity(Process):
 
         # default state
         # flagella motor state: 0 for CCW, 1 for CW
-        # PMF ranges 180-200 mV (Berg)
         internal = INITIAL_STATE
         default_state = {
             'external': {},
@@ -91,7 +108,13 @@ class FlagellaActivity(Process):
         }
 
         # default updaters
-        internal_set_states = ['cw_bias', 'motile_state']
+        internal_set_states = [
+            'cw_bias',
+            'motile_state',
+            'CheY_P',
+            'motile_force',
+            'motile_torque']
+
         default_updaters = {
             'internal': {state_id: 'set' for state_id in internal_set_states},
             'membrane': {'PROTONS': 'accumulate'},
@@ -126,11 +149,11 @@ class FlagellaActivity(Process):
 
         ## update CheY-P
         dYP = -(1 / tau) * (YP - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
-        CheY_P = YP + dYP
+        CheY_P = max(YP + dYP, 0.0)  # keep value positive
 
         ## CW bias
         # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
-        cw_bias = YP**H / (K_d**H + YP**H)
+        cw_bias = CheY_P**H / (K_d**H + CheY_P**H)
 
         ## update flagella
         flagella_update = {}
@@ -142,17 +165,21 @@ class FlagellaActivity(Process):
         # if any flagella is rotating CW, the cell tumbles.
         if any(flagella_update.values()) == 1:
             motile_state = 1  # 1 for tumble
+            [force, torque] = tumble()
         else:
             motile_state = 0  # 0 for run
+            [force, torque] = run()
 
         # TODO -- add motile forces as a function of motile state, number of motors, and PMF
 
         return {
             'flagella': flagella_update,
             'internal' : {
-                'CheY_P': dYP,
+                'CheY_P': CheY_P,
                 'cw_bias': cw_bias,
                 'motile_state': motile_state,
+                'motile_force': force,
+                'motile_torque': torque,
             }}
 
     def update_flagellum(self, motor_state, cw_bias, CheY_P, timestep):
@@ -175,10 +202,9 @@ class FlagellaActivity(Process):
         # switching frequency
         CW_to_CCW = omega * math.exp(delta_g)
         CCW_to_CW = omega * math.exp(-delta_g)
-        switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
+        # switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
 
         if motor_state == 0:  # 0 for CCW
-            # prob_switch = switch_freq * timestep
             prob_switch = CCW_to_CW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
@@ -186,7 +212,6 @@ class FlagellaActivity(Process):
                 new_motor_state = 0
 
         elif motor_state == 1:  # 1 for CW
-            # prob_switch = switch_freq * timestep
             prob_switch = CW_to_CCW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 0
@@ -198,7 +223,7 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_motor_control(total_time=10):
+def test_activity(total_time=10):
     # TODO -- add asserts for test
 
     initial_params = {}
@@ -215,9 +240,6 @@ def test_motor_control(total_time=10):
         'flagella': {state_id: [value] for state_id, value in state['flagella'].items()},
         'time': [0]}
 
-
-    accumulate_internal_states = ['CheY_P']
-
     # run simulation
     time = 0
     timestep = 0.001  # sec
@@ -226,20 +248,9 @@ def test_motor_control(total_time=10):
 
         update = motor.next_update(timestep, state)
 
-        # flagella state is set
-        state['flagella'] = update['flagella']
-
-        # apply updates to internal state
-        for state_id, value in update['internal'].items():
-            if state_id in accumulate_internal_states:
-                # accumulate
-                state['internal'][state_id] += value
-
-                if state['internal'][state_id] < 1e-10:  # TODO -- why does CheY-P go below 0?
-                    state['internal'][state_id] = 1e-10
-            else:
-                # set
-                state['internal'][state_id] = value
+        # state is set
+        state['flagella'].update(update['flagella'])
+        state['internal'].update(update['internal'])
 
         saved_data['time'].append(time)
         for role in ['internal', 'flagella',]:
@@ -248,7 +259,32 @@ def test_motor_control(total_time=10):
 
     return saved_data
 
-def plot_motor_control(output, out_dir='out'):
+def test_motor_PMF():
+    from numpy import linspace
+
+    motor = FlagellaActivity()
+    settings = motor.default_settings()
+    state = settings['state']
+
+    timestep = 1
+    PMF_values = linspace(0.0, 1.0, 501).tolist()
+
+
+    motor_state_vec = []
+    for PMF in PMF_values:
+        state['membrane']['PMF'] = PMF
+        update = motor.next_update(timestep, state)
+
+        motile_state = update['internal']['motile_state']
+        motile_force = update['internal']['motile_force']
+        motile_torque = update['internal']['motile_torque']
+        motor_state_vec.append(motile_state)
+
+    return {
+        'motile_state': motor_state_vec
+    }
+
+def plot_activity(output, out_dir='out'):
     # TODO -- make this into an analysis figure
     import os
     import matplotlib
@@ -343,11 +379,36 @@ def plot_motor_control(output, out_dir='out'):
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
+def plot_motor_PMF(output, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
+    motile_state = output['motile_state']
+
+    # plot results
+    cols = 1
+    rows = 1
+    plt.figure(figsize=(10 * cols, 2 * rows))
+
+    # define subplots
+    ax1 = plt.subplot(rows, cols, 1)
+
+    # plot motile_state
+    ax1.plot(motile_state)
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'motor_PMF')
+    plt.subplots_adjust(wspace=0.7, hspace=0.3)
+    plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_motor_control(12)
-    plot_motor_control(output1, out_dir)
+    output1 = test_activity(12)
+    plot_activity(output1, out_dir)
+
+    output2 = test_motor_PMF()
+    plot_motor_PMF(output2, out_dir)
