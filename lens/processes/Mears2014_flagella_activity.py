@@ -10,7 +10,8 @@ from lens.actor.process import Process, deep_merge
 
 
 DEFAULT_N_FLAGELLA = 5
-DEFAULT_PMF = 180  # PMF ranges 180-200 mV (Berg)
+DEFAULT_PMF = 170  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg)
+
 DEFAULT_PARAMETERS = {
     # parameters from Mears, Koirala, Rao, Golding, Chemla (2014)
     'ccw_to_cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
@@ -47,15 +48,14 @@ INITIAL_STATE = {
 
 
 
-def tumble():
-    tumble_jitter = 0.4  # TODO -- put in parameters
-    force = 1.0
+def tumble(PMF):
+    tumble_jitter = 0.4
+    force = 0.006 * PMF  # 1.0
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
-
-def run():
-    force = 2.1
+def run(PMF):
+    force = 0.0124 * PMF  # 2.1
     torque = 0.0
     return [force, torque]
 
@@ -109,9 +109,10 @@ class FlagellaActivity(Process):
 
         # default updaters
         internal_set_states = [
+            'CheY',
+            'CheY_P',
             'cw_bias',
             'motile_state',
-            'CheY_P',
             'motile_force',
             'motile_torque']
 
@@ -138,7 +139,9 @@ class FlagellaActivity(Process):
         PMF = states['membrane']['PMF']
 
         # states
-        YP = internal['CheY_P']
+        # TODO -- chemoreceptor?
+        CheY = internal['CheY']
+        CheY_P = internal['CheY_P']
 
         # parameters
         tau = self.parameters['tau']
@@ -148,33 +151,34 @@ class FlagellaActivity(Process):
         H = self.parameters['H']
 
         ## update CheY-P
-        dYP = -(1 / tau) * (YP - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
-        CheY_P = max(YP + dYP, 0.0)  # keep value positive
+        # Mears et al. eqn S6
+        dYP = -(1 / tau) * (CheY_P - YP_ss) * timestep + sigma * (2 * timestep / tau)**0.5 * random.normalvariate(0, 1)
+        CheY_P = max(CheY_P + dYP, 0.0)  # keep value positive
+        CheY = max(CheY - dYP, 0.0)  # keep value positive
 
-        ## CW bias
-        # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
+        ## CW bias, Hill function
+        # Cluzel, P., Surette, M., & Leibler, S. (2000).
         cw_bias = CheY_P**H / (K_d**H + CheY_P**H)
 
-        ## update flagella
+        ## update all flagella
         flagella_update = {}
         for flagella_id, motor_state in flagella.items():
-            new_motor_state = self.update_flagellum(motor_state, cw_bias, YP, timestep)
+            new_motor_state = self.update_flagellum(motor_state, cw_bias, CheY_P, timestep)
             flagella_update.update({flagella_id: new_motor_state})
 
         ## get cell motile state.
         # if any flagella is rotating CW, the cell tumbles.
         if any(flagella_update.values()) == 1:
             motile_state = 1  # 1 for tumble
-            [force, torque] = tumble()
+            [force, torque] = tumble(PMF)  # TODO -- add # of motors
         else:
             motile_state = 0  # 0 for run
-            [force, torque] = run()
-
-        # TODO -- add motile forces as a function of motile state, number of motors, and PMF
+            [force, torque] = run(PMF)
 
         return {
             'flagella': flagella_update,
             'internal' : {
+                'CheY': CheY,
                 'CheY_P': CheY_P,
                 'cw_bias': cw_bias,
                 'motile_state': motile_state,
@@ -262,15 +266,18 @@ def test_activity(total_time=10):
 def test_motor_PMF():
     from numpy import linspace
 
+    # range of PMF value for test
+    PMF_values = linspace(50.0, 200.0, 501).tolist()
+    timestep = 1
+
+    # initialize process and state
     motor = FlagellaActivity()
     settings = motor.default_settings()
     state = settings['state']
 
-    timestep = 1
-    PMF_values = linspace(0.0, 1.0, 501).tolist()
-
-
     motor_state_vec = []
+    motor_force_vec = []
+    motor_torque_vec = []
     for PMF in PMF_values:
         state['membrane']['PMF'] = PMF
         update = motor.next_update(timestep, state)
@@ -278,10 +285,17 @@ def test_motor_PMF():
         motile_state = update['internal']['motile_state']
         motile_force = update['internal']['motile_force']
         motile_torque = update['internal']['motile_torque']
+
+        # save
         motor_state_vec.append(motile_state)
+        motor_force_vec.append(motile_force)
+        motor_torque_vec.append(motile_torque)
 
     return {
-        'motile_state': motor_state_vec
+        'motile_state': motor_state_vec,
+        'motile_force': motor_force_vec,
+        'motile_torque': motor_torque_vec,
+        'PMF': PMF_values,
     }
 
 def plot_activity(output, out_dir='out'):
@@ -293,6 +307,7 @@ def plot_activity(output, out_dir='out'):
     from matplotlib import colors
 
     # receptor_activities = output['receptor_activities']
+    CheY_vec = output['internal']['CheY']
     CheY_P_vec = output['internal']['CheY_P']
     cw_bias_vec = output['internal']['cw_bias']
     motile_state_vec = output['internal']['motile_state']
@@ -334,9 +349,11 @@ def plot_activity(output, out_dir='out'):
     ax5 = plt.subplot(rows, cols, 5)
 
     # plot Che-P state
-    ax1.plot(time_vec, CheY_P_vec)
+    ax1.plot(time_vec, CheY_vec, label='CheY')
+    ax1.plot(time_vec, CheY_P_vec, label='CheY_P')
+    ax1.legend()
     ax1.set_xticks([])
-    ax1.set_ylabel('[CheY-P] (uM)')
+    ax1.set_ylabel('concentration (uM)')
 
     # plot CW bias
     ax2.plot(time_vec, cw_bias_vec)
@@ -367,12 +384,10 @@ def plot_activity(output, out_dir='out'):
     ax4.set_xticks([])
     ax4.set_ylabel('flagella #')
 
-
     # plot number of flagella CW
     ax5.plot(time_vec, total_CW)
     ax5.set_xlabel('time (sec)')
     ax5.set_ylabel('number of flagella CW')
-
 
     # save figure
     fig_path = os.path.join(out_dir, 'motor_control')
@@ -385,6 +400,9 @@ def plot_motor_PMF(output, out_dir='out'):
     import matplotlib.pyplot as plt
 
     motile_state = output['motile_state']
+    motile_force = output['motile_force']
+    motile_torque = output['motile_torque']
+    PMF = output['PMF']
 
     # plot results
     cols = 1
@@ -395,12 +413,15 @@ def plot_motor_PMF(output, out_dir='out'):
     ax1 = plt.subplot(rows, cols, 1)
 
     # plot motile_state
-    ax1.plot(motile_state)
+    ax1.plot(PMF, motile_force)
+    ax1.set_xlabel('PMF (mV)')
+    ax1.set_ylabel('force')
 
     # save figure
     fig_path = os.path.join(out_dir, 'motor_PMF')
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
+
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')

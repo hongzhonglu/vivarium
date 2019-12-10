@@ -7,6 +7,9 @@ import scipy.constants as constants
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 
+# PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)
+# Ecoli internal pH in range 7.6-7.8 (Berg)
+
 # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
 # Schultz, Stanley G., and A. K. Solomon. "Cation Transport in Escherichia coli" (1961)
 # TODO -- add Mg2+, Ca2+
