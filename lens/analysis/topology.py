@@ -12,7 +12,7 @@ class Topology(Analysis):
         return
 
     def analyze(self, experiment_config, history_data, output_dir):
-        topology = experiment_config['topology']
+        topology = experiment_config.get('topology')
 
         # save topology
         json_out = json.dumps(topology)

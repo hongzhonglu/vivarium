@@ -9,16 +9,14 @@ import uuid
 from lens.actor.process import Process, deep_merge
 
 
-# parameters, from Mears et al.
 DEFAULT_N_FLAGELLA = 3
 DEFAULT_PMF = 180
 DEFAULT_PARAMETERS = {
+    # parameters from Mears, Koirala, Rao, Golding, Chemla (2014)
     'ccw_to_cw': 0.26,  # (1/s) Motor switching rate from CCW->CW
     'cw_to_ccw': 1.7,  # (1/s) Motor switching rate from CW->CCW
     'CB': 0.13,  # average CW bias of wild-type motors
-    'omega': 1.3,  # (1/s) characteristic motor switch time
     'lambda': 0.68,  # (1/s) transition rate from semi-coiled to curly-w state
-    # 'x': DEFAULT_N_FLAGELLA,  # number of flagella that must be normal for a run to occur
 
     # CheY-P flucutations
     'YP_ss': 2.59,  # (uM) steady state concentration of CheY-P
@@ -28,6 +26,13 @@ DEFAULT_PARAMETERS = {
     # CW bias
     'K_d': 3.1,  # (uM) midpoint of CW bias vs CheY-P response curve
     'H': 10.3,  # Hill coefficient for CW bias vs CheY-P response curve
+
+    # rotational state of individual flagella
+    # parameters from Sneddon, Pontius, and Emonet (2012)
+    'omega': 1.3,  # (1/s) characteristic motor switch time
+    'g_0': 40,  # (k_B/T) free energy barrier for CCW-->CW
+    'g_1': 40,  # (k_B/T) free energy barrier for CW-->CCW
+    'K_D': 3.06,  # binding constant of Chey-P to base of the motor
 }
 
 ##initial state
@@ -125,7 +130,7 @@ class FlagellaActivity(Process):
 
         ## CW bias
         # Hill function from Cluzel, P., Surette, M., & Leibler, S. (2000).
-        cw_bias = YP ** H / (K_d ** H + YP ** H)
+        cw_bias = YP**H / (K_d**H + YP**H)
 
         ## update flagella
         flagella_update = {}
@@ -159,28 +164,30 @@ class FlagellaActivity(Process):
 
         # TODO -- normal, semi, curly states from Sneddon
         '''
-        g_0 = 40
-        g_1 = 40  # TODO -- add to parameters
-        K_D = 3.06
-        omega = self.parameters['omega']  # (s) characteristic motor switch time
+        g_0 = self.parameters['g_0']  # (k_B/T) free energy barrier for CCW-->CW
+        g_1 = self.parameters['g_1']  # (k_B/T) free energy barrier for CW-->CCW
+        K_D = self.parameters['K_D']  # binding constant of Chey-P to base of the motor
+        omega = self.parameters['omega']  # (1/s) characteristic motor switch time
 
-        # the free energy barrier
+        # free energy barrier
         delta_g = g_0 / 4 - g_1 / 2 * (CheY_P / (CheY_P + K_D))
 
         # switching frequency
-        CW_to_CCW = omega * math.exp(delta_g)  # k+
-        CCW_to_CW = omega * math.exp(-delta_g)  # k-
+        CW_to_CCW = omega * math.exp(delta_g)
+        CCW_to_CW = omega * math.exp(-delta_g)
         switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
 
         if motor_state == 0:  # 0 for CCW
-            prob_switch = switch_freq * timestep
+            # prob_switch = switch_freq * timestep
+            prob_switch = CCW_to_CW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
             else:
                 new_motor_state = 0
 
         elif motor_state == 1:  # 1 for CW
-            prob_switch = switch_freq * timestep
+            # prob_switch = switch_freq * timestep
+            prob_switch = CW_to_CCW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 0
             else:
@@ -292,44 +299,48 @@ def plot_motor_control(output, out_dir='out'):
 
     # plot Che-P state
     ax1.plot(time_vec, CheY_P_vec)
+    ax1.set_xticks([])
     ax1.set_ylabel('[CheY-P] (uM)')
 
     # plot CW bias
     ax2.plot(time_vec, cw_bias_vec)
+    ax2.set_xticks([])
     ax2.set_ylabel('CW bias')
 
     # plot cell state
-    # ax3.plot(time_vec, motile_state_vec)
-    ax3.imshow(cell_grid,
+    im1 = ax3.imshow(cell_grid,
                interpolation='nearest',
                aspect='auto',
                cmap=cmap1,
                norm=norm1)
+    # cbar = plt.colorbar(im1, cmap=cmap1, norm=norm1, boundaries=bounds1, ticks=[0,1])
     ax3.set_yticks([])
+    ax3.set_xticks([])
     ax3.set_ylabel('cell motile state')
 
     # plot flagella states in a grid
-    im = ax4.imshow(activity_grid,
+    im2 = ax4.imshow(activity_grid,
                interpolation='nearest',
                aspect='auto',
                cmap=cmap2,
                norm=norm2)
-    # cbar = plt.colorbar(im, cmap=cmap, norm=norm, boundaries=bounds, ticks=[0,1,2])
+    # cbar = plt.colorbar(im2, cmap=cmap2, norm=norm2, boundaries=bounds2, ticks=[0,1,2])
     # cbar.set_ticklabels(['none', 'CCW', 'CW'])
     plt.locator_params(axis='y', nbins=len(flagella_ids))
     ax4.set_yticks(list(range(len(flagella_ids))))
+    ax4.set_xticks([])
     ax4.set_ylabel('flagella #')
-    ax4.set_xlabel('time')
 
 
     # plot number of flagella CW
     ax5.plot(time_vec, total_CW)
+    ax5.set_xlabel('time (sec)')
     ax5.set_ylabel('number of flagella CW')
 
 
     # save figure
     fig_path = os.path.join(out_dir, 'motor_control')
-    plt.subplots_adjust(wspace=0.7, hspace=0.5)
+    plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
@@ -338,5 +349,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_motor_control(25)
+    output1 = test_motor_control(12)
     plot_motor_control(output1, out_dir)
