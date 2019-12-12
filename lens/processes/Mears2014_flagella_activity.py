@@ -64,7 +64,15 @@ class FlagellaActivity(Process):
     Model of multi-flagellar motor activity and CheY-P fluctuations from:
         Mears, P. J., Koirala, S., Rao, C. V., Golding, I., & Chemla, Y. R. (2014).
         Escherichia coli swimming is robust against variations in flagellar number.
+
+    TODO:
+        - Complete PMF control over motor thrust.
+        - Mears et al. has flagella with 3 conformational states for flagella (normal (CCW), semi (CW), curly (CW)).
+        - Flagella states should be nested dictionaries with multiple states (rotational state, # of motors engaged).
+        - If flagella counts are modified outside of this process, there needs to be a function that detects it and adjusts the flagella states.
+        - Flagella will need to be separated upon division, rather than having each daughter inherit all the flagella.
     '''
+
     def __init__(self, initial_parameters={}):
 
         self.n_flagella = initial_parameters.get('n_flagella', DEFAULT_N_FLAGELLA)
