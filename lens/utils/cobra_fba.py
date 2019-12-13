@@ -63,25 +63,104 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
     return model
 
+def extract_model(model):
+    reactions = model.reactions
+    metabolites = model.metabolites
+    boundary = model.boundary
+    objective_expression = model.objective.expression.args
+
+    # get stoichiometry
+    stoichiometry = {}
+    flux_bounds = {}
+    for reaction in reactions:
+        reaction_metabolites = reaction.metabolites
+        stoichiometry[reaction.id] = {
+            metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
+        # get flux bounds
+        flux_bounds[reaction.id] = list(reaction.bounds)
+
+    # get external molecules
+    external_molecules = []
+    external_state = {}
+    exchange_bounds = {}
+    for reaction in boundary:
+        reaction_metabolites = reaction.metabolites.keys()
+        assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
+        metabolite_id = reaction_metabolites[0].id
+        external_molecules.append(metabolite_id)
+        external_state[metabolite_id] = 0.0
+
+        # get exchange bounds
+        exchange_bounds[metabolite_id] = list(reaction.bounds)
+
+    # get molecular weights
+    molecular_weights = {}
+    for metabolite in metabolites:
+        molecular_weights[metabolite.id] = metabolite.formula_weight
+
+    # get objective
+    objective = {}
+    for expression in objective_expression:
+        exp_str = str(expression)
+        coeff, reaction_id = exp_str.split('*')
+        try:
+            reactions.get_by_id(reaction_id)
+            objective[reaction_id] = float(coeff)
+        except:
+            pass
+
+    # initial state
+    initial_state = {
+        'internal': {
+            'mass': 1339,  # fg
+            'volume': 1E-15},  # fL
+        'external': external_state}
+
+    # adjustments
+    for exchange_id, [lb, ub] in exchange_bounds.items():
+        exchange_bounds[exchange_id] = [lb/100, ub/100]
+
+    config = {
+        'stoichiometry': stoichiometry,
+        'external_molecules': external_molecules,
+        'objective': objective,
+        'initial_state': initial_state,
+        'exchange_bounds': exchange_bounds,
+        'flux_bounds': flux_bounds,
+        'molecular_weights': molecular_weights}
+
+    return config
+    
+
 class CobraFBA(object):
     cobra_configuration = Configuration()
 
     def __init__(self, config={}):
-        self.stoichiometry = config['stoichiometry']
-        self.reversible = config.get('reversible', [])
-        self.external_molecules = config['external_molecules']
-        self.objective = config['objective']
-        flux_bounds = config.get('flux_bounds', {})
-        default_upper_bound = config.get('default_upper_bound', 1000.0)
+        if config.get('model_path'):
+            self.model = cobra.io.load_json_model(model_path)
+            extract = extract_model(self.model)
 
-        self.model = build_model(
-            self.stoichiometry,
-            self.reversible,
-            self.objective,
-            self.external_molecules,
-            default_upper_bound)
+            self.stoichiometry = extract['stoichiometry']
+            self.reversible = extract.get('reversible', [])
+            self.external_molecules = extract['external_molecules']
+            self.objective = extract['objective']
+        else:
+            self.stoichiometry = config['stoichiometry']
+            self.reversible = config.get('reversible', [])
+            self.external_molecules = config['external_molecules']
+            self.objective = config['objective']
 
-        self.constrain_reaction_bounds(flux_bounds)
+            flux_bounds = config.get('flux_bounds', {})
+            default_upper_bound = config.get('default_upper_bound', 1000.0)
+
+            self.model = build_model(
+                self.stoichiometry,
+                self.reversible,
+                self.objective,
+                self.external_molecules,
+                default_upper_bound)
+
+            self.constrain_reaction_bounds(flux_bounds)
 
         self.solution = None
 
