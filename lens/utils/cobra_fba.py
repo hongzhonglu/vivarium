@@ -136,7 +136,8 @@ class CobraFBA(object):
     cobra_configuration = Configuration()
 
     def __init__(self, config={}):
-        if config.get('model_path'):
+        model_path = config.get('model_path')
+        if model_path:
             self.model = cobra.io.load_json_model(model_path)
             extract = extract_model(self.model)
 

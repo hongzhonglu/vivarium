@@ -7,7 +7,8 @@ from lens.environment.make_media import Media
 
 from lens.processes.metabolism import Metabolism
 
-DATA_FILE = os.path.join('lens', 'data', 'json_files', 'e_coli_core.json')
+DATA_FILE = os.path.join('models', 'e_coli_core.json')
+# DATA_FILE = os.path.join('lens', 'data', 'json_files', 'e_coli_core.json')
 
 
 def EcoliCoreMetabolism(parameters):
@@ -82,7 +83,7 @@ def EcoliCoreMetabolism(parameters):
     #     'molecular_weights': molecular_weights,
     #     }
 
-	config = {'model_path': parameters.get('model_path', DATA_FILE)}
+    config = {'model_path': parameters.get('model_path', DATA_FILE)}
 
     return Metabolism(config)
 
