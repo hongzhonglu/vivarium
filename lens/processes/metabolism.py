@@ -24,35 +24,13 @@ class Metabolism(Process):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
 
-        # get FBA configuration
-        # self.stoichiometry = initial_parameters['stoichiometry']
-        # self.reversible = initial_parameters.get('reversible', [])
-        # self.objective = initial_parameters['objective']
-        # self.external_molecules = initial_parameters['external_molecules']
-        # self.flux_bounds = initial_parameters.get('flux_bounds', {})
-        # self.exchange_bounds = initial_parameters.get('exchange_bounds', {})
-        # self.molecular_weights = initial_parameters.get('molecular_weights', {})
-
+        # initialize fba
         self.fba = CobraFBA(initial_parameters)
         self.reaction_ids = self.fba.stoichiometry.keys()
 
         # additional options
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
-
-        # # initialize fba
-        # self.fba = CobraFBA(dict(
-        #     stoichiometry=self.stoichiometry,
-        #     reversible=self.fba.reversible,
-        #     external_molecules=self.external_molecules,
-        #     objective=self.objective,
-        #     flux_bounds=self.fba.flux_bounds,
-        #     initial_state=self.initial_state,
-        #     default_upper_bound=self.default_upper_bound))
-
-        # print(self.fba.get_reaction_bounds())
-
-        # set bounds on exchange fluxes
 
         # get molecules in objective
         self.objective_molecules = []
