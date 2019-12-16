@@ -125,8 +125,8 @@ def extract_model(model):
         'external_molecules': external_molecules,
         'objective': objective,
         'initial_state': initial_state,
-        'exchange_bounds': exchange_bounds,
         'flux_bounds': flux_bounds,
+        'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights}
 
     return config
@@ -144,13 +144,18 @@ class CobraFBA(object):
             self.reversible = extract.get('reversible', [])
             self.external_molecules = extract['external_molecules']
             self.objective = extract['objective']
+            self.flux_bounds = extract['flux_bounds']
+            self.exchange_bounds = extract['exchange_bounds']
+            self.molecular_weights = extract['molecular_weights']
         else:
             self.stoichiometry = config['stoichiometry']
             self.reversible = config.get('reversible', [])
             self.external_molecules = config['external_molecules']
             self.objective = config['objective']
+            self.flux_bounds = config.get('flux_bounds', {})
+            self.exchange_bounds = config.get('exchange_bounds', {})
+            self.molecular_weights = config.get('molecular_weights', {})
 
-            flux_bounds = config.get('flux_bounds', {})
             default_upper_bound = config.get('default_upper_bound', 1000.0)
 
             self.model = build_model(
@@ -160,7 +165,8 @@ class CobraFBA(object):
                 self.external_molecules,
                 default_upper_bound)
 
-            self.constrain_reaction_bounds(flux_bounds)
+            self.constrain_reaction_bounds(self.flux_bounds)
+            self.constrain_exchange_flux(self.exchange_bounds)
 
         self.solution = None
 
@@ -294,9 +300,7 @@ def test_fba():
         'stoichiometry': stoichiometry,
         'reversible': stoichiometry.keys(),
         'objective': objective,
-        'external_molecules': external_molecules,
-        'initial_state': initial_state,
-    })
+        'external_molecules': external_molecules})
 
     fba.constrain_exchange_flux(initial_state['external'])
 

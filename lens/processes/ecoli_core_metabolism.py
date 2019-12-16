@@ -11,76 +11,78 @@ DATA_FILE = os.path.join('lens', 'data', 'json_files', 'e_coli_core.json')
 
 
 def EcoliCoreMetabolism(parameters):
-    '''load in flux_targets and target_key through parameters'''
-    model = cobra.io.load_json_model(DATA_FILE)
+    # '''load in flux_targets and target_key through parameters'''
+    # model = cobra.io.load_json_model(DATA_FILE)
 
-    reactions = model.reactions
-    metabolites = model.metabolites
-    boundary = model.boundary
-    objective_expression = model.objective.expression.args
+    # reactions = model.reactions
+    # metabolites = model.metabolites
+    # boundary = model.boundary
+    # objective_expression = model.objective.expression.args
 
-    # get stoichiometry
-    stoichiometry = {}
-    flux_bounds = {}
-    for reaction in reactions:
-        reaction_metabolites = reaction.metabolites
-        stoichiometry[reaction.id] = {
-            metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        # get flux bounds
-        flux_bounds[reaction.id] = list(reaction.bounds)
+    # # get stoichiometry
+    # stoichiometry = {}
+    # flux_bounds = {}
+    # for reaction in reactions:
+    #     reaction_metabolites = reaction.metabolites
+    #     stoichiometry[reaction.id] = {
+    #         metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
+    #     # get flux bounds
+    #     flux_bounds[reaction.id] = list(reaction.bounds)
 
-    # get external molecules
-    external_molecules = []
-    exchange_bounds = {}
-    for reaction in boundary:
-        reaction_metabolites = reaction.metabolites.keys()
-        assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
-        metabolite_id = reaction_metabolites[0].id
-        external_molecules.append(metabolite_id)
+    # # get external molecules
+    # external_molecules = []
+    # exchange_bounds = {}
+    # for reaction in boundary:
+    #     reaction_metabolites = reaction.metabolites.keys()
+    #     assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
+    #     metabolite_id = reaction_metabolites[0].id
+    #     external_molecules.append(metabolite_id)
 
-        # get exchange bounds
-        exchange_bounds[metabolite_id] = list(reaction.bounds)
+    #     # get exchange bounds
+    #     exchange_bounds[metabolite_id] = list(reaction.bounds)
 
-    # get molecular weights
-    molecular_weights = {}
-    for metabolite in metabolites:
-        molecular_weights[metabolite.id] = metabolite.formula_weight
+    # # get molecular weights
+    # molecular_weights = {}
+    # for metabolite in metabolites:
+    #     molecular_weights[metabolite.id] = metabolite.formula_weight
 
-    # get objective
-    objective = {}
-    for expression in objective_expression:
-        exp_str = str(expression)
-        coeff, reaction_id = exp_str.split('*')
-        try:
-            reactions.get_by_id(reaction_id)
-            objective[reaction_id] = float(coeff)
-        except:
-            pass
+    # # get objective
+    # objective = {}
+    # for expression in objective_expression:
+    #     exp_str = str(expression)
+    #     coeff, reaction_id = exp_str.split('*')
+    #     try:
+    #         reactions.get_by_id(reaction_id)
+    #         objective[reaction_id] = float(coeff)
+    #     except:
+    #         pass
 
-    # initial state
-    make_media = Media()
-    ecoli_core_GLC_media = make_media.get_saved_media('ecoli_core_GLC')
-    initial_state = {
-        'internal': {
-            'mass': 1339,  # fg
-            'volume': 1E-15},  # fL
-        'external': ecoli_core_GLC_media,
-        }
+    # # initial state
+    # make_media = Media()
+    # ecoli_core_GLC_media = make_media.get_saved_media('ecoli_core_GLC')
+    # initial_state = {
+    #     'internal': {
+    #         'mass': 1339,  # fg
+    #         'volume': 1E-15},  # fL
+    #     'external': ecoli_core_GLC_media,
+    #     }
 
-    # adjustments
-    for exchange_id, [lb, ub] in exchange_bounds.items():
-        exchange_bounds[exchange_id] = [lb/100, ub/100]
+    # # adjustments
+    # for exchange_id, [lb, ub] in exchange_bounds.items():
+    #     exchange_bounds[exchange_id] = [lb/100, ub/100]
 
-    config = {
-        'stoichiometry': stoichiometry,
-        'external_molecules': external_molecules,
-        'objective': objective,
-        'initial_state': initial_state,
-        'exchange_bounds': exchange_bounds,
-        'flux_bounds': flux_bounds,
-    #     'default_upper_bound': default_reaction_bounds,
-        'molecular_weights': molecular_weights,
-        }
+    # config = {
+    #     'stoichiometry': stoichiometry,
+    #     'external_molecules': external_molecules,
+    #     'objective': objective,
+    #     'initial_state': initial_state,
+    #     'exchange_bounds': exchange_bounds,
+    #     'flux_bounds': flux_bounds,
+    # #     'default_upper_bound': default_reaction_bounds,
+    #     'molecular_weights': molecular_weights,
+    #     }
+
+	config = {'model_path': parameters.get('model_path', DATA_FILE)}
 
     return Metabolism(config)
 
