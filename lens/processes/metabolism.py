@@ -170,7 +170,6 @@ def get_toy_configuration():
         'H': 0.005,
         'O2': 0.1}
 
-
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
@@ -255,9 +254,10 @@ def toy_transport_kinetics():
 
     return transport_kinetics
 
-def simulate_metabolism(metabolism, config):
+def simulate_metabolism(config):
 
     # set the simulation
+    metabolism = config['process']
     total_time = config.get('total_time', 3600)
     transport_kinetics = config.get('transport_kinetics', {})
     env_volume = config.get('environment_volume', 1e-12)  * units.L
@@ -268,22 +268,16 @@ def simulate_metabolism(metabolism, config):
     internal_updaters = settings['updaters']['internal']
     density = metabolism.density
     nAvogadro = metabolism.nAvogadro
-    reaction_ids = metabolism.reaction_ids
-    exchange_ids = metabolism.fba.external_molecules
 
-    saved_data = {
-        'internal': {state_id: [value] for state_id, value in state['internal'].items()},
-        'external': {state_id: [value] for state_id, value in state['external'].items()},
-        'reactions': {rxn_id: [0] for rxn_id in reaction_ids},
-        'exchange': {rxn_id: [0] for rxn_id in exchange_ids},
-        'flux_bounds': {rxn_id: [0] for rxn_id in reaction_ids},
-        'time': [0]}
+    # initialize saved data
+    saved_data = {'time': [0]}
+    for role in state.keys():
+        saved_data[role] = {state_id: [value] for state_id, value in state[role].items()}
 
-    # run simulation
+    ## run simulation
     time = 0
     timestep = 1  # sec
     while time < total_time:
-
         time += timestep
 
         # set flux bounds from transport kinetics
@@ -324,22 +318,26 @@ def simulate_metabolism(metabolism, config):
         saved_data['time'].append(time)
         for role in ['internal', 'external', 'reactions', 'exchange', 'flux_bounds']:
             for state_id, value in state[role].items():
-
-                # import ipdb; ipdb.set_trace()
-                # print('role: {} | state_id: {} | value: {}'.format(role, state_id, value))
-
                 saved_data[role][state_id].append(value)
 
-    return saved_data
+    return {
+        'saved_state': saved_data,
+    }
 
-def plot_output(saved_state, out_dir='out', filename='metabolism'):
+def plot_output(data, out_dir='out', filename='metabolism'):
     import os
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
     import math
 
+    max_rows = 25
     skip_keys = ['time', 'flux_bounds']
+
+    saved_state = data.get('saved_state')
+    data_keys = [key for key in saved_state.keys() if key not in skip_keys]
+    flux_bounds_data = saved_state.get('flux_bounds')
+    time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
 
     # remove series with all zeros
     zero_state = []
@@ -350,11 +348,6 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
                     zero_state.append((key1, key2))
     for (key1, key2) in zero_state:
         del saved_state[key1][key2]
-
-    max_rows = 25
-    data_keys = [key for key in saved_state.keys() if key not in skip_keys]
-    flux_bounds_data = saved_state.get('flux_bounds')
-    time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
     n_zeros = len(zero_state)
     n_data = [len(saved_state[key].keys()) for key in data_keys]
 
@@ -368,7 +361,7 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
             n_rows_base = max_rows
     n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))
 
-    # make figure
+    ## make the figure
     fig = plt.figure(figsize=(n_cols * 6, n_rows * 2))
     plt.rcParams.update({'font.size': 12})
     grid = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=1.5)
@@ -378,21 +371,21 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
     for key in data_keys:
         for state_id, series in sorted(saved_state[key].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])
-            ax.plot(time_vec, series)
+            ax.plot(time_vec[1:], series[1:])  # remove t=0
 
             # if state has target, plot series in red
             if state_id in flux_bounds_data.keys():
                 target_series = flux_bounds_data[state_id]
-                ax.plot(time_vec, target_series, 'r', label='bound')
+                ax.plot(time_vec[1:], target_series[1:],  # remove t=0
+                        'r', label='bound')
                 ax.legend()
 
             ax.title.set_text(str(key) + ': ' + state_id)
             ax.ticklabel_format(style='sci',axis='y')
             ax.set_xlabel('time (hr)')
 
+            # next row
             row_idx += 1
-
-            # limit number of rows
             if row_idx > max_rows:
                 col_idx += 1
                 row_idx = 0
@@ -413,7 +406,7 @@ def plot_output(saved_state, out_dir='out', filename='metabolism'):
     plt.subplots_adjust(wspace=0.5, hspace=0.9)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
-def save_network(metabolism, total_time=60, out_dir='out'):
+def save_network(metabolism, total_time=10, out_dir='out'):
     # TODO -- make this function into an analysis
     import math
     from lens.utils.make_network import make_network, save_network
@@ -425,9 +418,11 @@ def save_network(metabolism, total_time=60, out_dir='out'):
     objective = metabolism.fba.objective
 
     # run test to get simulation output
-    simulation_config = {'total_time': total_time}
-    saved_state = simulate_metabolism(metabolism, simulation_config)
-    reactions = saved_state['reactions']
+    simulation_config = {
+        'process': metabolism,
+        'total_time': total_time}
+    data = simulate_metabolism(simulation_config)
+    reactions = data['saved_state']['reactions']
 
     # save fluxes as node size
     reaction_fluxes = {}
@@ -446,25 +441,24 @@ def save_network(metabolism, total_time=60, out_dir='out'):
     nodes, edges = make_network(stoichiometry, info)
     save_network(nodes, edges, out_dir)
 
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    ## set up metabolism with a toy configuration
-    get_config = get_toy_configuration
-    metabolism = Metabolism(get_config())
+    # configure toy model
+    toy_config = get_toy_configuration
+    toy_metabolism = Metabolism(toy_config())
 
-    ## test toy model
-    test_config(get_config) # TODO -- Metabolism() is being instantiated twice -- once above, once in test_config
-
-    ## simulate toy model
+    # simulate toy model
     simulation_config = {
+        'process': toy_metabolism,
         'total_time': 3600,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 5e-15}
-    saved_data = simulate_metabolism(metabolism, simulation_config)
+    saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
 
-    ## make flux network from toy model
-    save_network(metabolism, 10, out_dir)
+    # make flux network from toy model
+    save_network(toy_metabolism, 10, out_dir)

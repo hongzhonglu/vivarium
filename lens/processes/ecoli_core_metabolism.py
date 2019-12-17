@@ -1,9 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import cobra
-
-from lens.environment.make_media import Media
 
 from lens.processes.metabolism import Metabolism
 
@@ -57,19 +54,17 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    ## test model
-    test_ecoli_core()
+    # get e coli core metabolism model
+    ecoli_core_metabolism = EcoliCoreMetabolism({})
 
-    ## set up metabolism with a toy configuration
-    metabolism = EcoliCoreMetabolism({})
-
-    ## simulate model
+    # simulate model
     simulation_config = {
+        'process': ecoli_core_metabolism,
         'total_time': 100,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 1e-13}
-    saved_data = simulate_metabolism(metabolism, simulation_config)
+    saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
 
-    ## make flux network from toy model
-    save_network(metabolism, 10, out_dir)
+    # make flux network from model
+    save_network(ecoli_core_metabolism, 10, out_dir)
