@@ -47,6 +47,9 @@ class State(object):
         self.state = copy.deepcopy(initial_state)
         self.updaters = updaters
 
+    def keys(self):
+        return self.state.keys()
+
     def duplicate(self, initial_state={}):
         return State(
             initial_state = initial_state or self.to_dict(),

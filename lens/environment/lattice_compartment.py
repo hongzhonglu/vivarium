@@ -38,14 +38,14 @@ class LatticeCompartment(Compartment, Simulation):
         self.exchange_ids = []
         if self.exchange_role in states.keys():
             exchange_state = states[self.exchange_role]
-            self.exchange_ids = exchange_state.keys
+            self.exchange_ids = exchange_state.keys()
 
         # find roles that contain volume, motile_force, division
         self.volume_role = False
         self.motile_role = False
         self.division_role = False
         for role, state in states.items():
-            state_ids = state.keys
+            state_ids = state.keys()
             if 'volume' in state_ids:
                 self.volume_role = role
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
@@ -70,7 +70,7 @@ class LatticeCompartment(Compartment, Simulation):
             local_env_keys = self.exchange_ids
             exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
         elif environment:
-            local_env_keys = environment.keys
+            local_env_keys = environment.keys()
         else:
             local_env_keys = []
 
