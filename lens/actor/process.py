@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
 import collections
 import numpy as np
 import lens.actor.emitter as emit
@@ -43,17 +44,8 @@ class State(object):
     def __init__(self, initial_state={}, updaters={}):
         ''' Keys and state initialize empty, with a maximum key length of 31. '''
 
-        self.keys = np.array([], dtype=KEY_TYPE) # maximum key length
-        self.state = np.array([], dtype=np.float64)
+        self.state = copy.deepcopy(initial_state)
         self.updaters = updaters
-
-        self.initialize_state(initial_state)
-
-    def initialize_state(self, initial):
-        ''' Provide an initial value for any keys in this dict. '''
-
-        self.declare_state(initial.keys())
-        self.apply_delta(initial)
 
     def duplicate(self, initial_state={}):
         return State(
@@ -65,78 +57,35 @@ class State(object):
 
         self.updaters.merge(updaters)
 
-    def sort_keys(self):
-        ''' re-sort keys after adding some '''
-
-        sort = np.argsort(self.keys)
-        self.keys = self.keys[sort]
-        self.state = self.state[sort]
-
     def declare_state(self, keys):
         ''' Initialize values for the given keys to zero. '''
 
-        existing_keys = np.isin(keys, self.keys)
-        novel = np.array(keys, dtype=KEY_TYPE)[~existing_keys]
+        for key in keys:
+            if not key in self.state:
+                self.state[key] = 0
 
-        self.keys = np.concatenate([self.keys, novel])
-        self.state = np.concatenate([self.state, np.zeros(novel.shape)])
-        self.sort_keys()
-
-    def index_for(self, keys):
-        if self.keys.size == 0:
-            return np.array([])
-        if not all([item for item in np.isin(keys, self.keys)]):
-            invalid_states = np.setdiff1d(keys, self.keys)
-            print("no state for {}".format(invalid_states))
-        return np.searchsorted(self.keys, keys)
-
-    def assign_values(self, values_dict):
+    def assign_values(self, values):
         ''' Assign a dict of keys and values to the state. '''
-        if self.keys.size == 0:
-            return
-        keys, values = npize(values_dict)
-        index = self.index_for(keys)
-        self.state[index] = values
-
-    def apply_delta(self, delta):
-        ''' Apply a dict of keys and deltas to the state. '''
-        if self.keys.size == 0:
-            return
-        keys, values = npize(delta)
-        index = self.index_for(keys)
-        self.state[index] += values
-
-    def apply_deltas(self, deltas):
-        ''' Apply a list of deltas to the state. '''
-
-        for delta in deltas:
-            self.apply_delta(delta)
+        self.state.update(values)
 
     def apply_update(self, update):
         ''' Apply a dict of keys and values to the state using its updaters. '''
 
-        if self.keys.size == 0:
-            return
-        keys, values = npize(update)
-        index = self.index_for(keys)
-        state_dict = dict(zip(self.keys, self.state))
+        state_dict = self.to_dict()
 
-        for index, key, value in zip(index, keys, values):
+        for key, value in update.items():
             # updater can be a function or a key into the updater library
             updater = self.updaters.get(key, 'delta')
             if not callable(updater):
                 updater = updater_library[updater]
 
-            self.new_state[index], other_updates = updater(
+            self.new_state[key], other_updates = updater(
                 key,
                 state_dict,
-                self.new_state[index],
+                self.new_state[key],
                 value)
 
-            for other_key, other_value in other_updates.items():
-                # one key at a time
-                other_index = self.index_for([other_key])
-                self.new_state[other_index] = other_value
+            self.new_state.update(other_updates)
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
@@ -147,7 +96,7 @@ class State(object):
     def prepare(self):
         ''' Prepares for state updates by creating new copy of existing state '''
 
-        self.new_state = np.copy(self.state)
+        self.new_state = copy.deepcopy(self.state)
 
     def proceed(self):
         ''' Once all updates are complete, swaps out state for newly calculated state '''
@@ -157,17 +106,14 @@ class State(object):
     def state_for(self, keys):
         ''' Get the current state of these keys as a dict of values. '''
 
-        if self.keys.size == 0:
-            return {}
-        index = self.index_for(keys)
-        return dict(zip(keys, self.state[index]))
+        return {
+            key: self.state[key]
+            for key in keys}
 
     def to_dict(self):
         ''' Get the current state of all keys '''
 
-        return {
-            self.keys[index]: self.state[index]
-            for index in range(self.keys.shape[0])}
+        return copy.deepcopy(self.state)
 
 
 class Process(object):
