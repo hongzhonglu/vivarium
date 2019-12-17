@@ -41,8 +41,8 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def toy_transport_kinetics():
     transport_kinetics = {
-        "GLCpts": kinetic_rate('glc__D_e', 1e1, 5),  # glucose
-        "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
+        "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
+        # "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
         # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
     }
     return transport_kinetics
@@ -87,9 +87,9 @@ if __name__ == '__main__':
     # simulate model
     simulation_config = {
         'process': ecoli_core_metabolism,
-        'total_time': 1000,
+        'total_time': 3600,
         'transport_kinetics': toy_transport_kinetics(),
-        'environment_volume': 1e-13}
+        'environment_volume': 5e-13}
     saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
 

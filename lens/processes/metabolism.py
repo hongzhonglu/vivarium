@@ -121,7 +121,7 @@ class Metabolism(Process):
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
-                # added mass
+                # added biomass
                 mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
                 added_mass += mol_mass.to('fg').magnitude # to fg
