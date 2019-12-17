@@ -6,10 +6,10 @@ from lens.processes.metabolism import Metabolism
 
 DATA_FILE = os.path.join('models', 'e_coli_core.json')
 
-def EcoliCoreMetabolism(parameters):
-    config = {'model_path': parameters.get('model_path', DATA_FILE)}
+def BiGGMetabolism(parameters):
+    parameters['model_path'] = parameters.get('model_path', DATA_FILE)
 
-    return Metabolism(config)
+    return Metabolism(parameters)
 
 def kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
@@ -50,19 +50,23 @@ def test_ecoli_core():
 if __name__ == '__main__':
     from lens.processes.metabolism import simulate_metabolism, plot_output, save_network
 
-    out_dir = os.path.join('out', 'tests', 'e_coli_core_metabolism')
+    out_dir = os.path.join('out', 'tests', 'BiGG_metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # get e coli core metabolism model
-    ecoli_core_metabolism = EcoliCoreMetabolism({})
+    # get ecoli core metabolism model
+    toy_config = {}
+    toy_transport = toy_transport_kinetics()
+    toy_config['constrained_reactions'] = toy_transport.keys()
+
+    ecoli_core_metabolism = BiGGMetabolism(toy_config)
 
     # simulate model
     simulation_config = {
         'process': ecoli_core_metabolism,
-        'total_time': 100,
+        'total_time': 1000,
         'transport_kinetics': toy_transport_kinetics(),
-        'environment_volume': 1e-13}
+        'environment_volume': 5e-15}
     saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
 
