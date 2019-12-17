@@ -6,7 +6,7 @@ import cobra.test
 from cobra import Model, Reaction, Metabolite, Configuration
 
 
-EXTERNAL_SUFFIX = '_exchange'
+EXTERNAL_PREFIX = 'EX_'
 
 def build_model(stoichiometry, reversible, objective, external_molecules, default_upper_bound=1000):
     model = Model('fba')
@@ -42,7 +42,7 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
     # make exchange reactions for all external_molecules
     for external in external_molecules:
-        external_key = external + EXTERNAL_SUFFIX
+        external_key = EXTERNAL_PREFIX + external
         reaction = Reaction(external_key, name=external_key)
 
         # set reaction bounds
@@ -173,7 +173,7 @@ class CobraFBA(object):
 
     def constrain_exchange_flux(self, levels):
         for external, level in levels.items():
-            reaction = self.model.reactions.get_by_id(external + EXTERNAL_SUFFIX)
+            reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external)
 
             if type(level) is list:
                 reaction.upper_bound = -level[0]
@@ -202,7 +202,7 @@ class CobraFBA(object):
 
     def external_reactions(self):
         return [
-            molecule + EXTERNAL_SUFFIX
+            EXTERNAL_PREFIX + molecule
             for molecule in self.external_molecules]
 
     def internal_reactions(self):
@@ -221,7 +221,7 @@ class CobraFBA(object):
         external = self.external_reactions()
         levels = self.read_fluxes(external)
         return {
-            molecule[:len(molecule) - len(EXTERNAL_SUFFIX)]: level
+            molecule[len(EXTERNAL_PREFIX):len(molecule)]: level
             for molecule, level in levels.items()}
 
     def reaction_ids(self):

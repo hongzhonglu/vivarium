@@ -82,7 +82,6 @@ def test_division():
     #     compartment.update(timestep)
     #     print(compartment.current_state())
 
-
     # make lattice_compartment
     lattice_compartment = LatticeCompartment(processes, states, options)
 
@@ -91,12 +90,9 @@ def test_division():
 
     # evaluate compartment
     timestep = 1
-    for steps in np.arange(1300):
+    for step in np.arange(1300):
         lattice_compartment.update(timestep)
         print('lattice_compartment current_state: {}'.format(lattice_compartment.current_state()))
-
-        # lattice_compartment.states['cell'].updaters
-        # import ipdb; ipdb.set_trace()
 
 
 if __name__ == '__main__':

@@ -276,7 +276,7 @@ def simulate_metabolism(metabolism, config):
         'external': {state_id: [value] for state_id, value in state['external'].items()},
         'reactions': {rxn_id: [0] for rxn_id in reaction_ids},
         'exchange': {rxn_id: [0] for rxn_id in exchange_ids},
-        'flux_bounds': {rxn_id: [0] for rxn_id, rxn_fun in transport_kinetics.items()},
+        'flux_bounds': {rxn_id: [0] for rxn_id in reaction_ids},
         'time': [0]}
 
     # run simulation
@@ -324,6 +324,10 @@ def simulate_metabolism(metabolism, config):
         saved_data['time'].append(time)
         for role in ['internal', 'external', 'reactions', 'exchange', 'flux_bounds']:
             for state_id, value in state[role].items():
+
+                # import ipdb; ipdb.set_trace()
+                # print('role: {} | state_id: {} | value: {}'.format(role, state_id, value))
+
                 saved_data[role][state_id].append(value)
 
     return saved_data
@@ -415,10 +419,10 @@ def save_network(metabolism, total_time=60, out_dir='out'):
     from lens.utils.make_network import make_network, save_network
 
     # initialize the process
-    stoichiometry = metabolism.stoichiometry
+    stoichiometry = metabolism.fba.stoichiometry
     reaction_ids = stoichiometry.keys()
-    external_mol_ids = metabolism.external_molecules
-    objective = metabolism.objective
+    external_mol_ids = metabolism.fba.external_molecules
+    objective = metabolism.fba.objective
 
     # run test to get simulation output
     simulation_config = {'total_time': total_time}
@@ -452,11 +456,11 @@ if __name__ == '__main__':
     metabolism = Metabolism(get_config())
 
     ## test toy model
-    test_config(get_config)
+    test_config(get_config) # TODO -- Metabolism() is being instantiated twice -- once above, once in test_config
 
     ## simulate toy model
     simulation_config = {
-        'total_time': 7200,
+        'total_time': 3600,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 5e-15}
     saved_data = simulate_metabolism(metabolism, simulation_config)
