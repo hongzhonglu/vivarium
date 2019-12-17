@@ -5,7 +5,7 @@ from lens.actor.process import initialize_state
 # processes
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.division import Division, divide_condition, divide_state
-from lens.processes.ecoli_core_metabolism import EcoliCoreMetabolism
+from lens.processes.BiGG_metabolism import BiGGMetabolism
 
 
 
@@ -13,7 +13,7 @@ def compose_iFBA(config):
 
     # declare the processes
     division = Division(config)
-    metabolism = EcoliCoreMetabolism(config)
+    metabolism = BiGGMetabolism(config)
     deriver = DeriveVolume(config)
 
     # place processes in layers.

@@ -35,7 +35,7 @@ from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
-from lens.processes.ecoli_core_metabolism import EcoliCoreMetabolism
+from lens.processes.BiGG_metabolism import BiGGMetabolism
 from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
@@ -418,7 +418,7 @@ class BootEnvironment(BootAgent):
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
-            'metabolism': wrap_boot(wrap_init_basic(EcoliCoreMetabolism), {'volume': 1.0}),
+            'metabolism': wrap_boot(wrap_init_basic(BiGGMetabolism), {'volume': 1.0}),
             'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),

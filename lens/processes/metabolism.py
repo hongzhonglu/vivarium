@@ -29,6 +29,7 @@ class Metabolism(Process):
         self.reaction_ids = self.fba.stoichiometry.keys()
 
         # additional options
+        self.constrained_reaction_ids = initial_parameters.get('constrained_reactions', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
@@ -45,7 +46,7 @@ class Metabolism(Process):
             'internal': self.internal_state_ids,
             'reactions': self.reaction_ids,
             'exchange': self.fba.external_molecules,
-            'flux_bounds': self.reaction_ids}
+            'flux_bounds': self.constrained_reaction_ids}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -62,7 +63,8 @@ class Metabolism(Process):
             'internal': deep_merge(dict(internal), self.initial_state.get('internal', {})),
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
-            'flux_bounds': {state_id: self.default_upper_bound for state_id in self.reaction_ids}
+            'flux_bounds': {state_id: self.default_upper_bound
+                for state_id in self.constrained_reaction_ids}
             }
 
         # default emitter keys
@@ -74,14 +76,16 @@ class Metabolism(Process):
         }
 
         # default updaters
-        set_internal_states = {state_id: 'set' for state_id in self.reaction_ids + ['volume']}
-        accumulate_internal_states = {state_id: 'accumulate' for state_id in self.objective_molecules + ['mass']}
+        set_internal_states = {state_id: 'set'
+            for state_id in self.reaction_ids + ['volume']}
+        accumulate_internal_states = {state_id: 'accumulate'
+            for state_id in self.objective_molecules + ['mass']}
         default_updaters = {
             'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
             'external': {mol_id: 'accumulate' for mol_id in self.fba.external_molecules},
             'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
             'exchange': {rxn_id: 'set' for rxn_id in self.fba.external_molecules},
-            'flux_bounds': {rxn_id: 'set' for rxn_id in self.reaction_ids},
+            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_reaction_ids},
             }
 
         return {
@@ -93,7 +97,7 @@ class Metabolism(Process):
 
         internal_state = states['internal']
         external_state = states['external']
-        reaction_flux_bounds = states['flux_bounds']
+        constrained_reaction_bounds = states['flux_bounds']
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
@@ -101,7 +105,7 @@ class Metabolism(Process):
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # set flux constraints.
-        self.fba.constrain_flux(reaction_flux_bounds)
+        self.fba.constrain_flux(constrained_reaction_bounds)
 
         # solve the fba problem
         objective_exchange = self.fba.optimize()  # (units.mmol / units.L)
@@ -318,6 +322,7 @@ def simulate_metabolism(config):
         saved_data['time'].append(time)
         for role in ['internal', 'external', 'reactions', 'exchange', 'flux_bounds']:
             for state_id, value in state[role].items():
+                # print('role: {} | state: {} | value: {}'.format(role, state_id, value))
                 saved_data[role][state_id].append(value)
 
     return {
@@ -448,14 +453,16 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     # configure toy model
-    toy_config = get_toy_configuration
-    toy_metabolism = Metabolism(toy_config())
+    toy_config = get_toy_configuration()
+    toy_transport = toy_transport_kinetics()
+    toy_config['constrained_reactions'] = toy_transport.keys()
+    toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
     simulation_config = {
         'process': toy_metabolism,
         'total_time': 3600,
-        'transport_kinetics': toy_transport_kinetics(),
+        'transport_kinetics': toy_transport,
         'environment_volume': 5e-15}
     saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
