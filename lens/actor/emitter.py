@@ -115,13 +115,18 @@ class DatabaseEmitter(Emitter):
     '''
     Emit data to a mongoDB database
     '''
+    client = None
+
     def __init__(self, config):
         self.config = config
         self.simulation_id = config.get('simulation_id')
         self.experiment_id = config.get('experiment_id')
 
-        client = MongoClient(config['url'])
-        self.db = getattr(client, config.get('database', 'simulations'))
+        # create singleton instance of mongo client
+        if DatabaseEmitter.client is None:
+            DatabaseEmitter.client = MongoClient(config['url'])
+
+        self.db = getattr(self.client, config.get('database', 'simulations'))
         self.history = getattr(self.db, 'history')
         self.configuration = getattr(self.db, 'configuration')
         self.phylogeny = getattr(self.db, 'phylogeny')
@@ -137,4 +142,3 @@ class DatabaseEmitter(Emitter):
 
         table = getattr(self.db, data_config['table'])
         table.insert_one(data)
-
