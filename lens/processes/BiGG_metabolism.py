@@ -3,13 +3,35 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from lens.processes.metabolism import Metabolism
+from lens.environment.make_media import Media
+from lens.utils.units import units
 
 DATA_FILE = os.path.join('models', 'e_coli_core.json')
 
 def BiGGMetabolism(parameters):
+    initial_state = get_initial_state()
+
     parameters['model_path'] = parameters.get('model_path', DATA_FILE)
+    parameters['initial_state'] = parameters.get('initial_state', initial_state)
 
     return Metabolism(parameters)
+
+def get_initial_state():
+    # internal state
+    mass = 1339 * units.fg
+    density = 1100 * units.g/units.L
+    volume = mass.to('g') / density
+    internal = {
+            'mass': mass.magnitude,  # fg
+            'volume': volume.magnitude}
+
+    # external state
+    make_media = Media()
+    external = make_media.get_saved_media('ecoli_core_GLC')
+
+    return {
+        'internal': internal,
+        'external': external}
 
 def kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
@@ -19,15 +41,15 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def toy_transport_kinetics():
     transport_kinetics = {
-        "GLCpts": kinetic_rate('glc__D_e', 1e1, 5),  # glucose
-        "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
+        "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
+        # "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
         # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
     }
     return transport_kinetics
 
 def test_ecoli_core():
     # configure process
-    metabolism = EcoliCoreMetabolism({})
+    metabolism = BiGGMetabolism({})
 
     print('MODEL: {}'.format(metabolism.fba.model))
     print('REACTIONS: {}'.format(metabolism.fba.model.reactions))
@@ -54,19 +76,20 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # get ecoli core metabolism model
+    # add toy transport to config
     toy_config = {}
     toy_transport = toy_transport_kinetics()
     toy_config['constrained_reactions'] = toy_transport.keys()
 
+    # get ecoli core metabolism model
     ecoli_core_metabolism = BiGGMetabolism(toy_config)
 
     # simulate model
     simulation_config = {
         'process': ecoli_core_metabolism,
-        'total_time': 1000,
+        'total_time': 3600,
         'transport_kinetics': toy_transport_kinetics(),
-        'environment_volume': 5e-15}
+        'environment_volume': 5e-13}
     saved_data = simulate_metabolism(simulation_config)
     plot_output(saved_data, out_dir)
 

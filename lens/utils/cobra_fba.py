@@ -312,7 +312,7 @@ class JsonFBA(object):
         self.model = cobra.io.load_json_model(path)
 
 def test_canonical():
-    fba = JsonFBA('lens/data/json_files/e_coli_core.json')
+    fba = JsonFBA('models/e_coli_core.json')
     return fba
 
 # def test_test():

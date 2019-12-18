@@ -121,7 +121,7 @@ class Metabolism(Process):
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
-                # added mass
+                # added biomass
                 mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
                 added_mass += mol_mass.to('fg').magnitude # to fg
@@ -162,7 +162,7 @@ def get_toy_configuration():
 
     objective = {'v_biomass': 1.0}
 
-    reversible = stoichiometry.keys()  # ['R6', 'R7', 'Rres']
+    reversible = ['R6', 'R7', 'Rres']  # stoichiometry.keys()
 
     default_reaction_bounds = 1000.0
 
@@ -197,7 +197,7 @@ def get_toy_configuration():
         'C': 500.0,
         'D': 500.0,
         'E': 500.0,
-        'F': 500.0,
+        'F': 50000.0,
         'H': 1.00794,
         'O2': 31.9988,
         'ATP': 507.181,
@@ -247,13 +247,9 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 def toy_transport_kinetics():
     # transport kinetics
     transport_kinetics = {
-        "R1": kinetic_rate("A", 1e-1, 5),   # A import
-        "R3": kinetic_rate("F", 1e-1, 5),  # F export
-        # "R6": kinetic_rate("D", 1e-3, 12),  # D export
-        # "R7": kinetic_rate("E", 1e-3, km),  # E export
-        "R8a": kinetic_rate("H", 1e-1, 5), # H export
-        # "R8b": kinetic_rate("H", 1e-5, 0.1),  # H import
-        # "Rres": kinetic_rate("O2", 4e-1, 200), # O2 import
+        "R1": kinetic_rate("A", 2e-2, 5),   # A import
+        # "R3": kinetic_rate("F", 1e-1, 5),  # F export
+        # "R8a": kinetic_rate("H", 1e-1, 5), # H export
     }
 
     return transport_kinetics

@@ -21,7 +21,7 @@ parsimonious==0.8.1
 Pint==0.9
 pygame==1.9.6
 pymongo==3.6.1
-pymunk==5.5.0
+pymunk==5.6.0
 pytest==4.6.5
 pytest-benchmark==3.2.2
 scipy==1.0.1
