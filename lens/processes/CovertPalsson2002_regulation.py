@@ -22,13 +22,13 @@ def get_reverse(reactions):
         if reaction['Reversible']:
             reaction_id = reaction['Reaction']
             stoich = {mol_id: -1 * coeff
-                      for mol_id, coeff in reaction['Stoichiometry'].iteritems()}
+                      for mol_id, coeff in reaction['Stoichiometry'].items()}
             reverse_stoichiometry[reaction_id + '_reverse'] = stoich
     return reverse_stoichiometry
 
 def get_molecules_from_reactions(stoichiometry):
     molecules = set()
-    for reaction, stoich in stoichiometry.iteritems():
+    for reaction, stoich in stoichiometry.items():
         molecules.update(stoich.keys())
     return list(molecules)
 
@@ -78,10 +78,10 @@ class Regulation(Process):
         internal_state = states['internal']
         external_state = add_str_to_keys(states['external'], self.external_key)
         total_state = deep_merge(internal_state, external_state)
-        boolean_state = {mol_id: (value>0) for mol_id, value in total_state.iteritems()}
+        boolean_state = {mol_id: (value>0) for mol_id, value in total_state.items()}
 
         regulatory_state = {mol_id: regulatory_logic(boolean_state)
-                            for mol_id, regulatory_logic in self.regulation_logic.iteritems()}
+                            for mol_id, regulatory_logic in self.regulation_logic.items()}
 
         return {
             'internal': regulatory_state,
@@ -147,21 +147,21 @@ def test_covert2002_regulation():
         time += timestep
         for (t, change_dict) in timeline:
             if time >= t:
-                for key, change in change_dict.iteritems():
+                for key, change in change_dict.items():
                     state[key].update(change)
 
         update = regulation.next_update(timestep, state)
         saved_state['time'].append(time)
 
         # update external state
-        for state_id, value in state['external'].iteritems():
+        for state_id, value in state['external'].items():
             if state_id in saved_state['external'].keys():
                 saved_state['external'][state_id].append(value)
             else:
                 saved_state['external'][state_id] = [value]
 
         # update internal state from update
-        for state_id, value in update['internal'].iteritems():
+        for state_id, value in update['internal'].items():
             if state_id in saved_state['internal'].keys():
                 saved_state['internal'][state_id].append(value)
             else:
@@ -197,7 +197,7 @@ def plot_regulation_output(saved_state, out_dir='out'):
     # plot data
     plot_idx = 0
     for key in data_keys:
-        for mol_id, series in sorted(saved_state[key].iteritems()):
+        for mol_id, series in sorted(saved_state[key].items()):
             ax = fig.add_subplot(grid[plot_idx, 0])  # grid is (row, column)
             numeric_series = bool_to_int(series)
 

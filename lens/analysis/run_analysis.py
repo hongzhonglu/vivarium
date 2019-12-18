@@ -86,6 +86,7 @@ class Analyze(object):
     example use:
         python lens/analysis/run_analysis.py -e lattice
     '''
+    client = None
 
     def __init__(self):
 
@@ -93,7 +94,9 @@ class Analyze(object):
         parser = self.add_arguments(parser)
         args = parser.parse_args()
 
-        self.client = MongoClient(url)
+        # create singleton instance of mongo client
+        if Analyze.client is None:
+            Analyze.client = MongoClient(url)
 
         self.path = args.path
         self.experiment_id = args.experiment

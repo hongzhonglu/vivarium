@@ -4,35 +4,37 @@ from lens.actor.process import initialize_state
 
 # processes
 from lens.processes.derive_volume import DeriveVolume
-from lens.processes.growth import Growth
 from lens.processes.division import Division, divide_condition, divide_state
-from lens.processes.protein_expression import ProteinExpression
+from lens.processes.BiGG_metabolism import BiGGMetabolism
 
 
 
-def compose_growth_division(config):
+def compose_iFBA(config):
 
     # declare the processes
-    growth = Growth(config)
     division = Division(config)
-    expression = ProteinExpression(config)
+    metabolism = BiGGMetabolism(config)
     deriver = DeriveVolume(config)
 
-    # place processes in layers
+    # place processes in layers.
     processes = [
-        {'growth': growth,
-         'expression': expression},
+        {'metabolism': metabolism
+        },
         {'deriver': deriver,
-         'division': division}]
+        'division': division
+        }
+    ]
 
     # make the topology.
     # for each process, map process roles to compartment roles
     topology = {
-        'growth': {
-            'internal': 'cell'},
+        'metabolism': {
+            'internal': 'cell',
+            'external': 'environment',
+            'reactions': 'reactions',
+            'exchange': 'exchange',
+            'flux_bounds': 'flux_bounds'},
         'division': {
-            'internal': 'cell'},
-        'expression': {
             'internal': 'cell'},
         'deriver': {
             'internal': 'cell'},
@@ -42,6 +44,8 @@ def compose_growth_division(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
+        'environment_role': 'environment',
+        'exchange_role': 'exchange',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition,
@@ -53,13 +57,13 @@ def compose_growth_division(config):
         'options': options}
 
 
-def test_division():
+def test_iFBA():
     import numpy as np
     from lens.actor.process import Compartment
     from lens.environment.lattice_compartment import LatticeCompartment
 
     boot_config = {}
-    composite_config = compose_growth_division(boot_config)
+    composite_config = compose_iFBA(boot_config)
     processes = composite_config['processes']
     states = composite_config['states']
     options = composite_config['options']
@@ -76,12 +80,6 @@ def test_division():
     print('compartment current_parameters: {}'.format(compartment.current_parameters()))
     print('compartment current_state: {}'.format(compartment.current_state()))
 
-    # # evaluate compartment
-    # timestep = 1
-    # for steps in np.arange(13):
-    #     compartment.update(timestep)
-    #     print(compartment.current_state())
-
     # make lattice_compartment
     lattice_compartment = LatticeCompartment(processes, states, options)
 
@@ -90,10 +88,10 @@ def test_division():
 
     # evaluate compartment
     timestep = 1
-    for step in np.arange(1300):
+    for steps in np.arange(10):
         lattice_compartment.update(timestep)
         print('lattice_compartment current_state: {}'.format(lattice_compartment.current_state()))
 
 
 if __name__ == '__main__':
-    saved_state = test_division()
+    saved_state = test_iFBA()

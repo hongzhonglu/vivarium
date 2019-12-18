@@ -35,7 +35,7 @@ from lens.utils.units import units
 
 # processes
 from lens.processes.transport_lookup import TransportLookup
-from lens.processes.CovertPalsson2002_metabolism import Covert2002Metabolism
+from lens.processes.BiGG_metabolism import BiGGMetabolism
 from lens.processes.CovertPalsson2002_regulation import Regulation
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.growth import Growth
@@ -48,6 +48,7 @@ from lens.processes.membrane_potential import MembranePotential
 from lens.composites.growth_division import compose_growth_division
 from lens.composites.simple_chemotaxis import compose_simple_chemotaxis
 from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
+from lens.composites.iFBA import compose_iFBA
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -150,7 +151,7 @@ class EnvironmentAgent(Outer):
                 'corner_location': self.environment.corner_locations[agent_id][0:2].tolist(),
                 'orientation': self.environment.locations[agent_id][2],
                 'parent_id': simulation.get('parent_id', '')}
-            for agent_id, simulation in self.environment.simulations.iteritems()}
+            for agent_id, simulation in self.environment.simulations.items()}
 
         return {
             'outer_id': self.agent_id,
@@ -252,6 +253,15 @@ def initialize_glc_lct(agent_config):
 def initialize_glc_lct_shift(agent_config):
     timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
     boot_config = {'timeline_str': timeline_str}
+    boot_config.update(agent_config)
+    return boot_config
+
+def initialize_ecoli_core_glc(agent_config):
+    timeline_str = '0 ecoli_core_GLC, 3600 end'
+    boot_config = {
+        'timeline_str': timeline_str,
+        'emit_fields': ['glc__D_e']
+    }
     boot_config.update(agent_config)
     return boot_config
 
@@ -399,6 +409,7 @@ class BootEnvironment(BootAgent):
             'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
             'sugar2': wrap_boot_environment(initialize_glc_lct),
             'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
+            'ecoli_core_glc': wrap_boot_environment(initialize_ecoli_core_glc),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
             'measp_long': wrap_boot_environment(initialize_measp_long),
@@ -407,7 +418,7 @@ class BootEnvironment(BootAgent):
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
-            'metabolism': wrap_boot(wrap_init_basic(Covert2002Metabolism), {'volume': 1.0}),
+            'metabolism': wrap_boot(wrap_init_basic(BiGGMetabolism), {'volume': 1.0}),
             'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
@@ -420,6 +431,7 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
+            'iFBA_ecoli_core': wrap_boot(wrap_init_composite(compose_iFBA), {'volume': 1.0}),
             }
 
 def run():

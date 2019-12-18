@@ -274,7 +274,7 @@ def get_compartment_timestep(process_layers):
     processes = merge_dicts(process_layers)
     minimum_step = 10
 
-    for process_id, process_object in processes.iteritems():
+    for process_id, process_object in processes.items():
         settings = process_object.default_settings()
         time_step = settings.get('time_step', 1.0)
         minimum_step = min(time_step, minimum_step)
@@ -287,14 +287,14 @@ def initialize_state(process_layers, topology, initial_state):
     # make a dict with the compartment's default states {roles: states}
     compartment_states = {}
     compartment_updaters = {}
-    for process_id, roles_map in topology.iteritems():
+    for process_id, roles_map in topology.items():
         process_roles = processes[process_id].roles
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
         default_process_updaters = settings['updaters']
 
-        for process_role, states in process_roles.iteritems():
+        for process_role, states in process_roles.items():
             compartment_role = topology[process_id][process_role]
 
             # initialize the default states
@@ -313,7 +313,7 @@ def initialize_state(process_layers, topology, initial_state):
 
     # initialize state for each compartment role
     initialized_state = {}
-    for compartment_role, states in compartment_states.iteritems():
+    for compartment_role, states in compartment_states.items():
         updaters = compartment_updaters[compartment_role]
         make_state = State(
             initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),

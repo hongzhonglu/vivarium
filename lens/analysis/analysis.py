@@ -22,7 +22,7 @@ def get_compartment(data):
             value = row[key]
             if key not in data_dict.keys():
                 data_dict[key] = {}
-            for mol_id, v in value.iteritems():
+            for mol_id, v in value.items():
                 if mol_id in data_dict[key].keys():
                     data_dict[key][mol_id].append(v)
                 else:

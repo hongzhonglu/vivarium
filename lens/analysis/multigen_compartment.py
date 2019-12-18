@@ -69,5 +69,5 @@ def plot_single(ax, data):
     tag_data = data['tags']
     time_data = data['time']
     time_vec = [t / 3600 for t in time_data]  # convert to hours
-    for mol_id, series in tag_data.iteritems():
+    for mol_id, series in tag_data.items():
         ax.plot(time_vec, series)

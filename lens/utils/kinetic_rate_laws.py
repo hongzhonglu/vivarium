@@ -22,7 +22,7 @@ def make_configuration(reactions):
 
     rate_law_configuration = {}
     # gets all potential interactions between the reactions
-    for reaction_id, specs in reactions.iteritems():
+    for reaction_id, specs in reactions.items():
         transporters = specs['catalyzed by']
         # initialize all transporters' entries
         for transporter in transporters:
@@ -33,30 +33,30 @@ def make_configuration(reactions):
                 }
 
     # identify parameters for reactions
-    for reaction_id, specs in reactions.iteritems():
+    for reaction_id, specs in reactions.items():
         stoich = specs.get('stoichiometry')
         transporters = specs.get('catalyzed by', None)
         reversibility = specs.get('is reversible', False)
 
         # get sets of cofactors driving this reaction
-        forward_cofactors = [mol for mol, coeff in stoich.iteritems() if coeff < 0]
+        forward_cofactors = [mol for mol, coeff in stoich.items() if coeff < 0]
         cofactors = [forward_cofactors]
 
         if reversibility:
-            reverse_cofactors = [mol for mol, coeff in stoich.iteritems() if coeff > 0]
+            reverse_cofactors = [mol for mol, coeff in stoich.items() if coeff > 0]
             cofactors.append(reverse_cofactors)
 
         # get partition, reactions, and parameter indices for each transporter, and save to rate_law_configuration dictionary
         for transporter in transporters:
 
             # get competition for this transporter from all other reactions
-            competing_reactions = [rxn for rxn, specs2 in reactions.iteritems() if
+            competing_reactions = [rxn for rxn, specs2 in reactions.items() if
                     (rxn is not reaction_id) and (transporter in specs2['catalyzed by'])]
 
             competitors = []
             for reaction2 in competing_reactions:
                 stoich2 = reactions[reaction2]['stoichiometry']
-                reactants2 = [mol for mol, coeff in stoich2.iteritems() if coeff < 0]
+                reactants2 = [mol for mol, coeff in stoich2.items() if coeff < 0]
                 competitors.append(reactants2)
 
             # partition includes both competitors and cofactors.
@@ -77,7 +77,7 @@ def get_molecules(reactions):
     '''
 
     molecule_ids = []
-    for reaction_id, specs in reactions.iteritems():
+    for reaction_id, specs in reactions.items():
         stoichiometry = specs['stoichiometry']
         substrates = stoichiometry.keys()
         enzymes = specs['catalyzed by']
@@ -118,7 +118,7 @@ def make_rate_laws(reactions, rate_law_configuration, kinetic_parameters):
     '''
 
     rate_laws = {reaction_id: {} for reaction_id in reactions.iterkeys()}
-    for reaction_id, specs in reactions.iteritems():
+    for reaction_id, specs in reactions.items():
         stoichiometry = specs.get('stoichiometry')
         # reversible = specs.get('is reversible') # TODO (eran) -- add reversibility based on specs
         transporters = specs.get('catalyzed by')
@@ -177,7 +177,7 @@ def construct_convenience_rate_law(stoichiometry, transporter, cofactors_sets, p
     kcat_r = parameters.get('kcat_r')
 
     # remove km parameters with None as their value
-    for parameter, value in parameters.iteritems():
+    for parameter, value in parameters.items():
         if 'kcat' not in parameter:
             if value is None:
                 for part in partition:
@@ -288,8 +288,8 @@ class KineticFluxModel(object):
         # Initialize reaction_fluxes and exchange_fluxes dictionaries
         reaction_fluxes = {reaction_id: 0.0 for reaction_id in self.reaction_ids}
 
-        for reaction_id, transporters in self.rate_laws.iteritems():
-            for transporter, rate_law in transporters.iteritems():
+        for reaction_id, transporters in self.rate_laws.items():
+            for transporter, rate_law in transporters.items():
                 flux = self.rate_laws[reaction_id][transporter](concentrations_dict)
                 reaction_fluxes[reaction_id] += flux
 

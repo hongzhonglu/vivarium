@@ -4,7 +4,7 @@ import re
 
 def get_mols_from_stoich(stoichiometry):
     molecules = set()
-    for reaction, stoich in stoichiometry.iteritems():
+    for reaction, stoich in stoichiometry.items():
         molecules.update(stoich.keys())
     return list(molecules)
 

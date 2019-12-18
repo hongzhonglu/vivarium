@@ -3,7 +3,7 @@
 
 def extract_sites(place):
 	sites = []
-	for node, children in place.iteritems():
+	for node, children in place.items():
 		if isinstance(children, dict):
 			sites += extract_sites(children)
 		else:

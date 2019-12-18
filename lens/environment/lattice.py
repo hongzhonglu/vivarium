@@ -86,7 +86,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.end_timeline = False
 
         # add a new media
-        for new_media_id, media_dict in new_media.iteritems():
+        for new_media_id, media_dict in new_media.items():
             media_id = self.make_media.add_media(media_dict, new_media_id)
 
         # make the timeline and media
@@ -136,7 +136,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             #             'deviation': 30}
             #     }},
 
-            for molecule_id, specs in self.gradient['molecules'].iteritems():
+            for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)
                 center = [specs['center'][0] * self.edge_length_x,
                           specs['center'][1] * self.edge_length_y]
@@ -167,7 +167,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             #             'slope': -5}
             #     }},
 
-            for molecule_id, specs in self.gradient['molecules'].iteritems():
+            for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)
                 center = [specs['center'][0] * self.edge_length_x,
                           specs['center'][1] * self.edge_length_y]
@@ -223,7 +223,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ''' Update the location of all agents '''
 
         # update all agents in multicell physics
-        for agent_id, location in self.locations.iteritems():
+        for agent_id, location in self.locations.items():
 
             # shape
             agent_state = self.simulations[agent_id]['state']
@@ -247,7 +247,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
-        for agent_id, location in self.locations.iteritems():
+        for agent_id, location in self.locations.items():
             # set location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
@@ -344,7 +344,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         latest = max([
             simulation['time']
             for agent_id, simulation
-            in self.simulations.iteritems()])
+            in self.simulations.items()])
         time = max(self._time, latest)
 
         return {
@@ -423,7 +423,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         '''
         self.simulations.update(update)
 
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             # only apply changes if we have reached this simulation's time point.
             if simulation['time'] <= now:
                 # print('=== simulation update: {}'.format(simulation))
@@ -440,7 +440,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                     patch_site = tuple(np.floor(location).astype(int))
 
-                    for molecule, count in state['environment_change'].iteritems():
+                    for molecule, count in state['environment_change'].items():
                         concentration = self.count_to_concentration(count)
                         index = self.molecule_index[molecule]
                         self.lattice[index, patch_site[0], patch_site[1]] += concentration
@@ -448,7 +448,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def generate_outer_update(self, now):
         '''Return a dict with {molecule_id: conc} for each sim at its current location'''
         update = {}
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             # only provide concentrations if we have reached this simulation's time point.
             if simulation['time'] <= now:
                 # get concentration from cell's given bin
@@ -508,7 +508,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter.emit(emit_config)
 
         # emit data for each agent
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
             agent_state = self.simulations[agent_id]['state']
             data = {

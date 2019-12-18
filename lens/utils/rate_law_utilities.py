@@ -85,13 +85,13 @@ def analyze_rate_laws(kinetic_rate_laws, baseline_concentrations, output_filenam
     row_number = 0
     col_number = 0
 
-    for reaction_id, specs in reactions.iteritems():
+    for reaction_id, specs in reactions.items():
         transporters = specs.get('catalyzed by')
         stoich = specs.get('stoichiometry')
         parameters = kinetic_parameters.get(reaction_id)
 
-        reactants = [mol for mol, coeff in stoich.iteritems() if coeff < 0]
-        products = [mol for mol, coeff in stoich.iteritems() if coeff > 0]
+        reactants = [mol for mol, coeff in stoich.items() if coeff < 0]
+        products = [mol for mol, coeff in stoich.items() if coeff > 0]
 
         if plot_text:
             plt.subplot(rows, columns, row_number * columns + col_number + 1)
@@ -350,7 +350,7 @@ def get_reactions_from_exchange(all_reactions, include_exchanges):
 
     '''
     include_reactions = []
-    for reaction_id, specs in all_reactions.iteritems():
+    for reaction_id, specs in all_reactions.items():
         reaction_molecules = specs['stoichiometry'].keys()
         for exchange in include_exchanges:
             if exchange in reaction_molecules:
@@ -367,7 +367,7 @@ def get_molecules_from_reactions(reaction_ids, all_reactions):
     '''
     molecule_ids = []
 
-    # for reaction_id, specs in all_reactions.iteritems():
+    # for reaction_id, specs in all_reactions.items():
     for reaction_id in reaction_ids:
         specs = all_reactions[reaction_id]
         stoichiometry = specs['stoichiometry']
@@ -400,7 +400,7 @@ class RateLawUtilities(object):
         make_reaction_ids = kinetic_parameters.keys()
         make_reactions = {
             reaction_id: specs
-            for reaction_id, specs in self.all_reactions.iteritems()
+            for reaction_id, specs in self.all_reactions.items()
             if reaction_id in make_reaction_ids}
 
         # Make the kinetic model
@@ -412,7 +412,7 @@ class RateLawUtilities(object):
         # make look up object and get saved concentrations from wcm (mmol/L)
         self.look_up = LookUp()
         self.concentrations = self.look_up.look_up('average', args.media, self.molecule_ids)
-        for mol_id, conc in self.concentrations.iteritems():
+        for mol_id, conc in self.concentrations.items():
             if conc is None:
                 print('{} concentration is not available in look up table, setting to 1 mmol/L'.format(mol_id))
                 self.concentrations[mol_id] = 1.0
@@ -514,11 +514,11 @@ class RateLawUtilities(object):
         rate_law_configuration = rate_laws.make_configuration(reactions)
 
         parameter_template = {}
-        for enzyme_id, configuration in rate_law_configuration.iteritems():
+        for enzyme_id, configuration in rate_law_configuration.items():
             reaction_cofactors = configuration['reaction_cofactors']
             partition = configuration['partition']
 
-            for reaction_id, cofactors in reaction_cofactors.iteritems():
+            for reaction_id, cofactors in reaction_cofactors.items():
 
                 # check if reaction is already in the template
                 if reaction_id not in parameter_template:

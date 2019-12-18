@@ -153,7 +153,7 @@ class Outer(Actor):
             latest = max([
                 simulation['time']
                 for agent_id, simulation
-                in self.simulations.iteritems()])
+                in self.simulations.items()])
             simulation_time = max(simulation_time, latest)
 
         simulation = self.simulations.setdefault(inner_id, {})
@@ -234,7 +234,7 @@ class Outer(Actor):
         update = self.environment.generate_outer_update(now)
         self.update_state()
 
-        for inner_id, simulation in self.simulations.iteritems():
+        for inner_id, simulation in self.simulations.items():
             if inner_id in update:
                 simulation['message_id'] += 1
                 self.send(self.topics['cell_receive'], {
@@ -299,7 +299,7 @@ class Outer(Actor):
 
         # TODO(Ryan): replace this with something that isn't O(n^2)
         ready = True
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             if simulation['message_id'] > simulation['last_message_id']:
                 ready = False
                 break
@@ -367,7 +367,7 @@ class Outer(Actor):
                 self.shutdown()
 
     def send_shutdown(self):
-        for inner_id, simulation in self.simulations.iteritems():
+        for inner_id, simulation in self.simulations.items():
             self.send(self.topics['cell_receive'], {
                 'outer_id': self.agent_id,
                 'inner_id': inner_id,

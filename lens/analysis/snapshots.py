@@ -35,7 +35,7 @@ class Snapshots(Analysis):
 
             # arrange data by time, for easy integration with environment data
             time_dict = {time: {} for time in times}
-            for tag, series in tags_history.iteritems():
+            for tag, series in tags_history.items():
                 tag_hist = {time: {'tags': {tag: state}} for time, state in zip(times,series)}
                 time_dict = deep_merge(dict(time_dict), tag_hist)
 
@@ -133,18 +133,22 @@ class Snapshots(Analysis):
                 for f_index, field_id in enumerate(field_ids, 0):  # TODO --multiple fields
 
                     ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
-                    ax.title.set_text('time: {:.4f} hr | field: {}'.format(float(time)/60./60., field_id))
+                    plot_title = 'time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id)
+                    plt.title(plot_title, y=1.08)
                     ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
                     ax.set_yticklabels([])
                     ax.set_xticklabels([])
 
                     # transpose field to align with agent
                     field = np.transpose(np.array(field_data[field_id])).tolist()
-                    plt.imshow(field,
+                    im = plt.imshow(field,
                                origin='lower',
                                extent=[0, edge_length_x, 0, edge_length_y],
                                interpolation='nearest',
                                cmap='YlGn')
+                    plt.colorbar(im, ax=ax)
+
+                    # agents
                     self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
             else:
@@ -155,17 +159,17 @@ class Snapshots(Analysis):
                 ax.set_xticklabels([])
                 self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
-        # plt.subplots_adjust(wspace=0.7, hspace=0.1)
+        plt.subplots_adjust(wspace=0.6, hspace=0.5)
         figname = '/snap_out'
         if tags_present:
             figname = '/snap_out_tagged'
-        plt.savefig(output_dir + figname, bbox_inches='tight')
+        plt.savefig(output_dir + figname)
         plt.close(fig)
 
 
     def plot_agents(self, ax, agent_data, cell_radius, agent_colors):
 
-        for agent_id, data in agent_data.iteritems():
+        for agent_id, data in agent_data.items():
 
             # location, orientation, length
             volume = data['volume']

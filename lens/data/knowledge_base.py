@@ -19,6 +19,7 @@ LIST_OF_FLAT_FILENAMES = (
     os.path.join("media", "5X_supplement_EZ.tsv"),
     os.path.join("media", "GLC_G6P.tsv"),
     os.path.join("media", "GLC_LCT.tsv"),
+    os.path.join("media", "ecoli_core_GLC.tsv"),
 )
 
 class DataStore(object):

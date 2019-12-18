@@ -128,7 +128,7 @@ class TransportLookup(Process):
         # time step dependence
         # TODO (Eran) -- load units in look_up
         transport_fluxes = {key: value * (FLUX_UNITS) * timestep * TIME_UNITS
-                                 for key, value in transport_fluxes.iteritems()}
+                                 for key, value in transport_fluxes.items()}
 
         # convert to counts
         delta_counts = self.flux_to_counts(transport_fluxes, mmol_to_counts)
@@ -145,13 +145,13 @@ class TransportLookup(Process):
     # TODO (Eran) -- make this a util
     def flux_to_counts(self, fluxes, conversion):
 
-        rxn_counts = {reaction_id: int(conversion * flux) for reaction_id, flux in fluxes.iteritems()}
+        rxn_counts = {reaction_id: int(conversion * flux) for reaction_id, flux in fluxes.items()}
         delta_counts = {}
-        for reaction_id, rxn_count in rxn_counts.iteritems():
+        for reaction_id, rxn_count in rxn_counts.items():
             stoichiometry = self.all_transport_reactions[reaction_id]['stoichiometry']
-            substrate_counts = {substrate_id: coeff * rxn_count for substrate_id, coeff in stoichiometry.iteritems()}
+            substrate_counts = {substrate_id: coeff * rxn_count for substrate_id, coeff in stoichiometry.items()}
             # add to delta_counts
-            for substrate, delta in substrate_counts.iteritems():
+            for substrate, delta in substrate_counts.items():
                 if substrate in delta_counts:
                     delta_counts[substrate] += delta
                 else:

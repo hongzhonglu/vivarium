@@ -42,7 +42,7 @@ def make_network(stoichiometry, info={}):
 
 	nodes = {}
 	edges = []
-	for reaction_id, stoich in stoichiometry.iteritems():
+	for reaction_id, stoich in stoichiometry.items():
 		flux = reaction_fluxes.get(reaction_id, 1)
 		# add reaction to node list
 		n_type = node_types.get(reaction_id, 'reaction')
@@ -53,7 +53,7 @@ def make_network(stoichiometry, info={}):
 			'size': n_size}
 
 		# add molecules to node list, and connections to edge list
-		for molecule_id, coeff in stoich.iteritems():
+		for molecule_id, coeff in stoich.items():
 			n_type = node_types.get(molecule_id, 'molecule')
 			n_size = node_sizes.get(molecule_id, 1)
 			nodes[molecule_id] = {
@@ -121,13 +121,13 @@ def save_network(nodes, edges, plotOutDir='out/network'):
 
 	## Save network to csv
 	# nodes list
-	with open(nodes_out, 'wb') as csvfile:
+	with open(nodes_out, 'w') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 
 		# write header
 		writer.writerow(['Id', 'Label', 'Type', 'Size'])
 
-		for node, specs in nodes.iteritems():
+		for node, specs in nodes.items():
 			label = specs['label']
 			type = specs['type']
 			size = specs['size']
@@ -136,7 +136,7 @@ def save_network(nodes, edges, plotOutDir='out/network'):
 			writer.writerow(row)
 
 	# edges list
-	with open(edges_out, 'wb') as csvfile:
+	with open(edges_out, 'w') as csvfile:
 		writer = csv.writer(csvfile, delimiter=',')
 
 		# write header

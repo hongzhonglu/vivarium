@@ -98,10 +98,10 @@ class EnvironmentStub(EnvironmentSimulation):
     def apply_inner_update(self, update, now):
         self.simulations.update(update)
 
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             if simulation['time'] <= now:
                 state = simulation['state']
-                for molecule, change in state['changes'].iteritems():
+                for molecule, change in state['changes'].items():
                     self.concentrations[molecule] += change
 
     def run_for_time(self):
@@ -113,7 +113,7 @@ class EnvironmentStub(EnvironmentSimulation):
 
     def generate_outer_update(self, now):
         state = {}
-        for agent_id, simulation in self.simulations.iteritems():
+        for agent_id, simulation in self.simulations.items():
             if simulation['time'] <= now:
                 state[agent_id] = {}
                 state[agent_id]['concentrations'] = self.concentrations

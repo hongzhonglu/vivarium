@@ -98,7 +98,7 @@ class Media(object):
             self.stock_media[label].update(environment_non_zero_dict)
 
         # add recipes to stock_media
-        for media_id, recipe_raw in self.recipes.iteritems():
+        for media_id, recipe_raw in self.recipes.items():
             recipe_parsed = grammar.parse(recipe_raw)
             recipe = self.recipe_constructor.visit(recipe_parsed)
             media = self.make_recipe(recipe[0], True) # list only contains one recipe. Use first element.
@@ -113,7 +113,7 @@ class Media(object):
         return recipes
 
     def remove_units(self, media):
-        return {mol: conc.m_as(CONC_UNITS) for mol, conc in media.iteritems()}
+        return {mol: conc.m_as(CONC_UNITS) for mol, conc in media.items()}
 
     def get_saved_media(self, media_id, units=False):
         media = self.stock_media.get(media_id)
@@ -126,7 +126,7 @@ class Media(object):
 
         # check/add units, if none defined, assume CONC_UNITS
         if all(isinstance(x, (float, int)) for x in media.values()):
-            for mol_id, conc in media.iteritems():
+            for mol_id, conc in media.items():
                 media[mol_id] = conc * CONC_UNITS
         elif any(isinstance(x, (float, int)) for x in media.values()):
             raise AddIngredientsError(
@@ -143,7 +143,7 @@ class Media(object):
 
         new_media = {}
         total_volume = 0.0 * VOLUME_UNITS
-        for ingredient, amount in recipe.iteritems():
+        for ingredient, amount in recipe.items():
 
             added_volume = amount.get('volume', 0.0 * VOLUME_UNITS)
             added_counts = amount.get('counts')
@@ -265,7 +265,7 @@ class Media(object):
             else:
                 new_media_id = str(uuid.uuid1())
                 # determine if this is an existing media
-                for media_id, concentrations in self.stock_media.iteritems():
+                for media_id, concentrations in self.stock_media.items():
                     if cmp(concentrations, media) == 0:
                         new_media_id = media_id
                         break
