@@ -64,8 +64,8 @@ class MembranePotential(Process):
         self.charge = config.get('charge', CHARGE_MAP)
 
         # get list of internal and external states
-        internal_states = self.initial_states['internal'].keys()
-        external_states = self.initial_states['external'].keys()
+        internal_states = list(self.initial_states['internal'].keys())
+        external_states = list(self.initial_states['external'].keys())
 
         # set roles
         roles = {

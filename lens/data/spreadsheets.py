@@ -8,7 +8,11 @@ import csv
 import json
 import re
 import numpy as np
-from itertools import ifilter
+
+try:
+    from future_builtins import filter
+except ImportError:
+    pass
 
 from lens.utils.units import units
 
@@ -34,51 +38,55 @@ class JsonWriter(csv.DictWriter):
             })
 
 
+def split_units(field):
+    try:
+        attribute = re.search(r'(.*?) \(', field).group(1)
+        units_value =  eval(re.search(r'\((.*?)\)', field).group(1))
+        return (attribute, units_value)
+    except AttributeError:
+        return (field, None)
+
+
 class JsonReader(csv.DictReader):
     def __init__(self, *args, **kwargs):
         csv.DictReader.__init__(
-            self, quotechar = "'", quoting = csv.QUOTE_MINIMAL, *args, **kwargs
-            )
+            self,
+            quotechar = "\"",
+            quoting = csv.QUOTE_MINIMAL,
+            *args, **kwargs)
 
         # This is a hack to strip extra quotes from the field names
         # Not proud of it, but it works.
         self.fieldnames # called for side effect
 
         self._fieldnames = [
-            fieldname.strip('"') for fieldname in self._fieldnames
-            ]
+            fieldname.strip('"') for fieldname in self._fieldnames]
 
-    def next(self):
-        attributeDict = {}
-        for key, raw_value in csv.DictReader.next(self).viewitems():
-            try:
-                value = json.loads(raw_value) if raw_value else ""
+        self.field_mapping = {
+            field: split_units(field)
+            for field in self._fieldnames}
 
-            except (ValueError, TypeError) as e:
-                repr(e)
-                raise Exception("failed to parse json string:{}".format(raw_value))
 
-            try:
-                attribute = re.search('(.*?) \(', key).group(1)
-                value_units =  eval(re.search('\((.*?)\)',key).group(1))
-                attributeDict[attribute] = value * value_units
-            except AttributeError:
-                attributeDict[key] = value
-        return attributeDict
-
-        # return {
-        # 	key:json.loads(value) if value else "" # catch for empty field
-        # 	for key, value in csv.DictReader.next(self).viewitems()
-        # 	}
-
-def load_tsv(dir_name, file_name):
-    file_path = os.path.join(dir_name, file_name)
-    with open(file_path, 'rU') as tsvfile:
+def load_tsv(path):
+    with open(path, 'rU') as tsvfile:
         reader = JsonReader(
-            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile),  # Strip comments
+            filter(lambda x: x.lstrip()[0] != "#", tsvfile),  # Strip comments
             dialect=TSV_DIALECT)
         attr_list = []
-        fieldnames = reader.fieldnames
         for row in reader:
-            attr_list.append({field: row[field] for field in fieldnames})
+            entry = {}
+            for field in reader.fieldnames:
+                fieldname, units = reader.field_mapping[field]
+                value = row[field]
+
+                try:
+                    value = json.loads(value)
+                except:
+                    pass
+
+                if not units is None:
+                    value *= units
+
+                entry[fieldname] = value
+            attr_list.append(entry)
     return attr_list

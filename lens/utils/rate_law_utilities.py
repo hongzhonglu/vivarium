@@ -26,15 +26,11 @@ import argparse
 import matplotlib
 import matplotlib.pyplot as plt
 
-from itertools import ifilter
-
-from lens.data.spreadsheets import JsonReader
+from lens.data.spreadsheets import load_tsv
 from lens.actor import filepath
 
 from lens.environment.look_up import LookUp
 import lens.utils.kinetic_rate_laws as rate_laws
-
-TSV_DIALECT = csv.excel_tab
 
 REACTIONS_FILE = os.path.join("lens", "data", "flat", "wcEcoli_reactions.tsv")
 PROTEINS_FILE = os.path.join("lens", "data", "flat", "wcEcoli_proteins.tsv")
@@ -240,7 +236,7 @@ def analyze_rate_laws(kinetic_rate_laws, baseline_concentrations, output_filenam
                     plt.subplot(rows, columns, row_number * columns + col_number + 1)
                     for index, competitor_conc in enumerate(conc_shown):
                         concentrations[competitor] = competitor_conc
-                        flux_values = scan_conc(kinetic_rate_laws, concentrations, reaction_id,	a1,	conc_samples)
+                        flux_values = scan_conc(kinetic_rate_laws, concentrations, reaction_id, a1, conc_samples)
 
                         # plot M-M curve for this reaction
                         plt.plot(conc_samples, flux_values,
@@ -290,52 +286,42 @@ def load_reactions():
 
     # get protein locations
     proteins_locations = {}
-    with open(PROTEINS_FILE, 'rU') as tsvfile:
-        reader = JsonReader(
-            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile), # Strip comments
-            dialect = TSV_DIALECT)
-        for row in reader:
-            molecule_id = row["id"]
-            location = row["location"]
+    rows = load_tsv(PROTEINS_FILE)
+    for row in rows:
+        molecule_id = row["id"]
+        location = row["location"]
+        molecule_loc = ['{}[{}]'.format(molecule_id, loc) for loc in location]
+        proteins_locations[molecule_id] = molecule_loc
+
+    # get complex locations
+    rows = load_tsv(COMPLEXATION_FILE)
+    for row in rows:
+        stoichiometry = row["stoichiometry"]
+        for stoich in stoichiometry:
+            molecule_id =  stoich['molecule']
+            location = stoich["location"]
             molecule_loc = ['{}[{}]'.format(molecule_id, loc) for loc in location]
             proteins_locations[molecule_id] = molecule_loc
 
-    # get complex locations
-    with open(COMPLEXATION_FILE, 'rU') as tsvfile:
-        reader = JsonReader(
-            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile), # Strip comments
-            dialect = TSV_DIALECT)
-        for row in reader:
-            stoichiometry = row["stoichiometry"]
-            for stoich in stoichiometry:
-                molecule_id =  stoich['molecule']
-                location = stoich["location"]
-                molecule_loc = ['{}[{}]'.format(molecule_id, loc) for loc in location]
-                proteins_locations[molecule_id] = molecule_loc
-
     # make dict of all reactions
     all_reactions = {}
-    with open(REACTIONS_FILE, 'rU') as tsvfile:
-        reader = JsonReader(
-            ifilter(lambda x: x.lstrip()[0] != "#", tsvfile), # Strip comments
-            dialect = TSV_DIALECT)
-        for row in reader:
-            reaction_id = row["reaction id"]
-            stoichiometry = row["stoichiometry"]
-            reversible = row["is reversible"]
-            enzymes = row["catalyzed by"]
+    rows = load_tsv(REACTIONS_FILE)
+    for row in rows:
+        reaction_id = row["reaction id"]
+        stoichiometry = row["stoichiometry"]
+        reversible = row["is reversible"]
+        enzymes = row["catalyzed by"]
 
-            # get location
-            enzymes_loc = []
-            for enzyme in enzymes:
-                if enzyme in proteins_locations.keys():
-                    enzymes_loc.extend(proteins_locations[enzyme])
+        # get location
+        enzymes_loc = []
+        for enzyme in enzymes:
+            if enzyme in proteins_locations.keys():
+                enzymes_loc.extend(proteins_locations[enzyme])
 
-            all_reactions[reaction_id] = {
-                "stoichiometry": stoichiometry,
-                "is reversible": reversible,
-                "catalyzed by": enzymes_loc,
-            }
+        all_reactions[reaction_id] = {
+            "stoichiometry": stoichiometry,
+            "is reversible": reversible,
+            "catalyzed by": enzymes_loc}
 
     return all_reactions
 

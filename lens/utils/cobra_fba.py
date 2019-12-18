@@ -18,7 +18,7 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
     metabolites = {
         metabolite: Metabolite(metabolite, name=metabolite, compartment='c')
-        for metabolite in metabolite_keys.keys()}
+        for metabolite in list(metabolite_keys.keys())}
 
     model.add_metabolites(metabolites.values())
 
@@ -84,7 +84,7 @@ def extract_model(model):
     external_state = {}
     exchange_bounds = {}
     for reaction in boundary:
-        reaction_metabolites = reaction.metabolites.keys()
+        reaction_metabolites = list(reaction.metabolites.keys())
         assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
         metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
@@ -188,7 +188,7 @@ class CobraFBA(object):
             reaction.upper_bound = level
 
     def constrain_reaction_bounds(self, reaction_bounds):
-        reactions = self.get_reactions(reaction_bounds.keys())
+        reactions = self.get_reactions(list(reaction_bounds.keys()))
         for reaction, bounds in reaction_bounds.items():
             reaction = reactions[reaction]
             reaction.lower_bound, reaction.upper_bound = bounds
@@ -255,7 +255,7 @@ def test_minimal():
 
     fba = CobraFBA({
         'stoichiometry': stoichiometry,
-        'reversible': stoichiometry.keys(),
+        'reversible': list(stoichiometry.keys()),
         'objective': objective,
         'external_molecules': external_molecules,
         'initial_state': initial_state,
@@ -299,7 +299,7 @@ def test_fba():
 
     fba = CobraFBA({
         'stoichiometry': stoichiometry,
-        'reversible': stoichiometry.keys(),
+        'reversible': list(stoichiometry.keys()),
         'objective': objective,
         'external_molecules': external_molecules})
 

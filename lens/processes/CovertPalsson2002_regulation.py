@@ -92,7 +92,8 @@ class Regulation(Process):
         data = {}
         for filename in LIST_OF_FILENAMES:
             attrName = filename.split(os.path.sep)[-1].split(".")[0]
-            data[attrName] = load_tsv(DATA_DIR, filename)
+            path = os.path.join(DATA_DIR, filename)
+            data[attrName] = load_tsv(path)
 
         # make regulatory logic functions
         self.regulation_logic = {}

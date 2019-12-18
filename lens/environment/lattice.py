@@ -101,7 +101,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         else:
             media = self.make_media.get_saved_media(self.media_id)
 
-        self._molecule_ids = media.keys()
+        self._molecule_ids = list(media.keys())
         self.concentrations = media.values()
         self.molecule_index = {molecule: index for index, molecule in enumerate(self._molecule_ids)}
         self.fill_lattice(media)
@@ -142,8 +142,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                           specs['center'][1] * self.edge_length_y]
                 deviation = specs['deviation']
 
-                for x_patch in xrange(self.patches_per_edge_x):
-                    for y_patch in xrange(self.patches_per_edge_y):
+                for x_patch in range(self.patches_per_edge_x):
+                    for y_patch in range(self.patches_per_edge_y):
                         # distance from middle of patch to center coordinates
                         dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
                         dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
@@ -173,8 +173,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                           specs['center'][1] * self.edge_length_y]
                 slope = specs['slope']
 
-                for x_patch in xrange(self.patches_per_edge_x):
-                    for y_patch in xrange(self.patches_per_edge_y):
+                for x_patch in range(self.patches_per_edge_x):
+                    for y_patch in range(self.patches_per_edge_y):
                         # distance from middle of patch to center coordinates
                         dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
                         dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
@@ -305,7 +305,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.lattice[index].fill(media[molecule_id])
 
     def run_diffusion(self, timestep):
-        for index in xrange(len(self.lattice)):
+        for index in range(len(self.lattice)):
             molecule = self.lattice[index]
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
