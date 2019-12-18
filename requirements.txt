@@ -7,6 +7,9 @@
 #   pyenv virtualenv lens_env
 #   pyenv local lens_env
 #
+## Install NumPy first
+#   pip install numpy==1.14.6
+#
 ## Install the packages listed in this file:
 #   pip install -r requirements.txt
 #   pyenv rehash
