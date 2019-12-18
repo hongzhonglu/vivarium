@@ -7,6 +7,9 @@ import scipy.constants as constants
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 
+# PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)
+# Ecoli internal pH in range 7.6-7.8 (Berg)
+
 # (mmol) http://book.bionumbers.org/what-are-the-concentrations-of-different-ions-in-cells/
 # Schultz, Stanley G., and A. K. Solomon. "Cation Transport in Escherichia coli" (1961)
 # TODO -- add Mg2+, Ca2+
@@ -34,10 +37,12 @@ PERMEABILITY_MAP = {
     'Cl': 'p_Cl'
     }
 
+# cation is positively charged, anion is negatively charged
 CHARGE_MAP = {
-    'K': '+',
-    'Na': '+',
-    'Cl': '-'
+    'K': 'cation',
+    'Na': 'cation',
+    'Cl': 'anion',
+    'PROTON': 'cation',
     }
 
 class NoChargeError(Exception):
@@ -123,10 +128,10 @@ class MembranePotential(Process):
             internal = internal_state[ion_id]
             external = external_state[ion_id]
 
-            if charge is '+':
+            if charge is 'cation':
                 numerator += p_ion * external
                 denominator += p_ion * internal
-            elif charge is '-':
+            elif charge is 'anion':
                 numerator += p_ion * internal
                 denominator += p_ion * external
             else:

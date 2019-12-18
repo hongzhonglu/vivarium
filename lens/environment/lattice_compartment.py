@@ -74,9 +74,10 @@ class LatticeCompartment(Compartment, Simulation):
         else:
             local_env_keys = []
 
-        local_environment = {key : update['concentrations'][key]
-                             for key in local_env_keys if key in env_keys}
-        environment.assign_values(local_environment)
+        if environment:
+            local_environment = {key : update['concentrations'][key]
+                for key in local_env_keys if key in env_keys}
+            environment.assign_values(local_environment)
 
     def generate_daughters(self):
         states = self.divide_state(self)

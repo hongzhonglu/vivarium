@@ -97,9 +97,9 @@ class Metabolism(Process):
 
         internal_state = states['internal']
         external_state = states['external']
-        constrained_reaction_bounds = states['flux_bounds']
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
+        constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
 
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
@@ -108,9 +108,13 @@ class Metabolism(Process):
         self.fba.constrain_flux(constrained_reaction_bounds)
 
         # solve the fba problem
-        objective_exchange = self.fba.optimize()  # (units.mmol / units.L)
-        exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L)
-        internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L)
+        objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
+        exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
+        internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
+
+        # timestep dependence
+        exchange_fluxes.update((mol_id, flux * timestep) for mol_id, flux in exchange_fluxes.items())
+        internal_fluxes.update((mol_id, flux * timestep) for mol_id, flux in internal_fluxes.items())
 
         # update internal counts from objective flux
         # calculate the new mass from the objective molecules' molecular weights
@@ -316,10 +320,12 @@ def simulate_metabolism(config):
 
         # save state
         saved_data['time'].append(time)
-        for role in ['internal', 'external', 'reactions', 'exchange', 'flux_bounds']:
+        for role in ['internal', 'external', 'reactions', 'exchange']:
             for state_id, value in state[role].items():
-                # print('role: {} | state: {} | value: {}'.format(role, state_id, value))
                 saved_data[role][state_id].append(value)
+        for role in ['flux_bounds']:
+            for state_id, value in state[role].items():
+                saved_data[role][state_id].append(value * timestep)  # adjust flux given timestep
 
     return {
         'saved_state': saved_data,
