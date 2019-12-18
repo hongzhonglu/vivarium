@@ -1,20 +1,16 @@
-# Environment
+# lens
 
-Models of environments, which can be interfaced with cells via the agent module.
-Includes command line tools `environment.boot` for running environment and cell agents
-and `environment.control` for sending commands to agents.
+distributed platform for whole-cell models
 
-## Setup
+![lens](https://github.com/CovertLab/lens/blob/master/resources/public/img/division.png)
 
-See the top-level [README.md](../README.md) for general setup instructions, and the
-[actor/README.md](lens/actor/README.md) for multi-agent simulation setup.
+## concept
 
-1. To run Whole Cell E.coli simulations, you need to have the sim_data files. You can generate them via the
-runFitter manual runscript. In the wcEcoli directory:
+Lens is a framework for composing models of cellular processes into agents that can then interact in a shared molecular environment. Lens is distributed in that these agents can run in different processes or on different computers. They communicate through message passing and are coordinated through the environmental simulation which receives all of the cell's messages, integrates them, and responds to each cell with their new updated local environmental concentrations. 
 
-    `> PYTHONPATH="$PWD" python runscripts/manual/runFitter.py`
+## requirements
 
-## Zookeeper and Kafka
+### Zookeeper and Kafka
 
 2. See [actor/README.md](lens/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
 
@@ -35,7 +31,7 @@ runFitter manual runscript. In the wcEcoli directory:
    2. Open a browser window onto [http://localhost:33332](http://localhost:33332)
 
 
-## mongoDB
+### mongoDB
     
 4. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
     1. Run mongod as a service. To have launched start mongodb/brew/mongodb-community now and restart at login:
