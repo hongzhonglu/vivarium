@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from lens.actor.process import merge_default_updaters, deep_merge, initialize_state
-from lens.utils.dict_utils import merge_dicts
+from lens.actor.process import initialize_state
 
 # processes
 from lens.processes.Endres2006_chemoreceptor import ReceptorCluster
