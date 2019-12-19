@@ -10,15 +10,12 @@ from lens.environment.look_up import LookUp
 from lens.utils.rate_law_utilities import load_reactions
 from lens.utils.rate_law_utilities import get_reactions_from_exchange
 from lens.utils.rate_law_utilities import get_molecules_from_reactions
-from lens.data.spreadsheets import JsonReader
-from itertools import ifilter
+from lens.data.spreadsheets import load_tsv
 from lens.utils.units import units
 
 
 EXTERNAL_MOLECULES_FILE = os.path.join('lens', 'data', 'flat', 'wcEcoli_environment_molecules.tsv')
 TRANSPORT_IDS_FILE = os.path.join('lens', 'data', 'flat', 'wcEcoli_transport_reactions.tsv')
-
-TSV_DIALECT = csv.excel_tab
 
 amino_acids = [
     'L-ALPHA-ALANINE',
@@ -172,31 +169,24 @@ class TransportLookup(Process):
 
         # make dict of reactions in TRANSPORT_IDS_FILE
         self.all_transport_reactions = {}
-        with open(TRANSPORT_IDS_FILE, 'rU') as tsvfile:
-            reader = JsonReader(
-                ifilter(lambda x: x.lstrip()[0] != '#', tsvfile), # Strip comments
-                dialect = TSV_DIALECT)
-            for row in reader:
-                reaction_id = row['reaction id']
-                stoichiometry = all_reactions[reaction_id]['stoichiometry']
-                reversible = all_reactions[reaction_id]['is reversible']
-                transporters_loc = all_reactions[reaction_id]['catalyzed by']
+        rows = load_tsv(TRANSPORT_IDS_FILE)
+        for row in rows:
+            reaction_id = row['reaction id']
+            stoichiometry = all_reactions[reaction_id]['stoichiometry']
+            reversible = all_reactions[reaction_id]['is reversible']
+            transporters_loc = all_reactions[reaction_id]['catalyzed by']
 
-                self.all_transport_reactions[reaction_id] = {
-                    'stoichiometry': stoichiometry,
-                    'is reversible': reversible,
-                    'catalyzed by': transporters_loc,
-                }
+            self.all_transport_reactions[reaction_id] = {
+                'stoichiometry': stoichiometry,
+                'is reversible': reversible,
+                'catalyzed by': transporters_loc}
 
         # Make map of external molecule_ids with a location tag (as used in reaction stoichiometry) to molecule_ids in the environment
         self.molecule_to_external_map = {}
         self.external_to_molecule_map = {}
-        with open(EXTERNAL_MOLECULES_FILE, 'rU') as tsvfile:
-            reader = JsonReader(
-                ifilter(lambda x: x.lstrip()[0] != '#', tsvfile), # Strip comments
-                dialect = TSV_DIALECT)
-            for row in reader:
-                molecule_id = row['molecule id']
-                location = row['exchange molecule location']
-                self.molecule_to_external_map[molecule_id + location] = molecule_id
-                self.external_to_molecule_map[molecule_id] = molecule_id + location
+        rows = load_tsv(EXTERNAL_MOLECULES_FILE)
+        for row in rows:
+            molecule_id = row['molecule id']
+            location = row['exchange molecule location']
+            self.molecule_to_external_map[molecule_id + location] = molecule_id
+            self.external_to_molecule_map[molecule_id] = molecule_id + location

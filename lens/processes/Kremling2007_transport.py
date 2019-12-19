@@ -94,6 +94,7 @@ class Transport(Process):
             'exchange': list(external_state.keys()),
             'internal': list(internal_state.keys()),
             'fluxes': self.target_fluxes}
+
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
@@ -134,7 +135,7 @@ class Transport(Process):
                 'PYR': 0.1,  # [\mu mol gDCW]
                 'XP': 0.01,  # [fraction phosphorylation]
             }
-        self.environment_ids = external.keys()
+        self.environment_ids = list(external.keys())
 
         default_state = {
             'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
@@ -294,8 +295,8 @@ class Transport(Process):
             'G6P[e]': states['external']['G6P'],
             'LCTS[e]': states['external']['LCTS'],
         }
-        state_keys = combined_state.keys()
-        state_init = np.asarray(combined_state.values())
+        state_keys = list(combined_state.keys())
+        state_init = np.asarray(list(combined_state.values()))
 
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)

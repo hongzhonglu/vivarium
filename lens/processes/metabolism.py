@@ -26,7 +26,7 @@ class Metabolism(Process):
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
-        self.reaction_ids = self.fba.stoichiometry.keys()
+        self.reaction_ids = list(self.fba.stoichiometry.keys())
 
         # additional options
         self.constrained_reaction_ids = initial_parameters.get('constrained_reactions', [])
@@ -353,7 +353,7 @@ def plot_output(data, out_dir='out', filename='metabolism'):
 
     # remove series with all zeros
     zero_state = []
-    for key1 in saved_state.iterkeys():
+    for key1 in list(saved_state.keys()):
         if key1 not in skip_keys:
             for key2, series in saved_state[key1].items():
                 if all(v == 0 for v in series):
@@ -425,7 +425,7 @@ def save_network(metabolism, total_time=10, out_dir='out'):
 
     # initialize the process
     stoichiometry = metabolism.fba.stoichiometry
-    reaction_ids = stoichiometry.keys()
+    reaction_ids = list(stoichiometry.keys())
     external_mol_ids = metabolism.fba.external_molecules
     objective = metabolism.fba.objective
 
@@ -462,7 +462,7 @@ if __name__ == '__main__':
     # configure toy model
     toy_config = get_toy_configuration()
     toy_transport = toy_transport_kinetics()
-    toy_config['constrained_reactions'] = toy_transport.keys()
+    toy_config['constrained_reactions'] = list(toy_transport.keys())
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
