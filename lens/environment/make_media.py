@@ -21,7 +21,10 @@ VOLUME_UNITS = units.L
 MASS_UNITS = units.g
 CONC_UNITS = COUNTS_UNITS / VOLUME_UNITS
 
-grammar = Grammar("""
+def cmp(a, b):
+	return (a > b) - (a < b)
+
+grammar = Grammar(r"""
     timeline = one_event*
     one_event = numeric? ws? recipe break?
     recipe = one_ingredient*
@@ -211,12 +214,12 @@ class Media(object):
     def combine_media(self, media_1, volume_1, media_2, volume_2, units=False, operation='add'):
 
         # intialize new_media
-        new_media = {mol_id: 0.0 * CONC_UNITS for mol_id in set(media_1.keys() + media_2.keys())}
+        new_media = {mol_id: 0.0 * CONC_UNITS for mol_id in set(list(media_1.keys()) + list(media_2.keys()))}
 
         # get new_media volume
         new_volume = volume_1 + volume_2
 
-        for mol_id in new_media.iterkeys():
+        for mol_id in list(new_media.keys()):
             conc_1 = media_1.get(mol_id, 0 * CONC_UNITS)
             conc_2 = media_2.get(mol_id, 0 * CONC_UNITS)
 
@@ -266,7 +269,8 @@ class Media(object):
                 new_media_id = str(uuid.uuid1())
                 # determine if this is an existing media
                 for media_id, concentrations in self.stock_media.items():
-                    if cmp(concentrations, media) == 0:
+                    if concentrations == media:
+                    # if cmp(concentrations, media) == 0:
                         new_media_id = media_id
                         break
                 self.stock_media[new_media_id] = media
@@ -311,10 +315,10 @@ class RecipeConstructor(NodeVisitor):
     def visit_one_ingredient(self, node, visited_children):
         add, subtract, ingredients = visited_children
         if isinstance(add, list):
-            for amount in ingredients.itervalues():
+            for amount in list(ingredients.values()):
                 amount['operation'] = 'add'
         elif isinstance(subtract, list):
-            for amount in ingredients.itervalues():
+            for amount in list(ingredients.values()):
                 amount['operation'] = 'subtract'
         return ingredients
 

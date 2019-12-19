@@ -1,11 +1,7 @@
-
 import os
 import csv
 
-from lens.data.spreadsheets import JsonReader
-from itertools import ifilter
-
-CSV_DIALECT = csv.excel_tab
+from lens.data.spreadsheets import load_tsv
 
 FLAT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "flat")
 
@@ -44,8 +40,6 @@ class KnowledgeBase(object):
         attrName = file_name.split(os.path.sep)[-1].split(".")[0]
         setattr(path, attrName, [])
 
-        with open(file_name, 'rU') as csvfile:
-            reader = JsonReader(
-                ifilter(lambda x: x.lstrip()[0] != "#", csvfile), # Strip comments
-                dialect = CSV_DIALECT)
-            setattr(path, attrName, [row for row in reader])
+        file_path = os.path.join(dir_name, file_name)
+        rows = load_tsv(file_path)
+        setattr(path, attrName, [row for row in rows])
