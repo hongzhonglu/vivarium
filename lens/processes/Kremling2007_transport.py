@@ -75,10 +75,14 @@ MOLECULAR_WEIGHTS = {
     'G6P': 260.136,
     'GLC': 180.16,
 }
+# target flux reaction names come from BiGG models
+TARGET_FLUXES = ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+
 
 class Transport(Process):
     def __init__(self, initial_parameters={}):
         self.dt = 0.01  # timestep for ode integration (seconds)
+        self.target_fluxes = initial_parameters.get('target_fluxes', TARGET_FLUXES)
 
         default_settings = self.default_settings()
         default_state = default_settings['state']
@@ -86,9 +90,10 @@ class Transport(Process):
         external_state = default_state['external']
 
         roles = {
-            'external': external_state.keys(),
-            'exchange': external_state.keys(),
-            'internal': internal_state.keys()}
+            'external': list(external_state.keys()),
+            'exchange': list(external_state.keys()),
+            'internal': list(internal_state.keys()),
+            'fluxes': self.target_fluxes}
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
@@ -102,6 +107,9 @@ class Transport(Process):
         glc_lct = False
 
         make_media = Media()
+
+
+        # TODO -- don't use this if/else, select state based on media
         if glc_g6p:
             external = make_media.get_saved_media('GLC_G6P')
             internal = {
@@ -131,20 +139,22 @@ class Transport(Process):
         default_state = {
             'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
             'external': external,
-            'exchange': {state_id: 0.0 for state_id in self.environment_ids}
-        }
+            'exchange': {state_id: 0.0 for state_id in self.environment_ids},
+            'fluxes': {}}
 
         # default emitter keys
         default_emitter_keys = {
             'internal': ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP'],
-            'external': ['G6P', 'GLC', 'LAC']}
+            'external': ['G6P', 'GLC', 'LAC'],
+            'fluxes': self.target_fluxes}
 
         # default updaters
         default_updaters = {
             'internal': {state_id: 'set'
                          for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
             'external': {},  # reactions set values directly
-            'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids}}  # all external values use default 'delta' udpater
+            'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids},  # all external values use default 'delta' udpater
+            'fluxes': {state_id: 'set' for state_id in self.target_fluxes}}
 
 
         default_settings = {
@@ -211,7 +221,7 @@ class Transport(Process):
             else:
                 mu = p['Y3_sim'] * rup1 + p['Y2_sim'] * rup2
 
-            ppc_rate = 0  # TODO -- figure out code below
+            ppc_rate = 0  # TODO -- implement (or remove) code below
             # if (nargin >= 7 & & ~isempty(varargin{1}) & & ~isempty(varargin{2})):
             #     FBA_primal = varargin{1}
             #     FBA_rxnInd = varargin{2}
@@ -256,6 +266,10 @@ class Transport(Process):
             dx[state_keys.index('GLC[e]')] = dGLC_e
             dx[state_keys.index('G6P[e]')] = dG6P_e    # sugar1 changes with condition
             dx[state_keys.index('LCTS[e]')] = dLCTS_e  # sugar1 changes with condition
+
+
+            # TODO: rup2 is PTS uptake, rup1 is G6P uptake or Lactose uptake, rpyk
+            # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
 
             return dx
 
@@ -307,10 +321,15 @@ class Transport(Process):
                 # set internal directly
                 internal_update[state_id] = final_conc
 
-        # TODO -- make an optional 'external' update to set external concentrations directly.  set updater to null in composition.
+
+        import ipdb; ipdb.set_trace()
+        fluxes = {}
+        # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
+
         return {
             'exchange': external_update,
-            'internal': internal_update}
+            'internal': internal_update,
+            'fluxes': fluxes}
 
 # test and analysis of process
 def test_transport(sim_time = 3600):

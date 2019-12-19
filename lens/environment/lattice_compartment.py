@@ -29,6 +29,12 @@ def add_str_to_keys(dct, key_str):
 
 
 class LatticeCompartment(Compartment, Simulation):
+    '''
+    - environment_role holds the local concentrations from the external environment,
+    and is updated at each exchange timestep
+    - exchange_role holds accumulated molecules counts over the exchange timestep,
+    and passes them to the environment upon exchange.
+    '''
     def __init__(self, processes, states, configuration):
         self.color = DEFAULT_COLOR
         self.exchange_role = configuration.get('exchange_role', '')

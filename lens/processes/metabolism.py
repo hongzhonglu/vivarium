@@ -101,6 +101,11 @@ class Metabolism(Process):
         volume = mass.to('g') / self.density
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
 
+
+        # import ipdb; ipdb.set_trace()
+        # TODO -- get flux bounds from transport
+
+
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
