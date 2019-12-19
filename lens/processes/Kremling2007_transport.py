@@ -76,7 +76,7 @@ MOLECULAR_WEIGHTS = {
     'GLC': 180.16,
 }
 # target flux reaction names come from BiGG models
-TARGET_FLUXES = ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+TARGET_FLUXES = []  # ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
 
 
 class Transport(Process):
@@ -322,8 +322,7 @@ class Transport(Process):
                 # set internal directly
                 internal_update[state_id] = final_conc
 
-
-        import ipdb; ipdb.set_trace()
+        # TODO -- get fluxes for TARGET_FLUXES
         fluxes = {}
         # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
 
@@ -333,7 +332,7 @@ class Transport(Process):
             'fluxes': fluxes}
 
 # test and analysis of process
-def test_transport(sim_time = 3600):
+def test_transport(sim_time = 10):
     # Kremling 2007 runs sim for 7.5 hours
     timeline = [
         # (0, {'external': {
