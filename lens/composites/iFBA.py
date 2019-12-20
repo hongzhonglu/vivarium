@@ -11,19 +11,25 @@ from lens.processes.BiGG_metabolism import BiGGMetabolism
 from lens.processes.Kremling2007_transport import Transport
 from lens.processes.CovertPalsson2002_regulation import Regulation
 
+# target flux reaction names come from BiGG models
+TARGET_FLUXES = ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+
 
 def compose_iFBA(config):
 
-    # declare the processes
-    # regulation = Regulation(config)
+    ## declare the processes
+    # transport
+    transport_config = copy.deepcopy(config)
+    transport_config.update({'target_fluxes': TARGET_FLUXES})
     transport = Transport(config)
-    target_fluxes = transport.target_fluxes
+    target_fluxes = transport.target_fluxes  # TODO -- just use TARGET_FLUXES?
+
+    # metabolism
     metabolism_config = copy.deepcopy(config)
     metabolism_config.update({'constrained_reactions': target_fluxes})
-
-    # TODO -- get self.constrained_reaction_ids from transport, pass into metabolism
-
     metabolism = BiGGMetabolism(metabolism_config)
+
+    # other processes
     deriver = DeriveVolume(config)
     division = Division(config)
 

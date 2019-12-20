@@ -12,18 +12,19 @@ from lens.utils.dict_utils import merge_dicts
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
-    'k1': 0.00001,  # enzyme synthesis k1[\mu mo / gDW h]
-    'k2': 0.0001,  # enzyme synthesis k2[\mu mo / gDW h]
-    'k3': 0.00016,  # enzyme synthesis k3[\mu mo / gDW h]
-    'K1': 3000,  # K1[\mu mo / gDW]
-    'K2': 2800,  # K2[\mu mo / gDW]
-    'K3': 15000,  # K3[\mu mo / gDW]
+    'k1': 0.00001,  # enzyme synthesis k1 [\mu mo / gDW h]
+    'k2': 0.0001,  # enzyme synthesis k2 [\mu mo / gDW h]
+    'k3': 0.00016,  # enzyme synthesis k3 [\mu mo / gDW h]
+    'K1': 3000,  # K1 [\mu mo / gDW]
+    'K2': 2800,  # K2 [\mu mo / gDW]
+    'K3': 15000,  # K3 [\mu mo / gDW]
+
     # enzyme degration
     'kd': 0.4,  # enzyme degradation k_d[1 / h]
 
-    'm': 1,  # m[-]
-    'n': 2,  # n[-]
-    'x0': 0.1,  # EIIA_0[\mu mo / gDW]
+    'm': 1,  # m
+    'n': 2,  # n
+    'x0': 0.1,  # EIIA_0 [\mu mo / gDW]
 
     'kg6p': 2.8e6,  # Glc 6P transporter k_g6p[1 / h]
     'Kg6p': 0.1,  # Glc 6P transporter K_g6p[g / l]
@@ -32,25 +33,28 @@ DEFAULT_PARAMETERS = {
     'Kglc': 0.12,  # Glc transporter K_glc[g / l]
     'Keiiap': 12,  # Glc transporter K_EIIAP[\mu mol / gDW]
 
-    'klac': 5.4e5,  # Lac transporter k_lac[1 / h]
-    'Klac': 0.13,  # Lac transporter K_lac[g / l]
+    'klac': 5.4e5,  # Lac transporter k_lac [1 / h]
+    'Km_lac': 0.13,  # Km for lac  [g / l]
     'Kieiia': 5.0,  # K_IEIIA: inhibition of Lac transporter by EIIA[-]
 
-    'kgly': 2.80e4,  # k_gly[1 / h]
-    'kpyk': 9.39e5,  # k_pyk[1 / (\mu mol / gDW) ^ 3 h]
-    'kpdh': 5.50e3,  # k_pdh[1 / h]
-    'kpts': 1.86e5,  # k_pts[1(\mu mol / gDW) g]
-    'Kpts': 0.7,  # K_pts[-]
-    'km_pts': 0.7 * 1.86e5,  # params['Kpts'] * params['kpts']  #
+    'kgly': 2.80e4,  # [1 / h]
+    'kpyk': 9.39e5,  # [1 / (\mu mol / gDW) ^ 3 h]
+    'kpdh': 5.50e3,  # [1 / h]
+    'kpts': 1.86e5,  # [1(\mu mol / gDW) g]
 
-    'Y': 1.0e-4,  # Yglc[g TM / mu mol Substrate]
+    # 'K_pts': 0.7,  # K_pts
+    'km_pts': 0.7 * 1.86e5,  # K_pts * kpts
 
-    'mw1': 2.602e-4,  # molecular weight g6p[g Substrate / mu mol Substrate]
-    'mw2': 1.802e-4,  # molecular weight glc[g Substrate / mu mol Substrate]
-    'mw3': 3.423e-4,  # molecular weight lac[g Substrate / mu mol Substrate]
-    'Y1_sim': 6.2448e-05,  # Yg6p[gDW /\mu mol]
-    'Y2_sim': 1.0e-4,  # Yglc[gDW /\mu mol]
-    'Y3_sim': 9.2421e-05,  # Ylac[gDW /\mu mol]
+    'Y': 1.0e-4,  # Yglc [g TM / mu mol Substrate]
+
+    'mw1': 2.602e-4,  # molecular weight g6p [g Substrate / mu mol Substrate]
+    'mw2': 1.802e-4,  # molecular weight glc [g Substrate / mu mol Substrate]
+    'mw3': 3.423e-4,  # molecular weight lac [g Substrate / mu mol Substrate]
+
+    'Y1_sim': 6.2448e-05,  # Yg6p [gDW /\mu mol]
+    'Y2_sim': 1.0e-4,  # Yglc [gDW /\mu mol]
+    'Y3_sim': 9.2421e-05,  # Ylac [gDW /\mu mol]
+    'Y4_sim': 1.0e-04,  # Mtl[gDW /\mu mol]
 
     'K': 0.4,  # K[\mu mol / gDW]
     'kb': 600,  # k_bias[-]
@@ -114,7 +118,7 @@ class Transport(Process):
         if glc_g6p:
             external = make_media.get_saved_media('GLC_G6P')
             internal = {
-                'mass': 0.032,  # [g / l]  #1.339e-12,  # g
+                'mass': 0.032,  # [g / l]
                 'LACZ': 0.0,  # absent in GLC_G6P condition
                 'UHPT': 0.0003,  # [\mu mol gDCW] enz g6p
                 'PTSG': 0.007,  # [\mu mol gDCW] enz glc
@@ -173,86 +177,109 @@ class Transport(Process):
             Analysis of global control of Escherichia coli carbohydrate uptake
             '''
 
-            biomass = state[state_keys.index('mass')]  # biomass
-            sugar2 = state[state_keys.index('GLC[e]')]  # GLC external
-            transporter2 = state[state_keys.index('PTSG')]  # transporter GLC
-            metabolite1 = state[state_keys.index('G6P')]  # Glc6P
-            metabolite2 = state[state_keys.index('PEP')]  # PEP
-            metabolite3 = state[state_keys.index('PYR')]  # Pyruvate
-            protein_p = state[state_keys.index('XP')]  # EIIAP (Pts Protein)
+            biomass = state[state_keys.index('mass')]  # mass
 
-            g6pext_present = state[state_keys.index('G6P')] > 0.01
-            if g6pext_present:
-                sugar1 = state[state_keys.index('G6P[e]')]  # G6P external
-                transporter1 = state[state_keys.index('UHPT')]  # transporter for G6P
-            else:
-                sugar1 = state[state_keys.index('LCTS[e]')]  # LCTS external
-                transporter1 = state[state_keys.index('LACZ')]  # transporter for LCTS
+            # transporters
+            UHPT = state[state_keys.index('UHPT')]
+            LACZ = state[state_keys.index('LACZ')]
+            PTSG = state[state_keys.index('PTSG')]  # transporter Glc (transporter2)
 
-            ## Original rates.
-            if g6pext_present:
-                # G6P uptake
-                rup1 = p['kg6p'] * (transporter1 * sugar1) / (p['Kg6p'] + sugar1)
+            # metabolites
+            G6P = state[state_keys.index('G6P')]  # Glc 6P
+            PEP = state[state_keys.index('PEP')]  # Pep
+            PYR = state[state_keys.index('PYR')]  # Pyruvate
+            XP = state[state_keys.index('XP')]  # EIIAP (phosphorylated PTS Protein)
+
+            # external sugars
+            GLC_e = state[state_keys.index('GLC[e]')]
+            G6P_e = state[state_keys.index('G6P[e]')]
+            LCTS_e = state[state_keys.index('LCTS[e]')]
+
+            # TODO --- G6P_e?
+            G6P_e_present = G6P > 0.01
+            if G6P_e_present:
+                sugar1 = G6P_e
+                transporter1 = UHPT
             else:
-                # Lactose uptake
-                rup1 = p['klac'] * (transporter1 * sugar1) / (p['Klac'] + sugar1 * (1 + ((p['x0'] - protein_p) / p['x0']) / p['Kieiia']))
+                sugar1 = LCTS_e
+                transporter1 = LACZ
+
+            ## uptake rates
+            # sugar1 uptake
+            if G6P_e_present:
+                # G6P uptake. eqn 40
+                uptake1 = p['kg6p'] * (transporter1 * sugar1) / (p['Kg6p'] + sugar1)
+            else:
+                # Lactose uptake. eqn 45
+                uptake1 = p['klac'] * (transporter1 * sugar1) / (
+                            p['Km_lac'] + sugar1 * (1 + ((p['x0'] - XP) / p['x0']) / p['Kieiia']))
 
             # PTS uptake. eqn 38
-            rup2 = p['kptsup'] * protein_p * (transporter2 * sugar2) / (p['Kglc'] * p['Keiiap'] * p['x0'] + sugar2 * p['Keiiap'] * p['x0'] + protein_p * p['Kglc'] + protein_p * sugar2)
+            uptake2 = p['kptsup'] * XP * (PTSG * GLC_e) / (
+                    p['Kglc'] * p['Keiiap'] * p['x0'] + GLC_e * p['Keiiap'] * p['x0'] + XP * p['Kglc'] + XP * GLC_e)
 
-            # enzyme syn 1 / 2
-            if g6pext_present:
-                rsyn1 = p['k1'] * (
-                        p['kb'] + p['ksyn'] * protein_p**6. / (protein_p**6 + p['K'] ** 6)) * rup1 / (p['K1'] + rup1)
-                rsyn2 = p['k2'] * (p['KI'] / (transporter1 + p['KI'])) * (p['kb'] + p['ksyn'] * protein_p**6. / (protein_p**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
+            # enzyme synthesis. signmoid eqn 37
+            # Hill coefficient is high (n=6), indicating narrow range of input
+            if G6P_e_present:
+                # UHPT synthesis. eqn 42
+                synthesis1 = p['k1'] * (p['kb'] + p['ksyn'] * XP ** 6 / (XP ** 6 + p['K'] ** 6)) * uptake1 / (
+                            p['K1'] + uptake1)
+
+                # PTSG synthesis. eqn 43
+                synthesis2 = p['k2'] * (p['KI'] / (transporter1 + p['KI'])) * (
+                            p['kb'] + p['ksyn'] * XP ** 6 / (XP ** 6 + p['K'] ** 6)) * uptake2 / (p['K2'] + uptake2)
             else:
-                rsyn1 = p['k3'] * (p['kb'] + p['ksyn'] * (protein_p)**6. / (protein_p**6 + p['K']**6)) * rup1 / (p['K3'] + rup1)
-                rsyn2 = p['k2'] * (p['kb'] + p['ksyn'] * (protein_p)**6. / (protein_p**6 + p['K']**6)) * rup2 / (p['K2'] + rup2)
+                synthesis1 = p['k3'] * (p['kb'] + p['ksyn'] * XP ** 6 / (XP ** 6 + p['K'] ** 6)) * uptake1 / (
+                            p['K3'] + uptake1)
+                synthesis2 = p['k2'] * (p['kb'] + p['ksyn'] * XP ** 6 / (XP ** 6 + p['K'] ** 6)) * uptake2 / (
+                            p['K2'] + uptake2)
 
-            ## Rates
-            rgly = p['kgly'] * metabolite1  # Glycolyse
-            f = (metabolite1**p['n']) * metabolite2**p['m']  #
-            rpyk = p['kpyk'] * metabolite2 * f  # Pyk
-            rpts = p['kpts'] * metabolite2 * (p['x0'] - protein_p) - p['km_pts'] * metabolite3 * protein_p  # PTS rate
-            rpdh = p['kpdh'] * metabolite3  # Pdh
+            # rates
+            rgly = p['kgly'] * G6P  # Glycolyse. eqn 10
+            rpdh = p['kpdh'] * PYR  # pdh. eqn 11
+            rpts = p['kpts'] * PEP * (p['x0'] - XP) - p['km_pts'] * PYR * XP  # PTS rate. eqn 12
+            f = (G6P ** p['n']) * PEP ** p[
+                'm']  # represent different model variants.  TODO -- are these variants modeled?
+            rpyk = p['kpyk'] * PEP * f  # pyk. eqn 13
 
             # growth rate. eqn 44
-            if g6pext_present:
-                mu = p['Y1_sim'] * rup1 + p['Y2_sim'] * rup2
+            if G6P_e_present:
+                mu = p['Y1_sim'] * uptake1 + p['Y2_sim'] * uptake2
             else:
-                mu = p['Y3_sim'] * rup1 + p['Y2_sim'] * rup2
+                mu = p['Y3_sim'] * uptake1 + p['Y2_sim'] * uptake2
 
-            ppc_rate = 0  # TODO -- implement (or remove) code below
+            # iFBA code for modifying dPEP
+            # TODO -- implement or remove code below
             # if (nargin >= 7 & & ~isempty(varargin{1}) & & ~isempty(varargin{2})):
-            #     FBA_primal = varargin{1}
-            #     FBA_rxnInd = varargin{2}
-            #     options = varargin{3}
             #     ppc_rate = (FBA_primal(FBA_rxnInd.PPC) - FBA_primal(FBA_rxnInd.PCKA)) * 1e3;
             #     if (nargin == 7 | | (nargin == 8 & & varargin{4}~=0))
             #         mu = options.iFBA_growRateScale * FBA_primal(FBA_rxnInd.VGRO);
             # else:
             #     ppc_rate = 0;
 
-            # initialize sugar1, transporter1
-            dG6P_e = 0.0
-            dLCTS_e = 0.0
-            dUHPT = 0.0
-            dLACZ = 0.0
-
-            if g6pext_present:
-                dG6P_e = -p['mw1'] * rup1 * biomass
-                dUHPT = rsyn1 - (p['kd'] + mu) * transporter1  # transporter. eqn 46
-            else:
-                dLCTS_e = -p['mw3'] * rup1 * biomass
-                dLACZ = rsyn1 - (p['kd'] + mu) * transporter1  # transporter. eqn 46
-
+            # get derivatives
             dbiomass = mu * biomass  # mass
-            dGLC_e = -p['mw2'] * rup2 * biomass  # GLC[e]
-            dPTSG = rsyn2 - (p['kd'] + mu) * transporter2  # transporter. eqn 46
-            dG6Pdt = rup1 + rup2 - rgly # eqn 2
-            dPEPdt = 2 * rgly - rpyk - rpts - ppc_rate  # eqn 3
-            dPYRdt = rpyk + rpts - rpdh   # eqn 4
-            dprotein_p = rpts - rup2  # eqn 5 EIIAP (Pts Protein)
+
+            # sugar uptake and transporter synthesis
+            if G6P_e_present:
+                dLCTS_e = 0.0
+                dLACZ = 0.0
+                dG6P_e = -p['mw1'] * uptake1 * biomass
+                dUHPT = synthesis1 - (p['kd'] + mu) * transporter1  # transporter synthesis. eqn 46
+            else:
+                dLCTS_e = -p['mw3'] * uptake1 * biomass
+                dLACZ = synthesis1 - (p['kd'] + mu) * transporter1  # transporter synthesis. eqn 46
+                dG6P_e = 0.0
+                dUHPT = 0.0
+
+            dGLC_e = -p['mw2'] * uptake2 * biomass  # GLC[e]
+            dPTSG = synthesis2 - (p['kd'] + mu) * PTSG  # transporter synthesis. eqn 46
+
+            # metabolism
+            dG6P = uptake1 + uptake2 - rgly  # eqn 2
+            dPEP = 2 * rgly - rpyk - rpts  # - ppc_rate  # eqn 3
+            dPYR = rpyk + rpts - rpdh  # eqn 4
+            dXP = rpts - uptake2  # eqn 5
 
             # save to numpy array
             dx = np.zeros_like(state)
@@ -260,19 +287,19 @@ class Transport(Process):
             dx[state_keys.index('UHPT')] = dUHPT  # transporter1 changes with condition
             dx[state_keys.index('LACZ')] = dLACZ  # transporter1 changes with condition
             dx[state_keys.index('PTSG')] = dPTSG
-            dx[state_keys.index('G6P')] = dG6Pdt
-            dx[state_keys.index('PEP')] = dPEPdt
-            dx[state_keys.index('PYR')] = dPYRdt
-            dx[state_keys.index('XP')] = dprotein_p
+            dx[state_keys.index('G6P')] = dG6P
+            dx[state_keys.index('PEP')] = dPEP
+            dx[state_keys.index('PYR')] = dPYR
+            dx[state_keys.index('XP')] = dXP
             dx[state_keys.index('GLC[e]')] = dGLC_e
             dx[state_keys.index('G6P[e]')] = dG6P_e    # sugar1 changes with condition
             dx[state_keys.index('LCTS[e]')] = dLCTS_e  # sugar1 changes with condition
 
-
             # TODO: rup2 is PTS uptake, rup1 is G6P uptake or Lactose uptake, rpyk
             # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
-
             return dx
+
+
 
         # set up state and parameters for odeint
         timestep_hours = timestep / 3600
@@ -334,10 +361,27 @@ class Transport(Process):
 # test and analysis of process
 def test_transport(sim_time = 10):
     # Kremling 2007 runs sim for 7.5 hours
+
+    # media for glucose/lactose diauxic growth
+    GLC_LCT_shift = {
+        'internal': {
+            'mass': 0.032,
+            'UHPT': 1e-5,
+            'PTSG': 0.001,
+            'G6P': 0.1,
+            'PEP': 0.05,
+            'PYR': 0.1,
+            'XP': 0.01,
+        },
+        'external': {
+            'GLC': 0.22,
+            'G6P': 0.0,
+            'LCTS': 1.165,
+        }}
+
+    # make the timeline
     timeline = [
-        # (0, {'external': {
-        #     'GLC': 1}
-        # }),
+        # (0, GLC_LCT_shift),
         (sim_time, {}),
     ]
 
@@ -346,6 +390,10 @@ def test_transport(sim_time = 10):
     settings = transport.default_settings()
     state = settings['state']
     saved_state = {'internal': {}, 'external': {}, 'time': []}
+
+
+    # TODO -- update state?
+    # print('before: {}'.format(state))
 
     # run simulation
     time = 0
@@ -356,6 +404,9 @@ def test_transport(sim_time = 10):
             if time >= t:
                 for key, change in change_dict.items():
                     state[key].update(change)
+
+        # print('after: {}'.format(state))
+        # import ipdb; ipdb.set_trace()
 
         # get update and apply to state
         update = transport.next_update(timestep, state)
@@ -379,7 +430,55 @@ def test_transport(sim_time = 10):
 
     return saved_state
 
-def plot_transport(saved_state, out_dir='out'):
+def kremling_figures(saved_state, out_dir='out'):
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    import math
+
+    data_keys = [key for key in saved_state.keys() if key is not 'time']
+    time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
+
+    # figure 11
+    G6P = saved_state['internal']['G6P']
+    PEP = saved_state['internal']['PEP']
+
+    # figure 12A
+    biomass = saved_state['internal']['mass']
+    GLC_e = saved_state['external']['GLC']
+    G6P_e = saved_state['external']['G6P']
+    LCTS_e = saved_state['external']['LCTS']
+
+    # plot results
+    n_cols = 1
+    n_rows = 2
+    plt.figure(figsize=(n_cols * 6, n_rows * 2))
+
+    ax1 = plt.subplot(n_rows, n_cols, 1)
+    ax2 = plt.subplot(n_rows, n_cols, 2)
+
+    # figure 11
+    ax1.plot(time_vec, G6P, '--', label='G6P')
+    ax1.plot(time_vec, PEP, label='PEP')
+    ax1.set_xlabel('time (hrs)')
+    ax1.legend()
+
+    # figure 12
+    ax2.plot(time_vec, biomass, label='biomass')
+    ax2.plot(time_vec, GLC_e, label='GLC_e')
+    ax2.plot(time_vec, G6P_e, label='G6P_e')
+    ax2.plot(time_vec, LCTS_e, label='LCTS_e')
+    ax2.set_xlabel('time (hrs)')
+    ax2.legend()
+
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'kremling_fig11')
+    plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+
+
+def plot_all_state(saved_state, out_dir='out'):
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -420,8 +519,12 @@ def plot_transport(saved_state, out_dir='out'):
 
 
 if __name__ == '__main__':
-    saved_state = test_transport(7.5*60*60)
     out_dir = os.path.join('out', 'tests', 'Kremling2007_transport')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    plot_transport(saved_state, out_dir)
+
+    # run simulation
+    saved_state = test_transport(8*60*60)  # (7.5*60*60)
+
+    kremling_figures(saved_state, out_dir)
+    # plot_all_state(saved_state, out_dir)
