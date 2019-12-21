@@ -609,7 +609,7 @@ def plot_simulation_output(sim_output, out_dir='out'):
     n_rows = max(columns)
 
     fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
-    grid = plt.GridSpec(n_rows + 1, n_cols, wspace=0.4, hspace=1.5)
+    grid = plt.GridSpec(n_rows, n_cols)
 
     # plot data
     row_idx = 0
@@ -619,22 +619,22 @@ def plot_simulation_output(sim_output, out_dir='out'):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
             ax.plot(time_vec, series)
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.title.set_text(str(role) + ': ' + str(state_id))
+            ax.title.set_fontsize(16)
 
-            if row_idx > columns[col_idx]-1:
+            if row_idx == columns[col_idx]-1:
                 # if last row of column
-                ax.title.set_text(str(state_id))
                 set_axes(ax, True)
                 ax.set_xlabel('time')
                 row_idx = 0
                 col_idx += 1
             else:
-                ax.title.set_text(str(role) + ': ' + str(state_id))
                 set_axes(ax)
                 row_idx += 1
 
     # save figure
     fig_path = os.path.join(out_dir, 'simulation')
-    plt.subplots_adjust(wspace=0.5, hspace=0.1)
+    plt.subplots_adjust(wspace=0.3, hspace=0.4)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 
