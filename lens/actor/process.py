@@ -6,6 +6,7 @@ import numpy as np
 import lens.actor.emitter as emit
 import random
 import os
+from scipy import constants
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -526,8 +527,6 @@ def load_compartment(composite=toy_composite, boot_config={}):
 def simulate_compartment(compartment, settings={}):
     '''
     run a compartment simulation
-    TODO -- need to update according to process updaters
-    TODO -- make a lattice compartment with environment volume
     '''
 
     timestep = settings.get('timestep', 1)
@@ -538,11 +537,65 @@ def simulate_compartment(compartment, settings={}):
     saved_state = {}
     saved_state[time] = compartment.current_state()
 
-    ## run simulation
+    # run simulation
     while time < total_time:
         time += timestep
         compartment.update(timestep)
         saved_state[time] = compartment.current_state()
+
+    return saved_state
+
+def simulate_with_environment(compartment, settings={}):
+    '''
+    run a compartment simulation with an environment.
+    requires processes made for LatticeCompartment, with environment_role and exchange_role
+    '''
+
+    environment_role = settings['environment_role']
+    exchange_role = settings['exchange_role']
+    env_volume = settings['environment_volume']  # (L)
+    initial_environment = compartment.current_state()[environment_role]
+    nAvogadro = constants.N_A
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # save initial state
+    time = 0
+    saved_state = {}
+    saved_state[time] = compartment.current_state()
+
+    # run simulation
+    while time < total_time:
+        time += timestep
+        compartment.update(timestep)
+
+
+        import ipdb; ipdb.set_trace()
+        # TODO -- update environment
+
+
+
+        state = compartment.current_state()
+
+        # update state
+        exchange = state.get(exchange_role)
+        exchange.assign_values(
+
+
+        # environment = state.get(environment_role)
+        mmol_to_count = nAvogadro * env_volume * 1e-3  # (L/mmol)
+        for mol_id, exchange_counts in exchange.items():
+            exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
+            state[environment_role][mol_id] += exchange_conc
+            state[exchange_role][mol_id] = 0.0 # reset exchange
+            if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
+                state[environment_role][mol_id] = 0.0
+
+        # local_env_keys = exchange_ids
+        # exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
+
+        saved_state[time] = state
 
     return saved_state
 

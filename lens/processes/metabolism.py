@@ -96,7 +96,7 @@ class Metabolism(Process):
     def next_update(self, timestep, states):
 
         internal_state = states['internal']
-        external_state = states['external']
+        external_state = states['external']  # TODO -- constrain metabolism by external state
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
@@ -133,16 +133,15 @@ class Metabolism(Process):
         internal_state_update.update({'mass': added_mass})
 
         # convert exchange fluxes to counts with mmol_to_count
-        environment_deltas = {
+        exchange_deltas = {
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
 
         # return update
         return {
+            'exchange': exchange_deltas,
             'internal': internal_state_update,
-            'external': environment_deltas,
             'reactions': internal_fluxes,
-            'exchange': exchange_fluxes,
         }
 
 
@@ -294,9 +293,8 @@ def simulate_metabolism(config):
         # get update
         update = metabolism.next_update(timestep, state)
 
-        # exchanges and reactions are set as is
+        # reactions are set as is
         state['reactions'] = update['reactions']
-        state['exchange'] = update['exchange']
 
         # apply internal update
         for state_id, state_update in update['internal'].items():
@@ -312,15 +310,16 @@ def simulate_metabolism(config):
 
         # apply external update -- use exchange without growth rate
         mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-        for mol_id, exchange_counts in update['external'].items():
+        for mol_id, exchange_counts in update['exchange'].items():
             exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
             state['external'][mol_id] += exchange_conc
+            state['exchange'][mol_id] = 0.0 # reset exchange
             if state['external'][mol_id] < 0.0:  # this shouldn't be needed
                 state['external'][mol_id] = 0.0
 
         # save state
         saved_data['time'].append(time)
-        for role in ['internal', 'external', 'reactions', 'exchange']:
+        for role in ['internal', 'external', 'reactions']:
             for state_id, value in state[role].items():
                 saved_data[role][state_id].append(value)
         for role in ['flux_bounds']:

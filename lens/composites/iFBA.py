@@ -80,7 +80,7 @@ def compose_iFBA(config):
 
 
 if __name__ == '__main__':
-    from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output
+    from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output, simulate_with_environment
 
     out_dir = os.path.join('out', 'tests', 'iFBA_composite')
     if not os.path.exists(out_dir):
@@ -88,9 +88,15 @@ if __name__ == '__main__':
 
     compartment = load_compartment(compose_iFBA)
 
+    # get options
+    options = compose_iFBA({})['options']
     settings = {
+        'environment_role': options['environment_role'],
+        'exchange_role': options['exchange_role'],
+        'environment_volume': 1e-12,  # L
         'timestep': 1,
         'total_time': 10}
 
-    saved_state = simulate_compartment(compartment, settings)
+    # saved_state = simulate_compartment(compartment, settings)
+    saved_state = simulate_with_environment(compartment, settings)
     plot_simulation_output(saved_state, out_dir)
