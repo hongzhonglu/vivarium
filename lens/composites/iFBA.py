@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
+import os
 
 from lens.actor.process import initialize_state
 
@@ -78,41 +79,13 @@ def compose_iFBA(config):
         'options': options}
 
 
-def test_iFBA():
-    import numpy as np
-    from lens.actor.process import Compartment
-    from lens.environment.lattice_compartment import LatticeCompartment
-
-    boot_config = {}
-    composite_config = compose_iFBA(boot_config)
-    processes = composite_config['processes']
-    states = composite_config['states']
-    options = composite_config['options']
-
-    # make compartment
-    compartment = LatticeCompartment(processes, states, options)
-
-    print(compartment.current_parameters())
-    print(compartment.current_state())
-
-    # test compartment
-    compartment = Compartment(processes, states, options)
-
-    print('compartment current_parameters: {}'.format(compartment.current_parameters()))
-    print('compartment current_state: {}'.format(compartment.current_state()))
-
-    # make lattice_compartment
-    lattice_compartment = LatticeCompartment(processes, states, options)
-
-    print(lattice_compartment.current_parameters())
-    print(lattice_compartment.current_state())
-
-    # evaluate compartment
-    timestep = 1
-    for steps in np.arange(10):
-        lattice_compartment.update(timestep)
-        print('lattice_compartment current_state: {}'.format(lattice_compartment.current_state()))
-
-
 if __name__ == '__main__':
-    saved_state = test_iFBA()
+    from lens.utils.test_compartments import test_compartment, simulate_compartment, plot_simulation_output
+
+    out_dir = os.path.join('out', 'tests', 'iFBA_composite')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    compartment = test_compartment(compose_iFBA)
+    saved_state = simulate_compartment(compartment)
+    plot_simulation_output(saved_state, out_dir)
