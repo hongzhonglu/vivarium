@@ -546,7 +546,7 @@ def simulate_compartment(compartment, settings={}):
 
     return saved_state
 
-def convert_to_timeseries(saved_states):
+def convert_to_timeseries(sim_output):
     '''
     input:
         - saved_states (dict) with {timestep: state_dict}
@@ -555,15 +555,15 @@ def convert_to_timeseries(saved_states):
     TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
     '''
 
-    time_vec = list(saved_states.keys())
-    initial_state = saved_states[time_vec[0]]
+    time_vec = list(sim_output.keys())
+    initial_state = sim_output[time_vec[0]]
     # roles = list(initial_state.keys())
     timeseries = {role: {state: []
         for state, initial in states.items()}
         for role, states in initial_state.items()}
     timeseries['time'] = time_vec
 
-    for time, all_states in saved_states.items():
+    for time, all_states in sim_output.items():
         for role, states in all_states.items():
             for state_id, state in states.items():
                 timeseries[role][state_id].append(state)
@@ -578,43 +578,63 @@ def set_axes(ax, show_xaxis=False):
         ax.spines['bottom'].set_visible(False)
         ax.tick_params(bottom=False, labelbottom=False)
 
-def plot_simulation_output(saved_states, out_dir='out'):
-    timeseries = convert_to_timeseries(saved_states)
+def plot_simulation_output(sim_output, out_dir='out'):
+    '''
+    plot simulation output
+        input:
+        - saved_states (dict) with {timestep: state_dict}
+    '''
+
+    max_rows = 25
+
+    timeseries = convert_to_timeseries(sim_output)
     skip_keys = ['time']
     roles = [role for role in timeseries.keys() if role not in skip_keys]
     time_vec = timeseries['time']
 
-    # make figure, with grid for subplots
     n_data = [len(timeseries[key]) for key in roles]
-    n_cols = len(n_data)
-    n_rows = max(n_data)
 
-    fig = plt.figure(figsize=(n_cols * 8, n_rows * 2.5))
+    # limit number of rows to max_rows
+    columns = []
+    for n_states in n_data:
+        new_cols = int(n_states / max_rows)
+        mod_states = n_states % max_rows
+        if new_cols > 0:
+            for col in range(new_cols):
+                columns.append(max_rows)
+            columns.append(mod_states)
+        else:
+            columns.append(n_states)
+    n_cols = len(columns)
+    n_rows = max(columns)
+
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
     grid = plt.GridSpec(n_rows + 1, n_cols, wspace=0.4, hspace=1.5)
 
     # plot data
     row_idx = 0
     col_idx = 0
-    for role_idx, role in enumerate(roles):
+    for role in roles:
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
-
             ax.plot(time_vec, series)
-            ax.title.set_text(str(role) + ': ' + str(state_id))
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
 
-            row_idx += 1
-            if row_idx > n_data[role_idx]-1:
-                row_idx = 0
-                col_idx += 1
+            if row_idx > columns[col_idx]-1:
+                # if last row of column
+                ax.title.set_text(str(state_id))
                 set_axes(ax, True)
                 ax.set_xlabel('time')
+                row_idx = 0
+                col_idx += 1
             else:
+                ax.title.set_text(str(role) + ': ' + str(state_id))
                 set_axes(ax)
+                row_idx += 1
 
     # save figure
     fig_path = os.path.join(out_dir, 'simulation')
-    plt.subplots_adjust(wspace=0.5, hspace=0.2)
+    plt.subplots_adjust(wspace=0.5, hspace=0.1)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 
