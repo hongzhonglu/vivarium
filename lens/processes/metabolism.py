@@ -102,7 +102,7 @@ class Metabolism(Process):
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
 
 
-        # import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
         # TODO -- get flux bounds from transport
 
 

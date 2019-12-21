@@ -113,7 +113,6 @@ class Transport(Process):
 
         make_media = Media()
 
-
         # TODO -- don't use this if/else, select state based on media
         if glc_g6p:
             external = make_media.get_saved_media('GLC_G6P')
@@ -155,8 +154,8 @@ class Transport(Process):
 
         # default updaters
         default_updaters = {
-            'internal': {state_id: 'set'
-                         for state_id in ['mass', 'UHPT', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
+            'internal': {state_id: 'set' for state_id in [
+                'mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
             'external': {},  # reactions set values directly
             'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids},  # all external values use default 'delta' udpater
             'fluxes': {state_id: 'set' for state_id in self.target_fluxes}}
@@ -282,24 +281,27 @@ class Transport(Process):
             dXP = rpts - uptake2  # eqn 5
 
             # save to numpy array
-            dx = np.zeros_like(state)
-            dx[state_keys.index('mass')] = dbiomass
-            dx[state_keys.index('UHPT')] = dUHPT  # transporter1 changes with condition
-            dx[state_keys.index('LACZ')] = dLACZ  # transporter1 changes with condition
-            dx[state_keys.index('PTSG')] = dPTSG
-            dx[state_keys.index('G6P')] = dG6P
-            dx[state_keys.index('PEP')] = dPEP
-            dx[state_keys.index('PYR')] = dPYR
-            dx[state_keys.index('XP')] = dXP
-            dx[state_keys.index('GLC[e]')] = dGLC_e
-            dx[state_keys.index('G6P[e]')] = dG6P_e    # sugar1 changes with condition
-            dx[state_keys.index('LCTS[e]')] = dLCTS_e  # sugar1 changes with condition
+            update = np.zeros_like(state)
+            update[state_keys.index('mass')] = dbiomass
+            update[state_keys.index('UHPT')] = dUHPT  # transporter1 changes with condition
+            update[state_keys.index('LACZ')] = dLACZ  # transporter1 changes with condition
+            update[state_keys.index('PTSG')] = dPTSG
+            update[state_keys.index('G6P')] = dG6P
+            update[state_keys.index('PEP')] = dPEP
+            update[state_keys.index('PYR')] = dPYR
+            update[state_keys.index('XP')] = dXP
+            update[state_keys.index('GLC[e]')] = dGLC_e
+            update[state_keys.index('G6P[e]')] = dG6P_e    # sugar1 changes with condition
+            update[state_keys.index('LCTS[e]')] = dLCTS_e  # sugar1 changes with condition
 
-            # TODO: rup2 is PTS uptake, rup1 is G6P uptake or Lactose uptake, rpyk
-            # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
-            return dx
+            # flux states, for metabolism constraint
+            # TODO: rup2 is PTS uptake, rup1 is G6P uptake or Lactose uptake,
+            update[state_keys.index('GLCpts')] = uptake2
+            update[state_keys.index('PPS')] = uptake2  # v_pts used for both PTS uptake and PEP->PYR reaction
+            update[state_keys.index('PYK')] = rpyk
+            update[state_keys.index('glc__D_e')] = dG6P_e
 
-
+            return update
 
         # set up state and parameters for odeint
         timestep_hours = timestep / 3600
@@ -321,6 +323,12 @@ class Transport(Process):
             'GLC[e]': states['external']['GLC'],  # Glc external
             'G6P[e]': states['external']['G6P'],
             'LCTS[e]': states['external']['LCTS'],
+
+            # flux states, for metabolism constraint
+            'GLCpts': 0.0,
+            'PPS': 0.0,
+            'PYK': 0.0,
+            'glc__D_e': 0.0,
         }
         state_keys = list(combined_state.keys())
         state_init = np.asarray(list(combined_state.values()))
@@ -331,27 +339,31 @@ class Transport(Process):
         # apply updates
         internal_update = {}
         external_update = {}
+        fluxes = {}
         for state_idx, state_id in enumerate(state_keys):
-            initial_conc = solution[0, state_idx]
-            final_conc = solution[-1, state_idx]
-            delta_conc = final_conc - initial_conc
 
             if state_id in ['GLC[e]', 'G6P[e]', 'LCTS[e]']:
-                # Get delta counts for external state
-                # Note: converting concentrations to counts can lose precision
+                # delta counts for external state
+                # Note: converting concentrations to counts loses precision
+                initial_conc = solution[0, state_idx]
+                final_conc = solution[-1, state_idx]
+                delta_conc = final_conc - initial_conc
+
                 delta_count = millimolar_to_counts(delta_conc, volume)
                 external_update[state_id.replace('[e]','')] = delta_count
+
+            elif state_id in self.target_fluxes:
+                # set targets
+                # TODO -- units?
+                mean_flux = np.mean(solution[:, state_idx])
+                fluxes[state_id] = mean_flux
 
             elif state_id is 'volume':
                 # skip volume
                 continue
             else:
                 # set internal directly
-                internal_update[state_id] = final_conc
-
-        # TODO -- get fluxes for TARGET_FLUXES
-        fluxes = {}
-        # can we just use exchanges for constraint? dGLC_e, dG6P_e, dLCTS_e, dPYRdt, dPEPdt?
+                internal_update[state_id] = solution[-1, state_idx]
 
         return {
             'exchange': external_update,
@@ -391,10 +403,6 @@ def test_transport(sim_time = 10):
     state = settings['state']
     saved_state = {'internal': {}, 'external': {}, 'time': []}
 
-
-    # TODO -- update state?
-    # print('before: {}'.format(state))
-
     # run simulation
     time = 0
     timestep = 1  # sec
@@ -404,9 +412,6 @@ def test_transport(sim_time = 10):
             if time >= t:
                 for key, change in change_dict.items():
                     state[key].update(change)
-
-        # print('after: {}'.format(state))
-        # import ipdb; ipdb.set_trace()
 
         # get update and apply to state
         update = transport.next_update(timestep, state)
@@ -443,34 +448,55 @@ def kremling_figures(saved_state, out_dir='out'):
     G6P = saved_state['internal']['G6P']
     PEP = saved_state['internal']['PEP']
 
-    # figure 12A
+    # figure 12A -- external state
     biomass = saved_state['internal']['mass']
     GLC_e = saved_state['external']['GLC']
     G6P_e = saved_state['external']['G6P']
     LCTS_e = saved_state['external']['LCTS']
 
+    # figure 12B -- transporters
+    PTSG = saved_state['internal']['PTSG']
+    LACZ = saved_state['internal']['LACZ']
+    UHPT = saved_state['internal']['UHPT']
+
+    # figure 12C -- degree of phosphorylation
+    XP = saved_state['internal']['XP']
+
     # plot results
     n_cols = 1
-    n_rows = 2
+    n_rows = 4
     plt.figure(figsize=(n_cols * 6, n_rows * 2))
 
     ax1 = plt.subplot(n_rows, n_cols, 1)
     ax2 = plt.subplot(n_rows, n_cols, 2)
+    ax3 = plt.subplot(n_rows, n_cols, 3)
+    ax4 = plt.subplot(n_rows, n_cols, 4)
 
     # figure 11
     ax1.plot(time_vec, G6P, '--', label='G6P')
     ax1.plot(time_vec, PEP, label='PEP')
     ax1.set_xlabel('time (hrs)')
-    ax1.legend()
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-    # figure 12
+    # figure 12A -- external state
     ax2.plot(time_vec, biomass, label='biomass')
     ax2.plot(time_vec, GLC_e, label='GLC_e')
     ax2.plot(time_vec, G6P_e, label='G6P_e')
     ax2.plot(time_vec, LCTS_e, label='LCTS_e')
     ax2.set_xlabel('time (hrs)')
-    ax2.legend()
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
+    # figure 12B -- transporters
+    ax3.plot(time_vec, PTSG, label='PTSG')
+    ax3.plot(time_vec, LACZ, label='LACZ')
+    ax3.plot(time_vec, UHPT, label='UHPT')
+    ax3.set_xlabel('time (hrs)')
+    ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    # figure 12C -- degree of phosphorylation
+    ax4.plot(time_vec, XP, label='XP')
+    ax4.set_xlabel('time (hrs)')
+    ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # save figure
     fig_path = os.path.join(out_dir, 'kremling_fig11')
@@ -524,7 +550,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     # run simulation
-    saved_state = test_transport(8*60*60)  # (7.5*60*60)
+    saved_state = test_transport(7.5*60*60)  # (7.5*60*60)
 
     kremling_figures(saved_state, out_dir)
     # plot_all_state(saved_state, out_dir)
