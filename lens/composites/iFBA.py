@@ -80,12 +80,17 @@ def compose_iFBA(config):
 
 
 if __name__ == '__main__':
-    from lens.utils.test_compartments import test_compartment, simulate_compartment, plot_simulation_output
+    from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'iFBA_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = test_compartment(compose_iFBA)
-    saved_state = simulate_compartment(compartment)
+    compartment = load_compartment(compose_iFBA)
+
+    settings = {
+        'timestep': 1,
+        'total_time': 10}
+
+    saved_state = simulate_compartment(compartment, settings)
     plot_simulation_output(saved_state, out_dir)
