@@ -336,12 +336,11 @@ class Transport(Process):
         # run ode model for t time, get back full solution
         solution = odeint(model, state_init, t)
 
-        # apply updates
+        # get updates
         internal_update = {}
         external_update = {}
         fluxes = {}
         for state_idx, state_id in enumerate(state_keys):
-
             if state_id in ['GLC[e]', 'G6P[e]', 'LCTS[e]']:
                 # delta counts for external state
                 # Note: converting concentrations to counts loses precision
@@ -358,10 +357,7 @@ class Transport(Process):
                 mean_flux = np.mean(solution[:, state_idx])
                 fluxes[state_id] = mean_flux
 
-            elif state_id is 'volume':
-                # skip volume
-                continue
-            else:
+            elif state_id in list(states['internal'].keys()):
                 # set internal directly
                 internal_update[state_id] = solution[-1, state_idx]
 

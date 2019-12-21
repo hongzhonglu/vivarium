@@ -12,7 +12,7 @@ from lens.processes.Kremling2007_transport import Transport
 from lens.processes.CovertPalsson2002_regulation import Regulation
 
 # target flux reaction names come from BiGG models
-TARGET_FLUXES = ['GLCpts', 'PPS', 'PYK', 'glc__D_e'] # TODO -- add exchange constraints
+TARGET_FLUXES = ['GLCpts', 'PPS', 'PYK']  #, 'glc__D_e'] # TODO -- add exchange constraints
 
 
 def compose_iFBA(config):
