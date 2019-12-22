@@ -1,6 +1,7 @@
 '''
 Kinetic rate law generation using the Convenience Kinetics formulation of Michaelis-Menten kinetics
 
+# TODO -- make a vmax options if enzyme kcats not available
 '''
 
 from __future__ import absolute_import, division, print_function
