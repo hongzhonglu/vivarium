@@ -12,6 +12,8 @@ from lens.processes.BiGG_metabolism import BiGGMetabolism
 from lens.processes.convenience_kinetics import ConvenienceKinetics
 
 
+# BiGG model for metabolism
+METABOLISM_FILE = os.path.join('models', 'e_coli_core.json')
 
 # convenience kinetics configuration for transport
 def get_transport_config():
@@ -70,7 +72,9 @@ def compose_kinetic_FBA(config):
 
     # metabolism
     metabolism_config = copy.deepcopy(config)
-    metabolism_config.update({'constrained_reactions': target_fluxes})
+    metabolism_config.update({
+        'model_path': METABOLISM_FILE,
+        'constrained_reactions': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
     # other processes
@@ -125,7 +129,7 @@ def compose_kinetic_FBA(config):
 if __name__ == '__main__':
     from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output, simulate_with_environment
 
-    out_dir = os.path.join('out', 'tests', 'iFBA_composite')
+    out_dir = os.path.join('out', 'tests', 'kinetic_FBA_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
