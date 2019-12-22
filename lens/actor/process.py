@@ -518,9 +518,8 @@ def load_compartment(composite=toy_composite, boot_config={}):
     options = composite_config['options']
 
     compartment = Compartment(processes, states, options)
-
-    print('current_parameters: {}'.format(compartment.current_parameters()))
-    print('current_state: {}'.format(compartment.current_state()))
+    # print('current_parameters: {}'.format(compartment.current_parameters()))
+    # print('current_state: {}'.format(compartment.current_state()))
 
     return compartment
 
@@ -576,18 +575,13 @@ def simulate_with_environment(compartment, settings={}):
         exchange = compartment.states.get(exchange_role)
         delta_counts = exchange.state_for(exchange_ids)
 
-        # print('before: {}'.format(environment.state))
-
         # convert counts to change in concentration in environemnt
         mmol_to_count = nAvogadro * env_volume * 1e-3  # (L/mmol)
         delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
         environment.apply_update(delta_concs)
         # if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
         #     state[environment_role][mol_id] = 0.0
-        #
-        # print('deltas: {}'.format(delta_concs))
-        # print('after: {}'.format(environment.state))
-        
+
         import ipdb;  ipdb.set_trace()
         # TODO -- is the correct environmental state being updated?
 
@@ -609,7 +603,6 @@ def convert_to_timeseries(sim_output):
 
     time_vec = list(sim_output.keys())
     initial_state = sim_output[time_vec[0]]
-    # roles = list(initial_state.keys())
     timeseries = {role: {state: []
         for state, initial in states.items()}
         for role, states in initial_state.items()}
@@ -646,7 +639,7 @@ def plot_simulation_output(sim_output, out_dir='out'):
 
     n_data = [len(timeseries[key]) for key in roles]
 
-    # limit number of rows to max_rows
+    # limit number of rows to max_rows by adding new columns
     columns = []
     for n_states in n_data:
         new_cols = int(n_states / max_rows)
