@@ -44,8 +44,6 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 def toy_transport_kinetics():
     transport_kinetics = {
         "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
-        # "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
-        # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
     }
     return transport_kinetics
 
@@ -77,9 +75,6 @@ if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'BiGG_metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-
-    # # run test
-    # test_metabolism()
 
     # add toy transport to config
     toy_config = {}
