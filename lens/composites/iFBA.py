@@ -17,6 +17,9 @@ TARGET_FLUXES = ['GLCpts', 'PPS', 'PYK']  #, 'glc__D_e'] # TODO -- add exchange 
 
 
 def compose_iFBA(config):
+    '''
+    TODO -- transport and metabolism have different names of environmental molecules.
+    '''
 
     ## declare the processes
     # transport
@@ -93,7 +96,7 @@ if __name__ == '__main__':
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-12,  # L
+        'environment_volume': 1e-9,  # L
         'timestep': 1,
         'total_time': 10}
 

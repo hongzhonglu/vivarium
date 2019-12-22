@@ -553,8 +553,9 @@ def simulate_with_environment(compartment, settings={}):
 
     environment_role = settings['environment_role']
     exchange_role = settings['exchange_role']
+    exchange_ids = list(compartment.states[exchange_role].keys())
     env_volume = settings['environment_volume']  # (L)
-    initial_environment = compartment.current_state()[environment_role]
+    # initial_environment = compartment.current_state()[environment_role]
     nAvogadro = constants.N_A
 
     timestep = settings.get('timestep', 1)
@@ -570,32 +571,30 @@ def simulate_with_environment(compartment, settings={}):
         time += timestep
         compartment.update(timestep)
 
+        ## apply exchange to environment
+        environment = compartment.states.get(environment_role)
+        exchange = compartment.states.get(exchange_role)
+        delta_counts = exchange.state_for(exchange_ids)
 
-        import ipdb; ipdb.set_trace()
-        # TODO -- update environment
+        # print('before: {}'.format(environment.state))
 
-
-
-        state = compartment.current_state()
-
-        # update state
-        exchange = state.get(exchange_role)
-        exchange.assign_values(
-
-
-        # environment = state.get(environment_role)
+        # convert counts to change in concentration in environemnt
         mmol_to_count = nAvogadro * env_volume * 1e-3  # (L/mmol)
-        for mol_id, exchange_counts in exchange.items():
-            exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
-            state[environment_role][mol_id] += exchange_conc
-            state[exchange_role][mol_id] = 0.0 # reset exchange
-            if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
-                state[environment_role][mol_id] = 0.0
+        delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
+        environment.apply_update(delta_concs)
+        # if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
+        #     state[environment_role][mol_id] = 0.0
+        #
+        # print('deltas: {}'.format(delta_concs))
+        # print('after: {}'.format(environment.state))
+        
+        import ipdb;  ipdb.set_trace()
+        # TODO -- is the correct environmental state being updated?
 
-        # local_env_keys = exchange_ids
-        # exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
+        # reset exchange
+        exchange.assign_values({key: 0 for key in exchange_ids})
 
-        saved_state[time] = state
+        saved_state[time] = compartment.current_state()
 
     return saved_state
 
