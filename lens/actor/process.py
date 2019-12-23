@@ -582,11 +582,9 @@ def simulate_with_environment(compartment, settings={}):
         # if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
         #     state[environment_role][mol_id] = 0.0
 
-        import ipdb;  ipdb.set_trace()
-        # TODO -- is the correct environmental state being updated?
-
         # reset exchange
-        exchange.assign_values({key: 0 for key in exchange_ids})
+        reset_exchange = {key: 0 for key in exchange_ids}
+        exchange.assign_values(reset_exchange)
 
         saved_state[time] = compartment.current_state()
 

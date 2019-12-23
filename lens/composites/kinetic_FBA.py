@@ -32,9 +32,9 @@ def get_transport_config():
     transport_kinetics = {
         'GLCpts': {
             'PTSG': {
-                'glc__D_e': 0.1,
-                'pep_c': None,
-                'kcat_f': 0.1}}}
+                'glc__D_e': 3.0,
+                'pep_c': 2.0,
+                'kcat_f': 1.0}}}
 
     transport_initial_state = {
         'internal': {
@@ -45,7 +45,7 @@ def get_transport_config():
         'external': {
             'glc__D_e': 12.0},
         'fluxes': {
-            'GLCpts': 0.0}}
+            'GLCpts': 1.0}}  # TODO -- initial fluxes can be set within kinetics process
 
     transport_roles = {
         'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
@@ -133,6 +133,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # TODO -- load print emitter
     compartment = load_compartment(compose_kinetic_FBA)
 
     # get options
@@ -140,10 +141,12 @@ if __name__ == '__main__':
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-9,  # L
+        'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'total_time': 10}
+        'total_time': 20}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_state = simulate_with_environment(compartment, settings)
     plot_simulation_output(saved_state, out_dir)
+
+    # TODO -- make a flux network with metabolism
