@@ -9,6 +9,26 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 
 
+def get_molecules(reactions):
+    '''
+    Get a list of all molecules used by reactions
+
+    Args:
+           reaction (dict): all reactions that will be used by transport
+    Returns:
+           self.molecule_ids (list): all molecules used by these reactions
+    '''
+
+    molecule_ids = []
+    for reaction_id, specs in reactions.items():
+        stoichiometry = specs['stoichiometry']
+        substrates = stoichiometry.keys()
+        enzymes = specs['catalyzed by']
+        # Add all relevant molecules_ids
+        molecule_ids.extend(substrates)
+        molecule_ids.extend(enzymes)
+    return list(set(molecule_ids))
+
 # Helper functions
 def make_configuration(reactions):
     '''
@@ -67,26 +87,87 @@ def make_configuration(reactions):
 
     return rate_law_configuration
 
-def get_molecules(reactions):
+def cofactor_numerator(concentration, km):
+    return concentration / km if km else 0
+
+def cofactor_denominator(concentration, km):
+    return 1 + concentration / km if km else 1
+
+def construct_convenience_rate_law(stoichiometry, enzyme, cofactors_sets, partition, parameters):
     '''
-    Get a list of all molecules used by reactions
+    Make a convenience kinetics rate law for one enzyme
 
     Args:
-           reaction (dict): all reactions that will be used by transport
+        stoichiometry (dict): the stoichiometry for the given reaction
+        enzyme (str): the current enzyme
+        cofactors_sets: a list of lists with the required cofactors, grouped by [[cofactor set 1], [cofactor set 2]], each pair needs a kcat.
+        partition: a list of lists. each sublist is the set of cofactors for a given partition.
+            [[C1, C2],[C3, C4], [C5]]
+        parameters (dict): all the parameters with {parameter_id: value}
+
     Returns:
-           self.molecule_ids (list): all molecules used by these reactions
+        a kinetic rate law for the reaction, with arguments for concentrations and parameters,
+        and returns flux.
     '''
 
-    molecule_ids = []
-    for reaction_id, specs in reactions.items():
-        stoichiometry = specs['stoichiometry']
-        substrates = stoichiometry.keys()
-        enzymes = specs['catalyzed by']
-        # Add all relevant molecules_ids
-        molecule_ids.extend(substrates)
-        molecule_ids.extend(enzymes)
-    return list(set(molecule_ids))
+    kcat_f = parameters.get('kcat_f')
+    kcat_r = parameters.get('kcat_r')
 
+    # remove km parameters with None as their value
+    for parameter, value in parameters.items():
+        if 'kcat' not in parameter:
+            if value is None:
+                for part in partition:
+                    if parameter in part:
+                        part.remove(parameter)
+                for cofactors_set in cofactors_sets:
+                    if parameter in cofactors_set:
+                        cofactors_set.remove(parameter)
+                # print('removing parameter: {}'.format(parameter))
+
+	# if reversible, determine direction by looking at stoichiometry
+    if kcat_r:
+        coeff = [stoichiometry[mol] for mol in cofactors]
+        positive_coeff = [c > 0 for c in coeff]
+        if all(c == True for c in positive_coeff):  # if all coeffs are positive
+            kcat = -kcat_r  # use reverse rate
+        elif all(c == False for c in positive_coeff):  # if all coeffs are negative
+            kcat = kcat_f
+    else:
+        kcat = kcat_f
+
+    def rate_law(concentrations):
+
+        # construct numerator
+        enzyme_concentration = concentrations[enzyme]
+
+        numerator = 0
+        for cofactors in cofactors_sets:
+            # multiply the affinities of all cofactors
+            term = np.prod([
+                cofactor_numerator(
+                    concentrations[molecule],
+                    parameters[molecule])  # km of molecule
+                for molecule in cofactors])
+            numerator += kcat * term  # TODO (if there is no kcat, need an exception)
+        numerator *= enzyme_concentration
+
+        # construct denominator, with all competing terms in the partition
+        # denominator starts at +1 for the unbound state
+        denominator = 1
+        for cofactors_set in partition:
+            # multiply the affinities of all cofactors in this partition
+            term = np.prod([
+                cofactor_denominator(
+                    concentrations[molecule],
+                    parameters[molecule])
+				for molecule in cofactors_set])
+            denominator += term - 1
+        flux = numerator / denominator
+
+        return flux
+
+    return rate_law
 
 # Make rate laws
 def make_rate_laws(reactions, rate_law_configuration, kinetic_parameters):
@@ -138,104 +219,12 @@ def make_rate_laws(reactions, rate_law_configuration, kinetic_parameters):
                 enzyme,
                 cofactors_sets,
                 partition,
-                kinetic_parameters[reaction_id][enzyme]
-            )
+                kinetic_parameters[reaction_id][enzyme])
 
             # save the rate law for each enzyme in this reaction
             rate_laws[reaction_id][enzyme] = rate_law
 
     return rate_laws
-
-def cofactor_numerator(concentration, km):
-    def term():
-        return concentration / km if km else 0
-
-    return term
-
-def cofactor_denominator(concentration, km):
-    def term():
-        return 1 + concentration / km if km else 1
-
-    return term
-
-def construct_convenience_rate_law(stoichiometry, enzyme, cofactors_sets, partition, parameters):
-    '''
-    Make a convenience kinetics rate law for one enzyme
-
-    Args:
-        stoichiometry (dict): the stoichiometry for the given reaction
-        enzyme (str): the current enzyme
-        cofactors_sets: a list of lists with the required cofactors, grouped by [[cofactor set 1], [cofactor set 2]], each pair needs a kcat.
-        partition: a list of lists. each sublist is the set of cofactors for a given partition.
-            [[C1, C2],[C3, C4], [C5]]
-        parameters (dict): all the parameters with {parameter_id: value}
-
-    Returns:
-        a kinetic rate law for the reaction, with arguments for concentrations and parameters,
-        and returns flux.
-    '''
-
-    kcat_f = parameters.get('kcat_f')
-    kcat_r = parameters.get('kcat_r')
-
-    # remove km parameters with None as their value
-    for parameter, value in parameters.items():
-        if 'kcat' not in parameter:
-            if value is None:
-                for part in partition:
-                    if parameter in part:
-                        part.remove(parameter)
-                for cofactors_set in cofactors_sets:
-                    if parameter in cofactors_set:
-                        cofactors_set.remove(parameter)
-                # print('removing parameter: {}'.format(parameter))
-
-    def rate_law(concentrations):
-
-        # construct numerator
-        enzyme_concentration = concentrations[enzyme]
-
-        numerator = 0
-        for cofactors in cofactors_sets:
-            # if reversible, determine direction by looking at stoichiometry
-            if kcat_r:
-                coeff = [stoichiometry[mol] for mol in cofactors]
-                positive_coeff = [c > 0 for c in coeff]
-                if all(c == True for c in positive_coeff):  # if all coeffs are positive
-                    kcat = -kcat_r  # use reverse rate
-                elif all(c == False for c in positive_coeff):  # if all coeffs are negative
-                    kcat = kcat_f
-            else:
-                kcat = kcat_f
-
-            # multiply the affinities of all cofactors
-            term = np.prod([
-                cofactor_numerator(
-                    concentrations[molecule],
-                    parameters[molecule]  # km of molecule
-                )() for molecule in cofactors
-            ])
-            numerator += kcat * term  # TODO (if there is no kcat, need an exception)
-
-        numerator *= enzyme_concentration
-
-        # construct denominator, with all competing terms in the partition
-        # denominator starts at +1 for the unbound state
-        denominator = 1
-        for cofactors_set in partition:
-            # multiply the affinities of all cofactors in this partition
-            term = np.prod([
-                cofactor_denominator(
-                    concentrations[molecule],
-                    parameters[molecule]
-                )() for molecule in cofactors_set
-            ])
-            denominator += term - 1
-        flux = numerator / denominator
-
-        return flux
-
-    return rate_law
 
 
 class KineticFluxModel(object):
