@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from scipy import constants
 import numpy as np
+import copy
 
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
@@ -273,13 +274,13 @@ def simulate_metabolism(config):
     nAvogadro = metabolism.nAvogadro
 
     # initialize saved data
-    saved_data = {'time': [0]}
-    for role in state.keys():
-        saved_data[role] = {state_id: [value] for state_id, value in state[role].items()}
+    saved_state = {}
 
     ## run simulation
     time = 0
     timestep = 1  # sec
+
+    saved_state[time] = state
     while time < total_time:
         time += timestep
 
@@ -318,99 +319,9 @@ def simulate_metabolism(config):
                 state['external'][mol_id] = 0.0
 
         # save state
-        saved_data['time'].append(time)
-        for role in ['internal', 'external', 'reactions']:
-            for state_id, value in state[role].items():
-                saved_data[role][state_id].append(value)
-        for role in ['flux_bounds']:
-            for state_id, value in state[role].items():
-                saved_data[role][state_id].append(value * timestep)  # adjust flux given timestep
+        saved_state[time] = copy.deepcopy(state)
 
-    return {
-        'saved_state': saved_data,
-    }
-
-def plot_output(data, out_dir='out', filename='metabolism'):
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    import math
-
-    max_rows = 25
-    skip_keys = ['time', 'flux_bounds']
-
-    saved_state = data.get('saved_state')
-    data_keys = [key for key in saved_state.keys() if key not in skip_keys]
-    flux_bounds_data = saved_state.get('flux_bounds')
-    time_vec = [t/60./60. for t in saved_state['time']]  # convert to hours
-
-    # remove series with all zeros
-    zero_state = []
-    for key1 in list(saved_state.keys()):
-        if key1 not in skip_keys:
-            for key2, series in saved_state[key1].items():
-                if all(v == 0 for v in series):
-                    zero_state.append((key1, key2))
-    for (key1, key2) in zero_state:
-        del saved_state[key1][key2]
-    n_zeros = len(zero_state)
-    n_data = [len(saved_state[key].keys()) for key in data_keys]
-
-    # limit number of rows to max_rows
-    n_cols = len(n_data)
-    n_rows_base = max(n_data)
-    for role in n_data:
-        new_rows = role / max_rows
-        if new_rows > 1:
-            n_cols += int(new_rows)
-            n_rows_base = max_rows
-    n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))
-
-    ## make the figure
-    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2))
-    plt.rcParams.update({'font.size': 12})
-    grid = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=1.5)
-
-    row_idx = 0
-    col_idx = 0
-    for key in data_keys:
-        for state_id, series in sorted(saved_state[key].items()):
-            ax = fig.add_subplot(grid[row_idx, col_idx])
-            ax.plot(time_vec[1:], series[1:])  # remove t=0
-
-            # if state has target, plot series in red
-            if state_id in flux_bounds_data.keys():
-                target_series = flux_bounds_data[state_id]
-                ax.plot(time_vec[1:], target_series[1:],  # remove t=0
-                        'r', label='bound')
-                ax.legend()
-
-            ax.title.set_text(str(key) + ': ' + state_id)
-            ax.ticklabel_format(style='sci',axis='y')
-            ax.set_xlabel('time (hr)')
-
-            # next row
-            row_idx += 1
-            if row_idx > max_rows:
-                col_idx += 1
-                row_idx = 0
-
-        col_idx += 1
-        row_idx = 0
-
-    # # additional data as text
-    # if zero_state:
-    #     zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
-    #     zeros_text = 'states with all zeros: {}'.format(zeros)
-    #     ax = fig.add_subplot(grid[n_rows_base:, :])
-    #     ax.text(0.01, 0.99, zeros_text, ha='left', va='top', wrap=True)
-    #     ax.axis('off')
-
-    # make figure output directory and save figure
-    fig_path = os.path.join(out_dir, filename)
-    plt.subplots_adjust(wspace=0.5, hspace=0.9)
-    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+    return saved_state
 
 def save_network(metabolism, total_time=10, out_dir='out'):
     # TODO -- make this function into an analysis
@@ -428,7 +339,8 @@ def save_network(metabolism, total_time=10, out_dir='out'):
         'process': metabolism,
         'total_time': total_time}
     data = simulate_metabolism(simulation_config)
-    reactions = data['saved_state']['reactions']
+    timeseries = convert_to_timeseries(data)
+    reactions =  timeseries['reactions']
 
     # save fluxes as node size
     reaction_fluxes = {}
@@ -449,6 +361,9 @@ def save_network(metabolism, total_time=10, out_dir='out'):
 
 
 if __name__ == '__main__':
+    from lens.actor.process import convert_to_timeseries, plot_simulation_output
+
+
     out_dir = os.path.join('out', 'tests', 'metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -464,9 +379,16 @@ if __name__ == '__main__':
         'process': toy_metabolism,
         'total_time': 3600,
         'transport_kinetics': toy_transport,
-        'environment_volume': 5e-15}
+        'environment_volume': 5e-13}
+
+    plot_settings = {
+        'skip_roles': ['exchange'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
     saved_data = simulate_metabolism(simulation_config)
-    plot_output(saved_data, out_dir)
+    timeseries = convert_to_timeseries(saved_data)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from toy model
     save_network(toy_metabolism, 10, out_dir)

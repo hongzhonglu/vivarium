@@ -128,7 +128,7 @@ def compose_kinetic_FBA(config):
 
 
 if __name__ == '__main__':
-    from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output, simulate_with_environment
+    from lens.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, simulate_with_environment
 
     out_dir = os.path.join('out', 'tests', 'kinetic_FBA_composite')
     if not os.path.exists(out_dir):
@@ -152,7 +152,8 @@ if __name__ == '__main__':
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_state = simulate_with_environment(compartment, settings)
-    plot_simulation_output(saved_state, plot_settings, out_dir)
+    timeseries = convert_to_timeseries(saved_state)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # TODO -- make a flux network with metabolism
 

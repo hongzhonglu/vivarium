@@ -621,11 +621,12 @@ def set_axes(ax, show_xaxis=False):
         ax.spines['bottom'].set_visible(False)
         ax.tick_params(bottom=False, labelbottom=False)
 
-def plot_simulation_output(sim_output, settings={}, out_dir='out'):
+def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     '''
     plot simulation output
         args:
-        - saved_states (dict) with {timestep: state_dict}
+        - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
+        - skip_roles (list). roles that won't be plotted
         - settings (dict) with
             {'max_rows': int,
             'overlay': {
@@ -636,12 +637,12 @@ def plot_simulation_output(sim_output, settings={}, out_dir='out'):
 
     max_rows = settings.get('max_rows', 25)
     overlay = settings.get('overlay', {})
+    skip_roles = settings.get('skip_roles', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
 
-    timeseries = convert_to_timeseries(sim_output)
     skip_keys = ['time']
-    roles = [role for role in timeseries.keys() if role not in skip_keys]
+    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
     time_vec = timeseries['time']
 
     n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
@@ -672,7 +673,7 @@ def plot_simulation_output(sim_output, settings={}, out_dir='out'):
             # get overlay
             top_role = overlay[role]
             top_timeseries = timeseries[top_role]
-        elif role in top_roles:
+        elif role in top_roles + skip_roles:
             # don't give this row its own plot
             continue
 
