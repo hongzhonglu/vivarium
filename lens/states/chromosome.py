@@ -1,3 +1,5 @@
+import random
+
 def first(l):
     if l:
         return l[0]
@@ -58,6 +60,12 @@ class Domain(Datum):
         'lag': 0,
         'children': []}
 
+    def strand_position(self, strand, lead=0, lag=0):
+        return self.lead + lead if strand == '+' else self.lag + lag
+
+    def random_child(self):
+        return random.choice(self.children)
+
     def __init__(self, config):
         super(Domain, self).__init__(config, self.defaults)
 
@@ -88,8 +96,9 @@ class Chromosome(Datum):
         'rnaps': Rnap}
 
     defaults = {
-        'sequence': '',
-
+        'sequence': {
+            '+': '',
+            '-': ''},
         'domains': {},
         'operons': {},
         'transcription_factors': {},
@@ -112,8 +121,24 @@ class Chromosome(Datum):
         '''
         # TODO: stochastically transfer rnap and tf to new domains
 
-        for key, domain in self.domains.items():
-            lead, lag = distances[key]
+        for domain_key, distance in distances.items():
+            domain = self.domains[domain_key]
+            lead, lag = distances[domain_key]
+
+            for tf in self.transcription_factors.values():
+                if tf.domain == domain_key:
+                    strand, position = self.operons[tf.operon].position
+                    if position >= domain.strand_position(strand) and position < domain.strand_position(strand, lead, lag):
+                        tf.domain = domain.random_child()
+
+            for rnap in self.rnaps:
+                if rnap.domain == domain_key:
+                    operon = self.operons[rnap.operon]
+                    strand, position = operon.position
+                    position += rnap.position * operon.direction
+                    if position >= domain.strand_position(strand) and position < domain.strand_position(strand, lead, lag):
+                        rnap.domain = domain.random_child()
+
             domain.lead += lead
             domain.lag += lag
 
@@ -161,7 +186,9 @@ class Chromosome(Datum):
 
 def test_chromosome():
     config = {
-        'sequence': 'ATACGGCACGTG',
+        'sequence': {
+            '+': 'ATACGGCACGTG',
+            '-': 'ACCGTCAACTTA'},
         'domains': {
             0: {
                 'id': 0,
@@ -171,13 +198,13 @@ def test_chromosome():
         'operons': {
             'A': {
                 'id': 'A',
-                'position': 0,
+                'position': ('+', 0),
                 'direction': 1,
                 'length': 9,
                 'genes': ['A', 'Z']},
             'B': {
                 'id': 'B',
-                'position': 11,
+                'position': ('-', 11),
                 'direction': -1,
                 'length': 3,
                 'genes': ['B']}},
@@ -186,7 +213,7 @@ def test_chromosome():
                 'protein': 'B',
                 'domain': 0,
                 'state': 1, # on
-                'operon': 'B'}},
+                'operon': 'A'}},
         'rnaps': [
             {
                 'operon': 'A',
@@ -207,15 +234,17 @@ def test_chromosome():
 
     assert chromosome.to_dict() == config
 
-    chromosome.advance_replisomes({0: (3, 4)})
     chromosome.initiate_replication()
 
     print(chromosome.to_dict()['domains'])
     assert len(chromosome.domains) == 3
 
-    chromosome.advance_replisomes({0: (12, 12), 1: (5, 6), 2: (4, 4)})
-    children = chromosome.terminate_replication()
+    chromosome.advance_replisomes({0: (5, 7)})
+    print('replisomes:')
+    print(chromosome.to_dict())
 
+    children = chromosome.terminate_replication()
+    print('termination:')
     print([child.to_dict() for child in children])
 
 
