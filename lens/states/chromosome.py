@@ -202,7 +202,7 @@ class Chromosome(Datum):
 
 
 def test_chromosome():
-    config = {
+    chromosome_config = {
         'sequence': {
             '+': 'ATACGGCACGTG',
             '-': 'ACCGTCAACTTA'},
@@ -245,11 +245,11 @@ def test_chromosome():
                 'domain': 0,
                 'position': 0}]}
 
-    chromosome = Chromosome(config)
+    chromosome = Chromosome(chromosome_config)
     print(chromosome.transcription_factors['A'].state)
     print(chromosome.to_dict())
 
-    assert chromosome.to_dict() == config
+    assert chromosome.to_dict() == chromosome_config
 
     chromosome.initiate_replication()
     print(chromosome.to_dict()['domains'])
