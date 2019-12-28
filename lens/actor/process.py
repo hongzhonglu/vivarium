@@ -621,21 +621,30 @@ def set_axes(ax, show_xaxis=False):
         ax.spines['bottom'].set_visible(False)
         ax.tick_params(bottom=False, labelbottom=False)
 
-def plot_simulation_output(sim_output, out_dir='out'):
+def plot_simulation_output(sim_output, settings={}, out_dir='out'):
     '''
     plot simulation output
-        input:
+        args:
         - saved_states (dict) with {timestep: state_dict}
+        - settings (dict) with
+            {'max_rows': int,
+            'overlay': {
+                'bottom_role': 'top_role'  # can be any number of mappings for corresponding states in the roles placed together names
+            }
+
     '''
 
-    max_rows = 25
+    max_rows = settings.get('max_rows', 25)
+    overlay = settings.get('overlay', {})
+    top_roles = list(overlay.values())
+    bottom_roles = list(overlay.keys())
 
     timeseries = convert_to_timeseries(sim_output)
     skip_keys = ['time']
     roles = [role for role in timeseries.keys() if role not in skip_keys]
     time_vec = timeseries['time']
 
-    n_data = [len(timeseries[key]) for key in roles]
+    n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
 
     # limit number of rows to max_rows by adding new columns
     columns = []
@@ -658,9 +667,24 @@ def plot_simulation_output(sim_output, out_dir='out'):
     row_idx = 0
     col_idx = 0
     for role in roles:
+        top_timeseries = {}
+        if role in bottom_roles:
+            # get overlay
+            top_role = overlay[role]
+            top_timeseries = timeseries[top_role]
+        elif role in top_roles:
+            # don't give this row its own plot
+            continue
+
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
             ax.plot(time_vec, series)
+
+            # overlay
+            if state_id in top_timeseries.keys():
+                ax.plot(time_vec, top_timeseries[state_id], 'r', label=top_role)
+                ax.legend()
+
             # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.title.set_text(str(role) + ': ' + str(state_id))
             ax.title.set_fontsize(16)

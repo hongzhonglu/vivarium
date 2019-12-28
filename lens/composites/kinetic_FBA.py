@@ -59,6 +59,7 @@ def get_transport_config():
         'roles': transport_roles}
 
 
+# the composite function
 def compose_kinetic_FBA(config):
 
     ## declare the processes
@@ -136,7 +137,7 @@ if __name__ == '__main__':
     # TODO -- load print emitter
     compartment = load_compartment(compose_kinetic_FBA)
 
-    # get options
+    # settings for simulation and plot
     options = compose_kinetic_FBA({})['options']
     settings = {
         'environment_role': options['environment_role'],
@@ -145,8 +146,13 @@ if __name__ == '__main__':
         'timestep': 1,
         'total_time': 20}
 
+    plot_settings = {
+        'overlay': {'reactions': 'flux_bounds'},
+        'max_rows': 25}
+
     # saved_state = simulate_compartment(compartment, settings)
     saved_state = simulate_with_environment(compartment, settings)
-    plot_simulation_output(saved_state, out_dir)
+    plot_simulation_output(saved_state, plot_settings, out_dir)
 
     # TODO -- make a flux network with metabolism
+
