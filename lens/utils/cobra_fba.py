@@ -217,7 +217,12 @@ class CobraFBA(object):
     def read_internal_fluxes(self):
         return self.read_fluxes(self.internal_reactions())
 
+    def read_exchange_reactions(self):
+        '''leaves the prefix in exchange reactions keys'''
+        return self.read_fluxes(self.external_reactions())
+
     def read_exchange_fluxes(self):
+        '''removes the prefix from exchange reactions keys, leaving only the external molecule id'''
         external = self.external_reactions()
         levels = self.read_fluxes(external)
         return {

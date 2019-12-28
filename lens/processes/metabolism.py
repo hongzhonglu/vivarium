@@ -28,7 +28,6 @@ class Metabolism(Process):
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
         self.reaction_ids = self.fba.reaction_ids()  #list(self.fba.stoichiometry.keys())
-        # self.exchange_ids = []
 
         # additional options
         self.constrained_flux_ids = initial_parameters.get('constrained_flux_ids', [])
@@ -103,21 +102,18 @@ class Metabolism(Process):
         volume = mass.to('g') / self.density
 
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
-        # constrained_exchange_bounds = {}
 
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # set flux constraints.
         self.fba.constrain_flux(constrained_reaction_bounds)
-        # self.fba.constrain_exchange_flux(constrained_exchange_bounds)
-
-        # import ipdb; ipdb.set_trace()
-
+        # TODO -- constrain exchange reactions!
 
 
         # solve the fba problem
         objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
+        exchange_reactions = self.fba.read_exchange_reactions()
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
         internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
 
@@ -146,11 +142,10 @@ class Metabolism(Process):
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
 
-        # return update
         return {
             'exchange': exchange_deltas,
             'internal': internal_state_update,
-            'reactions': internal_fluxes,
+            'reactions': {**internal_fluxes, **exchange_reactions},
         }
 
 
