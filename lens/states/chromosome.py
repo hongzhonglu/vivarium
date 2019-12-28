@@ -1,4 +1,5 @@
 import random
+import copy
 
 def first(l):
     if l:
@@ -8,9 +9,16 @@ def first_value(d):
     if d:
         return d[list(d.keys())[0]]
 
-def traverse(tree, key, f):
+def traverse(tree, key, f, combine):
     node = tree[key]
-    return f(node, [traverse(tree, child, f) for child in node.children])
+    if node.children:
+        eldest = traverse(tree, node.children[0], f, combine)
+        youngest = traverse(tree, node.children[1], f, combine)
+        outcome = combine(eldest, youngest)
+        return f(node, outcome)
+    else:
+        return f(node)
+
 
 class Datum(object):
     schema = {}
@@ -66,6 +74,9 @@ class Domain(Datum):
     def random_child(self):
         return random.choice(self.children)
 
+    def descendants(self, tree):
+        return [self] + [tree[child].descendants(tree) for child in self.children]
+
     def __init__(self, config):
         super(Domain, self).__init__(config, self.defaults)
 
@@ -119,8 +130,6 @@ class Chromosome(Datum):
         distances is a dictionary of domain ids to tuples of how far each strand advances
         of the form (lead, lag)
         '''
-        # TODO: stochastically transfer rnap and tf to new domains
-
         for domain_key, distance in distances.items():
             domain = self.domains[domain_key]
             lead, lag = distances[domain_key]
@@ -142,19 +151,7 @@ class Chromosome(Datum):
             domain.lead += lead
             domain.lag += lag
 
-    def terminate_replication(self):
-        root = min(self.domains.keys())
-        children = self.domains[root].children
-        divided = [
-            traverse(
-                self.domains,
-                child,
-                self.divide_chromosome)
-            for child in children]
-
-        return [Chromosome(fork) for fork in divided]
-
-    def divide_chromosome(self, domain, division):
+    def divide_chromosome(self, domain, division=None):
         if not division:
             division = {
                 'sequence': self.sequence,
@@ -163,22 +160,42 @@ class Chromosome(Datum):
                 'transcription_factors': {
                     operon: tf.to_dict()
                     for operon, tf in self.transcription_factors.items()
-                    if tf.domain == domain},
+                    if tf.domain == domain.id},
                 'rnaps': [
                     rnap.to_dict()
                     for rnap in self.rnaps
-                    if rnap.domain == domain]}
+                    if rnap.domain == domain.id]}
 
         else:
-            division.domains[domain.id] = domain
+            division['domains'][domain.id] = domain.to_dict()
             for operon, tf in self.transcription_factors.items():
-                if tf.domain == domain:
-                    division.transcription_factors[operon] = tf.to_dict()
-            for rnap in self.rnaps.items():
-                if rnap.domain == domain:
-                    division.rnaps.append(rnap.to_dict())
+                if tf.domain == domain.id:
+                    division['transcription_factors'][operon] = tf.to_dict()
+            for rnap in self.rnaps:
+                if rnap.domain == domain.id:
+                    division['rnaps'].append(rnap.to_dict())
 
         return division
+
+    def combine_state(self, a, b):
+        merge = copy.deepcopy(a)
+        merge['domains'].update(b['domains'])
+        merge['transcription_factors'].update(b['transcription_factors'])
+        merge['rnaps'].extend(b['rnaps'])
+        return merge
+
+    def terminate_replication(self):
+        root = min(self.domains.keys())
+        children = self.domains[root].children
+        divided = [
+            traverse(
+                self.domains,
+                child,
+                self.divide_chromosome,
+                self.combine_state)
+            for child in children]
+
+        return [Chromosome(fork) for fork in divided]
 
     def __init__(self, config):
         super(Chromosome, self).__init__(config, self.defaults)
@@ -226,7 +243,7 @@ def test_chromosome():
             {
                 'operon': 'B',
                 'domain': 0,
-                'position': 11}]}
+                'position': 0}]}
 
     chromosome = Chromosome(config)
     print(chromosome.transcription_factors['A'].state)
@@ -235,11 +252,18 @@ def test_chromosome():
     assert chromosome.to_dict() == config
 
     chromosome.initiate_replication()
-
     print(chromosome.to_dict()['domains'])
     assert len(chromosome.domains) == 3
 
     chromosome.advance_replisomes({0: (5, 7)})
+    print('replisomes:')
+    print(chromosome.to_dict())
+
+    chromosome.initiate_replication()
+    print(chromosome.to_dict()['domains'])
+    assert len(chromosome.domains) == 7
+
+    chromosome.advance_replisomes({0: (7, 5), 1: (3, 4), 2: (8, 9)})
     print('replisomes:')
     print(chromosome.to_dict())
 
