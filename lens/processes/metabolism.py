@@ -27,10 +27,11 @@ class Metabolism(Process):
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
-        self.reaction_ids = list(self.fba.stoichiometry.keys())
+        self.reaction_ids = self.fba.reaction_ids()  #list(self.fba.stoichiometry.keys())
+        # self.exchange_ids = []
 
         # additional options
-        self.constrained_reaction_ids = initial_parameters.get('constrained_reactions', [])
+        self.constrained_flux_ids = initial_parameters.get('constrained_flux_ids', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
@@ -47,7 +48,7 @@ class Metabolism(Process):
             'internal': self.internal_state_ids,
             'reactions': self.reaction_ids,
             'exchange': self.fba.external_molecules,
-            'flux_bounds': self.constrained_reaction_ids}
+            'flux_bounds': self.constrained_flux_ids}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -65,7 +66,7 @@ class Metabolism(Process):
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
             'flux_bounds': {state_id: self.default_upper_bound
-                for state_id in self.constrained_reaction_ids}
+                for state_id in self.constrained_flux_ids}
             }
 
         # default emitter keys
@@ -86,7 +87,7 @@ class Metabolism(Process):
             'external': {mol_id: 'accumulate' for mol_id in self.fba.external_molecules},
             'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
             'exchange': {rxn_id: 'set' for rxn_id in self.fba.external_molecules},
-            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_reaction_ids},
+            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_flux_ids},
             }
 
         return {
@@ -100,13 +101,20 @@ class Metabolism(Process):
         external_state = states['external']  # TODO -- constrain metabolism by external state
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
+
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
+        # constrained_exchange_bounds = {}
 
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # set flux constraints.
         self.fba.constrain_flux(constrained_reaction_bounds)
+        # self.fba.constrain_exchange_flux(constrained_exchange_bounds)
+
+        # import ipdb; ipdb.set_trace()
+
+
 
         # solve the fba problem
         objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
@@ -295,7 +303,7 @@ def simulate_metabolism(config):
         update = metabolism.next_update(timestep, state)
 
         # reactions are set as is
-        state['reactions'] = update['reactions']
+        state['reactions'].update(update['reactions'])
 
         # apply internal update
         for state_id, state_update in update['internal'].items():
@@ -371,7 +379,7 @@ if __name__ == '__main__':
     # configure toy model
     toy_config = get_toy_configuration()
     toy_transport = toy_transport_kinetics()
-    toy_config['constrained_reactions'] = list(toy_transport.keys())
+    toy_config['constrained_flux_ids'] = list(toy_transport.keys())
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model

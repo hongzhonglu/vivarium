@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # add toy transport to config
     toy_config = {}
     toy_transport = toy_transport_kinetics()
-    toy_config['constrained_reactions'] = toy_transport.keys()
+    toy_config['constrained_flux_ids'] = toy_transport.keys()
 
     # get ecoli core metabolism model
     ecoli_core_metabolism = BiGGMetabolism(toy_config)
