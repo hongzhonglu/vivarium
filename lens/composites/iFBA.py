@@ -1,33 +1,58 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
+import os
+
 from lens.actor.process import initialize_state
 
 # processes
 from lens.processes.derive_volume import DeriveVolume
 from lens.processes.division import Division, divide_condition, divide_state
 from lens.processes.BiGG_metabolism import BiGGMetabolism
+from lens.processes.Kremling2007_transport import Transport
+from lens.processes.CovertPalsson2002_regulation import Regulation
 
+# target flux reaction names come from BiGG models
+TARGET_FLUXES = ['GLCpts', 'PPS', 'PYK']  #, 'glc__D_e'] # TODO -- add exchange constraints
 
 
 def compose_iFBA(config):
+    '''
+    TODO -- transport and metabolism have different names of environmental molecules.
+    '''
 
-    # declare the processes
-    division = Division(config)
-    metabolism = BiGGMetabolism(config)
+    ## declare the processes
+    # transport
+    transport_config = copy.deepcopy(config)
+    transport_config.update({'target_fluxes': TARGET_FLUXES})
+    transport = Transport(transport_config)
+    target_fluxes = transport.target_fluxes  # TODO -- just use TARGET_FLUXES?
+
+    # metabolism
+    metabolism_config = copy.deepcopy(config)
+    metabolism_config.update({'constrained_reactions': target_fluxes})
+    metabolism = BiGGMetabolism(metabolism_config)
+
+    # other processes
     deriver = DeriveVolume(config)
+    division = Division(config)
 
     # place processes in layers.
     processes = [
-        {'metabolism': metabolism
-        },
+        {'transport': transport},
+        {'metabolism': metabolism},
         {'deriver': deriver,
-        'division': division
-        }
+        'division': division}
     ]
 
     # make the topology.
     # for each process, map process roles to compartment roles
     topology = {
+        'transport': {
+            'internal': 'cell',
+            'external': 'environment',
+            'exchange': 'null',  # metabolism's exchange is used
+            'fluxes': 'flux_bounds'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
@@ -57,41 +82,24 @@ def compose_iFBA(config):
         'options': options}
 
 
-def test_iFBA():
-    import numpy as np
-    from lens.actor.process import Compartment
-    from lens.environment.lattice_compartment import LatticeCompartment
-
-    boot_config = {}
-    composite_config = compose_iFBA(boot_config)
-    processes = composite_config['processes']
-    states = composite_config['states']
-    options = composite_config['options']
-
-    # make compartment
-    compartment = LatticeCompartment(processes, states, options)
-
-    print(compartment.current_parameters())
-    print(compartment.current_state())
-
-    # test compartment
-    compartment = Compartment(processes, states, options)
-
-    print('compartment current_parameters: {}'.format(compartment.current_parameters()))
-    print('compartment current_state: {}'.format(compartment.current_state()))
-
-    # make lattice_compartment
-    lattice_compartment = LatticeCompartment(processes, states, options)
-
-    print(lattice_compartment.current_parameters())
-    print(lattice_compartment.current_state())
-
-    # evaluate compartment
-    timestep = 1
-    for steps in np.arange(10):
-        lattice_compartment.update(timestep)
-        print('lattice_compartment current_state: {}'.format(lattice_compartment.current_state()))
-
-
 if __name__ == '__main__':
-    saved_state = test_iFBA()
+    from lens.actor.process import load_compartment, simulate_compartment, plot_simulation_output, simulate_with_environment
+
+    out_dir = os.path.join('out', 'tests', 'iFBA_composite')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    compartment = load_compartment(compose_iFBA)
+
+    # get options
+    options = compose_iFBA({})['options']
+    settings = {
+        'environment_role': options['environment_role'],
+        'exchange_role': options['exchange_role'],
+        'environment_volume': 1e-9,  # L
+        'timestep': 1,
+        'total_time': 10}
+
+    # saved_state = simulate_compartment(compartment, settings)
+    saved_state = simulate_with_environment(compartment, settings)
+    plot_simulation_output(saved_state, out_dir)

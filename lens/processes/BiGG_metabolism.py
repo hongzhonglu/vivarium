@@ -7,6 +7,8 @@ from lens.environment.make_media import Media
 from lens.utils.units import units
 
 DATA_FILE = os.path.join('models', 'e_coli_core.json')
+# TODO -- to load additional BiGG models requires adding their external_molecules in a new media.
+# DATA_FILE = os.path.join('models', 'iJR904.json')
 
 def BiGGMetabolism(parameters):
     initial_state = get_initial_state()
@@ -42,12 +44,10 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 def toy_transport_kinetics():
     transport_kinetics = {
         "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
-        # "GLUt2r": kinetic_rate('glu__L_e', 1e1, 5),  # glucose
-        # "PYRt2": kinetic_rate('pyr_e', 1e2, 5),
     }
     return transport_kinetics
 
-def test_ecoli_core():
+def test_metabolism():
     # configure process
     metabolism = BiGGMetabolism({})
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     # simulate model
     simulation_config = {
         'process': ecoli_core_metabolism,
-        'total_time': 3600,
+        'total_time': 1000,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 5e-13}
     saved_data = simulate_metabolism(simulation_config)

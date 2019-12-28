@@ -5,6 +5,12 @@ import collections
 import numpy as np
 import lens.actor.emitter as emit
 import random
+import os
+from scipy import constants
+
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 
 from lens.utils.dict_utils import merge_dicts
 
@@ -365,15 +371,23 @@ class Compartment(object):
 
 
 
-def test_compartment():
-    # simplest possible metabolism
-    class Metabolism(Process):
+
+## functions for testing
+def toy_composite(config):
+    '''
+    a toy composite function for testing
+    returns a dictionary with 'processes', 'states', and 'options'
+
+    '''
+
+    # toy processes
+    class ToyMetabolism(Process):
         def __init__(self, initial_parameters={}):
             roles = {'pool': ['GLC', 'MASS']}
             parameters = {'mass_conversion_rate': 1}
             parameters.update(initial_parameters)
 
-            super(Metabolism, self).__init__(roles, parameters)
+            super(ToyMetabolism, self).__init__(roles, parameters)
 
         def next_update(self, timestep, states):
             update = {}
@@ -386,8 +400,7 @@ def test_compartment():
 
             return update
 
-    # simplest possible transport
-    class Transport(Process):
+    class ToyTransport(Process):
         def __init__(self, initial_parameters={}):
             roles = {
                 'external': ['GLC'],
@@ -395,7 +408,7 @@ def test_compartment():
             parameters = {'intake_rate': 2}
             parameters.update(initial_parameters)
 
-            super(Transport, self).__init__(roles, parameters)
+            super(ToyTransport, self).__init__(roles, parameters)
 
         def next_update(self, timestep, states):
             update = {}
@@ -407,13 +420,13 @@ def test_compartment():
 
             return update
 
-    class DeriveVolume(Process):
+    class ToyDeriveVolume(Process):
         def __init__(self, initial_parameters={}):
             roles = {
                 'compartment': ['MASS', 'DENSITY', 'VOLUME']}
             parameters = {}
 
-            super(DeriveVolume, self).__init__(roles, parameters)
+            super(ToyDeriveVolume, self).__init__(roles, parameters)
 
         def next_update(self, timestep, states):
             volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
@@ -423,12 +436,12 @@ def test_compartment():
             return update
 
     processes = [
-        {'metabolism': Metabolism(
+        {'metabolism': ToyMetabolism(
             initial_parameters={
                 'mass_conversion_rate': 0.5}), # example of overriding default parameters
-         'transport': Transport()},
-        {'external_volume': DeriveVolume(),
-         'internal_volume': DeriveVolume()}]
+         'transport': ToyTransport()},
+        {'external_volume': ToyDeriveVolume(),
+         'internal_volume': ToyDeriveVolume()}]
 
     def update_mass(key, state, current, new):
         return current / (current + new), {}
@@ -442,44 +455,255 @@ def test_compartment():
             initial_state={'MASS': 3, 'DENSITY': 10},
             updaters={'VOLUME': 'set'})}
 
-    # hook up the states to the roles in each process
+    # hook up the roles in each process to compartment states
     topology = {
         'metabolism': {
             'pool': 'cytoplasm'},
-
         'transport': {
             'external': 'periplasm',
             'internal': 'cytoplasm'},
-
         'external_volume': {
             'compartment': 'periplasm'},
-
         'internal_volume': {
             'compartment': 'cytoplasm'}}
 
+    # emitter that prints to the terminal
     emitter = emit.get_emitter({
         'type': 'print',
         'keys': {
             'periplasm': ['GLC', 'MASS'],
             'cytoplasm': ['MASS']}})
 
-    configuration = {
-        'time_step': 1.0,
+    options = {
+        # 'environment_role': 'environment',
+        # 'exchange_role': 'exchange',
+        'emitter': emitter,
         'topology': topology,
-        'emitter': emitter}
+        'initial_time': 0.0}
 
-    # create the compartment (which automatically hooks everything up)
-    compartment = Compartment(processes, states, configuration)
-    timestep = 1
+    return {
+        'processes': processes,
+        'states': states,
+        'options': options}
 
-    # print initial parameters and state
-    print(compartment.current_parameters())
-    print(compartment.current_state())
+def test_compartment():
+    out_dir = os.path.join('out', 'tests', 'toy_compartment')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
-    for steps in np.arange(13):
-        # run the simulation
+    compartment = load_compartment(toy_composite)
+
+    settings = {
+        'timestep': 1,
+        'total_time': 10}
+
+    saved_state = simulate_compartment(compartment, settings)
+    plot_simulation_output(saved_state, out_dir)
+
+def load_compartment(composite=toy_composite, boot_config={}):
+    '''
+    put a composite function into a compartment
+
+    inputs:
+        - composite is a function that returns a dict with 'processes', 'states', and 'options'
+        for configuring a compartment
+        - boot_config (dict) with specific parameters for the processes
+    return:
+        - a compartment object for testing
+    '''
+
+    composite_config = composite(boot_config)
+    processes = composite_config['processes']
+    states = composite_config['states']
+    options = composite_config['options']
+
+    compartment = Compartment(processes, states, options)
+    # print('current_parameters: {}'.format(compartment.current_parameters()))
+    # print('current_state: {}'.format(compartment.current_state()))
+
+    return compartment
+
+def simulate_compartment(compartment, settings={}):
+    '''
+    run a compartment simulation
+    '''
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # save initial state
+    time = 0
+    saved_state = {}
+    saved_state[time] = compartment.current_state()
+
+    # run simulation
+    while time < total_time:
+        time += timestep
         compartment.update(timestep)
-        print(compartment.current_state())
+        saved_state[time] = compartment.current_state()
+
+    return saved_state
+
+def simulate_with_environment(compartment, settings={}):
+    '''
+    run a compartment simulation with an environment.
+    requires processes made for LatticeCompartment, with environment_role and exchange_role
+    '''
+
+    environment_role = settings['environment_role']
+    exchange_role = settings['exchange_role']
+    exchange_ids = list(compartment.states[exchange_role].keys())
+    env_volume = settings['environment_volume']  # (L)
+    # initial_environment = compartment.current_state()[environment_role]
+    nAvogadro = constants.N_A
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # save initial state
+    time = 0
+    saved_state = {}
+    saved_state[time] = compartment.current_state()
+
+    # run simulation
+    while time < total_time:
+        time += timestep
+        compartment.update(timestep)
+
+        ## apply exchange to environment
+        environment = compartment.states.get(environment_role)
+        exchange = compartment.states.get(exchange_role)
+        delta_counts = exchange.state_for(exchange_ids)
+
+        # convert counts to change in concentration in environemnt
+        mmol_to_count = nAvogadro * env_volume * 1e-3  # (L/mmol)
+        delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
+        environment.apply_update(delta_concs)
+        # if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
+        #     state[environment_role][mol_id] = 0.0
+
+        # reset exchange
+        reset_exchange = {key: 0 for key in exchange_ids}
+        exchange.assign_values(reset_exchange)
+
+        saved_state[time] = compartment.current_state()
+
+    return saved_state
+
+def convert_to_timeseries(sim_output):
+    '''
+    input:
+        - saved_states (dict) with {timestep: state_dict}
+    returns:
+        - timeseries (dict) with timeseries in lists {'time': [], 'role1': {'state': []}}
+    TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
+    '''
+
+    time_vec = list(sim_output.keys())
+    initial_state = sim_output[time_vec[0]]
+    timeseries = {role: {state: []
+        for state, initial in states.items()}
+        for role, states in initial_state.items()}
+    timeseries['time'] = time_vec
+
+    for time, all_states in sim_output.items():
+        for role, states in all_states.items():
+            for state_id, state in states.items():
+                timeseries[role][state_id].append(state)
+
+    return timeseries
+
+def set_axes(ax, show_xaxis=False):
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(right=False, top=False)
+    if not show_xaxis:
+        ax.spines['bottom'].set_visible(False)
+        ax.tick_params(bottom=False, labelbottom=False)
+
+def plot_simulation_output(timeseries, settings={}, out_dir='out'):
+    '''
+    plot simulation output
+        args:
+        - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
+        - skip_roles (list). roles that won't be plotted
+        - settings (dict) with
+            {'max_rows': int,
+            'overlay': {
+                'bottom_role': 'top_role'  # can be any number of mappings for corresponding states in the roles placed together names
+            }
+
+    '''
+
+    max_rows = settings.get('max_rows', 25)
+    overlay = settings.get('overlay', {})
+    skip_roles = settings.get('skip_roles', [])
+    top_roles = list(overlay.values())
+    bottom_roles = list(overlay.keys())
+
+    skip_keys = ['time']
+    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
+    time_vec = timeseries['time']
+
+    n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
+
+    # limit number of rows to max_rows by adding new columns
+    columns = []
+    for n_states in n_data:
+        new_cols = int(n_states / max_rows)
+        mod_states = n_states % max_rows
+        if new_cols > 0:
+            for col in range(new_cols):
+                columns.append(max_rows)
+            columns.append(mod_states)
+        else:
+            columns.append(n_states)
+    n_cols = len(columns)
+    n_rows = max(columns)
+
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
+    grid = plt.GridSpec(n_rows, n_cols)
+
+    # plot data
+    row_idx = 0
+    col_idx = 0
+    for role in roles:
+        top_timeseries = {}
+        if role in bottom_roles:
+            # get overlay
+            top_role = overlay[role]
+            top_timeseries = timeseries[top_role]
+        elif role in top_roles + skip_roles:
+            # don't give this row its own plot
+            continue
+
+        for state_id, series in sorted(timeseries[role].items()):
+            ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
+            ax.plot(time_vec, series)
+
+            # overlay
+            if state_id in top_timeseries.keys():
+                ax.plot(time_vec, top_timeseries[state_id], 'r', label=top_role)
+                ax.legend()
+
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+            ax.title.set_text(str(role) + ': ' + str(state_id))
+            ax.title.set_fontsize(16)
+
+            if row_idx == columns[col_idx]-1:
+                # if last row of column
+                set_axes(ax, True)
+                ax.set_xlabel('time')
+                row_idx = 0
+                col_idx += 1
+            else:
+                set_axes(ax)
+                row_idx += 1
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'simulation')
+    plt.subplots_adjust(wspace=0.3, hspace=0.4)
+    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 
 if __name__ == '__main__':

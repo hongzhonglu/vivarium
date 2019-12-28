@@ -35,7 +35,7 @@ def millimolar_to_counts(fluxes, volume):
         counts -- list
     '''
     fluxes_mol = fluxes * 1e-3 # convert to molar
-    return (nAvogadro * volume * fluxes_mol).astype(int)
+    return int(nAvogadro * volume * fluxes_mol)
 
 
 def counts_to_molar(counts, volume):
