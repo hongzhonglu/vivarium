@@ -107,8 +107,8 @@ class Metabolism(Process):
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # set flux constraints.
+        # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
-        # TODO -- constrain exchange reactions!
 
 
         # solve the fba problem
@@ -251,10 +251,17 @@ def kinetic_rate(mol_id, vmax, km=0.0):
         return flux
     return rate
 
+def random_rate(mu=0, sigma=1):
+    def rate(state):
+        return np.random.normal(loc=mu, scale=sigma)
+    return rate
+
 def toy_transport_kinetics():
-    # transport kinetics
+    # process-like function for transport kinetics
     transport_kinetics = {
         "R1": kinetic_rate("A", 2e-2, 5),   # A import
+        "EX_E": random_rate(1e-2, 1e-3),   # E exchange, requires 'EX_' prefix
+        # "EX_E": kinetic_rate("A", 0.01, 1),   # E exchange, function of A.  requires 'EX_' prefix
         # "R3": kinetic_rate("F", 1e-1, 5),  # F export
         # "R8a": kinetic_rate("H", 1e-1, 5), # H export
     }
@@ -267,7 +274,7 @@ def simulate_metabolism(config):
     metabolism = config['process']
     total_time = config.get('total_time', 3600)
     transport_kinetics = config.get('transport_kinetics', {})
-    env_volume = config.get('environment_volume', 1e-12)  * units.L
+    env_volume = config.get('environment_volume', 1e-12) * units.L
 
     # get initial state and parameters
     settings = metabolism.default_settings()
