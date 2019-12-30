@@ -70,7 +70,8 @@ def test_metabolism():
 
 
 if __name__ == '__main__':
-    from lens.processes.metabolism import simulate_metabolism, plot_output, save_network
+    from lens.processes.metabolism import simulate_metabolism, save_network
+    from lens.actor.process import convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'BiGG_metabolism')
     if not os.path.exists(out_dir):
@@ -90,8 +91,15 @@ if __name__ == '__main__':
         'total_time': 1000,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 5e-13}
+
+    plot_settings = {}
+        # 'skip_roles': ['exchange'],
+        # 'overlay': {
+        #     'reactions': 'flux_bounds'}}
+
     saved_data = simulate_metabolism(simulation_config)
-    plot_output(saved_data, out_dir)
+    timeseries = convert_to_timeseries(saved_data)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from model
     save_network(ecoli_core_metabolism, 10, out_dir)

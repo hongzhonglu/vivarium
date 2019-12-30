@@ -650,12 +650,14 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     # limit number of rows to max_rows by adding new columns
     columns = []
     for n_states in n_data:
-        new_cols = int(n_states / max_rows)
-        mod_states = n_states % max_rows
-        if new_cols > 0:
-            for col in range(new_cols):
+        new_cols = n_states / max_rows
+        if new_cols > 1:
+            for col in range(int(new_cols)):
                 columns.append(max_rows)
-            columns.append(mod_states)
+
+            mod_states = n_states % max_rows
+            if mod_states > 0:
+                columns.append(mod_states)
         else:
             columns.append(n_states)
     n_cols = len(columns)

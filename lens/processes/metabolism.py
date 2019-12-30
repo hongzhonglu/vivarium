@@ -8,6 +8,7 @@ import copy
 from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 from lens.utils.cobra_fba import CobraFBA
+from lens.actor.process import convert_to_timeseries, plot_simulation_output
 
 
 class Metabolism(Process):
@@ -110,12 +111,15 @@ class Metabolism(Process):
         # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
 
-
         # solve the fba problem
         objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
         exchange_reactions = self.fba.read_exchange_reactions()
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
         internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
+
+
+        # TODO -- add regulation.
+
 
         # timestep dependence
         exchange_fluxes.update((mol_id, flux * timestep) for mol_id, flux in exchange_fluxes.items())
@@ -260,7 +264,7 @@ def toy_transport_kinetics():
     # process-like function for transport kinetics
     transport_kinetics = {
         "R1": kinetic_rate("A", 2e-2, 5),   # A import
-        "EX_E": random_rate(1e-2, 1e-3),   # E exchange, requires 'EX_' prefix
+        "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
         # "EX_E": kinetic_rate("A", 0.01, 1),   # E exchange, function of A.  requires 'EX_' prefix
         # "R3": kinetic_rate("F", 1e-1, 5),  # F export
         # "R8a": kinetic_rate("H", 1e-1, 5), # H export
@@ -371,9 +375,6 @@ def save_network(metabolism, total_time=10, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from lens.actor.process import convert_to_timeseries, plot_simulation_output
-
-
     out_dir = os.path.join('out', 'tests', 'metabolism')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
