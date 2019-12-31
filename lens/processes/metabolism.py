@@ -112,6 +112,11 @@ class Metabolism(Process):
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         ## set flux constraints.
+        # TODO -- how to handle ordering if constrained_reaction_bounds contains a regulated reaction?
+        # constraints from flux bounds role (typically transport)
+        # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
+        self.fba.constrain_flux(constrained_reaction_bounds)
+
         # constraints from regulation.
         # TODO -- update 'flux_bounds' with regulation logic
         regulation_states = flatten_role_dicts({role: states[role]
@@ -121,10 +126,6 @@ class Metabolism(Process):
         reaction_activity = {rxn_id: logic(regulation_states)
             for rxn_id, logic in self.regulation.items()}
         self.fba.regulate_flux(reaction_activity)
-
-        # constraints from flux bounds role (typically transport)
-        # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
-        self.fba.constrain_flux(constrained_reaction_bounds)
 
         # solve the fba problem
         objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
@@ -156,6 +157,11 @@ class Metabolism(Process):
         exchange_deltas = {
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
+
+
+        import ipdb; ipdb.set_trace()
+        # TODO -- lactose exchange not coming through?
+
 
         return {
             'exchange': exchange_deltas,
