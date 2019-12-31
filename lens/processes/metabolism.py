@@ -113,6 +113,7 @@ class Metabolism(Process):
 
         ## set flux constraints.
         # constraints from regulation.
+        # TODO -- update 'flux_bounds' with regulation logic
         regulation_states = flatten_role_dicts({role: states[role]
             for role in ('internal', 'external')})
         regulation_states = {state: value>0
@@ -281,7 +282,8 @@ def toy_transport_kinetics():
 
 def toy_regulation():
     regulation = {
-        'R3': rl.build_rule('IF not (A_external) and (F_external)'), # True for regulation['R3']({'A_external': False, 'F_external': True})
+        'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
+        # 'R2a': rl.build_rule('IF not (A_external) and (F_external)'),
     }
 
     return regulation
@@ -409,18 +411,16 @@ if __name__ == '__main__':
     # simulate toy model
     timeline = [
         (0, {'external': {
-            'A': 1,
             'F': 0}
         }),
-        (200, {'external': {
-            'A': 0,
-            'F': 1}
+        (300, {'external': {
+            'O2': 0}
         }),
-        (400, {'external': {
-            'A': 1,
-            'F': 1}
+        (600, {'external': {
+            'O2': 0,
+            'F': 5.0}
         }),
-        (1000, {})]
+        (1200, {})]
 
     simulation_config = {
         'process': toy_metabolism,
@@ -435,6 +435,7 @@ if __name__ == '__main__':
             'reactions': 'flux_bounds'}}
 
     saved_data = simulate_metabolism(simulation_config)
+    del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
