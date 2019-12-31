@@ -9,6 +9,9 @@ from lens.actor.process import Process, deep_merge
 from lens.utils.units import units
 from lens.utils.cobra_fba import CobraFBA
 from lens.actor.process import convert_to_timeseries, plot_simulation_output
+import lens.utils.regulation_logic as rl
+from lens.utils.dict_utils import flatten_role_dicts
+
 
 
 class Metabolism(Process):
@@ -34,6 +37,7 @@ class Metabolism(Process):
         self.constrained_flux_ids = initial_parameters.get('constrained_flux_ids', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
+        self.regulation = initial_parameters.get('regulation', {})
 
         # get molecules in objective
         self.objective_molecules = []
@@ -107,7 +111,17 @@ class Metabolism(Process):
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        # set flux constraints.
+        ## set flux constraints.
+        # constraints from regulation.
+        regulation_states = flatten_role_dicts({role: states[role]
+            for role in ('internal', 'external')})
+        regulation_states = {state: value>0
+            for state, value in regulation_states.items()}
+        reaction_activity = {rxn_id: logic(regulation_states)
+            for rxn_id, logic in self.regulation.items()}
+        self.fba.regulate_flux(reaction_activity)
+
+        # constraints from flux bounds role (typically transport)
         # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
 
@@ -116,10 +130,6 @@ class Metabolism(Process):
         exchange_reactions = self.fba.read_exchange_reactions()
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
         internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
-
-
-        # TODO -- add regulation.
-
 
         # timestep dependence
         exchange_fluxes.update((mol_id, flux * timestep) for mol_id, flux in exchange_fluxes.items())
@@ -265,12 +275,16 @@ def toy_transport_kinetics():
     transport_kinetics = {
         "R1": kinetic_rate("A", 2e-2, 5),   # A import
         "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
-        # "EX_E": kinetic_rate("A", 0.01, 1),   # E exchange, function of A.  requires 'EX_' prefix
-        # "R3": kinetic_rate("F", 1e-1, 5),  # F export
-        # "R8a": kinetic_rate("H", 1e-1, 5), # H export
     }
 
     return transport_kinetics
+
+def toy_regulation():
+    regulation = {
+        'R3': rl.build_rule('IF not (A_external) and (F_external)'), # True for regulation['R3']({'A_external': False, 'F_external': True})
+    }
+
+    return regulation
 
 def simulate_metabolism(config):
 
@@ -279,6 +293,7 @@ def simulate_metabolism(config):
     total_time = config.get('total_time', 3600)
     transport_kinetics = config.get('transport_kinetics', {})
     env_volume = config.get('environment_volume', 1e-12) * units.L
+    timeline = config.get('timeline', [(total_time, {})])
 
     # get initial state and parameters
     settings = metabolism.default_settings()
@@ -293,10 +308,13 @@ def simulate_metabolism(config):
     ## run simulation
     time = 0
     timestep = 1  # sec
-
     saved_state[time] = state
-    while time < total_time:
+    while time < timeline[-1][0]:
         time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.items():
+                    state[key].update(change)
 
         # set flux bounds from transport kinetics
         flux_bounds = {}
@@ -381,15 +399,34 @@ if __name__ == '__main__':
 
     # configure toy model
     toy_config = get_toy_configuration()
-    toy_transport = toy_transport_kinetics()
-    toy_config['constrained_flux_ids'] = list(toy_transport.keys())
+    transport = toy_transport_kinetics()
+    regulation = toy_regulation()
+    toy_config['constrained_flux_ids'] = list(transport.keys())
+    toy_config['regulation'] = regulation
+
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
+    timeline = [
+        (0, {'external': {
+            'A': 1,
+            'F': 0}
+        }),
+        (200, {'external': {
+            'A': 0,
+            'F': 1}
+        }),
+        (400, {'external': {
+            'A': 1,
+            'F': 1}
+        }),
+        (1000, {})]
+
     simulation_config = {
         'process': toy_metabolism,
+        'timeline': timeline,
         'total_time': 3600,
-        'transport_kinetics': toy_transport,
+        'transport_kinetics': transport,
         'environment_volume': 5e-13}
 
     plot_settings = {

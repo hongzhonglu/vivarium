@@ -157,19 +157,39 @@ class CobraFBA(object):
             self.exchange_bounds = config.get('exchange_bounds', {})
             self.molecular_weights = config.get('molecular_weights', {})
 
-            default_upper_bound = config.get('default_upper_bound', 1000.0)
+            self.default_upper_bound = config.get('default_upper_bound', 1000.0)
 
             self.model = build_model(
                 self.stoichiometry,
                 self.reversible,
                 self.objective,
                 self.external_molecules,
-                default_upper_bound)
+                self.default_upper_bound)
 
             self.constrain_reaction_bounds(self.flux_bounds)
             self.constrain_exchange_flux(self.exchange_bounds)
 
         self.solution = None
+
+    def regulate_flux(self, reactions):
+        # regulate flux based on True/False activity values for each id in reactions dictionary
+        for reaction_id, activity in reactions.items():
+            reaction = self.model.reactions.get_by_id(reaction_id)
+            if activity:
+                if reaction_id in self.flux_bounds:
+                    bounds = self.flux_bounds[reaction_id]
+                    reaction.lower_bound, reaction.upper_bound = bounds
+                elif reaction_id in self.reversible:
+                    reaction.upper_bound = self.default_upper_bound
+                    reaction.lower_bound = -self.default_upper_bound
+                else:
+                    # set bounds based on default
+                    reaction.upper_bound = self.default_upper_bound
+                    reaction.lower_bound = 0.0
+            else:
+                # no activity. reaction flux set to 0
+                reaction.upper_bound = 0.0
+                reaction.lower_bound = 0.0
 
     def constrain_exchange_flux(self, levels):
         for external, level in levels.items():
