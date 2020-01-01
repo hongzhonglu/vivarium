@@ -67,31 +67,38 @@ def extract_model(model):
     reactions = model.reactions
     metabolites = model.metabolites
     boundary = model.boundary
+    exchanges = model.exchanges
+    demands = model.demands  # TODO -- where do demands and sinks go?
+    sinks = model.sinks
     objective_expression = model.objective.expression.args
 
-    # get stoichiometry
+    # get stoichiometry and flux bounds
     stoichiometry = {}
     flux_bounds = {}
+    reversible = []
     for reaction in reactions:
+        reaction_id = reaction.id
         reaction_metabolites = reaction.metabolites
+        bounds = list(reaction.bounds)
+
         stoichiometry[reaction.id] = {
             metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        # get flux bounds
-        flux_bounds[reaction.id] = list(reaction.bounds)
+        flux_bounds[reaction_id] = bounds
+        if not any(b == 0.0 for b in bounds):
+            reversible.append(reaction_id)
 
-    # get external molecules
+    # get boundary reaction names. these include exchanges, demands, sinks
+    boundary_reactions = [reaction.id for reaction in boundary]
+
+    # get external molecules and exchange bounds from exchanges
     external_molecules = []
-    external_state = {}
-    exchange_bounds = {}
-    for reaction in boundary:
+    # exchange_bounds = {}
+    for reaction in exchanges:
         reaction_metabolites = list(reaction.metabolites.keys())
         assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
         metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
-        external_state[metabolite_id] = 0.0
-
-        # get exchange bounds
-        exchange_bounds[metabolite_id] = list(reaction.bounds)
+        # exchange_bounds[metabolite_id] = list(reaction.bounds)
 
     # get molecular weights
     molecular_weights = {}
@@ -109,27 +116,15 @@ def extract_model(model):
         except:
             pass
 
-    # initial state
-    initial_state = {
-        'internal': {
-            'mass': 1339,  # fg
-            'volume': 1E-15},  # fL
-        'external': external_state}
-
-    # adjustments
-    for exchange_id, [lb, ub] in exchange_bounds.items():
-        exchange_bounds[exchange_id] = [lb/100, ub/100]
-
-    config = {
+    return {
         'stoichiometry': stoichiometry,
+        'reversible': reversible,
+        'boundary_reactions': boundary_reactions,
         'external_molecules': external_molecules,
         'objective': objective,
-        'initial_state': initial_state,
         'flux_bounds': flux_bounds,
-        'exchange_bounds': exchange_bounds,
+        # 'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights}
-
-    return config
     
 
 class CobraFBA(object):
@@ -142,22 +137,24 @@ class CobraFBA(object):
             extract = extract_model(self.model)
 
             self.stoichiometry = extract['stoichiometry']
-            self.reversible = extract.get('reversible', [])
+            self.reversible = extract['reversible']
             self.external_molecules = extract['external_molecules']
             self.objective = extract['objective']
             self.flux_bounds = extract['flux_bounds']
-            self.exchange_bounds = extract['exchange_bounds']
             self.molecular_weights = extract['molecular_weights']
+            # self.exchange_bounds = extract['exchange_bounds']
+            # self.boundary_reactions = extract['boundary_reactions']
+            self.default_upper_bound = 1000.0 # TODO -- can this be extracted from model?
+
         else:
             self.stoichiometry = config['stoichiometry']
             self.reversible = config.get('reversible', [])
             self.external_molecules = config['external_molecules']
             self.objective = config['objective']
             self.flux_bounds = config.get('flux_bounds', {})
-            self.exchange_bounds = config.get('exchange_bounds', {})
             self.molecular_weights = config.get('molecular_weights', {})
-
             self.default_upper_bound = config.get('default_upper_bound', 1000.0)
+            exchange_bounds = config.get('exchange_bounds', {})
 
             self.model = build_model(
                 self.stoichiometry,
@@ -167,7 +164,7 @@ class CobraFBA(object):
                 self.default_upper_bound)
 
             self.constrain_reaction_bounds(self.flux_bounds)
-            self.constrain_exchange_flux(self.exchange_bounds)
+            self.constrain_exchange_flux(exchange_bounds)
 
         self.solution = None
 

@@ -7,10 +7,9 @@ from lens.environment.make_media import Media
 from lens.utils.units import units
 import lens.utils.regulation_logic as rl
 
-DATA_FILE = os.path.join('models', 'e_coli_core_lacz.json')
+# DATA_FILE = os.path.join('models', 'e_coli_core_lacz.json')
 # DATA_FILE = os.path.join('models', 'e_coli_core.json')
-# TODO -- to load additional BiGG models requires adding their external_molecules in a new media.
-# DATA_FILE = os.path.join('models', 'iJR904.json')
+DATA_FILE = os.path.join('models', 'iAF1260b.json')
 
 def BiGGMetabolism(parameters):
     initial_state = get_initial_state()
@@ -30,6 +29,7 @@ def get_initial_state():
             'volume': volume.magnitude}
 
     # external state
+    # TODO -- initial state is currently configured to e_coli_core, needs to be generalized
     make_media = Media()
     external = make_media.get_saved_media('ecoli_core_GLC')
 
@@ -48,9 +48,10 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def toy_transport_kinetics():
     transport_kinetics = {
-        'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
-        'LACZ': kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
-        # 'EX_lac__D_e': kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
+        # 'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model e_coli_core
+        'GLCptspp': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model iAF1260b
+        'LACZ': kinetic_rate('lac__D_e', 1.5e0, 5),
+        # 'EX_lac__D_e': kinetic_rate('lac__D_e', 1.5e0, 5),
     }
     return transport_kinetics
 
@@ -109,19 +110,22 @@ if __name__ == '__main__':
             'glc__D_e': 0.0,
             'lac__D_e': 12.0}
         }),
-        (600, {'external': {
+        (100, {'external': {
             'glc__D_e': 12.0}
         }),
-        (1200, {})]
+        (200, {})]
 
     simulation_config = {
         'process': ecoli_core_metabolism,
         'timeline': timeline,
-        'total_time': 1000,
+        # 'total_time': 10,
         'transport_kinetics': toy_transport_kinetics(),
         'environment_volume': 5e-13}
 
     plot_settings = {
+        'max_rows': 50,
+        'remove_zeros': True,
+        'remove_flat': True,
         'skip_roles': ['exchange'],
         'overlay': {
             'reactions': 'flux_bounds'}}

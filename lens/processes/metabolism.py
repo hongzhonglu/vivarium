@@ -164,6 +164,7 @@ class Metabolism(Process):
         }
 
 
+
 # tests and analyses
 def get_toy_configuration():
     stoichiometry = {
@@ -422,7 +423,6 @@ if __name__ == '__main__':
     simulation_config = {
         'process': toy_metabolism,
         'timeline': timeline,
-        'total_time': 3600,
         'transport_kinetics': transport,
         'environment_volume': 5e-13}
 
@@ -437,9 +437,8 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from toy model
-    network_timeline = [(10, {})]
     network_config = {
         'process': toy_metabolism,
-        'timeline': network_timeline,
+        'total_time': 10,
         'environment_volume': 5e-13}
     save_network(network_config, out_dir)

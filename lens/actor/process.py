@@ -626,25 +626,51 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     plot simulation output
         args:
         - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
-        - skip_roles (list). roles that won't be plotted
-        - settings (dict) with
-            {'max_rows': int,
-            'overlay': {
-                'bottom_role': 'top_role'  # can be any number of mappings for corresponding states in the roles placed together names
+        - settings (dict) with:
+            {
+            'max_rows': (int) roles with more states than this number of states get wrapped into a new column
+            'remove_zeros': (bool) if True, timeseries with all 0's get removed
+            'remove_flat': (bool) if True, timeseries with all the same value get removed
+            'skip_roles': (list) roles that won't be plotted
+            'overlay': (dict) with
+                {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
             }
-
     '''
+
+    skip_keys = ['time']
 
     max_rows = settings.get('max_rows', 25)
     overlay = settings.get('overlay', {})
     skip_roles = settings.get('skip_roles', [])
+    remove_flat = settings.get('remove_flat', False)
+    remove_zeros = settings.get('remove_zeros', False)
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
 
-    skip_keys = ['time']
     roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
     time_vec = timeseries['time']
 
+    # remove selected states
+    # TODO -- removed_states can be plotted as text in the figure
+    removed_states = []
+    if remove_flat:
+        # find series with all the same value
+        for role in roles:
+            for state_id, series in timeseries[role].items():
+                if series.count(series[0]) == len(series):
+                    removed_states.append((role, state_id))
+    elif remove_zeros:
+        # find series with all zeros
+        for role in roles:
+            for state_id, series in timeseries[role].items():
+                if all(v == 0 for v in series):
+                    removed_states.append((role, state_id))
+
+    # remove from timeseries
+    for (role, state_id) in removed_states:
+        del timeseries[role][state_id]
+
+    # get the number of states in each role
     n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
 
     # limit number of rows to max_rows by adding new columns
@@ -663,10 +689,10 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     n_cols = len(columns)
     n_rows = max(columns)
 
+    # make figure and plot
     fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
     grid = plt.GridSpec(n_rows, n_cols)
 
-    # plot data
     row_idx = 0
     col_idx = 0
     for role in roles:
