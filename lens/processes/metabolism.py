@@ -166,6 +166,110 @@ class Metabolism(Process):
 
 
 # tests and analyses
+def simulate_metabolism(config):
+
+    # set the simulation
+    metabolism = config['process']
+    total_time = config.get('total_time', 3600)
+    transport_kinetics = config.get('transport_kinetics', {})
+    env_volume = config.get('environment_volume', 1e-12) * units.L
+    timeline = config.get('timeline', [(total_time, {})])
+    end_time = timeline[-1][0]
+
+    # get initial state and parameters
+    settings = metabolism.default_settings()
+    state = settings['state']
+    internal_updaters = settings['updaters']['internal']
+    density = metabolism.density
+    nAvogadro = metabolism.nAvogadro
+
+    # initialize saved data
+    saved_state = {}
+
+    ## run simulation
+    time = 0
+    timestep = 1  # sec
+    saved_state[time] = state
+    while time < end_time:
+        time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for key, change in change_dict.items():
+                    state[key].update(change)
+                timeline.pop(0)
+
+        # set flux bounds from transport kinetics
+        flux_bounds = {}
+        for rxn_id, rate_law in transport_kinetics.items():
+            flux = rate_law(state['external'])
+            flux_bounds[rxn_id] = flux
+        state['flux_bounds'].update(flux_bounds)
+
+        # get update
+        update = metabolism.next_update(timestep, state)
+
+        # reactions are set as is
+        state['reactions'].update(update['reactions'])
+
+        # apply internal update
+        for state_id, state_update in update['internal'].items():
+            if internal_updaters.get(state_id, 'set') is 'accumulate':
+                state['internal'][state_id] += state_update
+            else:
+                state['internal'][state_id] = state_update
+
+        # update volume
+        new_mass = state['internal']['mass'] * units.fg
+        new_volume = new_mass.to('g') / density
+        state['internal']['volume'] = new_volume.to('L').magnitude
+
+        # apply external update -- use exchange without growth rate
+        mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
+        for mol_id, exchange_counts in update['exchange'].items():
+            exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
+            state['external'][mol_id] += exchange_conc
+            state['exchange'][mol_id] = 0.0 # reset exchange
+            if state['external'][mol_id] < 0.0:  # this shouldn't be needed
+                state['external'][mol_id] = 0.0
+
+        # save state
+        saved_state[time] = copy.deepcopy(state)
+
+    return saved_state
+
+def save_network(config, out_dir='out'):
+    # TODO -- make this function into an analysis
+    import math
+    from lens.utils.make_network import make_network, save_network
+
+    # initialize the process
+    metabolism = config['process']
+    stoichiometry = metabolism.fba.stoichiometry
+    reaction_ids = list(stoichiometry.keys())
+    external_mol_ids = metabolism.fba.external_molecules
+    objective = metabolism.fba.objective
+
+    data = simulate_metabolism(config)
+    timeseries = convert_to_timeseries(data)
+    reactions =  timeseries['reactions']
+
+    # save fluxes as node size
+    reaction_fluxes = {}
+    for rxn_id in reaction_ids:
+        flux = abs(np.mean(reactions[rxn_id][1:]))
+        reaction_fluxes[rxn_id] = math.log(1000 * flux + 1.1)
+
+    # define node type
+    node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
+    node_types.update({mol_id: 'external_mol' for mol_id in external_mol_ids})
+    node_types.update({rxn_id: 'objective' for rxn_id in objective.keys()})
+    info = {
+        'node_types': node_types,
+        'reaction_fluxes': reaction_fluxes}
+
+    nodes, edges = make_network(stoichiometry, info)
+    save_network(nodes, edges, out_dir)
+
 def get_toy_configuration():
     stoichiometry = {
         'R1': {'A': -1, 'ATP': -1, 'B': 1},
@@ -272,126 +376,6 @@ def random_rate(mu=0, sigma=1):
         return np.random.normal(loc=mu, scale=sigma)
     return rate
 
-def toy_transport_kinetics():
-    # process-like function for transport kinetics
-    transport_kinetics = {
-        "R1": kinetic_rate("A", 2e-2, 5),   # A import
-        "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
-    }
-
-    return transport_kinetics
-
-def toy_regulation():
-    regulation = {
-        'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
-        # 'R2a': rl.build_rule('IF not (A_external) and (F_external)'),
-    }
-
-    return regulation
-
-def simulate_metabolism(config):
-
-    # set the simulation
-    metabolism = config['process']
-    total_time = config.get('total_time', 3600)
-    transport_kinetics = config.get('transport_kinetics', {})
-    env_volume = config.get('environment_volume', 1e-12) * units.L
-    timeline = config.get('timeline', [(total_time, {})])
-    end_time = timeline[-1][0]
-
-    # get initial state and parameters
-    settings = metabolism.default_settings()
-    state = settings['state']
-    internal_updaters = settings['updaters']['internal']
-    density = metabolism.density
-    nAvogadro = metabolism.nAvogadro
-
-    # initialize saved data
-    saved_state = {}
-
-    ## run simulation
-    time = 0
-    timestep = 1  # sec
-    saved_state[time] = state
-    while time < end_time:
-        time += timestep
-        for (t, change_dict) in timeline:
-            if time >= t:
-                for key, change in change_dict.items():
-                    state[key].update(change)
-                timeline.pop(0)
-
-        # set flux bounds from transport kinetics
-        flux_bounds = {}
-        for rxn_id, rate_law in transport_kinetics.items():
-            flux = rate_law(state['external'])
-            flux_bounds[rxn_id] = flux
-        state['flux_bounds'].update(flux_bounds)
-
-        # get update
-        update = metabolism.next_update(timestep, state)
-
-        # reactions are set as is
-        state['reactions'].update(update['reactions'])
-
-        # apply internal update
-        for state_id, state_update in update['internal'].items():
-            if internal_updaters.get(state_id, 'set') is 'accumulate':
-                state['internal'][state_id] += state_update
-            else:
-                state['internal'][state_id] = state_update
-
-        # update volume
-        new_mass = state['internal']['mass'] * units.fg
-        new_volume = new_mass.to('g') / density
-        state['internal']['volume'] = new_volume.to('L').magnitude
-
-        # apply external update -- use exchange without growth rate
-        mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-        for mol_id, exchange_counts in update['exchange'].items():
-            exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
-            state['external'][mol_id] += exchange_conc
-            state['exchange'][mol_id] = 0.0 # reset exchange
-            if state['external'][mol_id] < 0.0:  # this shouldn't be needed
-                state['external'][mol_id] = 0.0
-
-        # save state
-        saved_state[time] = copy.deepcopy(state)
-
-    return saved_state
-
-def save_network(config, out_dir='out'):
-    # TODO -- make this function into an analysis
-    import math
-    from lens.utils.make_network import make_network, save_network
-
-    # initialize the process
-    metabolism = config['process']
-    stoichiometry = metabolism.fba.stoichiometry
-    reaction_ids = list(stoichiometry.keys())
-    external_mol_ids = metabolism.fba.external_molecules
-    objective = metabolism.fba.objective
-
-    data = simulate_metabolism(config)
-    timeseries = convert_to_timeseries(data)
-    reactions =  timeseries['reactions']
-
-    # save fluxes as node size
-    reaction_fluxes = {}
-    for rxn_id in reaction_ids:
-        flux = abs(np.mean(reactions[rxn_id][1:]))
-        reaction_fluxes[rxn_id] = math.log(1000 * flux + 1.1)
-
-    # define node type
-    node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
-    node_types.update({mol_id: 'external_mol' for mol_id in external_mol_ids})
-    node_types.update({rxn_id: 'objective' for rxn_id in objective.keys()})
-    info = {
-        'node_types': node_types,
-        'reaction_fluxes': reaction_fluxes}
-
-    nodes, edges = make_network(stoichiometry, info)
-    save_network(nodes, edges, out_dir)
 
 
 if __name__ == '__main__':
@@ -399,9 +383,25 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # toy functions
+    def toy_transport():
+        # process-like function for transport kinetics
+        transport_kinetics = {
+            "R1": kinetic_rate("A", 2e-2, 5),  # A import
+            "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
+        }
+        return transport_kinetics
+
+    def toy_regulation():
+        regulation = {
+            'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
+            # 'R2a': rl.build_rule('IF not (A_external) and (F_external)'),
+        }
+        return regulation
+
     # configure toy model
     toy_config = get_toy_configuration()
-    transport = toy_transport_kinetics()
+    transport = toy_transport()
     regulation = toy_regulation()
     toy_config['constrained_flux_ids'] = list(transport.keys())
     toy_config['regulation'] = regulation
