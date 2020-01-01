@@ -46,16 +46,16 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 def toy_transport_kinetics():
     transport_kinetics = {
         "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
-        "LACZ": kinetic_rate('lac__D_e', 1.5e0, 5),  # glucose mmol/L/s
+        "LACZ": kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
+        # "EX_lac__D_e": kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
     }
     return transport_kinetics
 
 def toy_regulation():
     regulation = {
         'LACZ': rl.build_rule('IF not (glc__D_e_external)'),
-        # 'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
+        # 'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
     }
-
     return regulation
 
 def test_metabolism():
@@ -95,19 +95,17 @@ if __name__ == '__main__':
     toy_config['constrained_flux_ids'] = transport.keys()
     toy_config['regulation'] = regulation
 
-
-
-
     # get ecoli core metabolism model
     ecoli_core_metabolism = BiGGMetabolism(toy_config)
 
     # simulate model
     timeline = [
         (0, {'external': {
+            'glc__D_e': 0.0,
             'lac__D_e': 12.0}
         }),
         (600, {'external': {
-            'glc__D_e': 0.0}
+            'glc__D_e': 12.0}
         }),
         (1200, {})]
 
@@ -129,4 +127,14 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from model
-    save_network(ecoli_core_metabolism, 10, out_dir)
+    network_timeline = [
+        (0, {'external': {
+            'glc__D_e': 0.0,
+            'lac__D_e': 12.0}
+        }),
+        (10, {})]
+    network_config = {
+        'process': ecoli_core_metabolism,
+        'timeline': network_timeline,
+        'environment_volume': 5e-13}
+    save_network(network_config, out_dir)

@@ -175,7 +175,13 @@ class CobraFBA(object):
         # regulate flux based on True/False activity values for each id in reactions dictionary
         for reaction_id, activity in reactions.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
-            if activity:
+
+            if not activity:
+                # no activity. reaction flux set to 0
+                reaction.upper_bound = 0.0
+                reaction.lower_bound = 0.0
+            elif activity and reaction.bounds is (0.0, 0.0):
+                # if new bounds need to be set
                 if reaction_id in self.flux_bounds:
                     bounds = self.flux_bounds[reaction_id]
                     reaction.lower_bound, reaction.upper_bound = bounds
@@ -186,10 +192,7 @@ class CobraFBA(object):
                     # set bounds based on default
                     reaction.upper_bound = self.default_upper_bound
                     reaction.lower_bound = 0.0
-            else:
-                # no activity. reaction flux set to 0
-                reaction.upper_bound = 0.0
-                reaction.lower_bound = 0.0
+
 
     def constrain_exchange_flux(self, levels):
         for external, level in levels.items():

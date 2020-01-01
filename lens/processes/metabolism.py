@@ -105,7 +105,6 @@ class Metabolism(Process):
         external_state = states['external']  # TODO -- constrain metabolism by external state
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
-
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
 
         # conversion factors
@@ -159,8 +158,8 @@ class Metabolism(Process):
             for reaction, flux in exchange_fluxes.items()}
 
 
-        import ipdb; ipdb.set_trace()
-        # TODO -- lactose exchange not coming through?
+        # import ipdb; ipdb.set_trace()
+        # TODO -- lactose exchange not coming through? EX_lac__D_e remains 0
 
 
         return {
@@ -363,22 +362,19 @@ def simulate_metabolism(config):
 
     return saved_state
 
-def save_network(metabolism, total_time=10, out_dir='out'):
+def save_network(config, out_dir='out'):
     # TODO -- make this function into an analysis
     import math
     from lens.utils.make_network import make_network, save_network
 
     # initialize the process
+    metabolism = config['process']
     stoichiometry = metabolism.fba.stoichiometry
     reaction_ids = list(stoichiometry.keys())
     external_mol_ids = metabolism.fba.external_molecules
     objective = metabolism.fba.objective
 
-    # run test to get simulation output
-    simulation_config = {
-        'process': metabolism,
-        'total_time': total_time}
-    data = simulate_metabolism(simulation_config)
+    data = simulate_metabolism(config)
     timeseries = convert_to_timeseries(data)
     reactions =  timeseries['reactions']
 
@@ -446,4 +442,9 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from toy model
-    save_network(toy_metabolism, 10, out_dir)
+    network_timeline = [(10, {})]
+    network_config = {
+        'process': toy_metabolism,
+        'timeline': network_timeline,
+        'environment_volume': 5e-13}
+    save_network(network_config, out_dir)
