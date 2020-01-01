@@ -157,11 +157,6 @@ class Metabolism(Process):
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
 
-
-        # import ipdb; ipdb.set_trace()
-        # TODO -- lactose exchange not coming through? EX_lac__D_e remains 0
-
-
         return {
             'exchange': exchange_deltas,
             'internal': internal_state_update,

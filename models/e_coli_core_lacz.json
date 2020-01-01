@@ -1,4 +1,5 @@
 {
+"comments": "modified from e_coli_core added LACZ reaction, removed d_LACt2",
 "metabolites":[
 {
 "id":"glc__D_e",
@@ -6245,42 +6246,6 @@
 "rxn12494",
 "rxn10112",
 "rxn08288"
-]
-}
-},
-{
-"id":"D_LACt2",
-"name":"D lactate transport via proton symport",
-"metabolites":{
-"h_c":1.0,
-"h_e":-1.0,
-"lac__D_c":1.0,
-"lac__D_e":-1.0
-},
-"lower_bound":-1000.0,
-"upper_bound":1000.0,
-"gene_reaction_rule":"b2975 or b3603",
-"subsystem":"Transport, Extracellular",
-"notes":{
-"original_bigg_ids":[
-"D_LACt2"
-]
-},
-"annotation":{
-"bigg.reaction":[
-"D_LACt2"
-],
-"biocyc":[
-"META:TRANS-RXN0-515"
-],
-"metanetx.reaction":[
-"MNXR97838"
-],
-"sbo":"SBO:0000185",
-"seed.reaction":[
-"rxn10171",
-"rxn09772",
-"rxn08350"
 ]
 }
 },

@@ -37,6 +37,9 @@ def get_initial_state():
         'internal': internal,
         'external': external}
 
+
+
+# test functions
 def kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
         flux = (vmax * state[mol_id]) / (km + state[mol_id])
@@ -45,9 +48,9 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 def toy_transport_kinetics():
     transport_kinetics = {
-        "GLCpts": kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
-        "LACZ": kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
-        # "EX_lac__D_e": kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
+        'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # glucose mmol/L/s
+        'LACZ': kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
+        # 'EX_lac__D_e': kinetic_rate('lac__D_e', 1.5e0, 5),  # lactose mmol/L/s
     }
     return transport_kinetics
 
@@ -88,15 +91,17 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # add toy transport and regulation to config
-    toy_config = {}
+    # define process config
+    config = {'model_path': DATA_FILE}
+
+    # additional process-like transport and regulation functions
     transport = toy_transport_kinetics()
     regulation = toy_regulation()
-    toy_config['constrained_flux_ids'] = transport.keys()
-    toy_config['regulation'] = regulation
+    config['constrained_flux_ids'] = transport.keys()
+    config['regulation'] = regulation
 
-    # get ecoli core metabolism model
-    ecoli_core_metabolism = BiGGMetabolism(toy_config)
+    # load ecoli core metabolism model
+    ecoli_core_metabolism = BiGGMetabolism(config)
 
     # simulate model
     timeline = [
