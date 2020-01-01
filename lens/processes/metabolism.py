@@ -297,6 +297,7 @@ def simulate_metabolism(config):
     transport_kinetics = config.get('transport_kinetics', {})
     env_volume = config.get('environment_volume', 1e-12) * units.L
     timeline = config.get('timeline', [(total_time, {})])
+    end_time = timeline[-1][0]
 
     # get initial state and parameters
     settings = metabolism.default_settings()
@@ -312,12 +313,13 @@ def simulate_metabolism(config):
     time = 0
     timestep = 1  # sec
     saved_state[time] = state
-    while time < timeline[-1][0]:
+    while time < end_time:
         time += timestep
         for (t, change_dict) in timeline:
             if time >= t:
                 for key, change in change_dict.items():
                     state[key].update(change)
+                timeline.pop(0)
 
         # set flux bounds from transport kinetics
         flux_bounds = {}

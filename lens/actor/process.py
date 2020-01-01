@@ -639,11 +639,13 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     skip_keys = ['time']
 
+    # get settings
     max_rows = settings.get('max_rows', 25)
     overlay = settings.get('overlay', {})
     skip_roles = settings.get('skip_roles', [])
     remove_flat = settings.get('remove_flat', False)
     remove_zeros = settings.get('remove_zeros', False)
+    show_state = settings.get('show_state', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
 
@@ -651,7 +653,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     time_vec = timeseries['time']
 
     # remove selected states
-    # TODO -- removed_states can be plotted as text in the figure
+    # TODO -- plot removed_states as text
     removed_states = []
     if remove_flat:
         # find series with all the same value
@@ -666,12 +668,19 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 if all(v == 0 for v in series):
                     removed_states.append((role, state_id))
 
+    # if specified in show_state, keep in timeseries
+    for role_state in show_state:
+        if role_state in removed_states:
+            removed_states.remove(role_state)
+
     # remove from timeseries
     for (role, state_id) in removed_states:
         del timeseries[role][state_id]
 
     # get the number of states in each role
     n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
+    if 0 in n_data:
+        n_data.remove(0)
 
     # limit number of rows to max_rows by adding new columns
     columns = []
@@ -690,7 +699,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     n_rows = max(columns)
 
     # make figure and plot
-    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
     grid = plt.GridSpec(n_rows, n_cols)
 
     row_idx = 0
@@ -707,7 +716,11 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
-            ax.plot(time_vec, series)
+
+            if (role, state_id) in show_state:
+                ax.plot(time_vec, series, 'indigo')
+            else:
+                ax.plot(time_vec, series)
 
             # overlay
             if state_id in top_timeseries.keys():

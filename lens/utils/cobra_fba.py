@@ -164,8 +164,9 @@ class CobraFBA(object):
                 self.default_upper_bound)
 
             self.constrain_reaction_bounds(self.flux_bounds)
-            self.constrain_exchange_flux(exchange_bounds)
+            self.constrain_exchange_flux(exchange_bounds)  # TODO -- can this use constrain_reaction_bounds instead?
 
+        self.lower_tolerance, self.upper_tolerance = config.get('constraint_tolerance', (0.9, 1))
         self.solution = None
 
     def regulate_flux(self, reactions):
@@ -205,7 +206,12 @@ class CobraFBA(object):
     def constrain_flux(self, levels):
         for external, level in levels.items():
             reaction = self.model.reactions.get_by_id(external)
-            reaction.upper_bound = level
+            if level >= 0:
+                reaction.upper_bound = self.upper_tolerance * level
+                reaction.lower_bound = self.lower_tolerance * level
+            else:
+                reaction.upper_bound = self.lower_tolerance * level
+                reaction.lower_bound = self.upper_tolerance * level
 
     def constrain_reaction_bounds(self, reaction_bounds):
         reactions = self.get_reactions(list(reaction_bounds.keys()))
