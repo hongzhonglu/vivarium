@@ -75,7 +75,7 @@ def compose_kinetic_FBA(config):
     metabolism_config = copy.deepcopy(config)
     metabolism_config.update({
         'model_path': METABOLISM_FILE,
-        'constrained_flux_ids': target_fluxes})
+        'constrained_reaction_ids': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
     # other processes

@@ -34,7 +34,7 @@ class Metabolism(Process):
         self.reaction_ids = self.fba.reaction_ids()  #list(self.fba.stoichiometry.keys())
 
         # additional options
-        self.constrained_flux_ids = initial_parameters.get('constrained_flux_ids', [])
+        self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
         self.regulation = initial_parameters.get('regulation', {})
@@ -52,7 +52,7 @@ class Metabolism(Process):
             'internal': self.internal_state_ids,
             'reactions': self.reaction_ids,
             'exchange': self.fba.external_molecules,
-            'flux_bounds': self.constrained_flux_ids}
+            'flux_bounds': self.constrained_reaction_ids}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -70,7 +70,7 @@ class Metabolism(Process):
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
             'flux_bounds': {state_id: self.default_upper_bound
-                for state_id in self.constrained_flux_ids}
+                for state_id in self.constrained_reaction_ids}
             }
 
         # default emitter keys
@@ -91,7 +91,7 @@ class Metabolism(Process):
             'external': {mol_id: 'accumulate' for mol_id in self.fba.external_molecules},
             'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
             'exchange': {rxn_id: 'set' for rxn_id in self.fba.external_molecules},
-            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_flux_ids},
+            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_reaction_ids},
             }
 
         return {
@@ -101,32 +101,42 @@ class Metabolism(Process):
 
     def next_update(self, timestep, states):
 
+        ## get the state
         internal_state = states['internal']
         external_state = states['external']  # TODO -- constrain metabolism by external state
+        constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
-        constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
 
-        # conversion factors
+        ## conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        ## set flux constraints.
-        # TODO -- how to handle ordering if constrained_reaction_bounds contains a regulated reaction?
-        # constraints from flux bounds role (typically transport)
+        ## get flux constraints
+        # exchange_constraints based on external availability
+        exchange_constraints = {mol_id: 0
+            for mol_id, conc in external_state.items() if conc <= 0.0}
+
+        # availibility is boolean state of all molecules present
+        # regulation_state determines state of regulated reactions (True/False)
+        availability = flatten_role_dicts({role: states[role]
+            for role in ('internal', 'external')})
+        availability = {state: value > 0
+            for state, value in availability.items()}
+        regulation_state = {rxn_id: logic(availability)
+            for rxn_id, logic in self.regulation.items()}
+
+        ## apply flux constraints
+        # first, add exchange constraints
+        self.fba.set_exchange_bounds(exchange_constraints)
+
+        # next, add constraints coming from flux_bounds (typically transport)
         # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
 
-        # constraints from regulation.
-        # TODO -- update 'flux_bounds' with regulation logic
-        regulation_states = flatten_role_dicts({role: states[role]
-            for role in ('internal', 'external')})
-        regulation_states = {state: value>0
-            for state, value in regulation_states.items()}
-        reaction_activity = {rxn_id: logic(regulation_states)
-            for rxn_id, logic in self.regulation.items()}
-        self.fba.regulate_flux(reaction_activity)
+        # finally, turn reactions on/off based on regulation
+        self.fba.regulate_flux(regulation_state)
 
-        # solve the fba problem
+        ## solve the fba problem
         objective_exchange = self.fba.optimize() * timestep  # (units.mmol / units.L / units.s)
         exchange_reactions = self.fba.read_exchange_reactions()
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
@@ -229,8 +239,8 @@ def simulate_metabolism(config):
             exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
             state['external'][mol_id] += exchange_conc
             state['exchange'][mol_id] = 0.0 # reset exchange
-            if state['external'][mol_id] < 0.0:  # this shouldn't be needed
-                state['external'][mol_id] = 0.0
+            # if state['external'][mol_id] < 0.0:  # this shouldn't be needed
+            #     state['external'][mol_id] = 0.0
 
         # save state
         saved_state[time] = copy.deepcopy(state)
@@ -387,15 +397,15 @@ if __name__ == '__main__':
     def toy_transport():
         # process-like function for transport kinetics
         transport_kinetics = {
-            "R1": kinetic_rate("A", 2e-2, 5),  # A import
-            "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
+            "EX_A": kinetic_rate("A", -1e-1, 5),  # A import
+            # "R1": kinetic_rate("A", 2.5e-2, 5),  # A import
+            # "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
         }
         return transport_kinetics
 
     def toy_regulation():
         regulation = {
             'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
-            # 'R2a': rl.build_rule('IF not (A_external) and (F_external)'),
         }
         return regulation
 
@@ -403,24 +413,20 @@ if __name__ == '__main__':
     toy_config = get_toy_configuration()
     transport = toy_transport()
     regulation = toy_regulation()
-    toy_config['constrained_flux_ids'] = list(transport.keys())
+    toy_config['constrained_reaction_ids'] = list(transport.keys())
     toy_config['regulation'] = regulation
 
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
     timeline = [
-        (0, {'external': {
-            'F': 0}
-        }),
         (300, {'external': {
-            'O2': 0}
+            'A': 1}
         }),
         (600, {'external': {
-            'O2': 0,
-            'F': 5.0}
+            'F': 0}
         }),
-        (1200, {})]
+        (1800, {})]
 
     simulation_config = {
         'process': toy_metabolism,

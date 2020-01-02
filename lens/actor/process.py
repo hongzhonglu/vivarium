@@ -727,7 +727,6 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 ax.plot(time_vec, top_timeseries[state_id], 'r', label=top_role)
                 ax.legend()
 
-            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.title.set_text(str(role) + ': ' + str(state_id))
             ax.title.set_fontsize(16)
 

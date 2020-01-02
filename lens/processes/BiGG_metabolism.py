@@ -104,7 +104,7 @@ if __name__ == '__main__':
     # additional process-like transport and regulation functions
     transport = toy_transport()
     regulation = toy_regulation()
-    config['constrained_flux_ids'] = transport.keys()
+    config['constrained_reaction_ids'] = transport.keys()
     config['regulation'] = regulation
 
     # load ecoli core metabolism model

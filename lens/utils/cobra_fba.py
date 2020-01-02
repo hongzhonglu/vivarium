@@ -92,13 +92,13 @@ def extract_model(model):
 
     # get external molecules and exchange bounds from exchanges
     external_molecules = []
-    # exchange_bounds = {}
+    exchange_bounds = {}
     for reaction in exchanges:
         reaction_metabolites = list(reaction.metabolites.keys())
         assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
         metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
-        # exchange_bounds[metabolite_id] = list(reaction.bounds)
+        exchange_bounds[metabolite_id] = list(reaction.bounds)
 
     # get molecular weights
     molecular_weights = {}
@@ -123,7 +123,7 @@ def extract_model(model):
         'external_molecules': external_molecules,
         'objective': objective,
         'flux_bounds': flux_bounds,
-        # 'exchange_bounds': exchange_bounds,
+        'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights}
     
 
@@ -142,7 +142,7 @@ class CobraFBA(object):
             self.objective = extract['objective']
             self.flux_bounds = extract['flux_bounds']
             self.molecular_weights = extract['molecular_weights']
-            # self.exchange_bounds = extract['exchange_bounds']
+            self.exchange_bounds = extract['exchange_bounds']
             # self.boundary_reactions = extract['boundary_reactions']
             self.default_upper_bound = 1000.0 # TODO -- can this be extracted from model?
 
@@ -154,7 +154,7 @@ class CobraFBA(object):
             self.flux_bounds = config.get('flux_bounds', {})
             self.molecular_weights = config.get('molecular_weights', {})
             self.default_upper_bound = config.get('default_upper_bound', 1000.0)
-            exchange_bounds = config.get('exchange_bounds', {})
+            self.exchange_bounds = config.get('exchange_bounds', {})
 
             self.model = build_model(
                 self.stoichiometry,
@@ -164,10 +164,38 @@ class CobraFBA(object):
                 self.default_upper_bound)
 
             self.constrain_reaction_bounds(self.flux_bounds)
-            self.constrain_exchange_flux(exchange_bounds)  # TODO -- can this use constrain_reaction_bounds instead?
+            self.set_exchange_bounds()
 
-        self.lower_tolerance, self.upper_tolerance = config.get('constraint_tolerance', (0.9, 1))
+        self.lower_tolerance, self.upper_tolerance = config.get('constraint_tolerance', (0.95, 1))
         self.solution = None
+
+    def set_exchange_bounds(self, new_bound={}):
+        for external_mol, level in self.exchange_bounds.items():
+            if external_mol in new_bound:
+                level = new_bound[external_mol]
+
+            reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external_mol)
+            if type(level) is list:
+                reaction.upper_bound = -level[0]
+                reaction.lower_bound = -level[1]
+            elif isinstance(level, int) or isinstance(level, float):
+                reaction.lower_bound = -level
+
+    def constrain_flux(self, levels):
+        for reaction_id, level in levels.items():
+            reaction = self.model.reactions.get_by_id(reaction_id)
+            if level >= 0:
+                reaction.upper_bound = self.upper_tolerance * level
+                reaction.lower_bound = self.lower_tolerance * level
+            else:
+                reaction.upper_bound = self.lower_tolerance * level
+                reaction.lower_bound = self.upper_tolerance * level
+
+    def constrain_reaction_bounds(self, reaction_bounds):
+        reactions = self.get_reactions(list(reaction_bounds.keys()))
+        for reaction, bounds in reaction_bounds.items():
+            reaction = reactions[reaction]
+            reaction.lower_bound, reaction.upper_bound = bounds
 
     def regulate_flux(self, reactions):
         # regulate flux based on True/False activity values for each id in reactions dictionary
@@ -190,34 +218,6 @@ class CobraFBA(object):
                     # set bounds based on default
                     reaction.upper_bound = self.default_upper_bound
                     reaction.lower_bound = 0.0
-
-
-    def constrain_exchange_flux(self, levels):
-        for external, level in levels.items():
-            reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external)
-
-            if type(level) is list:
-                reaction.upper_bound = -level[0]
-                reaction.lower_bound = -level[1]
-
-            elif isinstance(level, int) or isinstance(level, float):
-                reaction.lower_bound = -level
-
-    def constrain_flux(self, levels):
-        for external, level in levels.items():
-            reaction = self.model.reactions.get_by_id(external)
-            if level >= 0:
-                reaction.upper_bound = self.upper_tolerance * level
-                reaction.lower_bound = self.lower_tolerance * level
-            else:
-                reaction.upper_bound = self.lower_tolerance * level
-                reaction.lower_bound = self.upper_tolerance * level
-
-    def constrain_reaction_bounds(self, reaction_bounds):
-        reactions = self.get_reactions(list(reaction_bounds.keys()))
-        for reaction, bounds in reaction_bounds.items():
-            reaction = reactions[reaction]
-            reaction.lower_bound, reaction.upper_bound = bounds
 
     def objective_value(self):
         return self.solution.objective_value if self.solution else float('nan')
@@ -292,7 +292,7 @@ def test_minimal():
         'initial_state': initial_state,
         })
 
-    fba.constrain_exchange_flux(initial_state)
+    fba.set_exchange_bounds(initial_state)
 
     return fba
 
@@ -334,7 +334,7 @@ def test_fba():
         'objective': objective,
         'external_molecules': external_molecules})
 
-    fba.constrain_exchange_flux(initial_state['external'])
+    fba.set_exchange_bounds(initial_state['external'])
 
     return fba
 
