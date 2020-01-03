@@ -7,8 +7,8 @@ from lens.environment.make_media import Media
 from lens.utils.units import units
 import lens.utils.regulation_logic as rl
 
-# DATA_FILE = os.path.join('models', 'e_coli_core.json')
-DATA_FILE = os.path.join('models', 'iAF1260b.json')
+DATA_FILE = os.path.join('models', 'e_coli_core.json')
+# DATA_FILE = os.path.join('models', 'iAF1260b.json')
 
 def BiGGMetabolism(parameters):
     initial_state = get_initial_state()
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # toy functions
     def toy_transport():
         transport_kinetics = {
-            'GLCptspp': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model iAF1260b
+            # 'GLCptspp': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model iAF1260b
             # 'EX_lac__D_e': kinetic_rate('lac__D_e', -5e-1, 8),
             # 'LACZpp': kinetic_rate('lac__D_e', 1.5e0, 5),
             # 'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model e_coli_core
@@ -118,7 +118,7 @@ if __name__ == '__main__':
         # (100, {'external': {
         #     'glc__D_e': 0.0}
         # }),
-        (200, {})]
+        (2500, {})]
 
     simulation_config = {
         'process': metabolism,
