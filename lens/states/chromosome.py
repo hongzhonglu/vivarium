@@ -1,6 +1,10 @@
 import random
 import copy
 
+# questions:
+#   * scale: How often to TFs bind and unbind
+#   * terminators: can a promotor use different terminators?
+
 def first(l):
     if l:
         return l[0]
@@ -68,6 +72,9 @@ class Domain(Datum):
         'lag': 0,
         'children': []}
 
+    def __init__(self, config):
+        super(Domain, self).__init__(config, self.defaults)
+
     def strand_position(self, strand, lead=0, lag=0):
         return self.lead + lead if strand == '+' else self.lag + lag
 
@@ -76,9 +83,6 @@ class Domain(Datum):
 
     def descendants(self, tree):
         return [self] + [tree[child].descendants(tree) for child in self.children]
-
-    def __init__(self, config):
-        super(Domain, self).__init__(config, self.defaults)
 
 class TranscriptionFactor(Datum):
     defaults = {
@@ -89,6 +93,55 @@ class TranscriptionFactor(Datum):
 
     def __init__(self, config):
         super(TranscriptionFactor, self).__init__(config, self.defaults)
+
+class BindingSite(Datum):
+    defaults = {
+        'position': 0,
+        'length': 0,
+        'thresholds': [], # list of pairs, (TF, threshold)
+        'state': None}
+
+    def __init__(self, config):
+        super(BindingSite, self).__init__(config, self.defaults)
+
+    def state_when(self, levels):
+        state = None
+        for tf, threshold in thresholds:
+            if levels[tf] >= threshold:
+                state = tf
+                break
+        return state
+
+class Terminator(Datum):
+    defaults = {
+        'position': 0,
+        'strength': 0,
+        'operon': ''}
+
+    def __init__(self, config):
+        super(Terminator, self).__init__(config, self.defaults)
+
+class Promotor(Datum):
+    schema = {
+        'sites': BindingSite,
+        'terminators': Terminator}
+
+    defaults = {
+        'id': 0
+        'sites': [],
+        'position': 0,
+        'direction': 1,
+        'terminators': []}
+
+    def __init__(self, config):
+        super(Terminator, self).__init__(config, self.defaults)
+
+    def binding_state(self, levels):
+        state = [
+            site.state_when(levels)
+            for site in self.sites]
+
+        return tuple([self.id] + state)
 
 class Rnap(Datum):
     defaults = {
@@ -103,6 +156,7 @@ class Chromosome(Datum):
     schema = {
         'domains': Domain,
         'operons': Operon,
+        'promoters': Promoter,
         'transcription_factors': TranscriptionFactor,
         'rnaps': Rnap}
 
@@ -110,8 +164,9 @@ class Chromosome(Datum):
         'sequence': {
             '+': '',
             '-': ''},
-        'domains': {},
         'operons': {},
+        'promoters': {},
+        'domains': {},
         'transcription_factors': {},
         'rnaps': []}
 
@@ -206,12 +261,6 @@ def test_chromosome():
         'sequence': {
             '+': 'ATACGGCACGTG',
             '-': 'ACCGTCAACTTA'},
-        'domains': {
-            0: {
-                'id': 0,
-                'lead': 0,
-                'lag': 0,
-                'children': []}},
         'operons': {
             'A': {
                 'id': 'A',
@@ -225,6 +274,12 @@ def test_chromosome():
                 'direction': -1,
                 'length': 3,
                 'genes': ['B']}},
+        'domains': {
+            0: {
+                'id': 0,
+                'lead': 0,
+                'lag': 0,
+                'children': []}},
         'transcription_factors': {
             'A': {
                 'protein': 'B',
