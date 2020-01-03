@@ -66,7 +66,7 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
 
 def extract_model(model):
 
-    bounds_scaling = 4e-07  # 5e-06 scale all bounds, to adjust standard FBA for single-cell rates
+    bounds_scaling = 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
 
     reactions = model.reactions
     metabolites = model.metabolites
