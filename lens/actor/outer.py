@@ -124,12 +124,6 @@ class Outer(Actor):
         self.paused = True
         self.shutting_down = False
 
-        # Log the child -> parent relationships for lineage analysis.
-        working_dir = agent_config.get('working_dir', os.getcwd())
-        output_dir = fp.makedirs(working_dir, 'out', 'experiments', agent_id)
-        self.lineage_filename = os.path.join(output_dir, 'cell_lineage.json')
-        self.lineage = {}
-
         self.update_state()
 
     def preinitialize(self):
@@ -166,12 +160,6 @@ class Outer(Actor):
             'agent_config': message['agent_config']})
 
         self.environment.add_simulation(inner_id, simulation)
-
-        # lineage tracing
-        parent_id = simulation.get('parent_id', '')
-        if inner_id not in self.lineage:
-            self.lineage[inner_id] = parent_id
-            fp.write_json_file(self.lineage_filename, self.lineage, indent=2)
 
         self.update_state()
 

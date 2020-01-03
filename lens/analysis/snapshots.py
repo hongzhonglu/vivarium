@@ -12,9 +12,10 @@ from lens.actor.process import deep_merge
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
+N_SNAPSHOTS = 6  # number of snapshots
 # TODO (Eran) -- min/max should be configured
-MIN_TAG = 75  # any value less than this shows no flourescence
-MAX_TAG = 110  # if a tagged protein has a value over this, it is fully saturated
+MIN_TAG = 10  # 75  # any value less than this shows no flourescence
+MAX_TAG = 30  # 110  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -84,20 +85,18 @@ class Snapshots(Analysis):
 
     def analyze(self, experiment_config, data, output_dir):
 
-        n_snapshots = 6  # number of snapshots
-
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
         compartment_data = data['compartments']
         tags_present = all(d for d in compartment_data.values())  # are there tags?
 
-        time_vec = time_data.keys()
+        time_vec = list(time_data.keys())
         edge_length_x = experiment_config['edge_length_x']
         edge_length_y = experiment_config['edge_length_y']
         cell_radius = experiment_config['cell_radius']
 
         # time steps that will be used
-        plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
+        plot_steps = np.round(np.linspace(0, len(time_vec) - 1, N_SNAPSHOTS)).astype(int)
         snapshot_times = [time_vec[i] for i in plot_steps]
 
         # number of fields
@@ -106,15 +105,15 @@ class Snapshots(Analysis):
 
         # agent colors based on phylogeny
         agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
-        ancestors = phylogeny.keys()
+        ancestors = list(phylogeny.keys())
         descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
         initial_agents = np.setdiff1d(ancestors,descendents)
         for agent_id in initial_agents:
             agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
         # make figure
-        fig = plt.figure(figsize=(20*n_snapshots, 10*n_fields))
-        grid = plt.GridSpec(n_fields, n_snapshots, wspace=0.2, hspace=0.2)
+        fig = plt.figure(figsize=(20*N_SNAPSHOTS, 10*n_fields))
+        grid = plt.GridSpec(n_fields, N_SNAPSHOTS, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
         for index, time in enumerate(snapshot_times, 0):
             field_data = time_data[time].get('fields')
@@ -152,18 +151,18 @@ class Snapshots(Analysis):
                     self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
             else:
-                ax = fig.add_subplot(1, n_snapshots, index + 1, adjustable='box')
+                ax = fig.add_subplot(1, N_SNAPSHOTS, index + 1, adjustable='box')
                 ax.title.set_text('time = {}'.format(time))
                 ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
                 self.plot_agents(ax, agent_data, cell_radius, agent_colors)
 
-        plt.subplots_adjust(wspace=0.6, hspace=0.5)
+        plt.subplots_adjust(wspace=0.3, hspace=0.5)
         figname = '/snap_out'
         if tags_present:
             figname = '/snap_out_tagged'
-        plt.savefig(output_dir + figname)
+        plt.savefig(output_dir + figname, bbox_inches='tight')
         plt.close(fig)
 
 
@@ -183,7 +182,7 @@ class Snapshots(Analysis):
             agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
             tags = data.get('tags')
             if tags:
-                intensity = max((tags[tags.keys()[0]] - MIN_TAG), 0)
+                intensity = max((tags[list(tags.keys())[0]] - MIN_TAG), 0)
                 intensity = min(intensity / (MAX_TAG - MIN_TAG), 1)  # only use first tag TODO -- multiple tags?
                 agent_color = flourescent_color(DEFAULT_COLOR, intensity)
             rgb = hsv_to_rgb(agent_color)

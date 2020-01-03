@@ -38,7 +38,7 @@ class Compartment(Analysis):
 
         # remove series with all zeros
         zero_state = []
-        for key1 in data_dict.iterkeys():
+        for key1 in list(data_dict.keys()):
             if key1 not in skip_keys:
                 for key2, series in data_dict[key1].items():
                     if all(v == 0 for v in series):

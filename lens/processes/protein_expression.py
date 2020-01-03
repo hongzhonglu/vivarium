@@ -15,7 +15,7 @@ class ProteinExpression(Process):
         internal = ['protein']
         roles = {'internal': internal}
         parameters = {
-            'expression_probability': 1e-1,  # 1e-2,
+            'expression_probability': 1e-2,
         }
         parameters.update(initial_parameters)
 
