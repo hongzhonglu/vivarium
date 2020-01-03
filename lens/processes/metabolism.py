@@ -63,9 +63,11 @@ class Metabolism(Process):
 
         # default state
         internal = {state_id: 0.0 for state_id in self.internal_state_ids}
-        external = {state_id: 10.0 for state_id in self.fba.external_molecules}
+        external = {state_id: 0.0 for state_id in self.fba.external_molecules}
+        external.update(self.fba.minimal_external)
+
         default_state = {
-            'external':  deep_merge(dict(external), self.initial_state.get('external', {})),
+            'external': deep_merge(dict(external), self.initial_state.get('external', {})),
             'internal': deep_merge(dict(internal), self.initial_state.get('internal', {})),
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
@@ -239,8 +241,8 @@ def simulate_metabolism(config):
             exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
             state['external'][mol_id] += exchange_conc
             state['exchange'][mol_id] = 0.0 # reset exchange
-            # if state['external'][mol_id] < 0.0:  # this shouldn't be needed
-            #     state['external'][mol_id] = 0.0
+            if state['external'][mol_id] < 0.0:  # this shouldn't be needed
+                state['external'][mol_id] = 0.0
 
         # save state
         saved_state[time] = copy.deepcopy(state)
@@ -426,7 +428,7 @@ if __name__ == '__main__':
         (600, {'external': {
             'F': 0}
         }),
-        (1800, {})]
+        (2500, {})]
 
     simulation_config = {
         'process': toy_metabolism,

@@ -717,6 +717,12 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
+            # plot line at zero if series crosses the zero line
+            if any(x == 0.0 for x in series) or \
+                    (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                zero_line = [0 for t in time_vec]
+                ax.plot(time_vec, zero_line, 'k--')
+
             if (role, state_id) in show_state:
                 ax.plot(time_vec, series, 'indigo')
             else:
@@ -724,7 +730,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
             # overlay
             if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'r', label=top_role)
+                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_role)
                 ax.legend()
 
             ax.title.set_text(str(role) + ': ' + str(state_id))
