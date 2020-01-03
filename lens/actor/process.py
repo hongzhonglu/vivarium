@@ -635,6 +635,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
             'overlay': (dict) with
                 {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
             }
+    TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
     '''
 
     skip_keys = ['time']

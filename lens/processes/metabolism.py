@@ -65,9 +65,10 @@ class Metabolism(Process):
         internal = {state_id: 0.0 for state_id in self.internal_state_ids}
         external = {state_id: 0.0 for state_id in self.fba.external_molecules}
         external.update(self.fba.minimal_external)
+        external.update(self.initial_state.get('external', {}))
 
         default_state = {
-            'external': deep_merge(dict(external), self.initial_state.get('external', {})),
+            'external': external,
             'internal': deep_merge(dict(internal), self.initial_state.get('internal', {})),
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
@@ -115,7 +116,7 @@ class Metabolism(Process):
 
         ## get flux constraints
         # exchange_constraints based on external availability
-        exchange_constraints = {mol_id: 0
+        exchange_constraints = {mol_id: 0.0
             for mol_id, conc in external_state.items() if conc <= 0.0}
 
         # availibility is boolean state of all molecules present

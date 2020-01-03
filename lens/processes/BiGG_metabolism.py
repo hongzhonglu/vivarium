@@ -7,7 +7,6 @@ from lens.environment.make_media import Media
 from lens.utils.units import units
 import lens.utils.regulation_logic as rl
 
-# DATA_FILE = os.path.join('models', 'e_coli_core_lacz.json')
 # DATA_FILE = os.path.join('models', 'e_coli_core.json')
 DATA_FILE = os.path.join('models', 'iAF1260b.json')
 
@@ -82,7 +81,7 @@ if __name__ == '__main__':
     def toy_transport():
         transport_kinetics = {
             'GLCptspp': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model iAF1260b
-            'EX_lac__D_e': kinetic_rate('lac__D_e', -5e-1, 8),
+            # 'EX_lac__D_e': kinetic_rate('lac__D_e', -5e-1, 8),
             # 'LACZpp': kinetic_rate('lac__D_e', 1.5e0, 5),
             # 'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model e_coli_core
             # 'LACZ': kinetic_rate('lac__D_e', 1.5e0, 5),
@@ -91,7 +90,7 @@ if __name__ == '__main__':
 
     def toy_regulation():
         regulation = {
-            'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
+            # 'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
             # 'EX_glc__D_e': rl.build_rule('IF (glc__D_e_external)'),
             # 'LACZpp': rl.build_rule('IF not (glc__D_e_external)'),
             # 'LACZ': rl.build_rule('IF not (glc__D_e_external)'),
@@ -107,31 +106,31 @@ if __name__ == '__main__':
     config['constrained_reaction_ids'] = transport.keys()
     config['regulation'] = regulation
 
-    # load ecoli core metabolism model
-    ecoli_core_metabolism = BiGGMetabolism(config)
+    # load metabolism model
+    metabolism = BiGGMetabolism(config)
 
     # simulate model
     timeline = [
-        (0, {'external': {
-            'glc__D_e': 12.0,
-            'lac__D_e': 12.0}
-        }),
-        (50, {'external': {
-            'glc__D_e': 0.0}
-        }),
-        (100, {})]
+        # (0, {'external': {
+        #     'glc__D_e': 12.0,
+        #     'lac__D_e': 12.0}
+        # }),
+        # (100, {'external': {
+        #     'glc__D_e': 0.0}
+        # }),
+        (200, {})]
 
     simulation_config = {
-        'process': ecoli_core_metabolism,
+        'process': metabolism,
         'timeline': timeline,
         'transport_kinetics': toy_transport(),
-        'environment_volume': 5e-13}
+        'environment_volume': 1e-11}
 
     plot_settings = {
-        'max_rows': 50,
-        # 'remove_zeros': True,
+        'max_rows': 30,
         'remove_flat': True,
         'show_state': [
+            ('external', 'glc__D_e'),
             ('internal', 'lcts_p'),
             ('external', 'lac__D_e'),
             ('flux_bounds', 'LACZ'),
@@ -152,14 +151,9 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make flux network from model
-    network_timeline = [
-        (0, {'external': {
-            'glc__D_e': 0.0,
-            'lac__D_e': 12.0}
-        }),
-        (10, {})]
     network_config = {
-        'process': ecoli_core_metabolism,
-        'timeline': network_timeline,
-        'environment_volume': 5e-13}
+        'process': metabolism,
+        'total_time': 10,
+        'transport_kinetics': toy_transport(),
+        'environment_volume': 1e-11}
     save_network(network_config, out_dir)

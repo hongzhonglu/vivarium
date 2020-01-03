@@ -182,12 +182,17 @@ class CobraFBA(object):
         # initialize solution
         self.solution = None
 
-    def set_exchange_bounds(self, new_bound={}):
+    def set_exchange_bounds(self, new_bounds={}):
+        '''
+        apply new_bounds to included molecules.
+        reset unincluded molecules to their exchange_bounds.
+        '''
         for external_mol, level in self.exchange_bounds.items():
-            if external_mol in new_bound:
-                level = new_bound[external_mol]
-
             reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external_mol)
+
+            if external_mol in new_bounds:
+                level = new_bounds[external_mol]
+
             if type(level) is list:
                 reaction.upper_bound = -level[0]
                 reaction.lower_bound = -level[1]
@@ -195,6 +200,7 @@ class CobraFBA(object):
                 reaction.lower_bound = -level
 
     def constrain_flux(self, levels):
+        '''add externally imposed constraints'''
         for reaction_id, level in levels.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
             if level >= 0:
@@ -211,7 +217,7 @@ class CobraFBA(object):
             reaction.lower_bound, reaction.upper_bound = bounds
 
     def regulate_flux(self, reactions):
-        # regulate flux based on True/False activity values for each id in reactions dictionary
+        '''regulate flux based on True/False activity values for each id in reactions dictionary'''
         for reaction_id, activity in reactions.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
 
