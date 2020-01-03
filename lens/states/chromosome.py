@@ -1,10 +1,6 @@
 import random
 import copy
 
-# questions:
-#   * scale: How often to TFs bind and unbind
-#   * terminators: can a promotor use different terminators?
-
 def first(l):
     if l:
         return l[0]
@@ -121,20 +117,20 @@ class Terminator(Datum):
     def __init__(self, config):
         super(Terminator, self).__init__(config, self.defaults)
 
-class Promotor(Datum):
+class Promoter(Datum):
     schema = {
         'sites': BindingSite,
         'terminators': Terminator}
 
     defaults = {
-        'id': 0
+        'id': 0,
         'sites': [],
         'position': 0,
         'direction': 1,
         'terminators': []}
 
     def __init__(self, config):
-        super(Terminator, self).__init__(config, self.defaults)
+        super(Promoter, self).__init__(config, self.defaults)
 
     def binding_state(self, levels):
         state = [
@@ -157,7 +153,7 @@ class Chromosome(Datum):
         'domains': Domain,
         'operons': Operon,
         'promoters': Promoter,
-        'transcription_factors': TranscriptionFactor,
+        # 'transcription_factors': TranscriptionFactor,
         'rnaps': Rnap}
 
     defaults = {
@@ -167,7 +163,7 @@ class Chromosome(Datum):
         'operons': {},
         'promoters': {},
         'domains': {},
-        'transcription_factors': {},
+        # 'transcription_factors': {},
         'rnaps': []}
 
     def initiate_replication(self):
@@ -189,11 +185,11 @@ class Chromosome(Datum):
             domain = self.domains[domain_key]
             lead, lag = distances[domain_key]
 
-            for tf in self.transcription_factors.values():
-                if tf.domain == domain_key:
-                    strand, position = self.operons[tf.operon].position
-                    if position >= domain.strand_position(strand) and position < domain.strand_position(strand, lead, lag):
-                        tf.domain = domain.random_child()
+            # for tf in self.transcription_factors.values():
+            #     if tf.domain == domain_key:
+            #         strand, position = self.operons[tf.operon].position
+            #         if position >= domain.strand_position(strand) and position < domain.strand_position(strand, lead, lag):
+            #             tf.domain = domain.random_child()
 
             for rnap in self.rnaps:
                 if rnap.domain == domain_key:
@@ -210,12 +206,14 @@ class Chromosome(Datum):
         if not division:
             division = {
                 'sequence': self.sequence,
-                'domains': {domain.id: domain.to_dict()},
                 'operons': {id: operon.to_dict() for id, operon in self.operons.items()},
-                'transcription_factors': {
-                    operon: tf.to_dict()
-                    for operon, tf in self.transcription_factors.items()
-                    if tf.domain == domain.id},
+                'promoters': {id: promoter.to_dict() for id, promoter in self.promoters.items()},
+                'domains': {domain.id: domain.to_dict()},
+
+                # 'transcription_factors': {
+                #     operon: tf.to_dict()
+                #     for operon, tf in self.transcription_factors.items()
+                #     if tf.domain == domain.id},
                 'rnaps': [
                     rnap.to_dict()
                     for rnap in self.rnaps
@@ -223,9 +221,9 @@ class Chromosome(Datum):
 
         else:
             division['domains'][domain.id] = domain.to_dict()
-            for operon, tf in self.transcription_factors.items():
-                if tf.domain == domain.id:
-                    division['transcription_factors'][operon] = tf.to_dict()
+            # for operon, tf in self.transcription_factors.items():
+            #     if tf.domain == domain.id:
+            #         division['transcription_factors'][operon] = tf.to_dict()
             for rnap in self.rnaps:
                 if rnap.domain == domain.id:
                     division['rnaps'].append(rnap.to_dict())
@@ -235,7 +233,7 @@ class Chromosome(Datum):
     def combine_state(self, a, b):
         merge = copy.deepcopy(a)
         merge['domains'].update(b['domains'])
-        merge['transcription_factors'].update(b['transcription_factors'])
+        # merge['transcription_factors'].update(b['transcription_factors'])
         merge['rnaps'].extend(b['rnaps'])
         return merge
 
@@ -274,18 +272,19 @@ def test_chromosome():
                 'direction': -1,
                 'length': 3,
                 'genes': ['B']}},
+        'promoters': {},
         'domains': {
             0: {
                 'id': 0,
                 'lead': 0,
                 'lag': 0,
                 'children': []}},
-        'transcription_factors': {
-            'A': {
-                'protein': 'B',
-                'domain': 0,
-                'state': 1, # on
-                'operon': 'A'}},
+        # 'transcription_factors': {
+        #     'A': {
+        #         'protein': 'B',
+        #         'domain': 0,
+        #         'state': 1, # on
+        #         'operon': 'A'}},
         'rnaps': [
             {
                 'operon': 'A',
@@ -301,7 +300,7 @@ def test_chromosome():
                 'position': 0}]}
 
     chromosome = Chromosome(chromosome_config)
-    print(chromosome.transcription_factors['A'].state)
+    # print(chromosome.transcription_factors['A'].state)
     print(chromosome.to_dict())
 
     assert chromosome.to_dict() == chromosome_config
