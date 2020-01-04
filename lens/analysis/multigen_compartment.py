@@ -9,7 +9,7 @@ from lens.actor.process import deep_merge
 
 class MultigenCompartment(Analysis):
     def __init__(self):
-        super(MultigenCompartment, self).__init__(analysis_type='both')
+        super(MultigenCompartment, self).__init__(analysis_type='env_with_compartment')
 
     def get_data(self, client, query, options={}):
         tags = options.get('tags')
@@ -37,10 +37,15 @@ class MultigenCompartment(Analysis):
             print('no tags for multigen_compartment analysis. specify tag with "-t tag_id"')
             return
 
-        # find initial cells in phylogeny
-        ancestors = phylogeny.keys()
-        descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
-        initial_agents = np.setdiff1d(ancestors,descendents)
+        if phylogeny:
+            # find initial agents in phylogeny
+            ancestors = list(phylogeny.keys())
+            descendents = list(set([daughter
+                for daughters in phylogeny.values() for daughter in daughters]))
+            initial_agents = np.setdiff1d(ancestors,descendents)
+        else:
+            # if no phylogeny, all compartments must be initial agents
+            initial_agents = np.array(list(compartments.keys()))
 
         n_rows = len(initial_agents)  # 20 zero_state ids per additional subplot
         fig = plt.figure(figsize=(8, n_rows * 3))
