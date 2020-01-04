@@ -14,9 +14,6 @@ DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
-# TODO (Eran) -- min/max should be configured
-MIN_TAG = 1  # 75  # any value less than this shows no flourescence
-MAX_TAG = 10  # 110  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -102,15 +99,32 @@ class Snapshots(Analysis):
         field_ids = list(time_data[time_vec[0]].get('fields',{}).keys())
         n_fields = max(len(field_ids),1)
 
-        # number of tags
-        n_tags = 0
-        tag_ids = set()
+        ## get tag ids and range
+        tag_data = {}
         for c_id, c_data in compartments.items():
+            # if this compartment has tags, get their ids and range
             if c_data:
-                c_data_idx1 = list(c_data.keys())[0]
-                c_tags = c_data[c_data_idx1].get('tags', {})
-                n_tags = max(n_tags, len(c_tags))
-                tag_ids.update(c_tags)
+                # get volume from time_data
+                vol_data = {}
+                for t, t_data in time_data.items():
+                    # if c_id present, save its volume?
+                    if c_id in t_data['agents']:
+                        vol_data[t] = t_data['agents'][c_id]['volume']
+
+                # go through each time point to get tag counts
+                for t, t_data in c_data.items():
+                    volume = vol_data.get(t) or \
+                        vol_data[min(vol_data.keys(), key=lambda k: abs(k - t))]  # get closest time key
+                    c_tags = t_data['tags']
+                    for tag_id, count in c_tags.items():
+                        conc = count / volume
+                        if tag_id in tag_data:
+                            # save min/max concentration of tag
+                            tag_data[tag_id] = [
+                                min(tag_data[tag_id][0], conc),
+                                max(tag_data[tag_id][1], conc)]
+                        else:
+                            tag_data[tag_id] = [conc, conc]
 
         # initial agent ids
         if phylogeny:
@@ -131,7 +145,7 @@ class Snapshots(Analysis):
 
         ## make the figure
         # fields and tag data are plotted in separate rows
-        n_rows = n_tags + n_fields
+        n_rows = len(tag_data) + n_fields
         n_cols = N_SNAPSHOTS + 1
         fig = plt.figure(figsize=(12*n_cols, 12*n_rows))
         grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
@@ -144,7 +158,7 @@ class Snapshots(Analysis):
             plt.text(0.05, 0.95, 'field: {}'.format(field_id), fontsize=32)
             plt.axis('off')
             row_idx+=1
-        for tag_id in tag_ids:
+        for tag_id in list(tag_data.keys()):
             ax = fig.add_subplot(grid[row_idx, 0])
             plt.text(0.05, 0.95, 'tag: {}'.format(tag_id), fontsize=32)
             plt.axis('off')
@@ -155,8 +169,6 @@ class Snapshots(Analysis):
             row_idx = 0
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
-
-            # TODO -- if no field is emitted
 
             # plot fields
             for field_id in field_ids:
@@ -180,17 +192,21 @@ class Snapshots(Analysis):
                 row_idx += 1
 
             # plot tags
-            for tag_id in tag_ids:
+            for tag_id in list(tag_data.keys()):
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
                     tdata = compartments[agent_id]
-                    all_tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
+                    all_tags = tdata.get(time) \
+                        or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
 
-                    # get current tag level, and determine color
-                    level = all_tags['tags'][tag_id]
-                    intensity = max((level - MIN_TAG), 0)
-                    intensity = min(intensity / (MAX_TAG - MIN_TAG), 1)
+                    # get current tag concentration, and determine color
+                    counts = all_tags['tags'][tag_id]
+                    volume = agent_data[agent_id]['volume']
+                    level = counts / volume
+                    min_tag, max_tag = tag_data[tag_id]
+                    intensity = max((level - min_tag), 0)
+                    intensity = min(intensity / (max_tag - min_tag), 1)
                     agent_color = flourescent_color(DEFAULT_COLOR, intensity)
                     agent_tag_colors[agent_id] = agent_color
 
@@ -200,7 +216,7 @@ class Snapshots(Analysis):
 
                 row_idx += 1
 
-        if tag_ids:
+        if tag_data:
              figname = '/snap_out_tagged'
         else:
             figname = '/snap_out'

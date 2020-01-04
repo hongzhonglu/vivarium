@@ -9,7 +9,7 @@ from lens.actor.process import deep_merge
 
 class MultigenCompartment(Analysis):
     def __init__(self):
-        super(MultigenCompartment, self).__init__(analysis_type='both')
+        super(MultigenCompartment, self).__init__(analysis_type='env_with_compartment')
 
     def get_data(self, client, query, options={}):
         tags = options.get('tags')

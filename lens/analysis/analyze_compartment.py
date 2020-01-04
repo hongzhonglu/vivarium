@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import math
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 
 from lens.analysis.analysis import Analysis, get_compartment
 
@@ -34,10 +32,11 @@ class Compartment(Analysis):
     def analyze(self, experiment_config, data_dict, output_dir):
 
         max_rows = 25
+        rows_text = 1  # additional rows for text
         skip_keys = ['time', 'sim_id']
         sim_id = data_dict['sim_id']
 
-        # remove series with all zeros TODO -- plot list of zero_state as text
+        # remove series with all zeros
         zero_state = []
         for key1 in list(data_dict.keys()):
             if key1 not in skip_keys:
@@ -65,13 +64,13 @@ class Compartment(Analysis):
             else:
                 columns.append(n_states)
         n_cols = len(columns)
-        n_rows = max(columns)
+        n_rows = max(columns) + rows_text
 
         # make figure
         fig = plt.figure(figsize=(n_cols*6, n_rows*2.5))
         fig.suptitle('{}'.format(sim_id), fontsize=12)
         plt.rcParams.update({'font.size': 12})
-        grid = plt.GridSpec(n_rows+1, n_cols, wspace=0.3, hspace=1.2)
+        grid = plt.GridSpec(n_rows, n_cols, wspace=0.3, hspace=1.2)
 
         # plot data
         row_idx = 0
@@ -91,6 +90,14 @@ class Compartment(Analysis):
                 else:
                     set_axes(ax)
                     row_idx += 1
-
+                    
+        # additional data as text
+        if zero_state:
+            text_rows = n_rows - rows_text
+            zeros = ['{}:{} '.format(role, state) for (role, state) in zero_state]
+            ax = fig.add_subplot(grid[text_rows:, :])
+            ax.text(0.02, 0.1, 'all zeros: {}'.format(zeros), wrap=True)
+            ax.axis('off')
+            
         plt.savefig(output_dir + '/compartment')
         plt.close(fig)
