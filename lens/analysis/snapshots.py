@@ -169,12 +169,12 @@ class Snapshots(Analysis):
         row_idx = 0
         for field_id in field_ids:
             fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.95, 'field: {}'.format(field_id), fontsize=32)
+            plt.text(0.05, 0.8, 'field: {}'.format(field_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
         for tag_id in list(tag_range.keys()):
             fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.95, 'tag: {}'.format(tag_id), fontsize=32)
+            plt.text(0.05, 0.8, 'tag: {}'.format(tag_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
 
@@ -189,7 +189,6 @@ class Snapshots(Analysis):
 
                 ax = fig.add_subplot(grid[row_idx, col_idx])
                 plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
-                # plot_title = 'time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id)
                 plt.title(plot_title, y=1.08)
                 init_axes(ax, edge_length_x, edge_length_y)
 
