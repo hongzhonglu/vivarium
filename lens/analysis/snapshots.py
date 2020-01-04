@@ -160,21 +160,21 @@ class Snapshots(Analysis):
         ## make the figure
         # fields and tag data are plotted in separate rows
         n_rows = len(tag_range) + n_fields
-        n_cols = N_SNAPSHOTS + 1
+        n_cols = N_SNAPSHOTS + 2  # one column for text, one for the colorbar
         fig = plt.figure(figsize=(12*n_cols, 12*n_rows))
         grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
 
-        # information text in first column
+        # text in first column
         row_idx = 0
         for field_id in field_ids:
             fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.8, 'field: {}'.format(field_id), fontsize=36)
+            plt.text(0.02, 0.9, '{}'.format(field_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
         for tag_id in list(tag_range.keys()):
             fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.8, 'tag: {}'.format(tag_id), fontsize=36)
+            plt.text(0.02, 0.9, '{}'.format(tag_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
 
@@ -208,8 +208,16 @@ class Snapshots(Analysis):
                                     extent=[0, edge_length_x, 0, edge_length_y],
                                     interpolation='nearest',
                                     cmap='YlGn')
-                add_colorbar(im, ax)
                 plot_agents(ax, agent_data, cell_radius, agent_colors)
+
+                # colorbar in new column after final snapshot
+                if col_idx == N_SNAPSHOTS:
+                    cbar_col = col_idx+1
+                    ax = fig.add_subplot(grid[row_idx, cbar_col])
+                    divider = make_axes_locatable(ax)
+                    cax = divider.append_axes("left", size="5%", pad=0.0)
+                    fig.colorbar(im, cax=cax, format='%.6f')
+                    ax.axis('off')
 
                 row_idx += 1
 
@@ -243,7 +251,7 @@ class Snapshots(Analysis):
         else:
             figname = '/snap_out'
 
-        plt.subplots_adjust(wspace=0.2, hspace=1.0)
+        plt.subplots_adjust(wspace=0.1, hspace=1.0)
         plt.savefig(output_dir + figname)  #, bbox_inches='tight'
         plt.close(fig)
 
@@ -272,11 +280,6 @@ def init_axes(ax, edge_length_x, edge_length_y):
     ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
     ax.set_yticklabels([])
     ax.set_xticklabels([])
-
-def add_colorbar(im, ax):
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.1)
-    plt.colorbar(im, cax=cax)
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
     # get colors for all descendants of the ancestor through recursive calls to each generation
