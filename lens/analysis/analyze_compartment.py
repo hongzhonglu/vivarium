@@ -33,12 +33,13 @@ class Compartment(Analysis):
 
     def analyze(self, experiment_config, data_dict, output_dir):
 
+        max_rows = 25
         skip_keys = ['time', 'sim_id']
         sim_id = data_dict['sim_id']
 
-        # remove series with all zeros
+        # remove series with all zeros TODO -- plot list of zero_state as text
         zero_state = []
-        for key1 in data_dict.iterkeys():
+        for key1 in list(data_dict.keys()):
             if key1 not in skip_keys:
                 for key2, series in data_dict[key1].items():
                     if all(v == 0 for v in series):
@@ -49,13 +50,24 @@ class Compartment(Analysis):
         data_keys = [key for key in data_dict.keys() if key not in skip_keys]
         time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
 
-        # make figure, with grid for subplots
-        n_rows_base = 15
+        # limit number of rows to max_rows by adding new columns
         n_data = [len(data_dict[key].keys()) for key in data_keys]
-        n_zeros = len(zero_state)
-        n_cols = int(math.ceil(sum(n_data)/float(n_rows_base)))
-        n_rows = n_rows_base + int(math.ceil(n_zeros/20.0))  # zero_state ids per additional subplot
+        columns = []
+        for n_states in n_data:
+            new_cols = n_states / max_rows
+            if new_cols > 1:
+                for col in range(int(new_cols)):
+                    columns.append(max_rows)
 
+                mod_states = n_states % max_rows
+                if mod_states > 0:
+                    columns.append(mod_states)
+            else:
+                columns.append(n_states)
+        n_cols = len(columns)
+        n_rows = max(columns)
+
+        # make figure
         fig = plt.figure(figsize=(n_cols*6, n_rows*2.5))
         fig.suptitle('{}'.format(sim_id), fontsize=12)
         plt.rcParams.update({'font.size': 12})
@@ -70,21 +82,15 @@ class Compartment(Analysis):
                 ax.plot(time_vec, series)
                 ax.title.set_text(str(key) + ': ' + mol_id)
 
-                row_idx += 1
-                if row_idx > n_rows_base:
+                if row_idx == columns[col_idx] - 1:
+                    # if last row of column
                     set_axes(ax, True)
-                    ax.set_xlabel('time (hrs)')
+                    ax.set_xlabel('time')
                     row_idx = 0
                     col_idx += 1
                 else:
                     set_axes(ax)
-
-        # additional data as text
-        if zero_state:
-            zeros = ['{}[{}]'.format(state, role) for (role, state) in zero_state]
-            ax = fig.add_subplot(grid[n_rows_base:, :])
-            ax.text(0.02, 0.1, 'states with all zeros: {}'.format(zeros), wrap=True)
-            ax.axis('off')
+                    row_idx += 1
 
         plt.savefig(output_dir + '/compartment')
         plt.close(fig)
