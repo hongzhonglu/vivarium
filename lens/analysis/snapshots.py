@@ -100,7 +100,7 @@ class Snapshots(Analysis):
         n_fields = max(len(field_ids),1)
 
         ## get tag ids and range
-        tag_data = {}
+        tag_range = {}
         for c_id, c_data in compartments.items():
             # if this compartment has tags, get their ids and range
             if c_data:
@@ -118,13 +118,27 @@ class Snapshots(Analysis):
                     c_tags = t_data['tags']
                     for tag_id, count in c_tags.items():
                         conc = count / volume
-                        if tag_id in tag_data:
-                            # save min/max concentration of tag
-                            tag_data[tag_id] = [
-                                min(tag_data[tag_id][0], conc),
-                                max(tag_data[tag_id][1], conc)]
+                        if tag_id in tag_range:
+                            tag_range[tag_id] = [
+                                min(tag_range[tag_id][0], conc),
+                                max(tag_range[tag_id][1], conc)]
                         else:
-                            tag_data[tag_id] = [conc, conc]
+                            tag_range[tag_id] = [conc, conc]
+
+        # get fields' range
+        field_range = {}
+        for field_id in field_ids:
+            for t, t_data in time_data.items():
+                field = t_data['fields'][field_id]
+                concs = [conc for row in field for conc in row]
+                min_conc = min(concs)
+                max_conc = max(concs)
+                if field_id in field_range:
+                    field_range[field_id] = [
+                        min(field_range[field_id][0], min_conc),
+                        max(field_range[field_id][1], max_conc)]
+                else:
+                    field_range[field_id] = [min_conc, max_conc]
 
         # initial agent ids
         if phylogeny:
@@ -145,22 +159,22 @@ class Snapshots(Analysis):
 
         ## make the figure
         # fields and tag data are plotted in separate rows
-        n_rows = len(tag_data) + n_fields
+        n_rows = len(tag_range) + n_fields
         n_cols = N_SNAPSHOTS + 1
         fig = plt.figure(figsize=(12*n_cols, 12*n_rows))
         grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
 
-        # plot text in first column
+        # information text in first column
         row_idx = 0
         for field_id in field_ids:
-            ax = fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.95, 'field: {}'.format(field_id), fontsize=32)
+            fig.add_subplot(grid[row_idx, 0])
+            plt.text(0.05, 0.8, 'field: {}'.format(field_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
-        for tag_id in list(tag_data.keys()):
-            ax = fig.add_subplot(grid[row_idx, 0])
-            plt.text(0.05, 0.95, 'tag: {}'.format(tag_id), fontsize=32)
+        for tag_id in list(tag_range.keys()):
+            fig.add_subplot(grid[row_idx, 0])
+            plt.text(0.05, 0.8, 'tag: {}'.format(tag_id), fontsize=36)
             plt.axis('off')
             row_idx+=1
 
@@ -175,24 +189,32 @@ class Snapshots(Analysis):
 
                 ax = fig.add_subplot(grid[row_idx, col_idx])
                 plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
-                # plot_title = 'time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id)
                 plt.title(plot_title, y=1.08)
                 init_axes(ax, edge_length_x, edge_length_y)
 
                 # transpose field to align with agent
                 field = np.transpose(np.array(field_data[field_id])).tolist()
-                im = plt.imshow(field,
-                                origin='lower',
-                                extent=[0, edge_length_x, 0, edge_length_y],
-                                interpolation='nearest',
-                                cmap='YlGn')
+                if field_range[field_id]:
+                    vmin, vmax = field_range[field_id]
+                    im = plt.imshow(field,
+                                    origin='lower',
+                                    extent=[0, edge_length_x, 0, edge_length_y],
+                                    vmin=vmin,
+                                    vmax=vmax,
+                                    cmap='YlGn')
+                else:
+                    im = plt.imshow(field,
+                                    origin='lower',
+                                    extent=[0, edge_length_x, 0, edge_length_y],
+                                    interpolation='nearest',
+                                    cmap='YlGn')
                 add_colorbar(im, ax)
                 plot_agents(ax, agent_data, cell_radius, agent_colors)
 
                 row_idx += 1
 
             # plot tags
-            for tag_id in list(tag_data.keys()):
+            for tag_id in list(tag_range.keys()):
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
@@ -204,7 +226,7 @@ class Snapshots(Analysis):
                     counts = all_tags['tags'][tag_id]
                     volume = agent_data[agent_id]['volume']
                     level = counts / volume
-                    min_tag, max_tag = tag_data[tag_id]
+                    min_tag, max_tag = tag_range[tag_id]
                     intensity = max((level - min_tag), 0)
                     intensity = min(intensity / (max_tag - min_tag), 1)
                     agent_color = flourescent_color(DEFAULT_COLOR, intensity)
@@ -216,7 +238,7 @@ class Snapshots(Analysis):
 
                 row_idx += 1
 
-        if tag_data:
+        if tag_range:
              figname = '/snap_out_tagged'
         else:
             figname = '/snap_out'
@@ -252,11 +274,9 @@ def init_axes(ax, edge_length_x, edge_length_y):
     ax.set_xticklabels([])
 
 def add_colorbar(im, ax):
-    # colorbar
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(im, cax=cax)
-
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
     # get colors for all descendants of the ancestor through recursive calls to each generation

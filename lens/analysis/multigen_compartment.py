@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 
 from lens.analysis.analysis import Analysis, get_compartment
-from lens.actor.process import deep_merge
 
 class MultigenCompartment(Analysis):
     def __init__(self):
@@ -64,7 +62,6 @@ class MultigenCompartment(Analysis):
                 if compartments.get(sim_id):
                     plot_single(ax, compartments[sim_id])
 
-            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.set_xlabel('time (hrs)')
 
         plt.savefig(output_dir + '/multigen')

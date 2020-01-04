@@ -1,13 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
+from scipy import constants
+
 from lens.actor.process import Process
 from lens.utils.kinetic_rate_laws import KineticFluxModel
-from lens.utils.dict_utils import merge_dicts
+from lens.utils.dict_utils import flatten_role_dicts
+from lens.utils.units import units
+
 
 
 class ConvenienceKinetics(Process):
 
     def __init__(self, initial_parameters={}):
+        self.nAvogadro = constants.N_A * 1 / units.mol
+
         self.reactions = initial_parameters.get('reactions')
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
         roles = initial_parameters.get('roles')
@@ -16,7 +22,15 @@ class ConvenienceKinetics(Process):
         # Make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
-        roles.update({'fluxes': self.kinetic_rate_laws.reaction_ids})
+        # add volume to internal state
+        if 'volume' not in roles['internal']:
+            roles['internal'].append('volume')
+            self.initial_state['internal'].update({'volume': 1.2})  # (fL)
+
+        roles.update({
+            'fluxes': self.kinetic_rate_laws.reaction_ids,
+            'exchange': roles['external']
+        })
 
         parameters = {}
         super(ConvenienceKinetics, self).__init__(roles, parameters)
@@ -43,9 +57,12 @@ class ConvenienceKinetics(Process):
 
     def next_update(self, timestep, states):
 
-        # kinetic rate law requires a flat dict with states.
-        # TODO -- might need to distinguish different roles with suffixes (_external, _internal, etc)
-        flattened_states = merge_dicts([role_states for role, role_states in states.items()])
+        # get mmol_to_count for converting flux to exchange counts
+        volume = states['internal']['volume'] * 1e-15 * units.L # convert L to fL
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+
+        # kinetic rate law requires a flat dict with 'state_role' keys.
+        flattened_states = flatten_role_dicts(states)
 
         # get flux
         fluxes = self.kinetic_rate_laws.get_fluxes(flattened_states)
@@ -53,14 +70,26 @@ class ConvenienceKinetics(Process):
         # apply fluxes to state
         update = {role: {} for role in self.roles.keys()}
         update.update({'fluxes': fluxes})
+
+        # get exchange
         for reaction_id, flux in fluxes.items():
             stoichiometry = self.reactions[reaction_id]['stoichiometry']
-            for state_id, coeff in stoichiometry.items():
-                # which role is state_id in? TODO -- there must be a better way to do this.
+            for state_role_id, coeff in stoichiometry.items():
                 for role_id, state_list in self.roles.items():
-                    if state_id in state_list:
-                        update[role_id][state_id] = coeff * flux
 
+                    # separate the state_id and role_id
+                    if role_id in state_role_id:
+                        role_string = '_{}'.format(role_id)
+                        state_id = state_role_id.replace(role_string, '')
+                        state_flux = coeff * flux
+                        update[role_id][state_id] = state_flux
+
+                        # convert exchange fluxes to counts with mmol_to_count
+                        if role_id == 'external':
+                            delta_counts = int((state_flux * mmol_to_count).magnitude)
+                            update['exchange'][state_id] = delta_counts
+
+        # note: external and internal roles get update in change in mmol.
         return update
 
 
