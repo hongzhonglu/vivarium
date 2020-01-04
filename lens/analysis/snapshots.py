@@ -200,9 +200,12 @@ class Snapshots(Analysis):
 
                 row_idx += 1
 
+        if tag_ids:
+             figname = '/snap_out_tagged'
+        else:
+            figname = '/snap_out'
 
         plt.subplots_adjust(wspace=0.2, hspace=1.0)
-        figname = '/snap_out'
         plt.savefig(output_dir + figname)  #, bbox_inches='tight'
         plt.close(fig)
 
