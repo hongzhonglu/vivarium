@@ -7,9 +7,6 @@ import lens.actor.emitter as emit
 import random
 import os
 from scipy import constants
-
-# import matplotlib
-# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from lens.utils.dict_utils import merge_dicts
