@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from lens.analysis.analysis import Analysis, get_compartment
 from lens.actor.process import deep_merge
@@ -13,9 +14,6 @@ DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
-# TODO (Eran) -- min/max should be configured
-MIN_TAG = 10  # 75  # any value less than this shows no flourescence
-MAX_TAG = 30  # 110  # if a tagged protein has a value over this, it is fully saturated
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -87,109 +85,177 @@ class Snapshots(Analysis):
 
         phylogeny = experiment_config['phylogeny']
         time_data = data['environment']
-        compartment_data = data['compartments']
-        tags_present = all(d for d in compartment_data.values())  # are there tags?
-
-        time_vec = list(time_data.keys())
+        compartments = data['compartments']
         edge_length_x = experiment_config['edge_length_x']
         edge_length_y = experiment_config['edge_length_y']
         cell_radius = experiment_config['cell_radius']
+        time_vec = list(time_data.keys())
 
         # time steps that will be used
         plot_steps = np.round(np.linspace(0, len(time_vec) - 1, N_SNAPSHOTS)).astype(int)
         snapshot_times = [time_vec[i] for i in plot_steps]
 
         # number of fields
-        field_ids = time_data[time_vec[0]].get('fields',{}).keys()
+        field_ids = list(time_data[time_vec[0]].get('fields',{}).keys())
         n_fields = max(len(field_ids),1)
+
+        ## get tag ids and range
+        tag_data = {}
+        for c_id, c_data in compartments.items():
+            # if this compartment has tags, get their ids and range
+            if c_data:
+                # get volume from time_data
+                vol_data = {}
+                for t, t_data in time_data.items():
+                    # if c_id present, save its volume?
+                    if c_id in t_data['agents']:
+                        vol_data[t] = t_data['agents'][c_id]['volume']
+
+                # go through each time point to get tag counts
+                for t, t_data in c_data.items():
+                    volume = vol_data.get(t) or \
+                        vol_data[min(vol_data.keys(), key=lambda k: abs(k - t))]  # get closest time key
+                    c_tags = t_data['tags']
+                    for tag_id, count in c_tags.items():
+                        conc = count / volume
+                        if tag_id in tag_data:
+                            # save min/max concentration of tag
+                            tag_data[tag_id] = [
+                                min(tag_data[tag_id][0], conc),
+                                max(tag_data[tag_id][1], conc)]
+                        else:
+                            tag_data[tag_id] = [conc, conc]
+
+        # initial agent ids
+        if phylogeny:
+            # find initial agents in phylogeny
+            ancestors = list(phylogeny.keys())
+            descendents = list(set([daughter
+                for daughters in phylogeny.values() for daughter in daughters]))
+            initial_agents = np.setdiff1d(ancestors,descendents)
+        else:
+            # if no phylogeny, all compartments must be initial agents
+            initial_agents = np.array(list(compartments.keys()))
 
         # agent colors based on phylogeny
         agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
-        ancestors = list(phylogeny.keys())
-        descendents = list(set([daughter for daughters in phylogeny.values() for daughter in daughters]))
-        initial_agents = np.setdiff1d(ancestors,descendents)
         for agent_id in initial_agents:
             agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
 
-        # make figure
-        fig = plt.figure(figsize=(20*N_SNAPSHOTS, 10*n_fields))
-        grid = plt.GridSpec(n_fields, N_SNAPSHOTS, wspace=0.2, hspace=0.2)
+
+        ## make the figure
+        # fields and tag data are plotted in separate rows
+        n_rows = len(tag_data) + n_fields
+        n_cols = N_SNAPSHOTS + 1
+        fig = plt.figure(figsize=(12*n_cols, 12*n_rows))
+        grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
         plt.rcParams.update({'font.size': 36})
-        for index, time in enumerate(snapshot_times, 0):
+
+        # plot text in first column
+        row_idx = 0
+        for field_id in field_ids:
+            ax = fig.add_subplot(grid[row_idx, 0])
+            plt.text(0.05, 0.95, 'field: {}'.format(field_id), fontsize=32)
+            plt.axis('off')
+            row_idx+=1
+        for tag_id in list(tag_data.keys()):
+            ax = fig.add_subplot(grid[row_idx, 0])
+            plt.text(0.05, 0.95, 'tag: {}'.format(tag_id), fontsize=32)
+            plt.axis('off')
+            row_idx+=1
+
+        # plot snapshot data in each subsequent column
+        for col_idx, time in enumerate(snapshot_times, 1):
+            row_idx = 0
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
-            if tags_present:
-                agent_tags = {}
+            # plot fields
+            for field_id in field_ids:
+
+                ax = fig.add_subplot(grid[row_idx, col_idx])
+                plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
+                # plot_title = 'time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id)
+                plt.title(plot_title, y=1.08)
+                init_axes(ax, edge_length_x, edge_length_y)
+
+                # transpose field to align with agent
+                field = np.transpose(np.array(field_data[field_id])).tolist()
+                im = plt.imshow(field,
+                                origin='lower',
+                                extent=[0, edge_length_x, 0, edge_length_y],
+                                interpolation='nearest',
+                                cmap='YlGn')
+                add_colorbar(im, ax)
+                plot_agents(ax, agent_data, cell_radius, agent_colors)
+
+                row_idx += 1
+
+            # plot tags
+            for tag_id in list(tag_data.keys()):
+                # update agent colors based on tag_level
+                agent_tag_colors = {}
                 for agent_id in agent_data.keys():
-                    tdata = compartment_data[agent_id]
-                    tags = tdata.get(time) or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
-                    agent_tags[agent_id] = tags
-                agent_data = deep_merge(dict(agent_data), agent_tags)
+                    tdata = compartments[agent_id]
+                    all_tags = tdata.get(time) \
+                        or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
 
-            if field_ids:
-                # plot fields
-                for f_index, field_id in enumerate(field_ids, 0):  # TODO --multiple fields
+                    # get current tag concentration, and determine color
+                    counts = all_tags['tags'][tag_id]
+                    volume = agent_data[agent_id]['volume']
+                    level = counts / volume
+                    min_tag, max_tag = tag_data[tag_id]
+                    intensity = max((level - min_tag), 0)
+                    intensity = min(intensity / (max_tag - min_tag), 1)
+                    agent_color = flourescent_color(DEFAULT_COLOR, intensity)
+                    agent_tag_colors[agent_id] = agent_color
 
-                    ax = fig.add_subplot(grid[f_index, index])  # grid is (row, column)
-                    plot_title = 'time: {:.4f} hr | field: {}'.format(float(time) / 60. / 60., field_id)
-                    plt.title(plot_title, y=1.08)
-                    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
-                    ax.set_yticklabels([])
-                    ax.set_xticklabels([])
+                ax = fig.add_subplot(grid[row_idx, col_idx])
+                init_axes(ax, edge_length_x, edge_length_y)
+                plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
 
-                    # transpose field to align with agent
-                    field = np.transpose(np.array(field_data[field_id])).tolist()
-                    im = plt.imshow(field,
-                               origin='lower',
-                               extent=[0, edge_length_x, 0, edge_length_y],
-                               interpolation='nearest',
-                               cmap='YlGn')
-                    plt.colorbar(im, ax=ax)
+                row_idx += 1
 
-                    # agents
-                    self.plot_agents(ax, agent_data, cell_radius, agent_colors)
+        if tag_data:
+             figname = '/snap_out_tagged'
+        else:
+            figname = '/snap_out'
 
-            else:
-                ax = fig.add_subplot(1, N_SNAPSHOTS, index + 1, adjustable='box')
-                ax.title.set_text('time = {}'.format(time))
-                ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
-                ax.set_yticklabels([])
-                ax.set_xticklabels([])
-                self.plot_agents(ax, agent_data, cell_radius, agent_colors)
-
-        plt.subplots_adjust(wspace=0.3, hspace=0.5)
-        figname = '/snap_out'
-        if tags_present:
-            figname = '/snap_out_tagged'
-        plt.savefig(output_dir + figname, bbox_inches='tight')
+        plt.subplots_adjust(wspace=0.2, hspace=1.0)
+        plt.savefig(output_dir + figname)  #, bbox_inches='tight'
         plt.close(fig)
 
 
-    def plot_agents(self, ax, agent_data, cell_radius, agent_colors):
+def plot_agents(ax, agent_data, cell_radius, agent_colors):
 
-        for agent_id, data in agent_data.items():
+    for agent_id, data in agent_data.items():
 
-            # location, orientation, length
-            volume = data['volume']
-            x = data['location'][0]
-            y = data['location'][1]
-            theta = data['location'][2] / np.pi * 180 + 90 # rotate 90 degrees to match field
-            length = volume_to_length(volume, cell_radius)
-            width = cell_radius * 2
+        # location, orientation, length
+        volume = data['volume']
+        x = data['location'][0]
+        y = data['location'][1]
+        theta = data['location'][2] / np.pi * 180 + 90 # rotate 90 degrees to match field
+        length = volume_to_length(volume, cell_radius)
+        width = cell_radius * 2
 
-            # colors and flourescent tags
-            agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
-            tags = data.get('tags')
-            if tags:
-                intensity = max((tags[list(tags.keys())[0]] - MIN_TAG), 0)
-                intensity = min(intensity / (MAX_TAG - MIN_TAG), 1)  # only use first tag TODO -- multiple tags?
-                agent_color = flourescent_color(DEFAULT_COLOR, intensity)
-            rgb = hsv_to_rgb(agent_color)
+        # get color, convert to rgb
+        agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)
+        rgb = hsv_to_rgb(agent_color)
 
-            # Create a rectangle
-            rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
-            ax.add_patch(rect)
+        # Create a rectangle
+        rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
+        ax.add_patch(rect)
+
+def init_axes(ax, edge_length_x, edge_length_y):
+    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+
+def add_colorbar(im, ax):
+    # colorbar
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    plt.colorbar(im, cax=cax)
 
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):

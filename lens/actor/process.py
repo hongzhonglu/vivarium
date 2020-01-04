@@ -7,9 +7,6 @@ import lens.actor.emitter as emit
 import random
 import os
 from scipy import constants
-
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from lens.utils.dict_utils import merge_dicts
@@ -496,9 +493,11 @@ def test_compartment():
     settings = {
         'timestep': 1,
         'total_time': 10}
+    plot_settings = {}
 
     saved_state = simulate_compartment(compartment, settings)
-    plot_simulation_output(saved_state, out_dir)
+    timeseries = convert_to_timeseries(saved_state)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
 def load_compartment(composite=toy_composite, boot_config={}):
     '''

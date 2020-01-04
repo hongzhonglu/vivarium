@@ -36,7 +36,7 @@ class ShepherdControl(ActorControl):
             timeline_str = '0 {}, 7200 end'.format(media_id)
             # timeline_str = '0 {}, 14400 end'.format(media_id)
 
-        emit_field = ['GLC']
+        emit_field = args.get('emit_field', ['GLC'])
 
         lattice_config = {
             'timeline_str': timeline_str,
