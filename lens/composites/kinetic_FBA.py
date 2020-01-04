@@ -96,7 +96,7 @@ def compose_kinetic_FBA(config):
         'transport': {
             'internal': 'cell',
             'external': 'environment',
-            # 'exchange': 'null',  # metabolism's exchange is used. TODO -- add exchange to convenience_kinetics
+            'exchange': 'null',  # metabolism's exchange is used
             'fluxes': 'flux_bounds'},
         'metabolism': {
             'internal': 'cell',
