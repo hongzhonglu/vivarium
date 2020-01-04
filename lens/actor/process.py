@@ -625,45 +625,83 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     plot simulation output
         args:
         - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
-        - skip_roles (list). roles that won't be plotted
-        - settings (dict) with
-            {'max_rows': int,
-            'overlay': {
-                'bottom_role': 'top_role'  # can be any number of mappings for corresponding states in the roles placed together names
+        - settings (dict) with:
+            {
+            'max_rows': (int) roles with more states than this number of states get wrapped into a new column
+            'remove_zeros': (bool) if True, timeseries with all 0's get removed
+            'remove_flat': (bool) if True, timeseries with all the same value get removed
+            'skip_roles': (list) roles that won't be plotted
+            'overlay': (dict) with
+                {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
             }
-
+    TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
     '''
 
+    skip_keys = ['time']
+
+    # get settings
     max_rows = settings.get('max_rows', 25)
     overlay = settings.get('overlay', {})
     skip_roles = settings.get('skip_roles', [])
+    remove_flat = settings.get('remove_flat', False)
+    remove_zeros = settings.get('remove_zeros', False)
+    show_state = settings.get('show_state', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
 
-    skip_keys = ['time']
     roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
     time_vec = timeseries['time']
 
+    # remove selected states
+    # TODO -- plot removed_states as text
+    removed_states = []
+    if remove_flat:
+        # find series with all the same value
+        for role in roles:
+            for state_id, series in timeseries[role].items():
+                if series.count(series[0]) == len(series):
+                    removed_states.append((role, state_id))
+    elif remove_zeros:
+        # find series with all zeros
+        for role in roles:
+            for state_id, series in timeseries[role].items():
+                if all(v == 0 for v in series):
+                    removed_states.append((role, state_id))
+
+    # if specified in show_state, keep in timeseries
+    for role_state in show_state:
+        if role_state in removed_states:
+            removed_states.remove(role_state)
+
+    # remove from timeseries
+    for (role, state_id) in removed_states:
+        del timeseries[role][state_id]
+
+    # get the number of states in each role
     n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
+    if 0 in n_data:
+        n_data.remove(0)
 
     # limit number of rows to max_rows by adding new columns
     columns = []
     for n_states in n_data:
-        new_cols = int(n_states / max_rows)
-        mod_states = n_states % max_rows
-        if new_cols > 0:
-            for col in range(new_cols):
+        new_cols = n_states / max_rows
+        if new_cols > 1:
+            for col in range(int(new_cols)):
                 columns.append(max_rows)
-            columns.append(mod_states)
+
+            mod_states = n_states % max_rows
+            if mod_states > 0:
+                columns.append(mod_states)
         else:
             columns.append(n_states)
     n_cols = len(columns)
     n_rows = max(columns)
 
-    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2.0))
+    # make figure and plot
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
     grid = plt.GridSpec(n_rows, n_cols)
 
-    # plot data
     row_idx = 0
     col_idx = 0
     for role in roles:
@@ -678,14 +716,23 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
-            ax.plot(time_vec, series)
+
+            # plot line at zero if series crosses the zero line
+            if any(x == 0.0 for x in series) or \
+                    (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                zero_line = [0 for t in time_vec]
+                ax.plot(time_vec, zero_line, 'k--')
+
+            if (role, state_id) in show_state:
+                ax.plot(time_vec, series, 'indigo')
+            else:
+                ax.plot(time_vec, series)
 
             # overlay
             if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'r', label=top_role)
+                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_role)
                 ax.legend()
 
-            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             ax.title.set_text(str(role) + ': ' + str(state_id))
             ax.title.set_fontsize(16)
 

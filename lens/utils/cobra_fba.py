@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import cobra
 import cobra.test
+from cobra.medium import minimal_medium
 
 from cobra import Model, Reaction, Metabolite, Configuration
 
@@ -64,34 +65,45 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
     return model
 
 def extract_model(model):
+
+    bounds_scaling = 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
+
     reactions = model.reactions
     metabolites = model.metabolites
     boundary = model.boundary
+    exchanges = model.exchanges
+    demands = model.demands  # TODO -- where do demands and sinks go?
+    sinks = model.sinks
     objective_expression = model.objective.expression.args
 
-    # get stoichiometry
+    # get boundary reaction names. these include exchanges, demands, sinks
+    boundary_reactions = [reaction.id for reaction in boundary]
+
+    # get stoichiometry and flux bounds
     stoichiometry = {}
     flux_bounds = {}
+    reversible = []
     for reaction in reactions:
+        reaction_id = reaction.id
         reaction_metabolites = reaction.metabolites
+        bounds = list(reaction.bounds)
         stoichiometry[reaction.id] = {
             metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        # get flux bounds
-        flux_bounds[reaction.id] = list(reaction.bounds)
+        flux_bounds[reaction_id] = [bound * bounds_scaling for bound in bounds]
+        if not any(b == 0.0 for b in bounds):
+            reversible.append(reaction_id)
 
-    # get external molecules
+    # get external molecules and exchange bounds from exchanges
     external_molecules = []
-    external_state = {}
     exchange_bounds = {}
-    for reaction in boundary:
+    for reaction in exchanges:
         reaction_metabolites = list(reaction.metabolites.keys())
         assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
         metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
-        external_state[metabolite_id] = 0.0
 
-        # get exchange bounds
-        exchange_bounds[metabolite_id] = list(reaction.bounds)
+        bounds = list(reaction.bounds)
+        exchange_bounds[metabolite_id] = [bound * bounds_scaling for bound in bounds]
 
     # get molecular weights
     molecular_weights = {}
@@ -109,89 +121,122 @@ def extract_model(model):
         except:
             pass
 
-    # initial state
-    initial_state = {
-        'internal': {
-            'mass': 1339,  # fg
-            'volume': 1E-15},  # fL
-        'external': external_state}
-
-    # adjustments
-    for exchange_id, [lb, ub] in exchange_bounds.items():
-        exchange_bounds[exchange_id] = [lb/100, ub/100]
-
-    config = {
+    return {
         'stoichiometry': stoichiometry,
+        'reversible': reversible,
         'external_molecules': external_molecules,
         'objective': objective,
-        'initial_state': initial_state,
         'flux_bounds': flux_bounds,
         'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights}
-
-    return config
     
+DEFAULT_UPPER_BOUND = 100
+
 
 class CobraFBA(object):
     cobra_configuration = Configuration()
 
     def __init__(self, config={}):
         model_path = config.get('model_path')
+        self.lower_tolerance, self.upper_tolerance = config.get('constraint_tolerance', (0.95, 1))
         if model_path:
             self.model = cobra.io.load_json_model(model_path)
             extract = extract_model(self.model)
 
             self.stoichiometry = extract['stoichiometry']
-            self.reversible = extract.get('reversible', [])
+            self.reversible = extract['reversible']
             self.external_molecules = extract['external_molecules']
             self.objective = extract['objective']
             self.flux_bounds = extract['flux_bounds']
-            self.exchange_bounds = extract['exchange_bounds']
             self.molecular_weights = extract['molecular_weights']
+            self.exchange_bounds = extract['exchange_bounds']
+            self.default_upper_bound = DEFAULT_UPPER_BOUND # TODO -- can this be extracted from model?
+
         else:
             self.stoichiometry = config['stoichiometry']
             self.reversible = config.get('reversible', [])
             self.external_molecules = config['external_molecules']
             self.objective = config['objective']
             self.flux_bounds = config.get('flux_bounds', {})
-            self.exchange_bounds = config.get('exchange_bounds', {})
             self.molecular_weights = config.get('molecular_weights', {})
-
-            default_upper_bound = config.get('default_upper_bound', 1000.0)
+            self.exchange_bounds = config.get('exchange_bounds', {})
+            self.default_upper_bound = config.get('default_upper_bound', DEFAULT_UPPER_BOUND)
 
             self.model = build_model(
                 self.stoichiometry,
                 self.reversible,
                 self.objective,
                 self.external_molecules,
-                default_upper_bound)
+                self.default_upper_bound)
 
-            self.constrain_reaction_bounds(self.flux_bounds)
-            self.constrain_exchange_flux(self.exchange_bounds)
+        # apply constraints
+        self.constrain_reaction_bounds(self.flux_bounds)
+        self.set_exchange_bounds()
 
+        # get recommended initial state
+        max_growth = self.model.slim_optimize()
+        max_exchange = minimal_medium(self.model, max_growth)
+        self.minimal_external = {ex[len(EXTERNAL_PREFIX):len(ex)]: value
+            for ex, value in max_exchange.items()}
+
+        # initialize solution
         self.solution = None
 
-    def constrain_exchange_flux(self, levels):
-        for external, level in levels.items():
-            reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external)
+    def set_exchange_bounds(self, new_bounds={}):
+        '''
+        apply new_bounds to included molecules.
+        reset unincluded molecules to their exchange_bounds.
+        '''
+        for external_mol, level in self.exchange_bounds.items():
+            reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external_mol)
+
+            if external_mol in new_bounds:
+                level = new_bounds[external_mol]
 
             if type(level) is list:
                 reaction.upper_bound = -level[0]
                 reaction.lower_bound = -level[1]
-
             elif isinstance(level, int) or isinstance(level, float):
                 reaction.lower_bound = -level
 
     def constrain_flux(self, levels):
-        for external, level in levels.items():
-            reaction = self.model.reactions.get_by_id(external)
-            reaction.upper_bound = level
+        '''add externally imposed constraints'''
+        for reaction_id, level in levels.items():
+            reaction = self.model.reactions.get_by_id(reaction_id)
+            if level >= 0:
+                reaction.upper_bound = self.upper_tolerance * level
+                reaction.lower_bound = self.lower_tolerance * level
+            else:
+                reaction.upper_bound = self.lower_tolerance * level
+                reaction.lower_bound = self.upper_tolerance * level
 
     def constrain_reaction_bounds(self, reaction_bounds):
         reactions = self.get_reactions(list(reaction_bounds.keys()))
         for reaction, bounds in reaction_bounds.items():
             reaction = reactions[reaction]
             reaction.lower_bound, reaction.upper_bound = bounds
+
+    def regulate_flux(self, reactions):
+        '''regulate flux based on True/False activity values for each id in reactions dictionary'''
+        for reaction_id, activity in reactions.items():
+            reaction = self.model.reactions.get_by_id(reaction_id)
+
+            if not activity:
+                # no activity. reaction flux set to 0
+                reaction.upper_bound = 0.0
+                reaction.lower_bound = 0.0
+            elif activity and reaction.bounds is (0.0, 0.0):
+                # if new bounds need to be set
+                if reaction_id in self.flux_bounds:
+                    bounds = self.flux_bounds[reaction_id]
+                    reaction.lower_bound, reaction.upper_bound = bounds
+                elif reaction_id in self.reversible:
+                    reaction.upper_bound = self.default_upper_bound
+                    reaction.lower_bound = -self.default_upper_bound
+                else:
+                    # set bounds based on default
+                    reaction.upper_bound = self.default_upper_bound
+                    reaction.lower_bound = 0.0
 
     def objective_value(self):
         return self.solution.objective_value if self.solution else float('nan')
@@ -217,7 +262,12 @@ class CobraFBA(object):
     def read_internal_fluxes(self):
         return self.read_fluxes(self.internal_reactions())
 
+    def read_exchange_reactions(self):
+        '''leaves the prefix in exchange reactions keys'''
+        return self.read_fluxes(self.external_reactions())
+
     def read_exchange_fluxes(self):
+        '''removes the prefix from exchange reactions keys, leaving only the external molecule id'''
         external = self.external_reactions()
         levels = self.read_fluxes(external)
         return {
@@ -261,7 +311,7 @@ def test_minimal():
         'initial_state': initial_state,
         })
 
-    fba.constrain_exchange_flux(initial_state)
+    fba.set_exchange_bounds(initial_state)
 
     return fba
 
@@ -303,7 +353,7 @@ def test_fba():
         'objective': objective,
         'external_molecules': external_molecules})
 
-    fba.constrain_exchange_flux(initial_state['external'])
+    fba.set_exchange_bounds(initial_state['external'])
 
     return fba
 
@@ -314,10 +364,6 @@ class JsonFBA(object):
 def test_canonical():
     fba = JsonFBA('models/e_coli_core.json')
     return fba
-
-# def test_test():
-#     fba = JsonFBA('models/minimal_model.json')
-#     return fba
 
 def test_demo():
     model = Model('example_model')
