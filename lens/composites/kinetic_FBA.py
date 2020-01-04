@@ -21,19 +21,19 @@ def get_transport_config():
     transport_reactions = {
         'GLCpts': {
             'stoichiometry': {
-                'g6p_c': 1.0,
-                'glc__D_e': -1.0,
-                'pep_c': -1.0,
-                'pyr_c': 1.0},
+                'g6p_c_internal': 1.0,
+                'glc__D_e_external': -1.0,
+                'pep_c_internal': -1.0,
+                'pyr_c_internal': 1.0},
             'is reversible': False,
-            'catalyzed by': ['PTSG']}}
+            'catalyzed by': ['PTSG_internal']}}
 
     # very simplified PTS
     transport_kinetics = {
         'GLCpts': {
             'PTSG': {
-                'glc__D_e': 3.0,
-                'pep_c': 2.0,
+                'glc__D_e_external': 3.0,
+                'pep_c_internal': 2.0,
                 'kcat_f': 1.0}}}
 
     transport_initial_state = {
@@ -139,20 +139,31 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compose_kinetic_FBA({})['options']
+    timeline = [
+        (0, {'environment': {
+            'glc__D_e': 12.0,
+            'lac__D_e': 12.0}
+        }),
+        (10, {'environment': {
+            'glc__D_e': 0.0}
+        }),
+        (30, {})]
+
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'total_time': 20}
+        'timeline': timeline}
 
     plot_settings = {
         'overlay': {'reactions': 'flux_bounds'},
         'max_rows': 25}
 
     # saved_state = simulate_compartment(compartment, settings)
-    saved_state = simulate_with_environment(compartment, settings)
-    timeseries = convert_to_timeseries(saved_state)
+    saved_data = simulate_with_environment(compartment, settings)
+    del saved_data[0]  # remove first state
+    timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # TODO -- make a flux network with metabolism

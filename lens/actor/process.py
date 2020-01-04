@@ -553,25 +553,35 @@ def simulate_with_environment(compartment, settings={}):
     exchange_role = settings['exchange_role']
     exchange_ids = list(compartment.states[exchange_role].keys())
     env_volume = settings['environment_volume']  # (L)
-    # initial_environment = compartment.current_state()[environment_role]
     nAvogadro = constants.N_A
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
+    timeline = settings.get('timeline', [(total_time, {})])
+    end_time = timeline[-1][0]
 
-    # save initial state
-    time = 0
+    environment = compartment.states.get(environment_role)
+    exchange = compartment.states.get(exchange_role)
+
+    # initialize saved_state
     saved_state = {}
-    saved_state[time] = compartment.current_state()
 
-    # run simulation
-    while time < total_time:
+    ## run simulation
+    time = 0
+    saved_state[time] = compartment.current_state()
+    while time < end_time:
         time += timestep
+        for (t, change_dict) in timeline:
+            if time >= t:
+                for role_id, change in change_dict.items():
+                    role = compartment.states.get(role_id)
+                    role.assign_values(change)
+                timeline.pop(0)
+
+        # update compartment
         compartment.update(timestep)
 
         ## apply exchange to environment
-        environment = compartment.states.get(environment_role)
-        exchange = compartment.states.get(exchange_role)
         delta_counts = exchange.state_for(exchange_ids)
 
         # convert counts to change in concentration in environemnt
