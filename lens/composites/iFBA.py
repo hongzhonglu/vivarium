@@ -30,7 +30,7 @@ def compose_iFBA(config):
 
     # metabolism
     metabolism_config = copy.deepcopy(config)
-    metabolism_config.update({'constrained_reactions': target_fluxes})
+    metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
     # other processes

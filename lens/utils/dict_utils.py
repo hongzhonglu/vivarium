@@ -7,7 +7,6 @@ def merge_dicts(dicts):
         merge.update(d)
     return merge
 
-
 def flatten_role_dicts(dicts):
     '''
     Input:
