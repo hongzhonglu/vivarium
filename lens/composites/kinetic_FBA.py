@@ -31,10 +31,10 @@ def get_transport_config():
     # very simplified PTS
     transport_kinetics = {
         'GLCpts': {
-            'PTSG': {
-                'glc__D_e_external': 3.0,
+            'PTSG_internal': {
+                'glc__D_e_external': 5.0,
                 'pep_c_internal': 2.0,
-                'kcat_f': 1.0}}}
+                'kcat_f': 1e-1}}}
 
     transport_initial_state = {
         'internal': {
@@ -144,10 +144,10 @@ if __name__ == '__main__':
             'glc__D_e': 12.0,
             'lac__D_e': 12.0}
         }),
-        (10, {'environment': {
+        (50, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (30, {})]
+        (100, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -157,8 +157,13 @@ if __name__ == '__main__':
         'timeline': timeline}
 
     plot_settings = {
+        'max_rows': 25,
+        'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'max_rows': 25}
+        'show_state': [
+            ('environment', 'glc__D_e'),
+            ('reactions', 'GLCpts'),
+            ]}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

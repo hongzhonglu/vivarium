@@ -48,7 +48,7 @@ from lens.processes.membrane_potential import MembranePotential
 from lens.composites.growth_division import compose_growth_division
 from lens.composites.simple_chemotaxis import compose_simple_chemotaxis
 from lens.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from lens.composites.iFBA import compose_iFBA
+from lens.composites.kinetic_FBA import compose_kinetic_FBA
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -431,7 +431,7 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
-            'iFBA_ecoli_core': wrap_boot(wrap_init_composite(compose_iFBA), {'volume': 1.0}),
+            'kinetic_FBA': wrap_boot(wrap_init_composite(compose_kinetic_FBA), {'volume': 1.0}),
             }
 
 def run():
