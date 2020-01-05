@@ -122,19 +122,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # add a gradient
         if self.gradient.get('type') == 'gaussian':
-            # gaussian gradient multiplies the basal concentration of the given molecule
-            # by a gaussian function of distance from center and deviation
-            #
-            # 'gradient': {
-            #     'type': 'gradient',
-            #     'molecules': {
-            #         'mol_id1':{
-            #             'center': [0.25, 0.5],
-            #             'deviation': 30},
-            #         'mol_id2': {
-            #             'center': [0.75, 0.5],
-            #             'deviation': 30}
-            #     }},
+            '''
+            gaussian gradient multiplies the basal concentration of the given molecule
+            by a gaussian function of distance from center and deviation
+
+            'gradient': {
+                'type': 'gradient',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.25, 0.5],
+                        'deviation': 30},
+                    'mol_id2': {
+                        'center': [0.75, 0.5],
+                        'deviation': 30}
+                }},
+            '''
 
             for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)
@@ -153,19 +155,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         self.lattice[mol_index][x_patch][y_patch] *= scale
 
         elif self.gradient.get('type') == 'linear':
-            # linear gradient adds to the basal concentration of the given molecule
-            # as a function of distance from center and slope.
-            #
-            # 'gradient': {
-            #     'type': 'linear',
-            #     'molecules': {
-            #         'mol_id1':{
-            #             'center': [0.0, 0.0],
-            #             'slope': -10},
-            #         'mol_id2': {
-            #             'center': [1.0, 1.0],
-            #             'slope': -5}
-            #     }},
+            '''
+            linear gradient adds to the basal concentration of the given molecule
+            as a function of distance from center and slope.
+
+            'gradient': {
+                'type': 'linear',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.0, 0.0],
+                        'slope': -10},
+                    'mol_id2': {
+                        'center': [1.0, 1.0],
+                        'slope': -5}
+                }},
+            '''
 
             for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)
