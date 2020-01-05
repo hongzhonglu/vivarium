@@ -36,12 +36,12 @@ class ShepherdControl(ActorControl):
             timeline_str = '0 {}, 7200 end'.format(media_id)
             # timeline_str = '0 {}, 14400 end'.format(media_id)
 
-        emit_field = args.get('emit_field', ['GLC'])
+        emit_fields = args.get('emit_field', 'GLC')
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': emit_field,
+            'emit_fields': [emit_fields],
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
             'edge_length_x': 20.0,
@@ -75,12 +75,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        emit_field = ['GLC']
+        emit_fields = args.get('emit_field', 'GLC')
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': emit_field,
+            'emit_fields': [emit_fields],
             'boot': 'lens.environment.boot',
             'run_for': 4.0,
             'edge_length_x': 80.0,
@@ -114,12 +114,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 7200 end'.format(media_id)
 
-        emit_field = ['GLC']
+        emit_fields = args.get('emit_field', 'GLC')
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': emit_field,
+            'emit_fields': [emit_fields],
             'run_for': 2.0,
             'edge_length_x': 50.0,
             'patches_per_edge_x': 10,
@@ -156,12 +156,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        emit_field = ['GLC']
+        emit_fields = args.get('emit_field', 'GLC')
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': emit_field,
+            'emit_fields': [emit_fields],
             'edge_length_x': 10.0,
             'patches_per_edge_x': 10,
         }
@@ -203,6 +203,37 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'metabolism', {
+                'boot': 'lens.environment.boot',
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index})
+
+    def ecoli_core_experiment(self, args):
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id('glc-g6p')
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        media_id = 'ecoli_core_GLC'
+        timeline_str = args.get('timeline')
+        if not timeline_str:
+            timeline_str = '0 {}, 7200 end'.format(media_id)
+
+        emit_fields = ['glc__D_e', 'lac__D_e']
+
+        experiment_config = {
+            'timeline_str': timeline_str,
+            'run_for': 2.0,
+            'emit_fields': emit_fields}
+
+        self.add_agent(experiment_id, 'lattice', experiment_config)
+
+        time.sleep(10)
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or 'kinetic_FBA', {
                 'boot': 'lens.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
@@ -341,7 +372,8 @@ class EnvironmentCommand(AgentCommand):
             'small-experiment',
             'chemotaxis-experiment',
             'swarm-experiment',
-            'glc-g6p-experiment'] + choices
+            'glc-g6p-experiment',
+            'ecoli-core-experiment'] + choices
 
         super(EnvironmentCommand, self).__init__(
 			full_choices,
@@ -377,6 +409,12 @@ class EnvironmentCommand(AgentCommand):
         control.glc_g6p_experiment(args)
         control.shutdown()
 
+    def ecoli_core_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control.ecoli_core_experiment(args)
+        control.shutdown()
+
     def chemotaxis_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config})
@@ -396,6 +434,12 @@ class EnvironmentCommand(AgentCommand):
             '-e', '--experiment_id',
             type=str,
             help='The experiment id')
+
+        parser.add_argument(
+            '-f', '--emit_field',
+            type=str,
+            default='minimal',
+            help='emitted media field')
 
         parser.add_argument(
             '-m', '--media',
