@@ -1,18 +1,24 @@
-# lens
+# Vivarium
 
-distributed platform for whole-cell models
+A multi-scale simulation platform for whole-cell models
 
-![lens](https://github.com/CovertLab/lens/blob/master/resources/public/img/division.png)
+![vivarium](https://github.com/CovertLab/vivarium/blob/master/resources/public/img/snap_out_tagged.png)
 
 ## concept
 
-Lens is a framework for composing models of cellular processes into agents that can then interact in a shared molecular environment. Lens is distributed in that these agents can run in different processes or on different computers. They communicate through message passing and are coordinated through the environmental simulation which receives all of the cell's messages, integrates them, and responds to each cell with their new updated local environmental concentrations. 
+A vivarium is a "place of life" -- an enclosure for raising organisms in controlled environments for observation or research, such as an aquarium or terrarium. 
+The vivarium developed in this repository is a computational vivarium for developing whole-cell models of bacterial colonies. 
+Its framework is based on a synthesis of methodologies from whole-cell modeling, agent-based modeling, and multi-scale modeling.
+
+Vivarium is a framework for composing models of cellular processes into agents that can then interact in a shared molecular environment. 
+Vivarium is distributed in that these agents can run in different processes or on different computers. 
+They communicate through message passing and are coordinated through the environmental simulation which receives all of the cell's messages, integrates them, and responds to each cell with their new updated local environmental concentrations. 
 
 ## requirements
 
 ### Zookeeper and Kafka
 
-2. See [actor/README.md](lens/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
+2. See [actor/README.md](vivarium/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
 
    1. Start Zookeeper in the directory where you untarred the Kafka and Zookeeper software:
 
@@ -21,15 +27,6 @@ Lens is a framework for composing models of cellular processes into agents that 
    2. Then start the Kafka server in another shell tab in the same directory:
 
       `> bin/kafka-server-start.sh config/server.properties --override listeners=PLAINTEXT://127.0.0.1:9092`
-
-3. **Optional:** Start the "Lens" environment visualization server and browser window per the instructions on the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) page. To recap:
-
-   1. Run the Lens visualization server in the root directory of the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) repository:
-
-      `> lein run -m shepherd.lens`
-
-   2. Open a browser window onto [http://localhost:33332](http://localhost:33332)
-
 
 ### mongoDB
     
@@ -54,14 +51,14 @@ agents together with others running under a shepherd.
 
 4. In the first terminal tab, launch an Environment agent:
 
-      `> python -m lens.environment.boot --type lattice --id lattice`
+      `> python -m vivarium.environment.boot --type lattice --id lattice`
 
       The Environment agent will wait for Cell simulation agents to register.
       You can optionally pass in a JSON `--config '{...}'` dictionary.
 
 5. Now start a Cell agent in a new tab:
 
-   `> python -m lens.environment.boot --outer-id lattice --type lookup --id 1`
+   `> python -m vivarium.environment.boot --outer-id lattice --type lookup --id 1`
 
    Vary the agent type and other parameters as needed. Each agent needs an `id` that's unique among the
    currently running agents.
@@ -97,13 +94,13 @@ separate terminal tab or PyCharm run/debug tab.
 
 7. Finally, use another terminal tab to start the simulation running:
 
-   `> python -m lens.environment.control run --id lattice`
+   `> python -m vivarium.environment.control run --id lattice`
 
    You can `pause` and `run` it whenever you want.
 
 8. To shut down the simulation, run `shutdown` in the command tab:
 
-   `> python -m lens.environment.control shutdown`
+   `> python -m vivarium.environment.control shutdown`
 
 ## Agent Shepherd
 
@@ -118,41 +115,41 @@ Clone the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) repo and r
 
    `> lein run`
 
-Use a "Lens" browser page to view the agents in action. To do this, open another shell
+Use a "vivarium" browser page to view the agents in action. To do this, open another shell
 tab onto the shepherd repo directory and run:
 
-   `> lein run -m shepherd.lens`
+   `> lein run -m shepherd.vivarium`
 
 then open a browser window onto [http://localhost:33332/](http://localhost:33332/)
 
 Now you can start a virtual microscope experiment in a "command" terminal tab:
 
-   `> python -m lens.environment.control experiment --number 3 --type metabolism --experiment_id exp123`
+   `> python -m vivarium.environment.control experiment --number 3 --type metabolism --experiment_id exp123`
 
 This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ agent and three for the _cell simulation_ agents. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
 
 You can `run`/`pause` the simulation at will:
 
-   `> python -m lens.environment.control run`
+   `> python -m vivarium.environment.control run`
 
-   `> python -m lens.environment.control pause`
+   `> python -m vivarium.environment.control pause`
 
 You can add another cell agent:
 
-   `> python -m lens.environment.control add`
+   `> python -m vivarium.environment.control add`
 
 (If you're running multiple environment agents, you can specify a lattice environment agent id via the `--id` option.)
 
 You can remove a cell agent using the prefix of the agent's id (you don't have to type the whole id):
 
-   `> python -m lens.environment.control remove --id dgaf`
+   `> python -m vivarium.environment.control remove --id dgaf`
 
 Finally, to shut down the experiment, run `shutdown`:
 
-   `> python -m lens.environment.control shutdown`
+   `> python -m vivarium.environment.control shutdown`
 
 Notice this just shuts down the agents. The Shepherd is still running and ready for a new experiment.
-Use `Ctrl-C` to stop the Shepherd and Lens processes.
+Use `Ctrl-C` to stop the Shepherd and Vivarium processes.
 
 ## command summary
 
