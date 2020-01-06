@@ -1,7 +1,7 @@
-# This file provides a stripped down version of lens that declares only
-# the interface defined in the lens.actor package, so that clients
-# may implement the lens interface without having to be dependent on
-# the rest of the lens package. 
+# This file provides a stripped down version of vivarium that declares only
+# the interface defined in the vivarium.actor package, so that clients
+# may implement the vivarium interface without having to be dependent on
+# the rest of the vivarium package.
 
 import os
 import glob
@@ -15,11 +15,11 @@ with open("requirements-interface.txt", 'r') as requirements:
     install_requires = list(requirements.read().splitlines())
 
 setup(
-    name='lens-interface',
+    name='vivarium-interface',
     version='0.0.28',
     packages=[
-        'lens',
-        'lens.actor'],
+        'vivarium',
+        'vivarium.actor'],
     author='Eran Agmon, Ryan Spangler',
     author_email='eagmon@stanford.edu, spanglry@stanford.edu',
     url='https://github.com/CovertLab/Lens',
