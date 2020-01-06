@@ -118,7 +118,7 @@ Clone the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) repo and r
 Use a "vivarium" browser page to view the agents in action. To do this, open another shell
 tab onto the shepherd repo directory and run:
 
-   `> lein run -m shepherd.vivarium`
+   `> lein run -m shepherd.Lens`
 
 then open a browser window onto [http://localhost:33332/](http://localhost:33332/)
 
