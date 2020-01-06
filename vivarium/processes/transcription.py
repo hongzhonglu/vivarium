@@ -1,4 +1,4 @@
-from lens.actor.process import Process
+from vivarium.actor.process import Process
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
