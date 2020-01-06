@@ -6,13 +6,14 @@ A multi-scale simulation platform for whole-cell models
 
 ## concept
 
-A vivarium is a "place of life" -- an enclosure for raising organisms in controlled environments for observation or research, such as an aquarium or terrarium. 
-The vivarium included in this repository is a computational vivarium for developing colonies of whole-cell models. 
-Its framework is based on a synthesis of methodologies from whole-cell modeling, agent-based modeling, and multi-scale modeling.
+A Vivarium is a "place of life" -- an enclosure for raising organisms in controlled environments for observation or research.
+Typical vivaria include aquariums or terrariums. 
+The vivarium provided in this repository is a computational vivarium for developing colonies of whole-cell model agents in simulated environment. 
+Its framework is based on a synthesis of whole-cell modeling, agent-based modeling, and multi-scale modeling.
 
-With vivarium, you can compose models of cellular processes into agents that then interact in a shared molecular environment. 
-Vivarium is distributed in that these agents can run in different threads or on different computers. 
-They communicate through message passing and are coordinated through the environmental simulation which receives all of the cell's messages, integrates them, and responds to each cell with their new updated local environmental concentrations. 
+With Vivarium, you can compose models of cellular processes into agents that then interact in a shared molecular environment. 
+Vivarium is distributed in that these agents can run in different threads or on different computers, and upon cell division new threads are allocated. 
+The agents communicate through message passing and are coordinated by the environmental simulation which receives all of the messages, integrates them, and responds to each agent with their new updated local environmental concentrations. 
 
 ## requirements
 
