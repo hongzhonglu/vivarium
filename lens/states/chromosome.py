@@ -144,13 +144,16 @@ class Promoter(Datum):
         return tuple([self.id] + state)
 
     def choose_terminator(self):
-        choice = random.random() * self.terminator_strength
-        for terminator in self.terminators:
-            if choice <= terminator.strength:
-                break
-            else:
-                choice -= terminator.strength
-        return terminator
+        if len(self.terminators) > 1:
+            choice = random.random() * self.terminator_strength
+            for terminator in self.terminators:
+                if choice <= terminator.strength:
+                    break
+                else:
+                    choice -= terminator.strength
+            return terminator
+        else:
+            return self.terminators[0]
 
     def choose_operon(self, genes):
         terminator = self.choose_terminator()
