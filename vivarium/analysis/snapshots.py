@@ -184,45 +184,50 @@ class Snapshots(Analysis):
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
 
-            # plot fields
-            for field_id in field_ids:
-
-                ax = fig.add_subplot(grid[row_idx, col_idx])
-                plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
-                plt.title(plot_title, y=1.08)
-                init_axes(ax, edge_length_x, edge_length_y)
-
-                # transpose field to align with agent
-                field = np.transpose(np.array(field_data[field_id])).tolist()
-                if field_range[field_id]:
-                    vmin, vmax = field_range[field_id]
-                    im = plt.imshow(field,
-                                    origin='lower',
-                                    extent=[0, edge_length_x, 0, edge_length_y],
-                                    vmin=vmin,
-                                    vmax=vmax,
-                                    cmap='YlGn')
-                else:
-                    im = plt.imshow(field,
-                                    origin='lower',
-                                    extent=[0, edge_length_x, 0, edge_length_y],
-                                    interpolation='nearest',
-                                    cmap='YlGn')
+            if not field_ids and not tag_range.keys():
+                ax = init_axes(
+                    fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
                 plot_agents(ax, agent_data, cell_radius, agent_colors)
 
-                # colorbar in new column after final snapshot
-                if col_idx == N_SNAPSHOTS:
-                    cbar_col = col_idx+1
-                    ax = fig.add_subplot(grid[row_idx, cbar_col])
-                    divider = make_axes_locatable(ax)
-                    cax = divider.append_axes("left", size="5%", pad=0.0)
-                    fig.colorbar(im, cax=cax, format='%.6f')
-                    ax.axis('off')
+            else:
+                # plot fields
+                for field_id in field_ids:
+                    ax = init_axes(
+                        fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
 
-                row_idx += 1
+                    # transpose field to align with agent
+                    field = np.transpose(np.array(field_data[field_id])).tolist()
+                    if field_range[field_id]:
+                        vmin, vmax = field_range[field_id]
+                        im = plt.imshow(field,
+                                        origin='lower',
+                                        extent=[0, edge_length_x, 0, edge_length_y],
+                                        vmin=vmin,
+                                        vmax=vmax,
+                                        cmap='YlGn')
+                    else:
+                        im = plt.imshow(field,
+                                        origin='lower',
+                                        extent=[0, edge_length_x, 0, edge_length_y],
+                                        interpolation='nearest',
+                                        cmap='YlGn')
+                    plot_agents(ax, agent_data, cell_radius, agent_colors)
+
+                    # colorbar in new column after final snapshot
+                    if col_idx == N_SNAPSHOTS:
+                        cbar_col = col_idx+1
+                        ax = fig.add_subplot(grid[row_idx, cbar_col])
+                        divider = make_axes_locatable(ax)
+                        cax = divider.append_axes("left", size="5%", pad=0.0)
+                        fig.colorbar(im, cax=cax, format='%.6f')
+                        ax.axis('off')
+
+                    row_idx += 1
 
             # plot tags
             for tag_id in list(tag_range.keys()):
+                ax = init_axes(
+                    fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
@@ -240,8 +245,6 @@ class Snapshots(Analysis):
                     agent_color = flourescent_color(DEFAULT_COLOR, intensity)
                     agent_tag_colors[agent_id] = agent_color
 
-                ax = fig.add_subplot(grid[row_idx, col_idx])
-                init_axes(ax, edge_length_x, edge_length_y)
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
 
                 row_idx += 1
@@ -276,10 +279,16 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
         rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
         ax.add_patch(rect)
 
-def init_axes(ax, edge_length_x, edge_length_y):
+def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
+    ax = fig.add_subplot(grid[row_idx, col_idx])
+    if row_idx == 0:
+        plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
+        plt.title(plot_title, y=1.08)
     ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
     ax.set_yticklabels([])
     ax.set_xticklabels([])
+
+    return ax
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
     # get colors for all descendants of the ancestor through recursive calls to each generation
