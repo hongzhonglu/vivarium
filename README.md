@@ -2,7 +2,7 @@
 
 A multi-scale simulation platform for whole-cell models
 
-![vivarium](https://github.com/CovertLab/vivarium/blob/master/resources/public/img/snap_out_tagged.png)
+![vivarium](https://user-images.githubusercontent.com/6809431/71849421-dc6b6c80-3086-11ea-932b-f292a9b78177.png)
 
 ## concept
 
