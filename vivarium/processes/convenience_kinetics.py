@@ -76,7 +76,6 @@ class ConvenienceKinetics(Process):
             stoichiometry = self.reactions[reaction_id]['stoichiometry']
             for state_role_id, coeff in stoichiometry.items():
                 for role_id, state_list in self.roles.items():
-
                     # separate the state_id and role_id
                     if role_id in state_role_id:
                         role_string = '_{}'.format(role_id)
@@ -98,16 +97,16 @@ class ConvenienceKinetics(Process):
 toy_reactions = {
     'reaction1': {
         'stoichiometry': {
-            'A': 1,
-            'B': -1},
+            'A_internal': 1,
+            'B_external': -1},
         'is reversible': False,
-        'catalyzed by': ['enzyme1']}
+        'catalyzed by': ['enzyme1_internal']}
     }
 
 toy_kinetics = {
     'reaction1': {
-        'enzyme1': {
-            'B': 0.1,
+        'enzyme1_internal': {
+            'B_external': 0.1,
             'kcat_f': 0.1}
         }
     }
@@ -140,6 +139,7 @@ def test_convenience_kinetics():
     # get initial state and parameters
     settings = kinetic_process.default_settings()
     state = settings['state']
+    skip_roles = ['exchange']
 
     # run the simulation
     timestep = 1
@@ -149,8 +149,9 @@ def test_convenience_kinetics():
 
         # apply update
         for role_id, states_update in update.items():
-            for state_id, change in states_update.items():
-                state[role_id][state_id] += change
+            if role_id not in skip_roles:
+                for state_id, change in states_update.items():
+                    state[role_id][state_id] += change
         print(state)
 
 
