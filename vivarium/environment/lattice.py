@@ -33,6 +33,8 @@ PI = math.pi
 CELL_DENSITY = 1100
 
 # Lattice parameters
+DIFFUSION_CONSTANT = 1e3
+DEFAULT_DEPTH = 3000.0  # um
 TRANSLATION_JITTER = 0.1
 ROTATION_JITTER = 0.05
 
@@ -69,7 +71,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.patches_per_edge_x = config.get('patches_per_edge_x', 10)
         self.patches_per_edge_y = int(edge_length_y * self.patches_per_edge_x / self.edge_length_x)
         self.edge_length_y = self.patches_per_edge_y * self.edge_length_x / self.patches_per_edge_x
-        self.depth = config.get('depth', 3000.0)  # um
+        self.depth = config.get('depth', DEFAULT_DEPTH)  # um
         self.total_volume = (self.depth * self.edge_length_x * self.edge_length_y) * (10 ** -15) # (L)
         self.patch_volume = self.total_volume / (self.edge_length_x * self.edge_length_y)
         self.dx = self.edge_length_x / self.patches_per_edge_x
@@ -108,7 +110,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
-        self.diffusion = config.get('diffusion', 1e3)
+        self.diffusion = config.get('diffusion', DIFFUSION_CONSTANT)
         self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. (using 50% of the theoretical upper limit)

@@ -14,7 +14,7 @@
 
  :launch
  {:dir "."
-  :boot "lens.environment.boot"}
+  :boot "vivarium.environment.boot"}
 
  :kafka
  {:host "localhost:9092"

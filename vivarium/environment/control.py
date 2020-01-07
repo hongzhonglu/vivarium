@@ -216,17 +216,19 @@ class ShepherdControl(ActorControl):
         print('Creating lattice agent_id {} and {} cell agents\n'.format(
             experiment_id, num_cells))
 
-        media_id = 'ecoli_core_GLC'
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 {}, 7200 end'.format(media_id)
-
-        emit_fields = ['glc__D_e', 'lac__D_e']
+            timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': emit_fields}
+            'diffusion': 1e-4,
+            'depth': 1e-4,
+            'emit_fields': [
+                'glc__D_e',
+                'lac__D_e']
+        }
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
@@ -234,7 +236,7 @@ class ShepherdControl(ActorControl):
 
         for index in range(num_cells):
             self.add_cell(args['type'] or 'kinetic_FBA', {
-                'boot': 'lens.environment.boot',
+                'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index})

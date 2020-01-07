@@ -48,7 +48,7 @@ from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from vivarium.composites.iFBA import compose_iFBA
+from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -257,11 +257,15 @@ def initialize_glc_lct_shift(agent_config):
     return boot_config
 
 def initialize_ecoli_core_glc(agent_config):
-    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, ' \
-                   '1800 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L - glc__D_e Infinity, ' \
-                   '3600 end'
+    # timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, ' \
+    #                '1800 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L - glc__D_e Infinity, ' \
+    #                '3600 end'
+
+    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
 
     boot_config = {
+        'diffusion': 1e-4,
+        'depth': 1e-4,
         'timeline_str': timeline_str,
         'emit_fields': [
             'glc__D_e',
