@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -9,11 +11,18 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from vivarium.analysis.analysis import Analysis, get_compartment
 from vivarium.actor.process import deep_merge
 
-# DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
+
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
+
+# colors for phylogeny initial agents
+PHYLOGENY_HUES = [hue/360 for hue in np.linspace(0,360,30)]
+DEFAULT_SV = [100.0/100.0, 70.0/100.0]
+
+# colors for flourescent tags
+BASELINE_TAG_COLOR = [220/360, 100.0/100.0, 30.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
-N_SNAPSHOTS = 6  # number of snapshots
+N_SNAPSHOTS = 8  # number of snapshots
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -154,8 +163,9 @@ class Snapshots(Analysis):
         # agent colors based on phylogeny
         agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
         for agent_id in initial_agents:
-            agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
-
+            hue = random.choice(PHYLOGENY_HUES)  # select random initial hue
+            initial_color = [hue] + DEFAULT_SV
+            agent_colors.update(color_phylogeny(agent_id, phylogeny, initial_color))
 
         ## make the figure
         # fields and tag data are plotted in separate rows
@@ -242,7 +252,7 @@ class Snapshots(Analysis):
                     min_tag, max_tag = tag_range[tag_id]
                     intensity = max((level - min_tag), 0)
                     intensity = min(intensity / (max_tag - min_tag), 1)
-                    agent_color = flourescent_color(DEFAULT_COLOR, intensity)
+                    agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
                     agent_tag_colors[agent_id] = agent_color
 
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
@@ -291,7 +301,10 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     return ax
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
-    # get colors for all descendants of the ancestor through recursive calls to each generation
+    """
+    get colors for all descendants of the ancestor
+    through recursive calls to each generation
+    """
     phylogeny_colors.update({ancestor_id: baseline_hsv})
     daughter_ids = phylogeny.get(ancestor_id)
     if daughter_ids:
@@ -302,24 +315,24 @@ def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
 
 def mutate_color(baseline_hsv):
     new_hsv = baseline_hsv[:]
-    new_h = new_hsv[0] + np.random.normal(0, 0.08)  # (mu, sigma)
-    new_hsv[0] = new_h % 1  # hue
+    new_h = new_hsv[0] + np.random.uniform(-0.15, 0.15)
+    new_hsv[0] = new_h % 1
     return new_hsv
 
 def flourescent_color(baseline_hsv, intensity):
-    # move color towards bright green when intensity = 1
+    # move color towards bright green (FLOURESCENT_COLOR) when intensity = 1
     new_hsv = baseline_hsv[:]
     distance = [a - b for a, b in zip(FLOURESCENT_COLOR, new_hsv)]
     new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
     return new_hsv
 
 def volume_to_length(volume, cell_radius):
-    '''
+    """
     get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
     a=length of cylinder without rounded caps, l=total length:
     V = (4/3)*PI*r^3 + PI*r^2*a
     l = a + 2*r
-    '''
+    """
     pi = np.pi
     cylinder_length = (volume - (4 / 3) * pi * cell_radius ** 3) / (pi * cell_radius ** 2)
     total_length = cylinder_length + 2 * cell_radius
