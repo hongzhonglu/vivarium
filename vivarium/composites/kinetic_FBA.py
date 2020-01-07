@@ -32,9 +32,9 @@ def get_transport_config():
     transport_kinetics = {
         'GLCpts': {
             'PTSG_internal': {
-                'glc__D_e_external': 5.0,
+                'glc__D_e_external': 3.0,
                 'pep_c_internal': 2.0,
-                'kcat_f': 1e-1}}}
+                'kcat_f': 1e0}}}
 
     transport_initial_state = {
         'internal': {
@@ -66,21 +66,23 @@ def compose_kinetic_FBA(config):
     # transport
     transport_config = copy.deepcopy(config)
     transport_config.update(get_transport_config())
-
-    # transport_config.update({'target_fluxes': TARGET_FLUXES})
     transport = ConvenienceKinetics(transport_config)
-    target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
-    # metabolism
+    # metabolism -- get target fluxes from transport
     metabolism_config = copy.deepcopy(config)
+    target_fluxes = transport.kinetic_rate_laws.reaction_ids
     metabolism_config.update({
         'model_path': METABOLISM_FILE,
         'constrained_reaction_ids': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
+    # division -- get initial volume from metabolism
+    division_config = copy.deepcopy(config)
+    division_config.update({'initial_state': metabolism.initial_state})
+    division = Division(division_config)
+
     # other processes
     deriver = DeriveVolume(config)
-    division = Division(config)
 
     # place processes in layers.
     processes = [
@@ -144,15 +146,15 @@ if __name__ == '__main__':
             'glc__D_e': 12.0,
             'lac__D_e': 12.0}
         }),
-        (50, {'environment': {
-            'glc__D_e': 0.0}
-        }),
-        (100, {})]
+        # (100, {'environment': {
+        #     'glc__D_e': 0.0}
+        # }),
+        (2500, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-6,  # L
+        'environment_volume': 1e-11,  # L
         'timestep': 1,
         'timeline': timeline}
 
@@ -170,6 +172,3 @@ if __name__ == '__main__':
     del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
-
-    # TODO -- make a flux network with metabolism
-

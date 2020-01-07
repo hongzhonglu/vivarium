@@ -214,13 +214,13 @@ class Snapshots(Analysis):
                                         extent=[0, edge_length_x, 0, edge_length_y],
                                         vmin=vmin,
                                         vmax=vmax,
-                                        cmap='YlGn')
+                                        cmap='BuPu')
                     else:
                         im = plt.imshow(field,
                                         origin='lower',
                                         extent=[0, edge_length_x, 0, edge_length_y],
                                         interpolation='nearest',
-                                        cmap='YlGn')
+                                        cmap='BuPu')
                     plot_agents(ax, agent_data, cell_radius, agent_colors)
 
                     # colorbar in new column after final snapshot
@@ -265,7 +265,7 @@ class Snapshots(Analysis):
             figname = '/snap_out'
 
         plt.subplots_adjust(wspace=0.1, hspace=1.0)
-        plt.savefig(output_dir + figname)  #, bbox_inches='tight'
+        plt.savefig(output_dir + figname)
         plt.close(fig)
 
 
@@ -286,7 +286,8 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
         rgb = hsv_to_rgb(agent_color)
 
         # Create a rectangle
-        rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
+        rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+
         ax.add_patch(rect)
 
 def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):

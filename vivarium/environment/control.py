@@ -218,13 +218,13 @@ class ShepherdControl(ActorControl):
 
         timeline_str = args.get('timeline')
         if not timeline_str:
-            timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
+            timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 2.0 mmol 0.1 L, 21600 end'
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'diffusion': 1e-4,
-            'depth': 1e-4,
+            'diffusion': 1e-2,
+            'depth': 1e-3,
             'emit_fields': [
                 'glc__D_e',
                 'lac__D_e']
