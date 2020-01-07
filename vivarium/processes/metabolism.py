@@ -86,7 +86,7 @@ class Metabolism(Process):
 
         # default updaters
         set_internal_states = {state_id: 'set'
-            for state_id in self.reaction_ids + ['volume']}
+            for state_id in self.reaction_ids}
         accumulate_internal_states = {state_id: 'accumulate'
             for state_id in self.objective_molecules + ['mass']}
         default_updaters = {
@@ -112,7 +112,7 @@ class Metabolism(Process):
         volume = mass.to('g') / self.density
 
         ## conversion factors
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         ## get flux constraints
         # exchange_constraints based on external availability
@@ -234,7 +234,7 @@ def simulate_metabolism(config):
         # update volume
         new_mass = state['internal']['mass'] * units.fg
         new_volume = new_mass.to('g') / density
-        state['internal']['volume'] = new_volume.to('L').magnitude
+        state['internal']['volume'] = new_volume.to('fL').magnitude
 
         # apply external update -- use exchange without growth rate
         mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
@@ -320,7 +320,7 @@ def get_toy_configuration():
     initial_state = {
         'internal': {
             'mass': mass.magnitude,  # fg
-            'volume': volume.magnitude},  # L
+            'volume': volume.to('fL').magnitude},
         'external': {
             'A': 21.0,
             'F': 5.0,

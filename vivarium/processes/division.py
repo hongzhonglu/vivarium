@@ -36,7 +36,8 @@ class Division(Process):
     def __init__(self, initial_parameters={}):
         self.division = 0
 
-        initial_volume = initial_parameters.get('initial_volume', 1.2)
+        initial_state = initial_parameters.get('initial_state', {})
+        initial_volume = initial_state.get('internal', {}).get('volume', 1.2)  # L
         division_volume = initial_volume * 2
 
         roles = {'internal': ['volume', 'division']}

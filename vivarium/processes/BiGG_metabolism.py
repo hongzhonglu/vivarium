@@ -23,9 +23,10 @@ def get_initial_state():
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
+
     internal = {
             'mass': mass.magnitude,  # fg
-            'volume': volume.magnitude}
+            'volume': volume.to('fL').magnitude}
 
     # external state
     # TODO -- initial state is currently configured to e_coli_core, needs to be generalized

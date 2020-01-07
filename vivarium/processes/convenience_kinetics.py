@@ -58,7 +58,7 @@ class ConvenienceKinetics(Process):
     def next_update(self, timestep, states):
 
         # get mmol_to_count for converting flux to exchange counts
-        volume = states['internal']['volume'] * 1e-15 * units.L # convert L to fL
+        volume = states['internal']['volume'] * units.L
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # kinetic rate law requires a flat dict with 'state_role' keys.
@@ -141,9 +141,16 @@ def test_convenience_kinetics():
     state = settings['state']
     skip_roles = ['exchange']
 
+    # initialize saved data
+    saved_state = {}
+
     # run the simulation
+    time = 0
     timestep = 1
-    for step in range(10):
+    end_time = 10
+    saved_state[time] = state
+    while time < end_time:
+        time += timestep
         # get update
         update = kinetic_process.next_update(timestep, state)
 
@@ -152,8 +159,13 @@ def test_convenience_kinetics():
             if role_id not in skip_roles:
                 for state_id, change in states_update.items():
                     state[role_id][state_id] += change
-        print(state)
+        saved_state[time] = state
+
+    return saved_state
 
 
 if __name__ == '__main__':
-    test_convenience_kinetics()
+    saved_data = test_convenience_kinetics()
+    del saved_data[0] # remove first state
+    timeseries = convert_to_timeseries(saved_data)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
