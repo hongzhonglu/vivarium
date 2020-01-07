@@ -22,7 +22,7 @@ DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 BASELINE_TAG_COLOR = [220/360, 100.0/100.0, 30.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
-N_SNAPSHOTS = 8  # number of snapshots
+N_SNAPSHOTS = 6  # number of snapshots
 
 class Snapshots(Analysis):
     def __init__(self):
