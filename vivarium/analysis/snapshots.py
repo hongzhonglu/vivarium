@@ -109,6 +109,7 @@ class Snapshots(Analysis):
         n_fields = max(len(field_ids),1)
 
         ## get tag ids and range
+        # TODO -- make into a function in vivarium.analysis.analysis
         tag_range = {}
         for c_id, c_data in compartments.items():
             # if this compartment has tags, get their ids and range

@@ -36,12 +36,12 @@ class ShepherdControl(ActorControl):
             timeline_str = '0 {}, 7200 end'.format(media_id)
             # timeline_str = '0 {}, 14400 end'.format(media_id)
 
-        emit_fields = args.get('emit_field', 'GLC')
+        emit_fields = ['GLC']
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': [emit_fields],
+            'emit_fields': emit_fields,
             'boot': 'vivarium.environment.boot',
             'run_for': 4.0,
             'edge_length_x': 20.0,
@@ -75,12 +75,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        emit_fields = args.get('emit_field', 'GLC')
+        emit_fields = ['GLC']
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': [emit_fields],
+            'emit_fields': emit_fields,
             'boot': 'vivarium.environment.boot',
             'run_for': 4.0,
             'edge_length_x': 80.0,
@@ -114,12 +114,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 7200 end'.format(media_id)
 
-        emit_fields = args.get('emit_field', 'GLC')
+        emit_fields = ['GLC']
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': [emit_fields],
+            'emit_fields': emit_fields,
             'run_for': 2.0,
             'edge_length_x': 50.0,
             'patches_per_edge_x': 10,
@@ -156,12 +156,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        emit_fields = args.get('emit_field', 'GLC')
+        emit_fields = ['GLC']
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': [emit_fields],
+            'emit_fields': emit_fields,
             'edge_length_x': 10.0,
             'patches_per_edge_x': 10,
         }
@@ -190,12 +190,12 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        emit_field = ['GLC', 'G6P']
+        emit_fields = ['GLC', 'G6P']
 
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': emit_field}
+            'emit_fields': emit_fields}
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
@@ -223,7 +223,7 @@ class ShepherdControl(ActorControl):
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'diffusion': 1e-2,
+            'diffusion': 1e-1,
             'depth': 1e-2,
             'emit_fields': [
                 'glc__D_e',
