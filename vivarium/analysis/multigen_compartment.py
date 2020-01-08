@@ -31,9 +31,16 @@ class MultigenCompartment(Analysis):
         phylogeny = experiment_config['phylogeny']
         compartments = data['compartments']
 
-        if not compartments:
-            print('no tags for multigen_compartment analysis. specify tag with "-t tag_id"')
-            return
+        # get tag ids and range
+        tag_ids = []
+        for c_id, c_data in compartments.items():
+            try:
+                for tag_id, counts in c_data['tags'].items():
+                    if tag_id not in tag_ids:
+                        tag_ids.append(tag_id)
+            except:
+                print('No tags for multigen analysis. Specify tags with -t tag_id1 tag_id2')
+                return
 
         if phylogeny:
             # find initial agents in phylogeny
@@ -46,13 +53,7 @@ class MultigenCompartment(Analysis):
             agent_ids = np.array(list(compartments.keys()))
 
 
-        ## get tag ids and range
-        tag_ids = []
-        for c_id, c_data in compartments.items():
-            for tag_id, counts in c_data['tags'].items():
-                if tag_id not in tag_ids:
-                    tag_ids.append(tag_id)
-
+        # make figure
         n_rows = len(tag_ids)
         fig = plt.figure(figsize=(8, n_rows * 3))
         grid = plt.GridSpec(n_rows + 1, 1, wspace=0.4, hspace=1.5)
