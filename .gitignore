@@ -11,8 +11,8 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
-/wholecell_lens.egg-info
-/lens_interface.egg-info
+/wholecell_vivarium.egg-info
+/vivarium_interface.egg-info
 
 out/
 .idea/
