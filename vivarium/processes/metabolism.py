@@ -80,8 +80,8 @@ class Metabolism(Process):
         default_emitter_keys = {
             'internal': self.objective_molecules,
             'external': self.fba.external_molecules,
-            'reactions': self.reaction_ids,
-            'exchange': self.fba.external_molecules,
+            # 'reactions': self.reaction_ids,
+            # 'exchange': self.fba.external_molecules,
         }
 
         # default updaters
