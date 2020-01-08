@@ -12,6 +12,9 @@ from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
 import vivarium.utils.regulation_logic as rl
 from vivarium.utils.dict_utils import flatten_role_dicts
 
+# if concentrations are lower than regulation threshold, they are considered depleted
+REGULATION_THRESHOLD = 0.1  # TODO -- thresholds should be implemented in regulation_logic
+
 
 
 class Metabolism(Process):
@@ -31,7 +34,7 @@ class Metabolism(Process):
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
-        self.reaction_ids = self.fba.reaction_ids()  #list(self.fba.stoichiometry.keys())
+        self.reaction_ids = self.fba.reaction_ids()
 
         # additional options
         self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
@@ -117,7 +120,7 @@ class Metabolism(Process):
         ## get flux constraints
         # exchange_constraints based on external availability
         exchange_constraints = {mol_id: 0.0
-            for mol_id, conc in external_state.items() if conc <= 0.0}
+            for mol_id, conc in external_state.items() if conc <= REGULATION_THRESHOLD}
 
         # availibility is boolean state of all molecules present
         # regulation_state determines state of regulated reactions (True/False)
@@ -150,7 +153,7 @@ class Metabolism(Process):
         internal_fluxes.update((mol_id, flux * timestep) for mol_id, flux in internal_fluxes.items())
 
         # update internal counts from objective flux
-        # calculate the new mass from the objective molecules' molecular weights
+        # calculate added mass from the objective molecules' molecular weights
         objective_count = (objective_exchange * mmol_to_count).magnitude
         added_mass = 0.0
         internal_state_update = {}
@@ -161,11 +164,11 @@ class Metabolism(Process):
                 # added biomass
                 mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
-                added_mass += mol_mass.to('fg').magnitude # to fg
+                added_mass += mol_mass.to('fg').magnitude
 
         internal_state_update.update({'mass': added_mass})
 
-        # convert exchange fluxes to counts with mmol_to_count
+        # convert exchange fluxes to counts
         exchange_deltas = {
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}

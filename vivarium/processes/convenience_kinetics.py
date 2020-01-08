@@ -1,12 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 from scipy import constants
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import flatten_role_dicts
 from vivarium.utils.units import units
 
+EMPTY_ROLES = {
+    'internal': [],
+    'external': []}
+
+EMPTY_STATES = {
+    'internal': {},
+    'external': {}}
 
 
 class ConvenienceKinetics(Process):
@@ -16,14 +25,14 @@ class ConvenienceKinetics(Process):
 
         self.reactions = initial_parameters.get('reactions')
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
-        roles = initial_parameters.get('roles')
-        self.initial_state = initial_parameters.get('initial_state')
+        roles = initial_parameters.get('roles', EMPTY_ROLES)
+        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
 
         # Make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
         # add volume to internal state
-        if 'volume' not in roles['internal']:
+        if 'volume' not in roles.get('internal'):
             roles['internal'].append('volume')
             self.initial_state['internal'].update({'volume': 1.2})  # (fL)
 
@@ -165,6 +174,12 @@ def test_convenience_kinetics():
 
 
 if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'convenience_kinetics')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    plot_settings = {}
+
     saved_data = test_convenience_kinetics()
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
