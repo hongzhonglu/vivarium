@@ -733,7 +733,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 ax.plot(time_vec, zero_line, 'k--')
 
             if (role, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo')
+                ax.plot(time_vec, series, 'indigo', linewidth=2)
             else:
                 ax.plot(time_vec, series)
 

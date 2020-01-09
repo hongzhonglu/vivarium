@@ -31,10 +31,9 @@ class ConvenienceKinetics(Process):
         # Make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
-        # add volume to internal state
+        # add volume to internal role
         if 'volume' not in roles.get('internal'):
             roles['internal'].append('volume')
-            self.initial_state['internal'].update({'volume': 1.2})  # (fL)
 
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
@@ -48,6 +47,7 @@ class ConvenienceKinetics(Process):
 
         # default state
         default_state = self.initial_state
+        default_state['internal'].update({'volume': 1.2})  # (fL)
 
         # default emitter keys
         default_emitter_keys = {}

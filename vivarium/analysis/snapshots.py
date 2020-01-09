@@ -37,9 +37,15 @@ class Snapshots(Analysis):
             history_data = client.find(query)
             history_data.sort('time')
             compartment_history = get_compartment(history_data)
-
             times = compartment_history['time']
-            tags_history = {tag: compartment_history['cell'][tag] for tag in tags}
+
+            # get history of all tags
+            roles = [role for role in list(compartment_history.keys()) if role not in ['time']]
+            tags_history = {}
+            for tag in tags:
+                for role in roles:
+                    if tag in compartment_history[role]:
+                        tags_history.update({tag: compartment_history[role][tag]})
 
             # arrange data by time, for easy integration with environment data
             time_dict = {time: {} for time in times}

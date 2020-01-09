@@ -223,7 +223,7 @@ class ShepherdControl(ActorControl):
         experiment_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'diffusion': 1e-2,
+            'diffusion': 1e-3,
             'depth': 1e-2,
             'emit_fields': [
                 'glc__D_e',
