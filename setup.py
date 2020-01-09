@@ -10,8 +10,8 @@ with open("requirements.txt", 'r') as requirements:
     install_requires = list(requirements.read().splitlines())
 
 setup(
-    name='vivarium',
-    version='0.0.28',
+    name='wholecell-vivarium',
+    version='0.0.34',
     packages=[
         'vivarium',
         'vivarium.actor',
@@ -20,14 +20,11 @@ setup(
         'vivarium.processes',
         'vivarium.data',
         'vivarium.data.flat',
-        'vivarium.data.flat.media',
         'vivarium.data.json_files',
-        'vivarium.surrogates',
-        'vivarium.utils',
-        'vivarium.utils._netflow'],
+        'vivarium.utils'],
     author='Eran Agmon, Ryan Spangler',
     author_email='eagmon@stanford.edu, spanglry@stanford.edu',
-    url='https://github.com/CovertLab/Lens',
+    url='https://github.com/CovertLab/vivarium',
     license='MIT',
     entry_points={
         'console_scripts': [
@@ -40,7 +37,6 @@ setup(
     long_description_content_type='text/markdown',
     package_data={
         'vivarium.data.flat': ['*.tsv'],
-        'vivarium.data.flat.media': ['*.tsv'],
         'vivarium.data.json_files': ['*.json']},
     include_package_data=True,
     install_requires=install_requires)

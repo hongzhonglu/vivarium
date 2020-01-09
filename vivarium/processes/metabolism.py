@@ -170,11 +170,14 @@ class Metabolism(Process):
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
 
+        all_fluxes = {}
+        all_fluxes.update(internal_fluxes)
+        all_fluxes.update(exchange_reactions)
+
         return {
             'exchange': exchange_deltas,
             'internal': internal_state_update,
-            'reactions': {**internal_fluxes, **exchange_reactions},
-        }
+            'reactions': all_fluxes}
 
 
 

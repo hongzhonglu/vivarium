@@ -1,7 +1,7 @@
 {:lens
  {:port 33332
   :kafka
-  {:group-id "lens-visualization"
+  {:group-id "vivarium-visualization"
    :event-topic "environment-state"
    :subscribe ["environment-state"]}}
 
@@ -14,7 +14,7 @@
 
  :launch
  {:dir "."
-  :boot "lens.environment.boot"}
+  :boot "vivarium.environment.boot"}
 
  :kafka
  {:host "localhost:9092"
