@@ -257,9 +257,12 @@ class Snapshots(Analysis):
                     volume = agent_data[agent_id]['volume']
                     level = counts / volume
                     min_tag, max_tag = tag_range[tag_id]
-                    intensity = max((level - min_tag), 0)
-                    intensity = min(intensity / (max_tag - min_tag), 1)
-                    agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
+                    if min_tag == max_tag:
+                        agent_color = BASELINE_TAG_COLOR
+                    else:
+                        intensity = max((level - min_tag), 0)
+                        intensity = min(intensity / (max_tag - min_tag), 1)
+                        agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
                     agent_tag_colors[agent_id] = agent_color
 
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)

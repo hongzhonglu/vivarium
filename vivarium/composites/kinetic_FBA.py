@@ -4,6 +4,7 @@ import copy
 import os
 
 from vivarium.actor.process import initialize_state
+import vivarium.utils.regulation_logic as rl
 
 # processes
 from vivarium.processes.derive_volume import DeriveVolume
@@ -32,9 +33,9 @@ def get_transport_config():
     transport_kinetics = {
         'GLCpts': {
             'PTSG_internal': {
-                'glc__D_e_external': 3.0,
-                'pep_c_internal': 2.0,
-                'kcat_f': 1e0}}}
+                'glc__D_e_external': 1e1,
+                'pep_c_internal': 1e1,
+                'kcat_f': 4e-1}}}
 
     transport_initial_state = {
         'internal': {
@@ -45,46 +46,67 @@ def get_transport_config():
         'external': {
             'glc__D_e': 12.0},
         'fluxes': {
-            'GLCpts': 1.0}}  # TODO -- initial fluxes can be set within kinetics process
+            'GLCpts': 1.0}}  # TODO -- initial fluxes should be set in kinetics process
 
     transport_roles = {
         'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
         'external': ['glc__D_e'],
         }
     
+    # return {
+    #     'reactions': transport_reactions,
+    #     'kinetic_parameters': transport_kinetics,
+    #     'initial_state': transport_initial_state,
+    #     'roles': transport_roles}
     return {
-        'reactions': transport_reactions,
-        'kinetic_parameters': transport_kinetics,
-        'initial_state': transport_initial_state,
-        'roles': transport_roles}
+        'reactions': {},
+        'kinetic_parameters': {},
+        'initial_state': {
+            'internal': {},
+            'external': {}},
+        'roles': {
+            'internal': [],
+            'external': []}}
 
+def get_regulation():
+    regulation = {
+        'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
+    }
+    return regulation
 
 # the composite function
 def compose_kinetic_FBA(config):
 
-    ## declare the processes
-    # transport
+    ## Declare the processes
+    # ordering allows earlier processes to inform the configuration of later processes
+
+    ## Transport
     transport_config = copy.deepcopy(config)
     transport_config.update(get_transport_config())
     transport = ConvenienceKinetics(transport_config)
 
-    # metabolism -- get target fluxes from transport
+    ## Metabolism
+    # get target fluxes from transport, load in regulation function
     metabolism_config = copy.deepcopy(config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
+    regulation = get_regulation()
+
     metabolism_config.update({
         'model_path': METABOLISM_FILE,
-        'constrained_reaction_ids': target_fluxes})
+        'constrained_reaction_ids': target_fluxes,
+        'regulation': regulation})
     metabolism = BiGGMetabolism(metabolism_config)
 
-    # division -- get initial volume from metabolism
+    ## Division
+    # get initial volume from metabolism
     division_config = copy.deepcopy(config)
     division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
 
-    # other processes
+    # Other processes
     deriver = DeriveVolume(config)
 
-    # place processes in layers.
+    # Place processes in layers
     processes = [
         {'transport': transport},
         {'metabolism': metabolism},
@@ -92,7 +114,7 @@ def compose_kinetic_FBA(config):
         'division': division}
     ]
 
-    # make the topology.
+    ## Make the topology
     # for each process, map process roles to compartment roles
     topology = {
         'transport': {
@@ -112,7 +134,7 @@ def compose_kinetic_FBA(config):
             'internal': 'cell'},
         }
 
-    # initialize the states
+    ## Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -141,21 +163,25 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compose_kinetic_FBA({})['options']
+
+    # define timeline
     timeline = [
         (0, {'environment': {
-            'glc__D_e': 12.0,
             'lac__D_e': 12.0}
         }),
-        # (100, {'environment': {
-        #     'glc__D_e': 0.0}
+        (500, {'environment': {
+            'glc__D_e': 0.05}
+        }),
+        # (1000, {'environment': {
+        #     'glc__D_e': 0.0000001}
         # }),
-        (2500, {})]
+        # (3500, {})]
+        (1000, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-11,  # L
-        'timestep': 1,
+        'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
     plot_settings = {
@@ -164,7 +190,14 @@ if __name__ == '__main__':
         'overlay': {'reactions': 'flux_bounds'},
         'show_state': [
             ('environment', 'glc__D_e'),
+            ('environment', 'lac__D_e'),
             ('reactions', 'GLCpts'),
+            ('reactions', 'EX_glc__D_e'),
+            ('reactions', 'EX_lac__D_e'),
+            ('cell', 'g6p_c'),
+            ('cell', 'pep_c'),
+            ('cell', 'pyr_c'),
+            ('cell', 'PTSG'),
             ]}
 
     # saved_state = simulate_compartment(compartment, settings)

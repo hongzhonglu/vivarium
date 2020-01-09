@@ -12,13 +12,13 @@ from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
 import vivarium.utils.regulation_logic as rl
 from vivarium.utils.dict_utils import flatten_role_dicts
 
-# if concentrations are lower than regulation threshold, they are considered depleted
+# concentrations are lower than threshold are considered depleted
 REGULATION_THRESHOLD = 0.1  # TODO -- thresholds should be implemented in regulation_logic
-
+EXCHANGE_THRESHOLD = 0.1
 
 
 class Metabolism(Process):
-    '''
+    """
     A general metabolism process, which sets the FBA problem based on input configuration data.
     initial_parameters (dict) configures the process with the following keys/values:
         - initial_state (dict) -- the default state, with a dict for internal and external:
@@ -27,7 +27,7 @@ class Metabolism(Process):
         - objective (dict) -- stoichiometry dict to be optimized
         - external_molecules (list) -- the external molecules
         - reversible_reactions (list)
-    '''
+    """
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
@@ -83,7 +83,7 @@ class Metabolism(Process):
         default_emitter_keys = {
             'internal': self.objective_molecules,
             'external': self.fba.external_molecules,
-            # 'reactions': self.reaction_ids,
+            'reactions': self.reaction_ids,
             # 'exchange': self.fba.external_molecules,
         }
 
@@ -126,7 +126,7 @@ class Metabolism(Process):
         # regulation_state determines state of regulated reactions (True/False)
         availability = flatten_role_dicts({role: states[role]
             for role in ('internal', 'external')})
-        availability = {state: value > 0
+        availability = {state: value > EXCHANGE_THRESHOLD
             for state, value in availability.items()}
         regulation_state = {rxn_id: logic(availability)
             for rxn_id, logic in self.regulation.items()}

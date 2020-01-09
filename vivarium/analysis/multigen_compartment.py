@@ -19,7 +19,14 @@ class MultigenCompartment(Analysis):
             compartment_history = get_compartment(history_data)
 
             times = compartment_history['time']
-            tags_history = {tag: compartment_history['cell'][tag] for tag in tags}
+
+            # get history of all tags
+            roles = [role for role in list(compartment_history.keys()) if role not in ['time']]
+            tags_history = {}
+            for tag in tags:
+                for role in roles:
+                    if tag in compartment_history[role]:
+                        tags_history.update({tag: compartment_history[role][tag]})
 
             data['time'] = times
             data['tags'] = tags_history
