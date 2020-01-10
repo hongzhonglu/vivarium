@@ -21,6 +21,11 @@ DEFAULT_KAFKA_CONFIG = {
         'visualization_receive': 'environment-state'},
     'subscribe': []}
 
+DEFAULT_EMITTER_CONFIG = {
+    'type': 'database',
+    'url': 'localhost:27017',
+    'database': 'simulations'}
+
 class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
@@ -99,6 +104,16 @@ class ActorControl(Actor):
         for index in range(inner_number):
             self.add_agent(str(uuid.uuid1()), 'inner', {'outer_id': outer_id})
 
+def insert_mongo_host(config, host):
+    if not 'boot_config' in config:
+        config['boot_config'] = {}
+
+    if not 'emitter' in config['boot_config']:
+        config['boot_config']['emitter'] = copy.deepcopy(DEFAULT_EMITTER_CONFIG)
+
+    config['boot_config']['emitter']['url'] = host
+    return config
+
 class AgentCommand(object):
     """
     Control simulations from the command line.
@@ -176,6 +191,11 @@ class AgentCommand(object):
             help='address for Kafka server')
 
         parser.add_argument(
+            '--mongo-host',
+            default=None,
+            help='address for Mongo server')
+
+        parser.add_argument(
             '--agent-receive',
             default='agent-receive',
             help='topic agents will receive control messages on')
@@ -226,6 +246,8 @@ class AgentCommand(object):
         self.require(args, 'id', 'type')
         control = ActorControl('control', self.kafka_config)
         config = dict(args['config'], outer_id=args['id'])
+        if args.get('mongo_host'):
+            config = insert_mongo_host(config, args['mongo_host'])
         control.add_agent(str(uuid.uuid1()), args['type'] or 'ecoli', config)
         control.shutdown()
 
