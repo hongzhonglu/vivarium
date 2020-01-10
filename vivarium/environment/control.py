@@ -349,43 +349,43 @@ class EnvironmentCommand(AgentCommand):
 
     def experiment(self, args):
         self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.lattice_experiment(args)
         control.shutdown()
 
     def long_experiment(self, args):
         self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.long_lattice_experiment(args)
         control.shutdown()
 
     def large_experiment(self, args):
         self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.large_lattice_experiment(args)
         control.shutdown()
 
     def small_experiment(self, args):
         self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.small_lattice_experiment(args)
         control.shutdown()
 
     def glc_g6p_experiment(self, args):
         self.require(args, 'number')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.glc_g6p_experiment(args)
         control.shutdown()
 
     def chemotaxis_experiment(self, args):
         self.require(args, 'number')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.chemotaxis_experiment(args)
         control.shutdown()
 
     def swarm_experiment(self, args):
         self.require(args, 'number')
-        control = ShepherdControl({'kafka_config': self.kafka_config})
+        control = ShepherdControl({'kafka_config': self.kafka_config()})
         control.swarm_experiment(args)
         control.shutdown()
 
