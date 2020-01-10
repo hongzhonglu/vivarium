@@ -49,11 +49,11 @@ def load_lookup(filename):
         avg = row.get('average')
         dist = row.get('distribution')
 
-        # convert to list of floats
-        dist = dist.replace('[', '').replace(']', '').split(', ')
+        # # convert to list of floats
+        # dist = dist.replace('[', '').replace(']', '').split(', ')
 
         # check if empty distribution
-        if dist[0]:
+        if dist:
             dist = [float(value) for value in dist]
         else:
             dist=[0]

@@ -22,17 +22,31 @@ DEFAULT_KAFKA_CONFIG = {
     'subscribe': []}
 
 DEFAULT_EMITTER_CONFIG = {
-    'type': 'database',
-    'url': 'localhost:27017',
-    'database': 'simulations'}
+    'database': {
+        'type': 'database',
+        'host': 'localhost:27017',
+        'database': 'simulations'},
+    'kafka': {
+        'type': 'kafka',
+        'host': '127.0.0.1:9092',
+        'topic': 'simulations'}}
+
+DEFAULT_DESTINATIONS = {
+    'mongo_host': ['boot_config', 'emitter', 'host'],
+    'emit_database': ['boot_config', 'emitter', 'database'],
+    'emit_kafka_host': ['boot_config', 'emitter', 'host'],
+    'emit_topic': ['boot_config', 'emitter', 'topic'],
+    'kafka_host': ['kafka_config', 'host'],
+    'agent_receive': ['kafka_config', 'topics', 'agent_receive'],
+    'environment_receive': ['kafka_config', 'topics', 'environment_receive'],
+    'cell_receive': ['kafka_config', 'topics', 'cell_receive'],
+    'shepherd_receive': ['kafka_config', 'topics', 'shepherd_receive'],
+    'visualization_receive': ['kafka_config', 'topics', 'visualization_receive']}
 
 class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
     def __init__(self, agent_id, agent_config={}):
-        if 'kafka_config' not in agent_config:
-            agent_config['kafka_config'] = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
-
         super(ActorControl, self).__init__(agent_id, 'control', agent_config)
 
     def get_experiment_id(self, name='lattice'):
@@ -74,11 +88,6 @@ class ActorControl(Actor):
 
     # TODO (Ryan): set this up to send messages to a particular shepherd.
     def add_agent(self, agent_id, agent_type, agent_config):
-        # kafka = DEFAULT_KAFKA_CONFIG.copy()
-        # if 'kafka_config' in agent_config:
-        #     kafka.update(agent_config['kafka_config'])
-        # agent_config['kafka_config'] = kafka
-
         if not 'kafka_config' in agent_config:
             agent_config['kafka_config'] = self.agent_config['kafka_config']
 
@@ -117,7 +126,7 @@ class AgentCommand(object):
     supply a `choices` list and implement the methods it names.
     """
 
-    def __init__(self, choices, description=None):
+    def __init__(self, choices, destinations=None, description=None):
         self.default_choices = [
             'experiment',
             'add',
@@ -128,41 +137,30 @@ class AgentCommand(object):
             'shutdown']
         self.choices = self.default_choices + choices
 
-        self.arg_destinations = {
-            'mongo_host': ['boot_config']['emitter']['url'],
-            'kafka_host': ['kafka_config']['host'],
-            'agent_receive': ['kafka_config']['topics']['agent_receive'],
-            'environment_receive': ['kafka_config']['topics']['environment_receive'],
-            'cell_receive': ['kafka_config']['topics']['cell_receive'],
-            'shepherd_receive': ['kafka_config']['topics']['shepherd_receive'],
-            'visualization_receive': ['kafka_config']['topics']['visualization_receive']}
+        self.arg_destinations = copy.deepcopy(DEFAULT_DESTINATIONS)
+        if destinations:
+            self.arg_destinations.update(destinations)
 
         if not description:
             description='Boot agents for the environmental context simulation'
         parser = argparse.ArgumentParser(
             description=description,
             formatter_class=argparse.RawDescriptionHelpFormatter)
+
         self.parser = self.add_arguments(parser)
         self.args = self.parser.parse_args()
 
-        # self.kafka_config = {
-        #     'host': self.args.kafka_host,
-        #     'topics': {
-        #         'agent_receive': self.args.agent_receive,
-        #         'environment_receive': self.args.environment_receive,
-        #         'cell_receive': self.args.cell_receive,
-        #         'shepherd_receive': self.args.shepherd_receive,
-        #         'visualization_receive': self.args.visualization_receive},
-        #     'subscribe': []}
+        self.emitter = self.args.emitter
+        agent_config = {
+            'kafka_config': DEFAULT_KAFKA_CONFIG,
+            'boot_config': {
+                'emitter': DEFAULT_EMITTER_CONFIG.get(self.emitter, {})}}
 
-        self.agent_config = {
-            'kafka_config': DEFAULT_KAFKA_CONFIG}
-
-        self.distribute_arguments(vals(self.args), self.agent_config)
+        self.agent_config = self.distribute_arguments(vars(self.args), agent_config)
 
     def distribute_arguments(self, args, config):
         for key, destination in self.arg_destinations.items():
-            value = args.getattr(key)
+            value = args.get(key)
             if value:
                 here = config
                 for step in destination[:-1]:
@@ -216,6 +214,21 @@ class AgentCommand(object):
             help='address for Mongo server')
 
         parser.add_argument(
+            '--emitter',
+            default='database',
+            help='which emitter to use')
+
+        parser.add_argument(
+            '--emit-database',
+            default=None,
+            help='database name for database emitter')
+
+        parser.add_argument(
+            '--emit-topic',
+            default=None,
+            help='topic name for kafka emitter')
+
+        parser.add_argument(
             '--agent-receive',
             default='agent-receive',
             help='topic agents will receive control messages on')
@@ -256,25 +269,27 @@ class AgentCommand(object):
         return self.agent_config['kafka_config']
 
     def run(self, args):
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         control.trigger_execution(args['id'])
         control.shutdown()
 
     def pause(self, args):
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         control.pause_execution(args['id'])
         control.shutdown()
 
     def add(self, args):
         self.require(args, 'id', 'type')
-        control = ActorControl('control', self.kafka_config())
-        # config = dict(args['config'], outer_id=args['id'])
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         config = self.agent_config
-        control.add_agent(str(uuid.uuid1()), args['type'] or 'ecoli', config)
+        control.add_agent(
+            str(uuid.uuid1()),
+            args['type'] or 'lookup',
+            config)
         control.shutdown()
 
     def remove(self, args):
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         if args['id']:
             control.remove_agent({'agent_id': args['id']})
         elif args['prefix']:
@@ -285,18 +300,18 @@ class AgentCommand(object):
 
     def divide(self, args):
         self.require(args, 'id')
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         control.divide_cell(args['id'])
         control.shutdown()
 
     def experiment(self, args):
         self.require(args, 'number')
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         control.stub_experiment(args['number'])
         control.shutdown()
 
     def shutdown(self, args):
-        control = ActorControl('control', self.kafka_config())
+        control = ActorControl('control', {'kafka_config': self.kafka_config()})
         control.shutdown_agent(args['id'])
         control.shutdown()
 
