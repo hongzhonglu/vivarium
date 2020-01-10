@@ -43,6 +43,20 @@ DEFAULT_DESTINATIONS = {
     'shepherd_receive': ['kafka_config', 'topics', 'shepherd_receive'],
     'visualization_receive': ['kafka_config', 'topics', 'visualization_receive']}
 
+def distribute_arguments(destinations, arguments, config):
+    config = copy.deepcopy(config)
+    for key, destination in destinations.items():
+        value = arguments.get(key)
+        if value:
+            here = config
+            for step in destination[:-1]:
+                if not step in here:
+                    here[step] = {}
+                here = here[step]
+            here[destination[-1]] = value
+
+    return config
+
 class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
@@ -156,19 +170,10 @@ class AgentCommand(object):
             'boot_config': {
                 'emitter': DEFAULT_EMITTER_CONFIG.get(self.emitter, {})}}
 
-        self.agent_config = self.distribute_arguments(vars(self.args), agent_config)
-
-    def distribute_arguments(self, args, config):
-        for key, destination in self.arg_destinations.items():
-            value = args.get(key)
-            if value:
-                here = config
-                for step in destination[:-1]:
-                    if not step in here:
-                        here[step] = {}
-                here[destination[-1]] = value
-
-        return config
+        self.agent_config = distribute_arguments(
+            self.arg_destinations,
+            vars(self.args),
+            agent_config)
 
     def add_arguments(self, parser):
         parser.add_argument(
