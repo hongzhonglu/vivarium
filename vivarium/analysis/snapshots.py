@@ -245,6 +245,8 @@ class Snapshots(Analysis):
             for tag_id in list(tag_range.keys()):
                 ax = init_axes(
                     fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
+                ax.set_facecolor('palegoldenrod')  # set background color
+
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
