@@ -13,7 +13,7 @@ import vivarium.utils.regulation_logic as rl
 from vivarium.utils.dict_utils import flatten_role_dicts
 
 # concentrations are lower than threshold are considered depleted
-REGULATION_THRESHOLD = 0.1  # TODO -- thresholds should be implemented in regulation_logic
+REGULATION_THRESHOLD = 1.0  # TODO -- regulation thresholds should be implemented in regulation_logic
 EXCHANGE_THRESHOLD = 0.1
 
 
@@ -114,7 +114,7 @@ class Metabolism(Process):
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
-        ## conversion factors
+        # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         ## get flux constraints
@@ -135,7 +135,7 @@ class Metabolism(Process):
         # first, add exchange constraints
         self.fba.set_exchange_bounds(exchange_constraints)
 
-        # next, add constraints coming from flux_bounds (typically transport)
+        # next, add constraints coming from flux_bounds
         # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
 

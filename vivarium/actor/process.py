@@ -622,6 +622,7 @@ def convert_to_timeseries(sim_output):
     return timeseries
 
 def set_axes(ax, show_xaxis=False):
+    ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(right=False, top=False)
@@ -757,7 +758,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     # save figure
     fig_path = os.path.join(out_dir, 'simulation')
-    plt.subplots_adjust(wspace=0.3, hspace=0.4)
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 

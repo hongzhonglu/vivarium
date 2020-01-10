@@ -250,21 +250,22 @@ class Snapshots(Analysis):
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
-                    tdata = compartments[agent_id]
-                    all_tags = tdata.get(time) \
-                        or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
+                    agent_color = BASELINE_TAG_COLOR
+                    if agent_id in compartments:
+                        tdata = compartments[agent_id]
+                        all_tags = tdata.get(time) \
+                            or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
 
-                    # get current tag concentration, and determine color
-                    counts = all_tags['tags'][tag_id]
-                    volume = agent_data[agent_id]['volume']
-                    level = counts / volume
-                    min_tag, max_tag = tag_range[tag_id]
-                    if min_tag == max_tag:
-                        agent_color = BASELINE_TAG_COLOR
-                    else:
-                        intensity = max((level - min_tag), 0)
-                        intensity = min(intensity / (max_tag - min_tag), 1)
-                        agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
+                        # get current tag concentration, and determine color
+                        counts = all_tags['tags'][tag_id]
+                        volume = agent_data[agent_id]['volume']
+                        level = counts / volume
+                        min_tag, max_tag = tag_range[tag_id]
+                        if min_tag != max_tag:
+                            intensity = max((level - min_tag), 0)
+                            intensity = min(intensity / (max_tag - min_tag), 1)
+                            agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
+
                     agent_tag_colors[agent_id] = agent_color
 
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
@@ -328,7 +329,7 @@ def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
 
 def mutate_color(baseline_hsv):
     new_hsv = baseline_hsv[:]
-    new_h = new_hsv[0] + np.random.uniform(-0.15, 0.15)
+    new_h = new_hsv[0] + np.random.uniform(-0.2, 0.2)
     new_hsv[0] = new_h % 1
     return new_hsv
 

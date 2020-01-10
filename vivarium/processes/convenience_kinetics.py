@@ -90,12 +90,13 @@ class ConvenienceKinetics(Process):
                         role_string = '_{}'.format(role_id)
                         state_id = state_role_id.replace(role_string, '')
                         state_flux = coeff * flux
-                        update[role_id][state_id] = state_flux
 
-                        # convert exchange fluxes to counts with mmol_to_count
                         if role_id == 'external':
+                            # convert exchange fluxes to counts with mmol_to_count
                             delta_counts = int((state_flux * mmol_to_count).magnitude)
                             update['exchange'][state_id] = delta_counts
+                        else:
+                            update[role_id][state_id] = state_flux
 
         # note: external and internal roles get update in change in mmol.
         return update

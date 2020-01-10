@@ -138,7 +138,11 @@ class CobraFBA(object):
 
     def __init__(self, config={}):
         model_path = config.get('model_path')
-        self.lower_tolerance, self.upper_tolerance = config.get('constraint_tolerance', (0.95, 1))
+
+        # get tolerances
+        self.default_tolerance = config.get('default_tolerance', [0.95, 1])
+        self.tolerance = config.get('tolerance', {})
+
         if model_path:
             self.model = cobra.io.load_json_model(model_path)
             extract = extract_model(self.model)
@@ -203,12 +207,19 @@ class CobraFBA(object):
         '''add externally imposed constraints'''
         for reaction_id, level in levels.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
-            if level >= 0:
-                reaction.upper_bound = self.upper_tolerance * level
-                reaction.lower_bound = self.lower_tolerance * level
+
+            if reaction_id in self.tolerance:
+                lower_tolerance, upper_tolerance = self.tolerance[reaction_id]
+                reaction.upper_bound = upper_tolerance * level
+                reaction.lower_bound = lower_tolerance * level
             else:
-                reaction.upper_bound = self.lower_tolerance * level
-                reaction.lower_bound = self.upper_tolerance * level
+                # use default
+                if level >= 0:
+                    reaction.upper_bound = self.default_tolerance[1] * level
+                    reaction.lower_bound = self.default_tolerance[0] * level
+                else:
+                    reaction.upper_bound = self.default_tolerance[0] * level
+                    reaction.lower_bound = self.default_tolerance[1] * level
 
     def constrain_reaction_bounds(self, reaction_bounds):
         reactions = self.get_reactions(list(reaction_bounds.keys()))
