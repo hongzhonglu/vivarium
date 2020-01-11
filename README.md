@@ -11,7 +11,7 @@ Typical vivaria include aquariums or terrariums.
 The vivarium provided in this repository is a computational vivarium for developing colonies of whole-cell model agents in simulated environment. 
 Its framework is a synthesis of whole-cell modeling, agent-based modeling, and multi-scale modeling.
 
-Vivarium is a framework for composing hybrid models of cellular processes into agents, thus building an integrated cell model, and placing many agents into a shared molecular environment to observe their interactions. 
+Vivarium is a framework for composing hybrid models of different cellular processes into agents, and placing many agents into a shared spatial environment to observe their interactions. 
 Vivarium is distributed in that these agents can run in different threads or on different computers, and upon cell division new threads are allocated. 
 The agents communicate through message passing and are coordinated by the environmental simulation which receives all of the messages, integrates them, and responds to each agent with their new updated local environmental concentrations. 
 
