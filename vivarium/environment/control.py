@@ -222,9 +222,12 @@ class ShepherdControl(ActorControl):
 
         experiment_config = {
             'timeline_str': timeline_str,
+            'edge_length_x': 15.0,
+            'patches_per_edge_x': 15,
             'run_for': 2.0,
             'diffusion': 1e-3,
-            'depth': 1e-1,
+            'depth': 1e-2,
+            'translation_jitter': 1.0,
             'emit_fields': [
                 'glc__D_e',
                 'lac__D_e']

@@ -18,55 +18,53 @@ METABOLISM_FILE = os.path.join('models', 'e_coli_core.json')
 
 # convenience kinetics configuration for transport
 def get_transport_config():
-    # stoichiometry needs to match metabolism -- perhaps this can be extracted?
+    """
+    Simplified glucose transport.
+    This abstracts the PTS/GalP system to a single uptake kinetic
+    with glc__D_e_external as the only cofactor.
+
+    """
+
+    # stoichiometry needs to match metabolism
     transport_reactions = {
-        'GLCpts': {
+        'EX_glc__D_e': {
             'stoichiometry': {
                 'g6p_c_internal': 1.0,
                 'glc__D_e_external': -1.0,
-                'pep_c_internal': -1.0,
-                'pyr_c_internal': 1.0},
+                # 'pep_c_internal': -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
+                # 'pyr_c_internal': 1.0
+            },
             'is reversible': False,
             'catalyzed by': ['PTSG_internal']}}
 
-    # very simplified PTS
     transport_kinetics = {
-        'GLCpts': {
+        'EX_glc__D_e': {
             'PTSG_internal': {
-                'glc__D_e_external': 1e1,
-                'pep_c_internal': 1e1,
-                'kcat_f': 4e-1}}}
+                'glc__D_e_external': 1e-1,
+                'pep_c_internal': None,
+                'kcat_f': -3e5}}}
 
     transport_initial_state = {
         'internal': {
-            'g6p_c': 1.0,
-            'pep_c': 1.0,
-            'pyr_c': 1.0,
-            'PTSG': 1.0},
+            'g6p_c': 0.0,
+            'pep_c': 1.8e-1,
+            'pyr_c': 0.0,
+            'PTSG': 1.8e-6},
         'external': {
             'glc__D_e': 12.0},
         'fluxes': {
-            'GLCpts': 1.0}}  # TODO -- initial fluxes should be set in kinetics process
+            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
 
     transport_roles = {
         'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
         'external': ['glc__D_e'],
         }
     
-    # return {
-    #     'reactions': transport_reactions,
-    #     'kinetic_parameters': transport_kinetics,
-    #     'initial_state': transport_initial_state,
-    #     'roles': transport_roles}
     return {
-        'reactions': {},
-        'kinetic_parameters': {},
-        'initial_state': {
-            'internal': {},
-            'external': {}},
-        'roles': {
-            'internal': [],
-            'external': []}}
+        'reactions': transport_reactions,
+        'kinetic_parameters': transport_kinetics,
+        'initial_state': transport_initial_state,
+        'roles': transport_roles}
 
 def get_regulation():
     regulation = {
@@ -74,11 +72,17 @@ def get_regulation():
     }
     return regulation
 
+
+
 # the composite function
 def compose_kinetic_FBA(config):
+    """
+    A composite with kinetic transport, metabolism, and regulation
+
+    TODO -- fit glc/lct uptake rates to growth rates
+    """
 
     ## Declare the processes
-    # ordering allows earlier processes to inform the configuration of later processes
 
     ## Transport
     transport_config = copy.deepcopy(config)
@@ -92,6 +96,8 @@ def compose_kinetic_FBA(config):
     regulation = get_regulation()
 
     metabolism_config.update({
+        'tolerance': {
+            'EX_glc__D_e': [1.05, 1.0]},
         'model_path': METABOLISM_FILE,
         'constrained_reaction_ids': target_fluxes,
         'regulation': regulation})
@@ -169,14 +175,10 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (500, {'environment': {
-            'glc__D_e': 0.05}
+        (1000, {'environment': {
+            'glc__D_e': 0.0}
         }),
-        # (1000, {'environment': {
-        #     'glc__D_e': 0.0000001}
-        # }),
-        # (3500, {})]
-        (1000, {})]
+        (3500, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -185,7 +187,7 @@ if __name__ == '__main__':
         'timeline': timeline}
 
     plot_settings = {
-        'max_rows': 25,
+        'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
         'show_state': [
