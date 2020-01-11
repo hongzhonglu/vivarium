@@ -1,12 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 from scipy import constants
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import flatten_role_dicts
 from vivarium.utils.units import units
 
+EMPTY_ROLES = {
+    'internal': [],
+    'external': []}
+
+EMPTY_STATES = {
+    'internal': {},
+    'external': {}}
 
 
 class ConvenienceKinetics(Process):
@@ -16,16 +25,15 @@ class ConvenienceKinetics(Process):
 
         self.reactions = initial_parameters.get('reactions')
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
-        roles = initial_parameters.get('roles')
-        self.initial_state = initial_parameters.get('initial_state')
+        roles = initial_parameters.get('roles', EMPTY_ROLES)
+        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
 
         # Make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
-        # add volume to internal state
-        if 'volume' not in roles['internal']:
+        # add volume to internal role
+        if 'volume' not in roles.get('internal'):
             roles['internal'].append('volume')
-            self.initial_state['internal'].update({'volume': 1.2})  # (fL)
 
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
@@ -39,6 +47,7 @@ class ConvenienceKinetics(Process):
 
         # default state
         default_state = self.initial_state
+        default_state['internal'].update({'volume': 1.2})  # (fL)
 
         # default emitter keys
         default_emitter_keys = {}
@@ -58,7 +67,7 @@ class ConvenienceKinetics(Process):
     def next_update(self, timestep, states):
 
         # get mmol_to_count for converting flux to exchange counts
-        volume = states['internal']['volume'] * 1e-15 * units.L # convert L to fL
+        volume = states['internal']['volume'] * units.L
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # kinetic rate law requires a flat dict with 'state_role' keys.
@@ -81,12 +90,13 @@ class ConvenienceKinetics(Process):
                         role_string = '_{}'.format(role_id)
                         state_id = state_role_id.replace(role_string, '')
                         state_flux = coeff * flux
-                        update[role_id][state_id] = state_flux
 
-                        # convert exchange fluxes to counts with mmol_to_count
                         if role_id == 'external':
+                            # convert exchange fluxes to counts with mmol_to_count
                             delta_counts = int((state_flux * mmol_to_count).magnitude)
                             update['exchange'][state_id] = delta_counts
+                        else:
+                            update[role_id][state_id] = state_flux
 
         # note: external and internal roles get update in change in mmol.
         return update
@@ -141,9 +151,16 @@ def test_convenience_kinetics():
     state = settings['state']
     skip_roles = ['exchange']
 
+    # initialize saved data
+    saved_state = {}
+
     # run the simulation
+    time = 0
     timestep = 1
-    for step in range(10):
+    end_time = 10
+    saved_state[time] = state
+    while time < end_time:
+        time += timestep
         # get update
         update = kinetic_process.next_update(timestep, state)
 
@@ -152,8 +169,19 @@ def test_convenience_kinetics():
             if role_id not in skip_roles:
                 for state_id, change in states_update.items():
                     state[role_id][state_id] += change
-        print(state)
+        saved_state[time] = state
+
+    return saved_state
 
 
 if __name__ == '__main__':
-    test_convenience_kinetics()
+    out_dir = os.path.join('out', 'tests', 'convenience_kinetics')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    plot_settings = {}
+
+    saved_data = test_convenience_kinetics()
+    del saved_data[0] # remove first state
+    timeseries = convert_to_timeseries(saved_data)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
