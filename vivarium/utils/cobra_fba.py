@@ -65,8 +65,8 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
     return model
 
 def extract_model(model):
-
-    bounds_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
+    # TODO -- bring bounds_scaling back
+    # bounds_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
 
     reactions = model.reactions
     metabolites = model.metabolites
@@ -89,7 +89,8 @@ def extract_model(model):
         bounds = list(reaction.bounds)
         stoichiometry[reaction.id] = {
             metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        flux_bounds[reaction_id] = [bound * bounds_scaling for bound in bounds]
+        # flux_bounds[reaction_id] = [bound * bounds_scaling for bound in bounds]
+        flux_bounds[reaction_id] = bounds
         if not any(b == 0.0 for b in bounds):
             reversible.append(reaction_id)
 
@@ -103,7 +104,8 @@ def extract_model(model):
         external_molecules.append(metabolite_id)
 
         bounds = list(reaction.bounds)
-        exchange_bounds[metabolite_id] = [bound * bounds_scaling for bound in bounds]
+        # exchange_bounds[metabolite_id] = [bound * bounds_scaling for bound in bounds]
+        exchange_bounds[metabolite_id] = bounds
 
     # get molecular weights
     molecular_weights = {}
@@ -129,7 +131,7 @@ def extract_model(model):
         'flux_bounds': flux_bounds,
         'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights}
-    
+
 DEFAULT_UPPER_BOUND = 100
 
 
@@ -143,6 +145,9 @@ class CobraFBA(object):
         self.default_tolerance = config.get('default_tolerance', [0.95, 1])
         self.tolerance = config.get('tolerance', {})
 
+        # MOMA (Minimization of metabolic adjustment)
+        self.moma = config.get('moma', True)
+
         if model_path:
             self.model = cobra.io.load_json_model(model_path)
             extract = extract_model(self.model)
@@ -154,7 +159,7 @@ class CobraFBA(object):
             self.flux_bounds = extract['flux_bounds']
             self.molecular_weights = extract['molecular_weights']
             self.exchange_bounds = extract['exchange_bounds']
-            self.default_upper_bound = DEFAULT_UPPER_BOUND # TODO -- can this be extracted from model?
+            self.default_upper_bound = DEFAULT_UPPER_BOUND  # TODO -- can this be extracted from model?
 
         else:
             self.stoichiometry = config['stoichiometry']
@@ -253,7 +258,12 @@ class CobraFBA(object):
         return self.solution.objective_value if self.solution else float('nan')
 
     def optimize(self):
-        self.solution = self.model.optimize()
+
+        if self.moma:
+            self.solution = cobra.flux_analysis.moma(self.model, solution=self.solution)
+        else:
+            self.solution = self.model.optimize()
+
         return self.objective_value()
 
     def external_reactions(self):
@@ -300,7 +310,8 @@ class CobraFBA(object):
         return {
             reaction_key: (reaction.lower_bound, reaction.upper_bound)
             for reaction_key, reaction in self.get_reactions(reactions).items()}
-            
+
+
 
 def test_minimal():
     stoichiometry = {
@@ -406,7 +417,7 @@ def test_demo():
         'ddcaACP_c',
         formula='C23H43N2O8PRS',
         name='Dodecanoyl-ACP-n-C120ACP',
-        compartment='c')    
+        compartment='c')
 
     reaction.add_metabolites({
         malACP_c: -1.0,
@@ -459,6 +470,7 @@ def test_demo():
             self.model = model
 
     return DemoFBA(model)
+
 
 if __name__ == '__main__':
     fba = test_fba()
