@@ -65,19 +65,23 @@ def build_model(stoichiometry, reversible, objective, external_molecules, defaul
     return model
 
 def extract_model(model):
-    # TODO -- bring bounds_scaling back
-    # bounds_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
+    """
+    TODO -- where do demands and sinks go?
+    demands = model.demands
+    sinks = model.sinks
+
+    # get boundary reaction names. these include exchanges, demands, sinks
+    boundary = model.boundary
+    boundary_reactions = [reaction.id for reaction in boundary]
+    """
+
+    # TODO -- get bounds_scaling from optimization.
+    bounds_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
 
     reactions = model.reactions
     metabolites = model.metabolites
-    boundary = model.boundary
     exchanges = model.exchanges
-    demands = model.demands  # TODO -- where do demands and sinks go?
-    sinks = model.sinks
     objective_expression = model.objective.expression.args
-
-    # get boundary reaction names. these include exchanges, demands, sinks
-    boundary_reactions = [reaction.id for reaction in boundary]
 
     # get stoichiometry and flux bounds
     stoichiometry = {}
@@ -89,7 +93,6 @@ def extract_model(model):
         bounds = list(reaction.bounds)
         stoichiometry[reaction.id] = {
             metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        # flux_bounds[reaction_id] = [bound * bounds_scaling for bound in bounds]
         flux_bounds[reaction_id] = bounds
         if not any(b == 0.0 for b in bounds):
             reversible.append(reaction_id)
@@ -104,7 +107,6 @@ def extract_model(model):
         external_molecules.append(metabolite_id)
 
         bounds = list(reaction.bounds)
-        # exchange_bounds[metabolite_id] = [bound * bounds_scaling for bound in bounds]
         exchange_bounds[metabolite_id] = bounds
 
     # get molecular weights
@@ -130,7 +132,8 @@ def extract_model(model):
         'objective': objective,
         'flux_bounds': flux_bounds,
         'exchange_bounds': exchange_bounds,
-        'molecular_weights': molecular_weights}
+        'molecular_weights': molecular_weights,
+        'bounds_scaling': bounds_scaling}
 
 DEFAULT_UPPER_BOUND = 100
 
@@ -145,7 +148,7 @@ class CobraFBA(object):
         self.default_tolerance = config.get('default_tolerance', [0.95, 1])
         self.tolerance = config.get('tolerance', {})
 
-        # MOMA (Minimization of metabolic adjustment)
+        # set MOMA (minimization of metabolic adjustment)
         self.moma = config.get('moma', True)
 
         if model_path:
@@ -159,6 +162,7 @@ class CobraFBA(object):
             self.flux_bounds = extract['flux_bounds']
             self.molecular_weights = extract['molecular_weights']
             self.exchange_bounds = extract['exchange_bounds']
+            self.bounds_scaling = extract['bounds_scaling']
             self.default_upper_bound = DEFAULT_UPPER_BOUND  # TODO -- can this be extracted from model?
 
         else:
@@ -170,6 +174,7 @@ class CobraFBA(object):
             self.molecular_weights = config.get('molecular_weights', {})
             self.exchange_bounds = config.get('exchange_bounds', {})
             self.default_upper_bound = config.get('default_upper_bound', DEFAULT_UPPER_BOUND)
+            self.bounds_scaling = config.get('bounds_scaling', 1)
 
             self.model = build_model(
                 self.stoichiometry,
@@ -198,6 +203,16 @@ class CobraFBA(object):
         '''
         for external_mol, level in self.exchange_bounds.items():
             reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external_mol)
+
+
+
+
+            import ipdb; ipdb.set_trace()
+            # TODO -- adjust level by self.bounds_scaling?
+            # This needs to be done everywhere...
+
+
+
 
             if external_mol in new_bounds:
                 level = new_bounds[external_mol]
