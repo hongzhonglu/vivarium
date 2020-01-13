@@ -95,6 +95,7 @@ def compose_kinetic_FBA(config):
     regulation_logic = get_regulation()
 
     metabolism_config.update({
+        'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': METABOLISM_FILE,
