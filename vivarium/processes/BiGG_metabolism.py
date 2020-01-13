@@ -105,11 +105,14 @@ if __name__ == '__main__':
     # additional process-like transport and regulation functions
     transport = toy_transport()
     regulation = toy_regulation()
-    config['constrained_reaction_ids'] = transport.keys()
-    config['regulation'] = regulation
+    metabolism_config = {
+        'moma': False,
+        'constrained_reaction_ids': transport.keys(),
+        'regulation': regulation}
+    metabolism_config.update(config)
 
     # load metabolism model
-    metabolism = BiGGMetabolism(config)
+    metabolism = BiGGMetabolism(metabolism_config)
 
     # simulate model
     timeline = [

@@ -196,7 +196,7 @@ class CobraFBA(object):
             for ex, value in max_exchange.items()}
 
         # initialize solution
-        self.solution = None
+        self.solution = self.model.optimize()
 
     def set_exchange_bounds(self, new_bounds={}):
         '''
@@ -224,7 +224,6 @@ class CobraFBA(object):
 
             # scaled_level = [b / self.flux_scaling for b in level]
             scaled_level = level / self.flux_scaling
-            import ipdb; ipdb.set_trace()
 
             if reaction_id in self.tolerance:
                 lower_tolerance, upper_tolerance = self.tolerance[reaction_id]
