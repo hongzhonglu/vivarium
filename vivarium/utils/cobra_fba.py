@@ -7,7 +7,9 @@ from cobra.medium import minimal_medium
 from cobra import Model, Reaction, Metabolite, Configuration
 
 
+
 EXTERNAL_PREFIX = 'EX_'
+DEFAULT_UPPER_BOUND = 100.0
 
 def build_model(stoichiometry, reversible, objective, external_molecules, default_upper_bound=1000):
     model = Model('fba')
@@ -135,8 +137,6 @@ def extract_model(model):
         'exchange_bounds': exchange_bounds,
         'molecular_weights': molecular_weights,
         'flux_scaling': flux_scaling}
-
-DEFAULT_UPPER_BOUND = 100
 
 
 
@@ -270,7 +270,11 @@ class CobraFBA(object):
                     reaction.lower_bound = 0.0
 
     def objective_value(self):
-        return self.solution.objective_value if self.solution else float('nan')
+        if self.solution:
+            objective_value = self.solution.objective_value * self.flux_scaling
+            return objective_value
+        else:
+            return float('nan')
 
     def optimize(self):
 
