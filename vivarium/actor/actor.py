@@ -75,7 +75,7 @@ class Actor(object):
                 might need. Subclasses use this extensively, but the only key that needs to be
                 present for the base agent class is:
 
-		        * boot (dict): options to pass into the simulation on initialization.
+                * boot (dict): options to pass into the simulation on initialization.
                 * kafka_config (dict): A dictionary containing all of the kafka configuration
                     information, including:
 

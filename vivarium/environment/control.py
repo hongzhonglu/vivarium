@@ -44,8 +44,9 @@ class ShepherdControl(ActorControl):
             'emit_fields': emit_field,
             'boot': 'vivarium.environment.boot',
             'run_for': 4.0,
-            'edge_length_x': 20.0,
-            'patches_per_edge_x': 10,
+            'diffusion': args.get('diffusion', 1000),
+            'edge_length_x': args.get('edge_length_x'),
+            'patches_per_edge_x': args.get('patches_per_edge_x', 10),
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01})
 
