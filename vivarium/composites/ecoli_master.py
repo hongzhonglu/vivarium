@@ -4,7 +4,6 @@ import copy
 import os
 
 from vivarium.actor.process import initialize_state
-import vivarium.utils.regulation_logic as rl
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -73,7 +72,7 @@ def get_transport_config():
 
 def get_regulation():
     regulation = {
-        'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
+        'EX_lac__D_e': 'IF not (glc__D_e_external)',
     }
     return regulation
 
@@ -97,14 +96,14 @@ def compose_ecoli_master(config):
     # get target fluxes from transport, load in regulation function
     metabolism_config = copy.deepcopy(config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
-    regulation = get_regulation()
+    regulation_logic = get_regulation()
 
     metabolism_config.update({
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': METABOLISM_FILE,
         'constrained_reaction_ids': target_fluxes,
-        'regulation': regulation})
+        'regulation_logic': regulation_logic})
     metabolism = BiGGMetabolism(metabolism_config)
 
     ## Division
