@@ -40,7 +40,11 @@ class Metabolism(Process):
         self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
-        self.regulation = initial_parameters.get('regulation', {})
+
+        # make regulation functions from regulation_logic strings
+        regulation_logic = initial_parameters.get('regulation_logic', {})
+        self.regulation = {rxn_id: rl.build_rule(logic_string)
+            for rxn_id, logic_string in regulation_logic.items()}
 
         # get molecules in objective
         self.objective_molecules = []
