@@ -136,7 +136,7 @@ def extract_model(model):
         'molecular_weights': molecular_weights,
         'flux_scaling': flux_scaling}
 
-DEFAULT_UPPER_BOUND = 1000
+DEFAULT_UPPER_BOUND = 100
 
 
 
