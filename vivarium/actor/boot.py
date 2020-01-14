@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
 import json
 import argparse
 
-from vivarium.actor.control import DEFAULT_KAFKA_CONFIG
+from vivarium.actor.control import DEFAULT_KAFKA_CONFIG, DEFAULT_EMITTER_CONFIG, DEFAULT_DESTINATIONS, distribute_arguments
 from vivarium.actor.outer import Outer
 from vivarium.actor.inner import Inner
 from vivarium.actor.stub import SimulationStub, EnvironmentStub
-
+from vivarium.actor.process import deep_merge
 
 def boot_outer(agent_id, agent_type, agent_config):
     """
@@ -85,6 +86,21 @@ class BootAgent(object):
             default='{}',
             help='''JSON configuration dictionary for the new agent.''')
 
+        parser.add_argument(
+            '--kafka-host',
+            default=None,
+            help='address for Kafka server')
+
+        parser.add_argument(
+            '--mongo-host',
+            default=None,
+            help='address for Mongo server')
+
+        parser.add_argument(
+            '--emitter',
+            default='database',
+            help='which emitter to use')
+
         return parser
 
     def execute(self):
@@ -93,8 +109,21 @@ class BootAgent(object):
         parse_args = parser.parse_args()
 
         args = vars(parse_args)
-        agent_config = dict(json.loads(parse_args.config))
-        agent_config.setdefault('kafka_config', DEFAULT_KAFKA_CONFIG)
+        agent_config = dict(json.loads(args['config']))
+
+        kafka_config = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
+        emitter_config = copy.deepcopy(DEFAULT_EMITTER_CONFIG[args['emitter']])
+        default_config = {
+            'kafka_config': kafka_config,
+            'boot_config': {
+                'emitter': emitter_config}}
+
+        agent_config = deep_merge(default_config, agent_config)
+        agent_config = distribute_arguments(
+            DEFAULT_DESTINATIONS,
+            args,
+            agent_config)
+
         if args['outer_id']:
             agent_config.setdefault('outer_id', args['outer_id'])
 
@@ -107,4 +136,4 @@ def run():
     boot.execute()
 
 if __name__ == '__main__':
-	run()
+    run()

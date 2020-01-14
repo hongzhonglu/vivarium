@@ -25,6 +25,7 @@ import shutil
 from vivarium.actor.inner import Inner
 from vivarium.actor.outer import Outer
 from vivarium.actor.boot import BootAgent
+from vivarium.actor.control import DEFAULT_EMITTER_CONFIG
 from vivarium.actor.emitter import get_emitter, configure_emitter
 
 # environment
@@ -69,13 +70,6 @@ def wrap_boot(initialize, initial_state):
 
 def wrap_init_basic(make_process):
     def initialize(boot_config):
-        boot_config.update({
-            'emitter': {
-                'type': 'database',
-                'url': 'localhost:27017',
-                'database': 'simulations',
-                },
-            })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
         return generate_lattice_compartment(process, boot_config)
 
@@ -83,14 +77,6 @@ def wrap_init_basic(make_process):
 
 def wrap_init_composite(make_composite):
     def initialize(boot_config):
-        # configure the emitter
-        boot_config.update({
-            'emitter': {
-                'type': 'database',
-                'url': 'localhost:27017',
-                'database': 'simulations'},
-            })
-
         # set up the the composite
         composite_config = make_composite(boot_config)
         processes = composite_config['processes']
@@ -118,12 +104,9 @@ def wrap_boot_environment(intialize):
         if os.path.isdir(output_dir):
             shutil.rmtree(output_dir)
 
-        # emitter
-        emitter_config = {
-            'type': 'database',
-            'url': 'localhost:27017',
-            'database': 'simulations',
-            'experiment_id': agent_id}
+        emitter_config = boot_config.get('emitter', DEFAULT_EMITTER_CONFIG)
+        emitter_config['experiment_id'] = agent_id
+
         emitter = get_emitter(emitter_config)
         boot_config.update({
             'emitter': emitter,
