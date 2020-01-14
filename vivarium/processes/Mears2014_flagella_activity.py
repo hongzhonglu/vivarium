@@ -8,6 +8,7 @@ import uuid
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
+from matplotlib.patches import Patch
 
 from vivarium.actor.process import Process, deep_merge
 
@@ -104,6 +105,7 @@ class FlagellaActivity(Process):
 
         # default state
         # flagella motor state: 0 for CCW, 1 for CW
+        # motile state: 0 for run, 1 for tumble
         internal = INITIAL_STATE
         default_state = {
             'external': {},
@@ -179,11 +181,13 @@ class FlagellaActivity(Process):
 
         ## get cell motile state.
         # if any flagella is rotating CW, the cell tumbles.
-        if any(flagella_update.values()) == 1:
-            motile_state = 1  # 1 for tumble
-            [force, torque] = tumble(PMF)  # TODO -- add # of motors
+        # flagella motor state: 0 for CCW, 1 for CW
+        # motile state: 0 for run, 1 for tumble
+        if any(state == 1 for state in flagella_update.values()):
+            motile_state = 1
+            [force, torque] = tumble(PMF)
         else:
-            motile_state = 0  # 0 for run
+            motile_state = 0
             [force, torque] = run(PMF)
 
         return {
@@ -219,14 +223,15 @@ class FlagellaActivity(Process):
         CCW_to_CW = omega * math.exp(-delta_g)
         # switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
 
-        if motor_state == 0:  # 0 for CCW
+        # flagella motor state: 0 for CCW, 1 for CW
+        if motor_state == 0:
             prob_switch = CCW_to_CW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
             else:
                 new_motor_state = 0
 
-        elif motor_state == 1:  # 1 for CW
+        elif motor_state == 1:
             prob_switch = CW_to_CCW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 0
@@ -322,10 +327,10 @@ def plot_activity(output, out_dir='out'):
     flagella_ids = list(flagella.keys())
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
     total_CW = np.zeros((len(time_vec)))
-    for flagella_id, motor_states in flagella.items():
+    for flagella_id, rotation_states in flagella.items():
         flagella_index = flagella_ids.index(flagella_id)
-        activity_grid[flagella_index, :] = [x + 1 for x in motor_states]
-        total_CW += np.array(motor_states)
+        activity_grid[flagella_index, :] = [x + 1 for x in rotation_states]
+        total_CW += np.array(rotation_states)
 
     # grid for cell state
     cell_grid = np.zeros((1, len(time_vec)))
@@ -355,13 +360,15 @@ def plot_activity(output, out_dir='out'):
     # plot Che-P state
     ax1.plot(time_vec, CheY_vec, label='CheY')
     ax1.plot(time_vec, CheY_P_vec, label='CheY_P')
-    ax1.legend()
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax1.set_xticks([])
+    ax1.set_xlim(time_vec[0], time_vec[-1])
     ax1.set_ylabel('concentration (uM)')
 
     # plot CW bias
     ax2.plot(time_vec, cw_bias_vec)
     ax2.set_xticks([])
+    ax2.set_xlim(time_vec[0], time_vec[-1])
     ax2.set_ylabel('CW bias')
 
     # plot cell state
@@ -374,6 +381,15 @@ def plot_activity(output, out_dir='out'):
     ax3.set_yticks([])
     ax3.set_xticks([])
     ax3.set_ylabel('cell motile state')
+
+    # legend
+    motile_legend_elements = [
+        Patch(facecolor='k', edgecolor='k', label='Run'),
+        Patch(facecolor='w', edgecolor='k', label='Tumble')]
+    ax3.legend(
+        handles=motile_legend_elements,
+        loc='center left',
+        bbox_to_anchor=(1, 0.5))
 
     # plot flagella states in a grid
     im2 = ax4.imshow(activity_grid,
@@ -388,8 +404,18 @@ def plot_activity(output, out_dir='out'):
     ax4.set_xticks([])
     ax4.set_ylabel('flagella #')
 
+    # legend
+    rotational_legend_elements = [
+        Patch(facecolor='w', edgecolor='k', label='CW'),
+        Patch(facecolor='b', edgecolor='k', label='CCW')]
+    ax4.legend(
+        handles=rotational_legend_elements,
+        loc='center left',
+        bbox_to_anchor=(1, 0.5))
+
     # plot number of flagella CW
     ax5.plot(time_vec, total_CW)
+    ax5.set_xlim(time_vec[0], time_vec[-1])
     ax5.set_xlabel('time (sec)')
     ax5.set_ylabel('number of flagella CW')
 
