@@ -29,15 +29,16 @@ class KnowledgeBase(object):
         # Load raw data from TSV files
 
         for filename in LIST_OF_FLAT_FILENAMES:
-            self._load_tsv(FLAT_DIR, os.path.join(FLAT_DIR, filename))
+            self._load_tsv(FLAT_DIR, filename)
 
     def _load_tsv(self, dir_name, file_name):
         path = self
-        for subPath in file_name[len(dir_name) + 1 : ].split(os.path.sep)[:-1]:
+        steps = file_name.split(os.path.sep)
+        for subPath in steps[:-1]:
             if not hasattr(path, subPath):
                 setattr(path, subPath, DataStore())
             path = getattr(path, subPath)
-        attrName = file_name.split(os.path.sep)[-1].split(".")[0]
+        attrName = steps[-1].split(".")[0]
         setattr(path, attrName, [])
 
         file_path = os.path.join(dir_name, file_name)
