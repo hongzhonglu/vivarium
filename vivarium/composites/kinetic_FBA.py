@@ -17,35 +17,42 @@ METABOLISM_FILE = os.path.join('models', 'e_coli_core.json')
 
 # convenience kinetics configuration for transport
 def get_transport_config():
-    # stoichiometry needs to match metabolism -- perhaps this can be extracted?
+    """
+    Simplified glucose transport.
+    This abstracts the PTS/GalP system to a single uptake kinetic
+    with glc__D_e_external as the only cofactor.
+
+    """
+
+    # stoichiometry needs to match metabolism
     transport_reactions = {
-        'GLCpts': {
+        'EX_glc__D_e': {
             'stoichiometry': {
                 'g6p_c_internal': 1.0,
                 'glc__D_e_external': -1.0,
-                'pep_c_internal': -1.0,
-                'pyr_c_internal': 1.0},
+                # 'pep_c_internal': -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
+                # 'pyr_c_internal': 1.0
+            },
             'is reversible': False,
             'catalyzed by': ['PTSG_internal']}}
 
-    # very simplified PTS
     transport_kinetics = {
-        'GLCpts': {
-            'PTSG': {
-                'glc__D_e_external': 3.0,
-                'pep_c_internal': 2.0,
-                'kcat_f': 1.0}}}
+        'EX_glc__D_e': {
+            'PTSG_internal': {
+                'glc__D_e_external': 1e-1,
+                'pep_c_internal': None,
+                'kcat_f': -3e5}}}
 
     transport_initial_state = {
         'internal': {
-            'g6p_c': 1.0,
-            'pep_c': 1.0,
-            'pyr_c': 1.0,
-            'PTSG': 1.0},
+            'g6p_c': 0.0,
+            'pep_c': 1.8e-1,
+            'pyr_c': 0.0,
+            'PTSG': 1.8e-6},
         'external': {
             'glc__D_e': 12.0},
         'fluxes': {
-            'GLCpts': 1.0}}  # TODO -- initial fluxes can be set within kinetics process
+            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
 
     transport_roles = {
         'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
@@ -58,31 +65,53 @@ def get_transport_config():
         'initial_state': transport_initial_state,
         'roles': transport_roles}
 
+def get_regulation():
+    regulation = {
+        'EX_lac__D_e': 'IF not (glc__D_e_external)',
+    }
+    return regulation
+
+
 
 # the composite function
 def compose_kinetic_FBA(config):
+    """
+    A composite with kinetic transport, metabolism, and regulation
 
-    ## declare the processes
-    # transport
+    TODO -- fit glc/lct uptake rates to growth rates
+    """
+
+    ## Declare the processes
+
+    ## Transport
     transport_config = copy.deepcopy(config)
     transport_config.update(get_transport_config())
-
-    # transport_config.update({'target_fluxes': TARGET_FLUXES})
     transport = ConvenienceKinetics(transport_config)
-    target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
-    # metabolism
+    ## Metabolism
+    # get target fluxes from transport, load in regulation function
     metabolism_config = copy.deepcopy(config)
+    target_fluxes = transport.kinetic_rate_laws.reaction_ids
+    regulation_logic = get_regulation()
+
     metabolism_config.update({
+        'tolerance': {
+            'EX_glc__D_e': [1.05, 1.0]},
         'model_path': METABOLISM_FILE,
-        'constrained_reaction_ids': target_fluxes})
+        'constrained_reaction_ids': target_fluxes,
+        'regulation_logic': regulation_logic})
     metabolism = BiGGMetabolism(metabolism_config)
 
-    # other processes
-    deriver = DeriveVolume(config)
-    division = Division(config)
+    ## Division
+    # get initial volume from metabolism
+    division_config = copy.deepcopy(config)
+    division_config.update({'initial_state': metabolism.initial_state})
+    division = Division(division_config)
 
-    # place processes in layers.
+    # Other processes
+    deriver = DeriveVolume(config)
+
+    # Place processes in layers
     processes = [
         {'transport': transport},
         {'metabolism': metabolism},
@@ -90,7 +119,7 @@ def compose_kinetic_FBA(config):
         'division': division}
     ]
 
-    # make the topology.
+    ## Make the topology
     # for each process, map process roles to compartment roles
     topology = {
         'transport': {
@@ -110,7 +139,7 @@ def compose_kinetic_FBA(config):
             'internal': 'cell'},
         }
 
-    # initialize the states
+    ## Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -139,32 +168,41 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compose_kinetic_FBA({})['options']
+
+    # define timeline
     timeline = [
         (0, {'environment': {
-            'glc__D_e': 12.0,
             'lac__D_e': 12.0}
         }),
-        (10, {'environment': {
+        (1000, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (30, {})]
+        (3500, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-6,  # L
-        'timestep': 1,
+        'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
     plot_settings = {
+        'max_rows': 20,
+        'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'max_rows': 25}
+        'show_state': [
+            ('environment', 'glc__D_e'),
+            ('environment', 'lac__D_e'),
+            ('reactions', 'GLCpts'),
+            ('reactions', 'EX_glc__D_e'),
+            ('reactions', 'EX_lac__D_e'),
+            ('cell', 'g6p_c'),
+            ('cell', 'pep_c'),
+            ('cell', 'pyr_c'),
+            ('cell', 'PTSG'),
+            ]}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
-
-    # TODO -- make a flux network with metabolism
-

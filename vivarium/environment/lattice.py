@@ -33,6 +33,8 @@ PI = math.pi
 CELL_DENSITY = 1100
 
 # Lattice parameters
+DIFFUSION_CONSTANT = 1e3
+DEFAULT_DEPTH = 3000.0  # um
 TRANSLATION_JITTER = 0.1
 ROTATION_JITTER = 0.05
 
@@ -69,7 +71,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.patches_per_edge_x = config.get('patches_per_edge_x', 10)
         self.patches_per_edge_y = int(edge_length_y * self.patches_per_edge_x / self.edge_length_x)
         self.edge_length_y = self.patches_per_edge_y * self.edge_length_x / self.patches_per_edge_x
-        self.depth = config.get('depth', 3000.0)  # um
+        self.depth = config.get('depth', DEFAULT_DEPTH)  # um
         self.total_volume = (self.depth * self.edge_length_x * self.edge_length_y) * (10 ** -15) # (L)
         self.patch_volume = self.total_volume / (self.edge_length_x * self.edge_length_y)
         self.dx = self.edge_length_x / self.patches_per_edge_x
@@ -108,7 +110,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
-        self.diffusion = config.get('diffusion', 1e3)
+        self.diffusion = config.get('diffusion', DIFFUSION_CONSTANT)
         self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. (using 50% of the theoretical upper limit)
@@ -122,19 +124,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # add a gradient
         if self.gradient.get('type') == 'gaussian':
-            # gaussian gradient multiplies the basal concentration of the given molecule
-            # by a gaussian function of distance from center and deviation
-            #
-            # 'gradient': {
-            #     'type': 'gradient',
-            #     'molecules': {
-            #         'mol_id1':{
-            #             'center': [0.25, 0.5],
-            #             'deviation': 30},
-            #         'mol_id2': {
-            #             'center': [0.75, 0.5],
-            #             'deviation': 30}
-            #     }},
+            '''
+            gaussian gradient multiplies the basal concentration of the given molecule
+            by a gaussian function of distance from center and deviation
+
+            'gradient': {
+                'type': 'gradient',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.25, 0.5],
+                        'deviation': 30},
+                    'mol_id2': {
+                        'center': [0.75, 0.5],
+                        'deviation': 30}
+                }},
+            '''
 
             for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)
@@ -153,19 +157,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
                         self.lattice[mol_index][x_patch][y_patch] *= scale
 
         elif self.gradient.get('type') == 'linear':
-            # linear gradient adds to the basal concentration of the given molecule
-            # as a function of distance from center and slope.
-            #
-            # 'gradient': {
-            #     'type': 'linear',
-            #     'molecules': {
-            #         'mol_id1':{
-            #             'center': [0.0, 0.0],
-            #             'slope': -10},
-            #         'mol_id2': {
-            #             'center': [1.0, 1.0],
-            #             'slope': -5}
-            #     }},
+            '''
+            linear gradient adds to the basal concentration of the given molecule
+            as a function of distance from center and slope.
+
+            'gradient': {
+                'type': 'linear',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.0, 0.0],
+                        'slope': -10},
+                    'mol_id2': {
+                        'center': [1.0, 1.0],
+                        'slope': -5}
+                }},
+            '''
 
             for molecule_id, specs in self.gradient['molecules'].items():
                 mol_index = self._molecule_ids.index(molecule_id)

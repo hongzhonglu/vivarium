@@ -5,7 +5,8 @@ import os
 from vivarium.processes.metabolism import Metabolism
 from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
-import vivarium.utils.regulation_logic as rl
+
+
 
 DATA_FILE = os.path.join('models', 'e_coli_core.json')
 # DATA_FILE = os.path.join('models', 'iAF1260b.json')
@@ -23,9 +24,10 @@ def get_initial_state():
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
+
     internal = {
             'mass': mass.magnitude,  # fg
-            'volume': volume.magnitude}
+            'volume': volume.to('fL').magnitude}
 
     # external state
     # TODO -- initial state is currently configured to e_coli_core, needs to be generalized

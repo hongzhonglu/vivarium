@@ -12,10 +12,13 @@ from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
 import vivarium.utils.regulation_logic as rl
 from vivarium.utils.dict_utils import flatten_role_dicts
 
+# concentrations are lower than threshold are considered depleted
+REGULATION_THRESHOLD = 1.0  # TODO -- regulation thresholds should be implemented in regulation_logic
+EXCHANGE_THRESHOLD = 0.1
 
 
 class Metabolism(Process):
-    '''
+    """
     A general metabolism process, which sets the FBA problem based on input configuration data.
     initial_parameters (dict) configures the process with the following keys/values:
         - initial_state (dict) -- the default state, with a dict for internal and external:
@@ -24,20 +27,24 @@ class Metabolism(Process):
         - objective (dict) -- stoichiometry dict to be optimized
         - external_molecules (list) -- the external molecules
         - reversible_reactions (list)
-    '''
+    """
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1/units.mol
         self.density = 1100 * units.g/units.L
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
-        self.reaction_ids = self.fba.reaction_ids()  #list(self.fba.stoichiometry.keys())
+        self.reaction_ids = self.fba.reaction_ids()
 
         # additional options
         self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
-        self.regulation = initial_parameters.get('regulation', {})
+
+        # make regulation functions from regulation_logic strings
+        regulation_logic = initial_parameters.get('regulation_logic', {})
+        self.regulation = {rxn_id: rl.build_rule(logic_string)
+            for rxn_id, logic_string in regulation_logic.items()}
 
         # get molecules in objective
         self.objective_molecules = []
@@ -81,12 +88,12 @@ class Metabolism(Process):
             'internal': self.objective_molecules,
             'external': self.fba.external_molecules,
             'reactions': self.reaction_ids,
-            'exchange': self.fba.external_molecules,
+            # 'exchange': self.fba.external_molecules,
         }
 
         # default updaters
         set_internal_states = {state_id: 'set'
-            for state_id in self.reaction_ids + ['volume']}
+            for state_id in self.reaction_ids}
         accumulate_internal_states = {state_id: 'accumulate'
             for state_id in self.objective_molecules + ['mass']}
         default_updaters = {
@@ -111,19 +118,19 @@ class Metabolism(Process):
         mass = internal_state['mass'] * units.fg
         volume = mass.to('g') / self.density
 
-        ## conversion factors
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        # conversion factors
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         ## get flux constraints
         # exchange_constraints based on external availability
         exchange_constraints = {mol_id: 0.0
-            for mol_id, conc in external_state.items() if conc <= 0.0}
+            for mol_id, conc in external_state.items() if conc <= REGULATION_THRESHOLD}
 
         # availibility is boolean state of all molecules present
         # regulation_state determines state of regulated reactions (True/False)
         availability = flatten_role_dicts({role: states[role]
             for role in ('internal', 'external')})
-        availability = {state: value > 0
+        availability = {state: value > EXCHANGE_THRESHOLD
             for state, value in availability.items()}
         regulation_state = {rxn_id: logic(availability)
             for rxn_id, logic in self.regulation.items()}
@@ -132,7 +139,7 @@ class Metabolism(Process):
         # first, add exchange constraints
         self.fba.set_exchange_bounds(exchange_constraints)
 
-        # next, add constraints coming from flux_bounds (typically transport)
+        # next, add constraints coming from flux_bounds
         # to constrain exchange fluxes, add the suffix 'EX_' to the external molecule ID
         self.fba.constrain_flux(constrained_reaction_bounds)
 
@@ -150,7 +157,7 @@ class Metabolism(Process):
         internal_fluxes.update((mol_id, flux * timestep) for mol_id, flux in internal_fluxes.items())
 
         # update internal counts from objective flux
-        # calculate the new mass from the objective molecules' molecular weights
+        # calculate added mass from the objective molecules' molecular weights
         objective_count = (objective_exchange * mmol_to_count).magnitude
         added_mass = 0.0
         internal_state_update = {}
@@ -161,11 +168,11 @@ class Metabolism(Process):
                 # added biomass
                 mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
                 mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
-                added_mass += mol_mass.to('fg').magnitude # to fg
+                added_mass += mol_mass.to('fg').magnitude
 
         internal_state_update.update({'mass': added_mass})
 
-        # convert exchange fluxes to counts with mmol_to_count
+        # convert exchange fluxes to counts
         exchange_deltas = {
             reaction: int((flux * mmol_to_count).magnitude)
             for reaction, flux in exchange_fluxes.items()}
@@ -237,7 +244,7 @@ def simulate_metabolism(config):
         # update volume
         new_mass = state['internal']['mass'] * units.fg
         new_volume = new_mass.to('g') / density
-        state['internal']['volume'] = new_volume.to('L').magnitude
+        state['internal']['volume'] = new_volume.to('fL').magnitude
 
         # apply external update -- use exchange without growth rate
         mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
@@ -323,7 +330,7 @@ def get_toy_configuration():
     initial_state = {
         'internal': {
             'mass': mass.magnitude,  # fg
-            'volume': volume.magnitude},  # L
+            'volume': volume.to('fL').magnitude},
         'external': {
             'A': 21.0,
             'F': 5.0,
