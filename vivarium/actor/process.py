@@ -14,6 +14,10 @@ from vivarium.utils.units import units
 from vivarium.utils.dict_utils import merge_dicts
 
 
+
+class topologyError(Exception):
+    pass
+
 def npize(d):
     ''' Turn a dict into an ordered set of keys and values. '''
 
@@ -249,7 +253,11 @@ def initialize_state(process_layers, topology, initial_state):
         default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.items():
-            compartment_role = topology[process_id][process_role]
+            try:
+                compartment_role = topology[process_id][process_role]
+            except:
+                raise topologyError(
+                    'no "{}" role assigned to "{}" process in topology'.format(process_role, process_id))
 
             # initialize the default states
             default_states = default_process_states.get(process_role, {})
@@ -551,19 +559,25 @@ def simulate_with_environment(compartment, settings={}):
     requires processes made for LatticeCompartment, with environment_role and exchange_role
     '''
 
-    environment_role = settings['environment_role']
-    exchange_role = settings['exchange_role']
-    exchange_ids = list(compartment.states[exchange_role].keys())
-    env_volume = settings.get('environment_volume', 1e-12) * units.L
-    nAvogadro = constants.N_A * 1/units.mol
+    # parameters
+    nAvogadro = constants.N_A * 1 / units.mol
 
+    # get environment configuration
+    environment_role = settings['environment_role']
+    env_volume = settings.get('environment_volume', 1e-12) * units.L
+    exchange_role = settings.get('exchange_role')
+    if exchange_role:
+        exchange_ids = list(compartment.states[exchange_role].keys())
+    else:
+        print('no exchange role! simulate environment without exchange')
+    environment = compartment.states.get(environment_role)
+    exchange = compartment.states.get(exchange_role)
+
+    # get timeline
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
     timeline = settings.get('timeline', [(total_time, {})])
     end_time = timeline[-1][0]
-
-    environment = compartment.states.get(environment_role)
-    exchange = compartment.states.get(exchange_role)
 
     # initialize saved_state
     saved_state = {}
@@ -585,14 +599,15 @@ def simulate_with_environment(compartment, settings={}):
 
         ## apply exchange to environment
         # get counts, convert to change in concentration
-        delta_counts = exchange.state_for(exchange_ids)
-        mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-        delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
-        environment.apply_update(delta_concs)
+        if exchange:
+            delta_counts = exchange.state_for(exchange_ids)
+            mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
+            delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
+            environment.apply_update(delta_concs)
 
-        # reset exchange
-        reset_exchange = {key: 0 for key in exchange_ids}
-        exchange.assign_values(reset_exchange)
+            # reset exchange
+            reset_exchange = {key: 0 for key in exchange_ids}
+            exchange.assign_values(reset_exchange)
 
         saved_state[time] = compartment.current_state()
 

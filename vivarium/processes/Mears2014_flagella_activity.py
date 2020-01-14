@@ -6,6 +6,9 @@ import random
 import math
 import uuid
 
+import matplotlib.pyplot as plt
+from matplotlib import colors
+
 from vivarium.actor.process import Process, deep_merge
 
 
@@ -87,7 +90,7 @@ class FlagellaActivity(Process):
                 'motile_state',
                 'motile_force',
                 'motile_torque',
-            ],
+                'n_flagella'],
             'membrane': ['PMF', 'protons_flux_accumulated'],
             'flagella': self.flagella_ids,
             'external': []
@@ -106,7 +109,7 @@ class FlagellaActivity(Process):
             'external': {},
             'membrane': {'PMF': DEFAULT_PMF, 'PROTONS': 0},
             'flagella': {flagella_id: random.choice([0, 1]) for flagella_id in self.flagella_ids},
-            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': DEFAULT_N_FLAGELLA})}
+            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': self.n_flagella})}
 
         # default emitter keys
         default_emitter_keys = {
@@ -307,13 +310,6 @@ def test_motor_PMF():
     }
 
 def plot_activity(output, out_dir='out'):
-    # TODO -- make this into an analysis figure
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    from matplotlib import colors
-
     # receptor_activities = output['receptor_activities']
     CheY_vec = output['internal']['CheY']
     CheY_P_vec = output['internal']['CheY_P']
@@ -323,7 +319,7 @@ def plot_activity(output, out_dir='out'):
     time_vec = output['time']
 
     # get all flagella states into an activity grid
-    flagella_ids = flagella.keys()
+    flagella_ids = list(flagella.keys())
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
     total_CW = np.zeros((len(time_vec)))
     for flagella_id, motor_states in flagella.items():
@@ -403,10 +399,6 @@ def plot_activity(output, out_dir='out'):
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 def plot_motor_PMF(output, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-
     motile_state = output['motile_state']
     motile_force = output['motile_force']
     motile_torque = output['motile_torque']
