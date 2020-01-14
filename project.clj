@@ -9,7 +9,7 @@
                  [aleph "0.4.6"]
                  [clj-http "3.7.0"]
                  [polaris "0.0.19"]
-                 [com.novemberain/monger "3.1.0"]
+                 [ophion "0.1.0"]
                  [spootnik/kinsky "0.1.22"]]
   :main shepherd.core
   :java-source-paths ["java/src"])
