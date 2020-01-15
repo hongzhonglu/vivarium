@@ -87,6 +87,7 @@ class Media(object):
     def _get_stock_media(self, raw_data):
         '''load all stock media'''
         self.stock_media = {}
+
         for label in vars(raw_data.media):
             self.stock_media[label] = {}
 

@@ -11,11 +11,12 @@ with open("requirements.txt", 'r') as requirements:
 
 setup(
     name='wholecell-vivarium',
-    version='0.0.34',
+    version='0.0.39',
     packages=[
         'vivarium',
         'vivarium.actor',
         'vivarium.analysis',
+        'vivarium.composites',
         'vivarium.environment',
         'vivarium.processes',
         'vivarium.data',

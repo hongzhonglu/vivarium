@@ -114,6 +114,11 @@ class KafkaEmitter(Emitter):
 class DatabaseEmitter(Emitter):
     '''
     Emit data to a mongoDB database
+
+	example:
+	config = {
+        'host': 'localhost:27017',
+        'database': 'DB_NAME'}
     '''
     client = None
 
@@ -124,7 +129,7 @@ class DatabaseEmitter(Emitter):
 
         # create singleton instance of mongo client
         if DatabaseEmitter.client is None:
-            DatabaseEmitter.client = MongoClient(config['url'])
+            DatabaseEmitter.client = MongoClient(config['host'])
 
         self.db = getattr(self.client, config.get('database', 'simulations'))
         self.history = getattr(self.db, 'history')
