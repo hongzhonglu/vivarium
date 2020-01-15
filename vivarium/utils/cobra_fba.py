@@ -141,6 +141,14 @@ def extract_model(model):
 
 
 class CobraFBA(object):
+    """
+    This class provides an interface to cobra FBA.
+    It can load in BiGG models (http://bigg.ucsd.edu/models) if provided a model_path to a saved JSON BiGG model,
+    or load in a novel model specified by stoichiometry, reversibility, and objective.
+
+    TODO (Eran) -- MOMA option is provided, but has not yet been tested.
+    """
+
     cobra_configuration = Configuration()
 
     def __init__(self, config={}):
@@ -154,6 +162,7 @@ class CobraFBA(object):
         self.moma = config.get('moma', False)
 
         if model_path:
+            # load a BiGG model
             self.model = cobra.io.load_json_model(model_path)
             extract = extract_model(self.model)
 
@@ -168,6 +177,7 @@ class CobraFBA(object):
             self.default_upper_bound = DEFAULT_UPPER_BOUND  # TODO -- can this be extracted from model?
 
         else:
+            # create an FBA model from config
             self.stoichiometry = config['stoichiometry']
             self.reversible = config.get('reversible', [])
             self.external_molecules = config['external_molecules']
