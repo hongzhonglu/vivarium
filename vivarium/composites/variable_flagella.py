@@ -106,7 +106,7 @@ if __name__ == '__main__':
     options = compose_variable_flagella({})['options']
 
     # define timeline
-    timeline = [(1000, {})]
+    timeline = [(100, {})]
 
     settings = {
         'environment_role': options['environment_role'],

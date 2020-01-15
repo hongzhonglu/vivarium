@@ -293,7 +293,7 @@ class Compartment(object):
 
         self.initial_time = configuration.get('initial_time', 0.0)
         self.local_time = 0.0
-        self.time_step = configuration.get('time_step', 1.0)
+        self.time_step = min(configuration.get('time_step', 1.0), get_compartment_timestep(processes))
 
         self.processes = processes
         self.states = states
@@ -574,10 +574,10 @@ def simulate_with_environment(compartment, settings={}):
     exchange = compartment.states.get(exchange_role)
 
     # get timeline
-    timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
     timeline = settings.get('timeline', [(total_time, {})])
     end_time = timeline[-1][0]
+    timestep = compartment.time_step
 
     # initialize saved_state
     saved_state = {}
