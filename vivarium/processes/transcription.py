@@ -5,7 +5,7 @@ from vivarium.actor.process import Process
 from vivarium.states.chromosome import Chromosome, Rnap, test_chromosome
 
 def build_stoichiometry(promoter_count):
-    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2))
+    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2), dtype=np.int64)
     for index in range(promoter_count):
         # forward reaction
         stoichiometry[index][index] = -1
@@ -25,13 +25,20 @@ def build_rates(affinities, advancement):
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
         self.promoter_affinities = initial_parameters.get('promoter_affinities', {})
+        self.promoter_order = initial_parameters.get('promoter_order', [])
         self.promoter_count = len(self.promoter_affinities)
+        self.affinity_vector = np.array([
+            self.promoter_affinities[promoter_key]
+            for promoter_key in self.promoter_order])
+
         self.elongation_rate = initial_parameters.get('elongation_rate', 1.0)
         self.advancement_rate = initial_parameters.get('advancement_rate', 1.0)
+
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.rates = build_rates(
-            self.promoter_affinities,
+            self.affinity_vector,
             self.advancement_rate)
+
         self.initiation = StochasticSystem(self.stoichiometry, self.rates)
 
     def next_update(self, timestep, states):
@@ -47,9 +54,9 @@ class Transcription(Process):
         open_domains = {}
         bound_domains = {}
         for promoter_key in chromosome.promoter_order:
-            bound_domains[promoter_key] = frozenset([
+            bound_domains[promoter_key] = set([
                 rnap.domain
-                for rnap in promoter_rnaps[promoter_key]
+                for rnap in promoter_rnaps.get(promoter_key, [])
                 if rnap.is_bound()])
             bound_rnap.append(len(bound_domains[promoter_key]))
             open_domains[promoter_key] = promoter_domains[promoter_key] - bound_domains[promoter_key]
@@ -73,14 +80,14 @@ class Transcription(Process):
         def choose_element(elements):
             if elements:
                 choice = np.random.choice(len(elements), 1)
-                return elements[choice]
+                return list(elements)[int(choice)]
 
         rnap_bindings = 0
         complete_transcripts = []
         time = 0
         for elapse, event in zip(result['time'], result['events']):
             complete = chromosome.polymerize(self.elongation_rate * (elapse - time))
-            complete_transcripts.concat(complete)
+            complete_transcripts.extend(complete)
             time = elapse
 
             if event < self.promoter_count:
@@ -94,7 +101,7 @@ class Transcription(Process):
                 open_domains[promoter_key].remove(domain)
 
                 # create a new bound RNAP and add it to the chromosome.
-                chromosome.bind_rnap(promoter_key, domain)
+                new_rnap = chromosome.bind_rnap(promoter_key, domain)
                 promoter_rnaps[promoter_key].append(new_rnap)
 
                 rnap_bindings += 1
@@ -118,7 +125,7 @@ class Transcription(Process):
 
         remaining = timestep - time
         complete = chromosome.polymerize(self.elongation_rate * remaining)
-        complete_transcripts.concat(complete)
+        complete_transcripts.extend(complete)
 
         return chromosome.to_dict()
 
@@ -127,7 +134,8 @@ def test_transcription():
     parameters = {
         'promoter_affinities': {
             'pA': 2,
-            'pB': 5}}
+            'pB': 5},
+        'promoter_order': ['pA', 'pB']}
 
     chromosome = test_chromosome()
     transcription = Transcription(parameters)

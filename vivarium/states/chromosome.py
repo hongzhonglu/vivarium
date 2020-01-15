@@ -1,5 +1,6 @@
 import random
 import copy
+import numpy as np
 
 def first(l):
     if l:
@@ -251,29 +252,31 @@ class Chromosome(Datum):
 
     def promoter_copy_numbers(self):
         copy_numbers = [
-            chromosome.copy_number(self.promoters[promoter_key].position)
+            self.copy_number(self.promoters[promoter_key].position)
             for promoter_key in self.promoter_order]
         return np.array(copy_numbers)
 
     def promoter_rnaps(self):
-        by_promoter = {}
+        by_promoter = {
+            promoter_key: []
+            for promoter_key in self.promoter_order}
         for rnap in self.rnaps:
-            if not rnap.promoter in by_promoter:
-                by_promoter[rnap.promoter] = []
             by_promoter[rnap.promoter].append(rnap)
         return by_promoter
 
     def promoter_domains(self):
         return {
-            promoter_key: self.position_domains(self.promoters[promoter_key].position)
+            promoter_key: self.position_domains(
+                self.root_domain,
+                self.promoters[promoter_key].position)
             for promoter_key in self.promoter_order}
 
     def position_domains(self, domain_index, position):
         domain = self.domains[domain_index]
         if len(domain.children) == 0 or (position < 0 and domain.lag >= position) or (position >= 0 and domain.lead <= position):
-            return frozenset([domain_index])
+            return set([domain_index])
         else:
-            return frozenset.union(*[
+            return set.union(*[
                 self.position_domains(child, position)
                 for child in domain.children])
 
@@ -284,6 +287,7 @@ class Chromosome(Datum):
             'position': self.promoters[promoter_key].position})
         new_rnap.bind()
         self.rnaps.append(new_rnap)
+        return new_rnap
 
     def polymerize(self, elongation):
         complete_transcripts = []
