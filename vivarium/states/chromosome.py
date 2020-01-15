@@ -9,6 +9,17 @@ def first_value(d):
     if d:
         return d[list(d.keys())[0]]
 
+def flatten(l):
+    '''
+    Flatten a list by one level:
+        [[1, 2, 3], [[4, 5], 6], [7]] --> [1, 2, 3, [4, 5], 6, 7]
+    '''
+
+    return [
+        item
+        for sublist in l
+        for item in sublist]
+
 def traverse(tree, key, f, combine):
     node = tree[key]
     if node.children:
@@ -143,6 +154,19 @@ class Promoter(Datum):
 
         return tuple([self.id] + state)
 
+    def strength_from(self, terminator_index):
+        total = 0
+        for index in range(terminator_index, len(self.terminators)):
+            total += self.terminators[index].strength
+        return total
+
+    def crossing_terminators(self, before, elongation):
+        after = elongation * self.direction
+        return [
+            terminator
+            for terminator in self.terminators
+            if before < terminator.position < after or after < terminator.position < before]
+
     def choose_terminator(self):
         if len(self.terminators) > 1:
             choice = random.random() * self.terminator_strength
@@ -168,10 +192,29 @@ class Rnap(Datum):
     defaults = {
         'promoter': '',
         'domain': 0,
+        'state': 'bound', # other states: ['transcribing', 'complete']
         'position': 0}
 
     def __init__(self, config):
         super(Rnap, self).__init__(config, self.defaults)
+
+    def bind(self):
+        self.state = 'bound'
+
+    def start_transcribing(self):
+        self.state = 'transcribing'
+
+    def complete(self):
+        self.state = 'complete'
+
+    def is_bound(self):
+        return self.state == 'bound'
+
+    def is_transcribing(self):
+        return self.state == 'transcribing'
+
+    def is_complete(self):
+        return self.state == 'complete'
 
 class Chromosome(Datum):
     schema = {
@@ -184,7 +227,93 @@ class Chromosome(Datum):
         'genes': {},
         'promoters': {},
         'domains': {},
+        'root_domain': 0,
         'rnaps': []}
+
+    def operons(self):
+        return [
+            operon
+            for promoter in self.promoters.values()
+            for operon in promoter.operons(self.genes)]
+
+    def copy_number(self, position):
+        def combine(a, b):
+            return a + b
+
+        def count(node, result=0):
+            return result + 1
+
+        return traverse(
+            self.domains,
+            self.root_domain,
+            count,
+            combine)
+
+    def promoter_copy_numbers(self):
+        copy_numbers = [
+            chromosome.copy_number(self.promoters[promoter_key].position)
+            for promoter_key in self.promoter_order]
+        return np.array(copy_numbers)
+
+    def promoter_rnaps(self):
+        by_promoter = {}
+        for rnap in self.rnaps:
+            if not rnap.promoter in by_promoter:
+                by_promoter[rnap.promoter] = []
+            by_promoter[rnap.promoter].append(rnap)
+        return by_promoter
+
+    def promoter_domains(self):
+        return {
+            promoter_key: self.position_domains(self.promoters[promoter_key].position)
+            for promoter_key in self.promoter_order}
+
+    def position_domains(self, domain_index, position):
+        domain = self.domains[domain_index]
+        if len(domain.children) == 0 or (position < 0 and domain.lag >= position) or (position >= 0 and domain.lead <= position):
+            return frozenset([domain_index])
+        else:
+            return frozenset.union(*[
+                self.position_domains(child, position)
+                for child in domain.children])
+
+    def bind_rnap(self, promoter_key, domain, ):
+        new_rnap = Rnap({
+            'promoter': promoter_key,
+            'domain': domain,
+            'position': self.promoters[promoter_key].position})
+        new_rnap.bind()
+        self.rnaps.append(new_rnap)
+
+    def polymerize(self, elongation):
+        complete_transcripts = []
+
+        for rnap in self.rnaps:
+            if rnap.is_transcribing():
+                promoter = self.promoters[rnap.promoter]
+                extent = elongation * promoter.direction
+                projection = rnap.position + extent
+                terminators = promoter.crossing_terminators(rnap.position, projection)
+                total = promoter.strength_from(terminators[0])
+
+                choice = None
+                for terminator_index in terminators:
+                    terminator = promoter.terminators[terminator_index]
+                    choice = random.random() <= terminator.strength / total
+                    total -= terminator.strength
+
+                    if choice:
+                        break
+
+                if choice:
+                    rnap.position = terminator.position
+                    rnap.complete()
+                    self.rnaps.remove(rnap)
+                    complete_transcripts.append(terminator.operon)
+                else:
+                    rnap.position = projection
+
+        return complete_transcripts
 
     def initiate_replication(self):
         leaves = [leaf for leaf in self.domains.values() if not leaf.children]
@@ -222,7 +351,7 @@ class Chromosome(Datum):
                 'sequence': self.sequence,
                 'promoters': {id: promoter.to_dict() for id, promoter in self.promoters.items()},
                 'domains': {domain.id: domain.to_dict()},
-
+                'root_domain': domain.id,
                 'rnaps': [
                     rnap.to_dict()
                     for rnap in self.rnaps
@@ -243,8 +372,7 @@ class Chromosome(Datum):
         return merge
 
     def terminate_replication(self):
-        root = min(self.domains.keys())
-        children = self.domains[root].children
+        children = self.domains[self.root_domain].children
         divided = [
             traverse(
                 self.domains,
@@ -255,14 +383,9 @@ class Chromosome(Datum):
 
         return [Chromosome(fork) for fork in divided]
 
-    def operons(self):
-        return [
-            operon
-            for promoter in self.promoters.values()
-            for operon in promoter.operons(self.genes)]
-                
     def __init__(self, config):
         super(Chromosome, self).__init__(config, self.defaults)
+        self.promoter_order = list(self.promoters.keys())
 
 
 def test_chromosome():
@@ -333,8 +456,6 @@ def test_chromosome():
     print(chromosome.promoters['pA'].terminators[0].operon)
     print(chromosome.to_dict())
 
-    assert chromosome.to_dict() == chromosome_config
-
     print('operons:')
     print([operon.to_dict() for operon in chromosome.operons()])
 
@@ -358,10 +479,18 @@ def test_chromosome():
     print('operon')
     print(operon.to_dict())
 
+    print('copy numbers 1 4 7 9 11')
+    print(chromosome.copy_number(1))
+    print(chromosome.copy_number(4))
+    print(chromosome.copy_number(7))
+    print(chromosome.copy_number(9))
+    print(chromosome.copy_number(11))
+
     children = chromosome.terminate_replication()
     print('termination:')
     print([child.to_dict() for child in children])
 
+    return chromosome
 
 if __name__ == '__main__':
     test_chromosome()
