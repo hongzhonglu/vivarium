@@ -28,7 +28,7 @@ def compose_variable_flagella(config):
 
     # flagella
     flagella_config = copy.deepcopy(config)
-    flagella_range = list(range(1, 11))
+    flagella_range = list(range(0, 4))
     flagella_config.update({'n_flagella': random.choice(flagella_range)})
     flagella = FlagellaActivity(flagella_config)
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
         simulate_with_environment
 
-    out_dir = os.path.join('out', 'tests', 'variable_flagella')
+    out_dir = os.path.join('out', 'tests', 'variable_flagella_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     options = compose_variable_flagella({})['options']
 
     # define timeline
-    timeline = [(100, {})]
+    timeline = [(10.0, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -116,8 +116,6 @@ if __name__ == '__main__':
 
     plot_settings = {
         'max_rows': 20,
-        'remove_zeros': True,
-        # 'show_state': [('cell', 'g6p_c')]
     }
 
     # saved_state = simulate_compartment(compartment, settings)
