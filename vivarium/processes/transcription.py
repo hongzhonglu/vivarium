@@ -80,8 +80,8 @@ class Transcription(Process):
         time = 0
         for elapse, event in zip(result['time'], result['events']):
             complete = chromosome.polymerize(self.elongation_rate * (elapse - time))
-            time = elapse
             complete_transcripts.concat(complete)
+            time = elapse
 
             if event < self.promoter_count:
                 # RNAP has bound the promoter

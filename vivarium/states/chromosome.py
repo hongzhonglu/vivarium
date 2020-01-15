@@ -192,7 +192,7 @@ class Rnap(Datum):
     defaults = {
         'promoter': '',
         'domain': 0,
-        'state': 'bound', # other states: ['transcribing', 'complete']
+        'state': None, # other states: ['bound', 'transcribing', 'complete']
         'position': 0}
 
     def __init__(self, config):
@@ -277,7 +277,7 @@ class Chromosome(Datum):
                 self.position_domains(child, position)
                 for child in domain.children])
 
-    def bind_rnap(self, promoter_key, domain, ):
+    def bind_rnap(self, promoter_key, domain):
         new_rnap = Rnap({
             'promoter': promoter_key,
             'domain': domain,
