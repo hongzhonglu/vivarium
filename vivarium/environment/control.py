@@ -119,7 +119,7 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        lattice_config = dict(agent_config, {
+        lattice_config = dict(agent_config, **{
             'timeline_str': timeline_str,
             'media_id': media_id,
             'emit_fields': emit_fields,
@@ -140,7 +140,7 @@ class ShepherdControl(ActorControl):
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'ecoli', dict(agent_config, {
+            self.add_cell(args['type'] or 'ecoli', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
@@ -161,7 +161,7 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        experiment_config = dict(agent_config, {
+        experiment_config = dict(agent_config, **{
             'timeline_str': timeline_str,
             'run_for': 2.0,
             'emit_fields': emit_fields,
@@ -173,7 +173,7 @@ class ShepherdControl(ActorControl):
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(agent_config, {
+            self.add_cell(args['type'] or 'metabolism', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
@@ -194,17 +194,17 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC', 'G6P']
 
-        experiment_config = dict(agent_config, {
+        experiment_config = dict(agent_config, **{
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': emit_field})
+            'emit_fields': emit_fields})
 
         self.add_agent(experiment_id, 'lattice', experiment_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(agent_config, {
+            self.add_cell(args['type'] or 'metabolism', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
@@ -222,7 +222,7 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 2.0 mmol 0.1 L, 21600 end'
 
-        experiment_config = dict(agent_config, {
+        experiment_config = dict(agent_config, **{
             'timeline_str': timeline_str,
             'edge_length_x': 15.0,
             'patches_per_edge_x': 15,
@@ -239,7 +239,7 @@ class ShepherdControl(ActorControl):
         time.sleep(10)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'kinetic_FBA', dict(agent_config, {
+            self.add_cell(args['type'] or 'kinetic_FBA', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
@@ -260,7 +260,7 @@ class ShepherdControl(ActorControl):
         # timeline_str = '0 {}, 14400 end'.format(media_id)
         timeline_str = '0 {}, 1800 end'.format(media_id)
 
-        chemotaxis_config = dict(agent_config, {
+        chemotaxis_config = dict(agent_config, **{
             'timeline_str': timeline_str,
             'new_media': new_media,
             'run_for' : 0.05,
@@ -269,7 +269,7 @@ class ShepherdControl(ActorControl):
             'gradient': {
                 'type': 'linear',
                 'molecules': {
-                    'GLC':{
+                    'GLC': {
                         'center': [0.0, 0.0],
                         'slope': -1.0/150.0},
                     'MeAsp': {
@@ -282,13 +282,14 @@ class ShepherdControl(ActorControl):
             'edge_length_x': 500.0,
             'edge_length_y': 100.0,
             'patches_per_edge_x': 100})
+
         self.add_agent(experiment_id, 'lattice', chemotaxis_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, {
+            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index}))
@@ -323,7 +324,7 @@ class ShepherdControl(ActorControl):
         new_media = {media_id: media}
         timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        swarm_config = dict(agent_config, {
+        swarm_config = dict(agent_config, **{
             'cell_placement': [0.5, 0.5], # place cells at center of lattice
             'timeline_str': timeline_str,
             'new_media': new_media,
@@ -340,7 +341,7 @@ class ShepherdControl(ActorControl):
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, {
+            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index}))

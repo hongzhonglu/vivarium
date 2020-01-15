@@ -21,6 +21,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import shutil
+import copy
 
 from vivarium.actor.inner import Inner
 from vivarium.actor.outer import Outer
@@ -95,7 +96,8 @@ def wrap_init_composite(make_composite):
 def wrap_boot_environment(intialize):
     def boot(agent_id, agent_type, agent_config):
         # get boot_config from initialize
-        boot_config = intialize(agent_config)
+        agent_config = intialize(agent_config)
+        boot_config = copy.deepcopy(agent_config['boot_config'])
 
         # paths
         working_dir = agent_config.get('working_dir', os.getcwd())
@@ -162,9 +164,9 @@ def initialize_lattice(agent_config):
         boot_config = {'concentrations': media}
     else:
         boot_config = {'media_id': media_id}
-    boot_config.update(agent_config)
 
-    return boot_config
+    agent_config['boot_config'].update(boot_config)
+    return agent_config
 
 def initialize_glc_g6p_small(agent_config):
     # set up media
