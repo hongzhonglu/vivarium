@@ -60,7 +60,7 @@ class Actor(object):
     using the configured Kafka Producer.
     """
 
-    def __init__(self, agent_id, agent_type, agent_config):
+    def __init__(self, agent_id, agent_type, actor_config):
         """
         Initialize the Actor object with a unique id and kafka configuration.
 
@@ -71,7 +71,7 @@ class Actor(object):
             agent_type (str): A string indicating which type of agent this is. This is helpful
                 for spawning new agents of the same type from the agent shepherd.
 
-            agent_config (dict): A dictionary containing any configuration information the agent
+            actor_config (dict): A dictionary containing any configuration information the agent
                 might need. Subclasses use this extensively, but the only key that needs to be
                 present for the base agent class is:
 
@@ -89,8 +89,8 @@ class Actor(object):
 
         self.agent_id = agent_id
         self.agent_type = agent_type
-        self.agent_config = agent_config
-        self.kafka_config = agent_config['kafka_config']
+        self.actor_config = actor_config
+        self.kafka_config = actor_config['kafka_config']
         self.topics = self.kafka_config['topics']
 
         self.producer = Producer({

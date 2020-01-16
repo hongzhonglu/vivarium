@@ -10,7 +10,7 @@ class ActorShepherd(Actor):
     ActorShepherd is an actor that spawns, tracks and removes agent processes in
     a multiprocessing environment. The type of agent it is able to spawn is mediated by
     a dictionary of "initializers" that is passed to it on init. Each key is the name of an agent
-    type and each value is a function that takes two arguments, an `agent_id` and an `agent_config`
+    type and each value is a function that takes two arguments, an `agent_id` and an `actor_config`
     dictionary. Each time an agent is added, it is done so by calling one of these initializers.
 
     ActorShepherd responds to two agent lifecycle messages, ADD_AGENT and REMOVE_AGENT, as well as
@@ -18,7 +18,7 @@ class ActorShepherd(Actor):
     every agent in its process pool.
 
     * ADD_AGENT: takes an `agent_id`, an `agent_type` which is the key to an initializer, and
-        `agent_config`, which is passed to the initializer when spawning the new agent. Each
+        `actor_config`, which is passed to the initializer when spawning the new agent. Each
         agent is a separate process using the python `multiprocessing` library.
 
     * REMOVE_AGENT: takes an `agent_id` to remove or an `agent_prefix`, which will remove all
@@ -27,14 +27,14 @@ class ActorShepherd(Actor):
         to git's behavior when naming commit hashes.
     """
 
-    def __init__(self, agent_id, agent_config, agent_initializers):
+    def __init__(self, agent_id, actor_config, agent_initializers):
         """
         Initialize the ActorShepherd with its id, kafka config and a dictionary of initializers,
         which determine what kind of agents the shepherd is able to spawn.
 
         Args:
             agent_id (str): A unique identifier for the new agent.
-            agent_config (dict): A dictionary containing any information needed to run this
+            actor_config (dict): A dictionary containing any information needed to run this
                 outer agent. The only required key is `kafka_config` containing Kafka configuration
                 information with the following keys:
 
@@ -48,15 +48,15 @@ class ActorShepherd(Actor):
                         running, pausing, or shutting down agents.
             agent_initializers (dict): This is the set of agents this shepherd will be able to
                 spawn. The values are callables that take two arguments, `agent_id` (str) and
-                `agent_config` (dict), and will be passed to `multiprocessing.Process` to spawn
+                `actor_config` (dict), and will be passed to `multiprocessing.Process` to spawn
                 a new agent process.
         """
 
-        kafka_config = agent_config['kafka_config']
+        kafka_config = actor_config['kafka_config']
         kafka_config['subscribe'].append(
             kafka_config['topics']['shepherd_receive'])
 
-        super(ActorShepherd, self).__init__(agent_id, 'shepherd', agent_config)
+        super(ActorShepherd, self).__init__(agent_id, 'shepherd', actor_config)
 
         self.agents = {}
         self.agent_initializers = agent_initializers
@@ -66,7 +66,7 @@ class ActorShepherd(Actor):
 
 
     # TODO(Ryan): add command to list agent state
-    def add_agent(self, agent_id, agent_type, agent_config):
+    def add_agent(self, agent_id, agent_type, actor_config):
         """
         Add a new agent for the shepherd to track.
 
@@ -74,7 +74,7 @@ class ActorShepherd(Actor):
             agent_id (str): Unique identifier for the new agent.
             agent_type (str): Specifies which type of agent to create.
                 Must be one of the keys of this shepherd's `initializers` dictionary.
-            agent_config (dict): Any parameters the agent needs for initialization. This
+            actor_config (dict): Any parameters the agent needs for initialization. This
                 dictionary will be passed to the initializer on invocation along with the agent_id.
         """
 
@@ -83,13 +83,13 @@ class ActorShepherd(Actor):
             process = mp.Process(
                 target=initializer,
                 name=agent_id,
-                args=(agent_id, agent_type, agent_config))
+                args=(agent_id, agent_type, actor_config))
 
             self.agents[agent_id] = {
                 'process': process,
                 'id': agent_id,
                 'type': agent_type,
-                'config': agent_config}
+                'config': actor_config}
 
             process.start()
 
