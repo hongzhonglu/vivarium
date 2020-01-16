@@ -269,22 +269,23 @@ class ShepherdControl(ActorControl):
             'run_for' : 0.05,
             'emit_fields': ['MeAsp', 'GLC'],
             'static_concentrations': True,
+            'cell_placement': [0.5, 0.001],  # place cells away from gradient
             'gradient': {
                 'type': 'linear',
                 'molecules': {
                     'GLC': {
-                        'center': [0.0, 0.0],
+                        'center': [0.5, 1.0],
                         'slope': -1.0/150.0},
                     'MeAsp': {
-                        'center': [1.0, 1.0],
+                        'center': [0.5, 1.0],
                         'slope': -1.0/150.0}
                 }},
             'diffusion': 0.0,
             # 'translation_jitter': 0.1,
             # 'rotation_jitter': 0.05,
-            'edge_length_x': 500.0,
-            'edge_length_y': 100.0,
-            'patches_per_edge_x': 100}
+            'edge_length_x': 100.0,
+            'edge_length_y': 500.0,
+            'patches_per_edge_x': 50}
 
         agent_config['boot_config'].update(lattice_config)
         self.add_agent(experiment_id, 'lattice', agent_config)

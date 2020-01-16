@@ -115,7 +115,11 @@ class FlagellaActivity(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': [],
+            'internal': [
+                'n_flagella',
+                'motile_force',
+                'motile_torque',
+                'motile_state'],
             'flagella': [],
             'external': [],
         }

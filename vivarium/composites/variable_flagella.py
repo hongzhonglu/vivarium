@@ -28,7 +28,7 @@ def compose_variable_flagella(config):
 
     # flagella
     flagella_config = copy.deepcopy(config)
-    flagella_range = list(range(0, 4))
+    flagella_range = [0, 1, 5]  #list(range(0, 4))
     flagella_config.update({'n_flagella': random.choice(flagella_range)})
     flagella = FlagellaActivity(flagella_config)
 
