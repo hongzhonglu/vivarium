@@ -77,24 +77,28 @@ def get_regulation():
 def compose_kinetic_FBA(config):
     """
     A composite with kinetic transport, metabolism, and regulation
+    TODO (eran) -- fit glc/lct uptake rates to growth rates
 
-    TODO -- fit glc/lct uptake rates to growth rates
     """
 
-    ## Declare the processes
+    ## Declare the processes.
+    ## The order allows earlier declared processes to inform later processes
 
-    ## Transport
+    # Transport
+    # load the kinetic parameters
     transport_config = copy.deepcopy(config)
     transport_config.update(get_transport_config())
     transport = ConvenienceKinetics(transport_config)
 
-    ## Metabolism
-    # get target fluxes from transport, load in regulation function
+    # Metabolism
+    # get target fluxes from transport
+    # load regulation function
     metabolism_config = copy.deepcopy(config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
     regulation_logic = get_regulation()
 
     metabolism_config.update({
+        'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': METABOLISM_FILE,
@@ -102,7 +106,7 @@ def compose_kinetic_FBA(config):
         'regulation_logic': regulation_logic})
     metabolism = BiGGMetabolism(metabolism_config)
 
-    ## Division
+    # Division
     # get initial volume from metabolism
     division_config = copy.deepcopy(config)
     division_config.update({'initial_state': metabolism.initial_state})
@@ -119,7 +123,7 @@ def compose_kinetic_FBA(config):
         'division': division}
     ]
 
-    ## Make the topology
+    # Make the topology
     # for each process, map process roles to compartment roles
     topology = {
         'transport': {
@@ -139,7 +143,7 @@ def compose_kinetic_FBA(config):
             'internal': 'cell'},
         }
 
-    ## Initialize the states
+    # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -203,6 +207,6 @@ if __name__ == '__main__':
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove first state
+    del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

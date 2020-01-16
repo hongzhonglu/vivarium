@@ -647,17 +647,20 @@ def set_axes(ax, show_xaxis=False):
 
 def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     '''
-    plot simulation output
-        args:
+    plot simulation output, with rows organized into separate columns.
+
+    Requires:
         - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
         - settings (dict) with:
             {
             'max_rows': (int) roles with more states than this number of states get wrapped into a new column
-            'remove_zeros': (bool) if True, timeseries with all 0's get removed
+            'remove_zeros': (bool) if True, timeseries with all zeros get removed
             'remove_flat': (bool) if True, timeseries with all the same value get removed
-            'skip_roles': (list) roles that won't be plotted
+            'skip_roles': (list) entire roles that won't be plotted
             'overlay': (dict) with
                 {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
+            'show_state': (list) with [('role_id', 'state_id')]
+                for all states that will be highlighted, even if they are otherwise to be removed
             }
     TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
     '''
@@ -666,10 +669,10 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     # get settings
     max_rows = settings.get('max_rows', 25)
-    overlay = settings.get('overlay', {})
-    skip_roles = settings.get('skip_roles', [])
-    remove_flat = settings.get('remove_flat', False)
     remove_zeros = settings.get('remove_zeros', False)
+    remove_flat = settings.get('remove_flat', False)
+    skip_roles = settings.get('skip_roles', [])
+    overlay = settings.get('overlay', {})
     show_state = settings.get('show_state', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
