@@ -9,7 +9,6 @@ from vivarium.utils.units import units
 
 
 DATA_FILE = os.path.join('models', 'e_coli_core.json')
-# DATA_FILE = os.path.join('models', 'iAF1260b.json')
 
 def BiGGMetabolism(parameters):
     initial_state = get_initial_state()
@@ -30,7 +29,7 @@ def get_initial_state():
             'volume': volume.to('fL').magnitude}
 
     # external state
-    # TODO -- initial state is currently configured to e_coli_core, needs to be generalized
+    # TODO -- initial state is set to e_coli_core, needs to be generalized to whatever BiGG model is loaded
     make_media = Media()
     external = make_media.get_saved_media('ecoli_core_GLC')
 
@@ -79,71 +78,23 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # toy functions
-    def toy_transport():
-        transport_kinetics = {
-            # 'GLCptspp': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model iAF1260b
-            # 'EX_lac__D_e': kinetic_rate('lac__D_e', -5e-1, 8),
-            # 'LACZpp': kinetic_rate('lac__D_e', 1.5e0, 5),
-            # 'GLCpts': kinetic_rate('glc__D_e', 1.5e0, 5),  # for model e_coli_core
-            # 'LACZ': kinetic_rate('lac__D_e', 1.5e0, 5),
-        }
-        return transport_kinetics
-
-    def toy_regulation():
-        regulation = {
-            # 'EX_lac__D_e': rl.build_rule('IF not (glc__D_e_external)'),
-            # 'EX_glc__D_e': rl.build_rule('IF (glc__D_e_external)'),
-            # 'LACZpp': rl.build_rule('IF not (glc__D_e_external)'),
-            # 'LACZ': rl.build_rule('IF not (glc__D_e_external)'),
-        }
-        return regulation
-
     # define process config
     config = {'model_path': DATA_FILE}
-
-    # additional process-like transport and regulation functions
-    transport = toy_transport()
-    regulation = toy_regulation()
-    config['constrained_reaction_ids'] = transport.keys()
-    config['regulation'] = regulation
 
     # load metabolism model
     metabolism = BiGGMetabolism(config)
 
     # simulate model
-    timeline = [
-        # (0, {'external': {
-        #     'glc__D_e': 12.0,
-        #     'lac__D_e': 12.0}
-        # }),
-        # (100, {'external': {
-        #     'glc__D_e': 0.0}
-        # }),
-        (2500, {})]
+    timeline = [(2500, {})]
 
     simulation_config = {
         'process': metabolism,
         'timeline': timeline,
-        'transport_kinetics': toy_transport(),
         'environment_volume': 1e-11}
 
     plot_settings = {
         'max_rows': 30,
         'remove_flat': True,
-        'show_state': [
-            ('external', 'glc__D_e'),
-            ('internal', 'lcts_p'),
-            ('external', 'lac__D_e'),
-            ('flux_bounds', 'LACZ'),
-            ('reactions', 'LACZ'),
-            ('flux_bounds', 'LACZpp'),
-            ('reactions', 'LACZpp'),
-            ('flux_bounds', 'EX_lac__D_e'),
-            ('reactions', 'EX_lac__D_e'),
-            ('flux_bounds', 'EX_glc__D_e'),
-            ('reactions', 'EX_glc__D_e'),
-        ],
         'skip_roles': ['exchange'],
         'overlay': {'reactions': 'flux_bounds'}}
 
@@ -156,6 +107,5 @@ if __name__ == '__main__':
     network_config = {
         'process': metabolism,
         'total_time': 10,
-        'transport_kinetics': toy_transport(),
         'environment_volume': 1e-11}
     save_network(network_config, out_dir)
