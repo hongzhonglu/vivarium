@@ -11,7 +11,7 @@ class LatticeTrace(Analysis):
         super(LatticeTrace, self).__init__(analysis_type='environment')
 
     def get_data(self, client, query, options={}):
-        query.update({'type': 'lattice'})
+        query.update({'type': 'lattice-agent'})
         history_data = client.find(query)
         history_data.sort('time')
         lattice_history = get_lattice(history_data)
