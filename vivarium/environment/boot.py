@@ -117,11 +117,11 @@ def wrap_boot_environment(intialize):
         # create the environment
         environment = EnvironmentSpatialLattice(boot_config)
 
-        return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+        return EnvironmentActor(agent_id, agent_type, agent_config, environment)
 
     return boot
 
-class EnvironmentAgent(Outer):
+class EnvironmentActor(Outer):
     def build_state(self):
         lattice = {
             molecule: self.environment.lattice[index].tolist()
