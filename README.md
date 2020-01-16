@@ -106,28 +106,23 @@ separate terminal tab or PyCharm run/debug tab.
 ## Agent Shepherd
 
 The usual way to start the simulation is to use the agent "Shepherd", which is a process
-that spawns agents in subprocesses (as requested via Kafka messages) so you don't have to
+that spawns agents in new threads (as requested via Kafka messages) so you don't have to
 launch each agent in its own terminal tab.
 Furthermore, this enables cell division wherein a cell agent process ends and two
 new ones begin.
 But to debug an agent, see the "One Agent Per Terminal Tab" instructions, above.
 
-Clone the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) repo and run:
+Shepherd uses Clojure, which you will need to set up ![leiningen](https://leiningen.org)
+
+With Clojure working, open a terminal tab and run shepherd with:
 
    `> lein run`
 
-Use a "vivarium" browser page to view the agents in action. To do this, open another shell
-tab onto the shepherd repo directory and run:
-
-   `> lein run -m shepherd.Lens`
-
-then open a browser window onto [http://localhost:33332/](http://localhost:33332/)
-
-Now you can start a virtual microscope experiment in a "command" terminal tab:
+Then, in a new terminal tab initiate an experiment:
 
    `> python -m vivarium.environment.control experiment --number 3 --type metabolism --experiment_id exp123`
 
-This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ agent and three for the _cell simulation_ agents. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
+This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ actor and three for the _cell simulation_ actors. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
 
 You can `run`/`pause` the simulation at will:
 
