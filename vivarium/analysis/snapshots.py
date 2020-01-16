@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -9,8 +11,15 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from vivarium.analysis.analysis import Analysis, get_compartment
 from vivarium.actor.process import deep_merge
 
-# DEFAULT_COLOR = [color/255 for color in [102, 178, 255]]
+
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
+
+# colors for phylogeny initial agents
+PHYLOGENY_HUES = [hue/360 for hue in np.linspace(0,360,30)]
+DEFAULT_SV = [100.0/100.0, 70.0/100.0]
+
+# colors for flourescent tags
+BASELINE_TAG_COLOR = [220/360, 100.0/100.0, 30.0/100.0]  # HSV
 FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
@@ -28,9 +37,15 @@ class Snapshots(Analysis):
             history_data = client.find(query)
             history_data.sort('time')
             compartment_history = get_compartment(history_data)
-
             times = compartment_history['time']
-            tags_history = {tag: compartment_history['cell'][tag] for tag in tags}
+
+            # get history of all tags
+            roles = [role for role in list(compartment_history.keys()) if role not in ['time']]
+            tags_history = {}
+            for tag in tags:
+                for role in roles:
+                    if tag in compartment_history[role]:
+                        tags_history.update({tag: compartment_history[role][tag]})
 
             # arrange data by time, for easy integration with environment data
             time_dict = {time: {} for time in times}
@@ -100,6 +115,7 @@ class Snapshots(Analysis):
         n_fields = max(len(field_ids),1)
 
         ## get tag ids and range
+        # TODO -- make into a function in vivarium.analysis.analysis
         tag_range = {}
         for c_id, c_data in compartments.items():
             # if this compartment has tags, get their ids and range
@@ -154,8 +170,9 @@ class Snapshots(Analysis):
         # agent colors based on phylogeny
         agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
         for agent_id in initial_agents:
-            agent_colors.update(color_phylogeny(agent_id, phylogeny, DEFAULT_COLOR))
-
+            hue = random.choice(PHYLOGENY_HUES)  # select random initial hue
+            initial_color = [hue] + DEFAULT_SV
+            agent_colors.update(color_phylogeny(agent_id, phylogeny, initial_color))
 
         ## make the figure
         # fields and tag data are plotted in separate rows
@@ -204,13 +221,13 @@ class Snapshots(Analysis):
                                         extent=[0, edge_length_x, 0, edge_length_y],
                                         vmin=vmin,
                                         vmax=vmax,
-                                        cmap='YlGn')
+                                        cmap='BuPu')
                     else:
                         im = plt.imshow(field,
                                         origin='lower',
                                         extent=[0, edge_length_x, 0, edge_length_y],
                                         interpolation='nearest',
-                                        cmap='YlGn')
+                                        cmap='BuPu')
                     plot_agents(ax, agent_data, cell_radius, agent_colors)
 
                     # colorbar in new column after final snapshot
@@ -228,21 +245,27 @@ class Snapshots(Analysis):
             for tag_id in list(tag_range.keys()):
                 ax = init_axes(
                     fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
+                ax.set_facecolor('palegoldenrod')  # set background color
+
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
                 for agent_id in agent_data.keys():
-                    tdata = compartments[agent_id]
-                    all_tags = tdata.get(time) \
-                        or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
+                    agent_color = BASELINE_TAG_COLOR
+                    if agent_id in compartments:
+                        tdata = compartments[agent_id]
+                        all_tags = tdata.get(time) \
+                            or tdata[min(tdata.keys(), key=lambda k: abs(k-time))]  # get closest time key
 
-                    # get current tag concentration, and determine color
-                    counts = all_tags['tags'][tag_id]
-                    volume = agent_data[agent_id]['volume']
-                    level = counts / volume
-                    min_tag, max_tag = tag_range[tag_id]
-                    intensity = max((level - min_tag), 0)
-                    intensity = min(intensity / (max_tag - min_tag), 1)
-                    agent_color = flourescent_color(DEFAULT_COLOR, intensity)
+                        # get current tag concentration, and determine color
+                        counts = all_tags['tags'][tag_id]
+                        volume = agent_data[agent_id]['volume']
+                        level = counts / volume
+                        min_tag, max_tag = tag_range[tag_id]
+                        if min_tag != max_tag:
+                            intensity = max((level - min_tag), 0)
+                            intensity = min(intensity / (max_tag - min_tag), 1)
+                            agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
+
                     agent_tag_colors[agent_id] = agent_color
 
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
@@ -255,7 +278,7 @@ class Snapshots(Analysis):
             figname = '/snap_out'
 
         plt.subplots_adjust(wspace=0.1, hspace=1.0)
-        plt.savefig(output_dir + figname)  #, bbox_inches='tight'
+        plt.savefig(output_dir + figname)
         plt.close(fig)
 
 
@@ -276,7 +299,8 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
         rgb = hsv_to_rgb(agent_color)
 
         # Create a rectangle
-        rect = patches.Rectangle((x, y), width, length, theta, linewidth=1, edgecolor='w', facecolor=rgb)
+        rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+
         ax.add_patch(rect)
 
 def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
@@ -291,7 +315,10 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     return ax
 
 def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
-    # get colors for all descendants of the ancestor through recursive calls to each generation
+    """
+    get colors for all descendants of the ancestor
+    through recursive calls to each generation
+    """
     phylogeny_colors.update({ancestor_id: baseline_hsv})
     daughter_ids = phylogeny.get(ancestor_id)
     if daughter_ids:
@@ -302,24 +329,24 @@ def color_phylogeny(ancestor_id, phylogeny, baseline_hsv, phylogeny_colors={}):
 
 def mutate_color(baseline_hsv):
     new_hsv = baseline_hsv[:]
-    new_h = new_hsv[0] + np.random.normal(0, 0.08)  # (mu, sigma)
-    new_hsv[0] = new_h % 1  # hue
+    new_h = new_hsv[0] + np.random.uniform(-0.2, 0.2)
+    new_hsv[0] = new_h % 1
     return new_hsv
 
 def flourescent_color(baseline_hsv, intensity):
-    # move color towards bright green when intensity = 1
+    # move color towards bright green (FLOURESCENT_COLOR) when intensity = 1
     new_hsv = baseline_hsv[:]
     distance = [a - b for a, b in zip(FLOURESCENT_COLOR, new_hsv)]
     new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
     return new_hsv
 
 def volume_to_length(volume, cell_radius):
-    '''
+    """
     get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
     a=length of cylinder without rounded caps, l=total length:
     V = (4/3)*PI*r^3 + PI*r^2*a
     l = a + 2*r
-    '''
+    """
     pi = np.pi
     cylinder_length = (volume - (4 / 3) * pi * cell_radius ** 3) / (pi * cell_radius ** 2)
     total_length = cylinder_length + 2 * cell_radius

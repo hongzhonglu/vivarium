@@ -21,10 +21,12 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import shutil
+import copy
 
 from vivarium.actor.inner import Inner
 from vivarium.actor.outer import Outer
 from vivarium.actor.boot import BootAgent
+from vivarium.actor.control import DEFAULT_EMITTER_CONFIG
 from vivarium.actor.emitter import get_emitter, configure_emitter
 
 # environment
@@ -48,7 +50,7 @@ from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from vivarium.composites.iFBA import compose_iFBA
+from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -68,13 +70,6 @@ def wrap_boot(initialize, initial_state):
 
 def wrap_init_basic(make_process):
     def initialize(boot_config):
-        boot_config.update({
-            'emitter': {
-                'type': 'database',
-                'url': 'localhost:27017',
-                'database': 'simulations',
-                },
-            })
         process = make_process(boot_config)  # 'boot_config', set in environment.control is the process' initial_parameters
         return generate_lattice_compartment(process, boot_config)
 
@@ -82,14 +77,6 @@ def wrap_init_basic(make_process):
 
 def wrap_init_composite(make_composite):
     def initialize(boot_config):
-        # configure the emitter
-        boot_config.update({
-            'emitter': {
-                'type': 'database',
-                'url': 'localhost:27017',
-                'database': 'simulations'},
-            })
-
         # set up the the composite
         composite_config = make_composite(boot_config)
         processes = composite_config['processes']
@@ -108,8 +95,10 @@ def wrap_init_composite(make_composite):
 
 def wrap_boot_environment(intialize):
     def boot(agent_id, agent_type, agent_config):
+        boot_config = copy.deepcopy(agent_config['boot_config'])
+
         # get boot_config from initialize
-        boot_config = intialize(agent_config)
+        boot_config = intialize(boot_config)
 
         # paths
         working_dir = agent_config.get('working_dir', os.getcwd())
@@ -117,12 +106,9 @@ def wrap_boot_environment(intialize):
         if os.path.isdir(output_dir):
             shutil.rmtree(output_dir)
 
-        # emitter
-        emitter_config = {
-            'type': 'database',
-            'url': 'localhost:27017',
-            'database': 'simulations',
-            'experiment_id': agent_id}
+        emitter_config = boot_config.get('emitter', DEFAULT_EMITTER_CONFIG)
+        emitter_config['experiment_id'] = agent_id
+
         emitter = get_emitter(emitter_config)
         boot_config.update({
             'emitter': emitter,
@@ -171,34 +157,34 @@ class EnvironmentAgent(Outer):
             print_send=False)
 
 # Define environment initialization functions
-def initialize_lattice(agent_config):
+def initialize_lattice(boot_config):
     # set up media
-    media_id = agent_config.get('media_id', 'minimal')
-    media = agent_config.get('media', {})
+    media_id = boot_config.get('media_id', 'minimal')
+    media = boot_config.get('media', {})
     if media:
-        boot_config = {'concentrations': media}
+        lattice_config = {'concentrations': media}
     else:
-        boot_config = {'media_id': media_id}
-    boot_config.update(agent_config)
+        lattice_config = {'media_id': media_id}
 
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_glc_g6p_small(agent_config):
+def initialize_glc_g6p_small(boot_config):
     # set up media
     media_id = 'GLC_G6P'
     timeline_str = '0 {}, 1800 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
         'edge_length_x': 1.0,
         'patches_per_edge_x': 1,
     }
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_custom_small(agent_config):
+def initialize_custom_small(boot_config):
     # set up media
     media_id = 'custom'
     custom_media = {
@@ -220,7 +206,7 @@ def initialize_custom_small(agent_config):
     new_media = {media_id: custom_media}
     timeline_str = '0 {}, 1200 end'.format(media_id)
 
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 2.0,
@@ -228,50 +214,63 @@ def initialize_custom_small(agent_config):
         'edge_length_x': 1.0,
         'patches_per_edge_x': 1,
     }
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_glc_g6p(agent_config):
+def initialize_glc_g6p(boot_config):
     timeline_str = '0 GLC_G6P, 3600 end'
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'G6P']
     }
-    boot_config.update(agent_config)
+
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_glc_lct(agent_config):
+def initialize_glc_lct(boot_config):
     timeline_str = '0 GLC_LCT, 3600 end'
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'LCTS']
     }
-    boot_config.update(agent_config)
+
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_glc_lct_shift(agent_config):
+def initialize_glc_lct_shift(boot_config):
     timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
-    boot_config = {'timeline_str': timeline_str}
-    boot_config.update(agent_config)
+    lattice_config = {'timeline_str': timeline_str}
+
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_ecoli_core_glc(agent_config):
-    timeline_str = '0 ecoli_core_GLC, 3600 end'
-    boot_config = {
+def initialize_ecoli_core_glc(boot_config):
+    # timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, ' \
+    #                '1800 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L - glc__D_e Infinity, ' \
+    #                '3600 end'
+
+    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
+
+    lattice_config = {
+        'diffusion': 1e-4,
+        'depth': 1e-4,
         'timeline_str': timeline_str,
-        'emit_fields': ['glc__D_e']
+        'emit_fields': [
+            'glc__D_e',
+            'lac__D_e']
     }
-    boot_config.update(agent_config)
+
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_measp(agent_config):
+def initialize_measp(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
              'MeAsp': 1.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    boot_config = {
+    lattice_config = {
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['MeAsp'],
@@ -291,17 +290,17 @@ def initialize_measp(agent_config):
         'rotation_jitter': 0.005,
         'edge_length_x': 50.0,
         'patches_per_edge_x': 40}
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_measp_long(agent_config):
+def initialize_measp_long(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
              'MeAsp': 1.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    boot_config = {
+    lattice_config = {
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
@@ -322,12 +321,12 @@ def initialize_measp_long(agent_config):
         'edge_length_x': 200.0,
         'edge_length_y': 50.0,
         'patches_per_edge_x': 40}
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
 
-def initialize_measp_large(agent_config):
+def initialize_measp_large(boot_config):
 
     ## Make media: GLC_G6P with MeAsp
     # get GLC_G6P media
@@ -351,7 +350,7 @@ def initialize_measp_large(agent_config):
 
     emit_field = ['GLC', 'MeAsp']
 
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
@@ -372,11 +371,11 @@ def initialize_measp_large(agent_config):
         'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
         'patches_per_edge_x': 50}
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
-def initialize_measp_timeline(agent_config):
+def initialize_measp_timeline(boot_config):
     # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant. 0.2 b/c of dilution.
     timeline_str = '0 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '200 GLC 20.0 mmol 1 L + MeAsp 0.2 mmol 1 L, ' \
@@ -385,7 +384,7 @@ def initialize_measp_timeline(agent_config):
                    '1400 GLC 20.0 mmol 1 L + MeAsp 0.0 mmol 1 L, ' \
                    '1600 end'
 
-    boot_config = {
+    lattice_config = {
         'timeline_str': timeline_str,
         'run_for': 1.0,
         'static_concentrations': True,
@@ -394,8 +393,8 @@ def initialize_measp_timeline(agent_config):
         'edge_length_x': 100.0,
         'patches_per_edge_x': 50,
     }
-    boot_config.update(agent_config)
 
+    boot_config.update(lattice_config)
     return boot_config
 
 
@@ -431,7 +430,7 @@ class BootEnvironment(BootAgent):
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
-            'iFBA_ecoli_core': wrap_boot(wrap_init_composite(compose_iFBA), {'volume': 1.0}),
+            'kinetic_FBA': wrap_boot(wrap_init_composite(compose_kinetic_FBA), {'volume': 1.0}),
             }
 
 def run():

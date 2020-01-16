@@ -2,13 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import copy
 import collections
-import numpy as np
-import vivarium.actor.emitter as emit
 import random
 import os
+
+import numpy as np
 from scipy import constants
 import matplotlib.pyplot as plt
 
+import vivarium.actor.emitter as emit
+from vivarium.utils.units import units
 from vivarium.utils.dict_utils import merge_dicts
 
 
@@ -552,8 +554,8 @@ def simulate_with_environment(compartment, settings={}):
     environment_role = settings['environment_role']
     exchange_role = settings['exchange_role']
     exchange_ids = list(compartment.states[exchange_role].keys())
-    env_volume = settings['environment_volume']  # (L)
-    nAvogadro = constants.N_A
+    env_volume = settings.get('environment_volume', 1e-12) * units.L
+    nAvogadro = constants.N_A * 1/units.mol
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
@@ -582,14 +584,11 @@ def simulate_with_environment(compartment, settings={}):
         compartment.update(timestep)
 
         ## apply exchange to environment
+        # get counts, convert to change in concentration
         delta_counts = exchange.state_for(exchange_ids)
-
-        # convert counts to change in concentration in environemnt
-        mmol_to_count = nAvogadro * env_volume * 1e-3  # (L/mmol)
+        mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
         delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
         environment.apply_update(delta_concs)
-        # if state[environment_role][mol_id] < 0.0:  # this shouldn't be needed
-        #     state[environment_role][mol_id] = 0.0
 
         # reset exchange
         reset_exchange = {key: 0 for key in exchange_ids}
@@ -623,6 +622,7 @@ def convert_to_timeseries(sim_output):
     return timeseries
 
 def set_axes(ax, show_xaxis=False):
+    ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(right=False, top=False)
@@ -632,17 +632,20 @@ def set_axes(ax, show_xaxis=False):
 
 def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     '''
-    plot simulation output
-        args:
+    plot simulation output, with rows organized into separate columns.
+
+    Requires:
         - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
         - settings (dict) with:
             {
             'max_rows': (int) roles with more states than this number of states get wrapped into a new column
-            'remove_zeros': (bool) if True, timeseries with all 0's get removed
+            'remove_zeros': (bool) if True, timeseries with all zeros get removed
             'remove_flat': (bool) if True, timeseries with all the same value get removed
-            'skip_roles': (list) roles that won't be plotted
+            'skip_roles': (list) entire roles that won't be plotted
             'overlay': (dict) with
                 {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
+            'show_state': (list) with [('role_id', 'state_id')]
+                for all states that will be highlighted, even if they are otherwise to be removed
             }
     TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
     '''
@@ -651,10 +654,10 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     # get settings
     max_rows = settings.get('max_rows', 25)
-    overlay = settings.get('overlay', {})
-    skip_roles = settings.get('skip_roles', [])
-    remove_flat = settings.get('remove_flat', False)
     remove_zeros = settings.get('remove_zeros', False)
+    remove_flat = settings.get('remove_flat', False)
+    skip_roles = settings.get('skip_roles', [])
+    overlay = settings.get('overlay', {})
     show_state = settings.get('show_state', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
@@ -734,7 +737,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 ax.plot(time_vec, zero_line, 'k--')
 
             if (role, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo')
+                ax.plot(time_vec, series, 'indigo', linewidth=2)
             else:
                 ax.plot(time_vec, series)
 
@@ -758,7 +761,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     # save figure
     fig_path = os.path.join(out_dir, 'simulation')
-    plt.subplots_adjust(wspace=0.3, hspace=0.4)
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path + '.pdf', bbox_inches='tight')
 
 
