@@ -31,7 +31,7 @@ class Transcription(Process):
             self.promoter_affinities[promoter_key]
             for promoter_key in self.promoter_order])
 
-        self.elongation_rate = initial_parameters.get('elongation_rate', 1.0)
+        self.elongation_rate = initial_parameters.get('elongation_rate', 50.0)
         self.advancement_rate = initial_parameters.get('advancement_rate', 1.0)
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
@@ -104,6 +104,8 @@ class Transcription(Process):
                 new_rnap = chromosome.bind_rnap(promoter_key, domain)
                 promoter_rnaps[promoter_key].append(new_rnap)
 
+                print('{}: RNAP binding {}'.format(time, new_rnap))
+
                 rnap_bindings += 1
             else:
                 # RNAP has begun polymerizing its transcript
@@ -122,6 +124,8 @@ class Transcription(Process):
                         break
 
                 rnap.start_transcribing()
+
+                print('{}: RNAP commencing {}'.format(time, rnap))
 
         remaining = timestep - time
         complete = chromosome.polymerize(self.elongation_rate * remaining)

@@ -62,6 +62,9 @@ class Datum(object):
             to[key] = value
         return to
 
+    def __repr__(self):
+        return str(self.to_dict())
+
 class Operon(Datum):
     defaults = {
         'id': '',
@@ -82,6 +85,12 @@ class Domain(Datum):
 
     def __init__(self, config):
         super(Domain, self).__init__(config, self.defaults)
+
+    def contains(self, position):
+        if position < 0:
+            return position < self.lag
+        else:
+            return position > self.lead
 
     def surpassed(self, position, lead, lag):
         if position < 0:
@@ -129,6 +138,9 @@ class Terminator(Datum):
             'length': (self.position - promoter.position) * promoter.direction,
             'genes': genes.get(self.operon, [])})
 
+    def between(self, before, after):
+        return before < self.position < after or after < self.position < before
+
 class Promoter(Datum):
     schema = {
         'sites': BindingSite,
@@ -162,11 +174,30 @@ class Promoter(Datum):
         return total
 
     def crossing_terminators(self, before, elongation):
-        after = elongation * self.direction
+        after = before + (elongation * self.direction)
         return [
-            terminator
-            for terminator in self.terminators
-            if before < terminator.position < after or after < terminator.position < before]
+            terminator_index
+            for terminator_index in range(len(self.terminators))
+            if self.terminators[terminator_index].between(before, after)]
+
+    def find_terminator(self, before, after):
+        crossing_terminators = self.crossing_terminators(
+            before,
+            after)
+
+        termination = False
+        for terminator_index in crossing_terminators:
+            terminator = self.terminators[terminator_index]
+
+            if terminator_index == len(self.terminators) - 1:
+                terminated = True
+            else:
+                total = self.strength_from(terminator_index)
+                terminated = random.random() <= terminator.strength / total
+                total -= terminator.strength
+
+            if terminated:
+                return terminator
 
     def choose_terminator(self):
         if len(self.terminators) > 1:
@@ -237,18 +268,16 @@ class Chromosome(Datum):
             for promoter in self.promoters.values()
             for operon in promoter.operons(self.genes)]
 
-    def copy_number(self, position):
-        def combine(a, b):
-            return a + b
-
-        def count(node, result=0):
-            return result + 1
-
-        return traverse(
-            self.domains,
-            self.root_domain,
-            count,
-            combine)
+    def copy_number(self, position, domain_key=None):
+        if not domain_key:
+            domain_key = self.root_domain
+        domain = self.domains[domain_key]
+        if domain.contains(position):
+            return 1
+        else:
+            return sum([
+                self.copy_number(position, child)
+                for child in domain.children])
 
     def promoter_copy_numbers(self):
         copy_numbers = [
@@ -297,25 +326,21 @@ class Chromosome(Datum):
                 promoter = self.promoters[rnap.promoter]
                 extent = elongation * promoter.direction
                 projection = rnap.position + extent
-                terminators = promoter.crossing_terminators(rnap.position, projection)
-                total = promoter.strength_from(terminators[0])
+                terminator = promoter.find_terminator(
+                    rnap.position,
+                    projection)
 
-                choice = None
-                for terminator_index in terminators:
-                    terminator = promoter.terminators[terminator_index]
-                    choice = random.random() <= terminator.strength / total
-                    total -= terminator.strength
-
-                    if choice:
-                        break
-
-                if choice:
+                if terminator:
                     rnap.position = terminator.position
                     rnap.complete()
-                    self.rnaps.remove(rnap)
                     complete_transcripts.append(terminator.operon)
                 else:
                     rnap.position = projection
+
+        self.rnaps = [
+            rnap
+            for rnap in self.rnaps
+            if not rnap.is_complete()]
 
         return complete_transcripts
 
@@ -446,53 +471,74 @@ def test_chromosome():
             {
                 'promoter': 'pA',
                 'domain': 0,
+                'state': 'transcribing',
                 'position': 3},
             {
                 'promoter': 'pA',
                 'domain': 0,
+                'state': 'transcribing',
                 'position': 6},
             {
                 'promoter': 'pA',
                 'domain': 0,
+                'state': 'transcribing',
                 'position': 0}]}
 
     chromosome = Chromosome(chromosome_config)
     print(chromosome.promoters['pA'].terminators[0].operon)
-    print(chromosome.to_dict())
+    print(chromosome)
 
     print('operons:')
-    print([operon.to_dict() for operon in chromosome.operons()])
+    print(chromosome.operons())
 
     chromosome.initiate_replication()
-    print(chromosome.to_dict()['domains'])
+    print(chromosome.domains)
     assert len(chromosome.domains) == 3
 
     chromosome.advance_replisomes({0: (5, 7)})
     print('replisomes:')
-    print(chromosome.to_dict())
+    print(chromosome)
 
-    chromosome.initiate_replication()
-    print(chromosome.to_dict()['domains'])
-    assert len(chromosome.domains) == 7
+    # chromosome.initiate_replication()
+    # print(chromosome.domains)
+    # assert len(chromosome.domains) == 7
 
-    chromosome.advance_replisomes({0: (7, 5), 1: (3, 4), 2: (8, 9)})
-    print('replisomes:')
-    print(chromosome.to_dict())
+    # chromosome.advance_replisomes({0: (7, 5), 1: (3, 4), 2: (8, 9)})
+    # print('replisomes:')
+    # print(chromosome)
 
     operon = chromosome.promoters['pA'].choose_operon(chromosome.genes)
     print('operon')
-    print(operon.to_dict())
+    print(operon)
 
-    print('copy numbers 1 4 7 9 11')
+    print('copy numbers 1 4 7 -9 11')
     print(chromosome.copy_number(1))
     print(chromosome.copy_number(4))
     print(chromosome.copy_number(7))
-    print(chromosome.copy_number(9))
+    print(chromosome.copy_number(-9))
     print(chromosome.copy_number(11))
 
+    print('promoter copy numbers')
+    print(chromosome.promoter_copy_numbers())
+
+    print('promoter rnaps')
+    print(chromosome.promoter_rnaps())
+
+    print('promoter domains')
+    print(chromosome.promoter_domains())
+
+    print('rnaps')
+    print([rnap.to_dict() for rnap in chromosome.rnaps])
+
+    print('completed after advancing 5')
+    print(chromosome.polymerize(5))
+
+    print('rnaps after polymerizing')
+    print(chromosome.rnaps)
+    
     children = chromosome.terminate_replication()
     print('termination:')
-    print([child.to_dict() for child in children])
+    print(children)
 
     return chromosome
 
