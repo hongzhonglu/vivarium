@@ -19,7 +19,7 @@ The agents communicate through message passing and are coordinated by the enviro
 
 ### Zookeeper and Kafka
 
-2. See [actor/README.md](vivarium/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
+1. See [actor/README.md](vivarium/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
 
    1. Start Zookeeper in the directory where you untarred the Kafka and Zookeeper software:
 
@@ -31,7 +31,7 @@ The agents communicate through message passing and are coordinated by the enviro
 
 ### mongoDB
     
-4. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
+2. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
     1. Run mongod as a service. To have launched start mongodb/brew/mongodb-community now and restart at login:
     
       `> brew services start mongodb/brew/mongodb-community`
@@ -112,7 +112,7 @@ Furthermore, this enables cell division wherein a cell agent process ends and tw
 new ones begin.
 But to debug an agent, see the "One Agent Per Terminal Tab" instructions, above.
 
-Shepherd uses Clojure, which you will need to set up ![leiningen](https://leiningen.org)
+Shepherd uses Clojure, which can be set up with [Leiningen](https://leiningen.org)
 
 With Clojure working, open a terminal tab and run shepherd with:
 
