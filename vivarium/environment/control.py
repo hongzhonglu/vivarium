@@ -38,19 +38,21 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        lattice_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
             'emit_fields': emit_fields,
             'boot': 'vivarium.environment.boot',
             'run_for': 4.0,
             'diffusion': args.get('diffusion', 1000),
-            'edge_length_x': args.get('edge_length_x'),
+            'edge_length_x': args.get('edge_length_x', 20),
             'patches_per_edge_x': args.get('patches_per_edge_x', 10),
             'translation_jitter': 0.1,
-            'rotation_jitter': 0.01})
+            'rotation_jitter': 0.01}
 
-        self.add_agent(experiment_id, 'lattice', lattice_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
+
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 

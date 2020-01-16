@@ -746,8 +746,6 @@ def test_lattice(total_time=10):
 
 
 def plot_motility(data, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     expected_speed = 14.2  # um/s (Berg)
@@ -826,8 +824,6 @@ def plot_motility(data, out_dir='out'):
 
 
 def plot_trajectory(data, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
     from matplotlib.collections import LineCollection
 
@@ -874,8 +870,6 @@ def plot_trajectory(data, out_dir='out'):
 
 
 def plot_field(data, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     x_length = data['x_length']
@@ -925,9 +919,9 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_lattice(50)
+    output1 = test_lattice(20)
     plot_motility(output1, out_dir)
     plot_trajectory(output1, out_dir)
 
-    # output2 = test_diffusion(2)
-    # plot_field(output2, out_dir)
+    output2 = test_diffusion(2)
+    plot_field(output2, out_dir)

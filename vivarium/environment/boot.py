@@ -157,15 +157,17 @@ class EnvironmentAgent(Outer):
 
 # Define environment initialization functions
 def initialize_lattice(agent_config):
-    # set up media
-    media_id = agent_config.get('media_id', 'minimal')
-    media = agent_config.get('media', {})
-    if media:
-        boot_config = {'concentrations': media}
-    else:
-        boot_config = {'media_id': media_id}
+    boot_config = agent_config['boot_config']
 
-    agent_config['boot_config'].update(boot_config)
+    # set up media
+    media_id = boot_config.get('media_id', 'minimal')
+    media = boot_config.get('media', {})
+    if media:
+        lattice_config = {'concentrations': media}
+    else:
+        lattice_config = {'media_id': media_id}
+
+    agent_config['boot_config'].update(lattice_config)
     return agent_config
 
 def initialize_glc_g6p_small(agent_config):
