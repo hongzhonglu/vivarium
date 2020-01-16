@@ -27,15 +27,15 @@ def get_transport_config():
     transport_kinetics = {
         'GLC_transport': {
             'transporter_internal': {
-                'GLC_external': 6.0,  # km for GLC
-                'kcat_f': 1e-2}}}
+                'GLC_external': 1.0,  # km for GLC
+                'kcat_f': 1e-9}}}
 
     transport_initial_state = {
         'internal': {
             'GLC': 1.0,
             'transporter': 1.0},
         'external': {
-            'GLC': 12.0},
+            'GLC': 20.0},
         'fluxes': {
             'GLC': 1.0}}
 
