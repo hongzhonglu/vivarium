@@ -92,6 +92,7 @@ def compose_growth_division(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
+        'name': 'growth_division_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
