@@ -158,13 +158,18 @@ class EnvironmentAgent(Outer):
 
 # Define environment initialization functions
 def initialize_lattice(boot_config):
+
+    lattice_config = {
+        'name': 'lattice',
+        'description': 'a standard lattice environment'}
+
     # set up media
     media_id = boot_config.get('media_id', 'minimal')
     media = boot_config.get('media', {})
     if media:
-        lattice_config = {'concentrations': media}
+        lattice_config.update({'concentrations': media})
     else:
-        lattice_config = {'media_id': media_id}
+        lattice_config.update({'media_id': media_id})
 
     boot_config.update(lattice_config)
     return boot_config
@@ -174,6 +179,7 @@ def initialize_glc_g6p_small(boot_config):
     media_id = 'GLC_G6P'
     timeline_str = '0 {}, 1800 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'glc_g6p_small',
         'timeline_str': timeline_str,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
@@ -221,6 +227,7 @@ def initialize_custom_small(boot_config):
 def initialize_glc_g6p(boot_config):
     timeline_str = '0 GLC_G6P, 3600 end'
     lattice_config = {
+        'name': 'glc_g6p',
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'G6P']
     }
@@ -231,6 +238,7 @@ def initialize_glc_g6p(boot_config):
 def initialize_glc_lct(boot_config):
     timeline_str = '0 GLC_LCT, 3600 end'
     lattice_config = {
+        'name': 'glc_lct',
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'LCTS']
     }
@@ -240,7 +248,9 @@ def initialize_glc_lct(boot_config):
 
 def initialize_glc_lct_shift(boot_config):
     timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
-    lattice_config = {'timeline_str': timeline_str}
+    lattice_config = {
+        'name': 'glc_lct_shift',
+        'timeline_str': timeline_str}
 
     boot_config.update(lattice_config)
     return boot_config
@@ -253,6 +263,7 @@ def initialize_ecoli_core_glc(boot_config):
     timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
 
     lattice_config = {
+        'name': 'ecoli_core_glc',
         'diffusion': 1e-4,
         'depth': 1e-4,
         'timeline_str': timeline_str,
@@ -271,6 +282,7 @@ def initialize_measp(boot_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'measp',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['MeAsp'],
@@ -301,6 +313,7 @@ def initialize_measp_long(boot_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'measp_long',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
@@ -351,6 +364,7 @@ def initialize_measp_large(boot_config):
     emit_field = ['GLC', 'MeAsp']
 
     lattice_config = {
+        'name': 'measp_large',
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
@@ -385,6 +399,7 @@ def initialize_measp_timeline(boot_config):
                    '1600 end'
 
     lattice_config = {
+        'name': 'measp_timeline',
         'timeline_str': timeline_str,
         'run_for': 1.0,
         'static_concentrations': True,
