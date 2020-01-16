@@ -126,7 +126,7 @@ class Metabolism(Process):
         exchange_constraints = {mol_id: 0.0
             for mol_id, conc in external_state.items() if conc <= REGULATION_THRESHOLD}
 
-        # availibility is boolean state of all molecules present
+        # availability is boolean state of all molecules present
         # regulation_state determines state of regulated reactions (True/False)
         availability = flatten_role_dicts({role: states[role]
             for role in ('internal', 'external')})
@@ -408,17 +408,15 @@ if __name__ == '__main__':
 
     # toy functions
     def toy_transport():
-        # process-like function for transport kinetics
+        # process-like function for transport kinetics, used by simulate_metabolism
         transport_kinetics = {
             "EX_A": kinetic_rate("A", -1e-1, 5),  # A import
-            # "R1": kinetic_rate("A", 2.5e-2, 5),  # A import
-            # "EX_E": random_rate(1e-2, 1e-3)  # (0, 1e-1),   #  E exchange, requires 'EX_' prefix
         }
         return transport_kinetics
 
     def toy_regulation():
         regulation = {
-            'R4': rl.build_rule('IF (O2_external) and not (F_external)'),
+            'R4': 'IF (O2_external) and not (F_external)',
         }
         return regulation
 
