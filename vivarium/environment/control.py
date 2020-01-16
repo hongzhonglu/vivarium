@@ -34,25 +34,21 @@ class ShepherdControl(ActorControl):
         timeline_str = args.get('timeline')
         if not timeline_str:
             timeline_str = '0 {}, 7200 end'.format(media_id)
-            # timeline_str = '0 {}, 14400 end'.format(media_id)
-
-        emit_fields = ['GLC']
 
         lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
-            'emit_fields': emit_fields,
+            'emit_fields': ['GLC'],
             'boot': 'vivarium.environment.boot',
             'run_for': 4.0,
-            'diffusion': args.get('diffusion', 1000),
-            'edge_length_x': args.get('edge_length_x', 20),
-            'patches_per_edge_x': args.get('patches_per_edge_x', 10),
+            'diffusion': 1000,
+            'edge_length_x': 20,
+            'patches_per_edge_x': 10,
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
 
         agent_config['boot_config'].update(lattice_config)
         self.add_agent(experiment_id, 'lattice', agent_config)
-
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -82,7 +78,7 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        lattice_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
             'emit_fields': emit_fields,
@@ -92,9 +88,10 @@ class ShepherdControl(ActorControl):
             'edge_length_y': 20.0,
             'patches_per_edge_x': 8,
             'translation_jitter': 0.1,
-            'rotation_jitter': 0.01})
+            'rotation_jitter': 0.01}
 
-        self.add_agent(experiment_id, 'lattice', lattice_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -121,7 +118,7 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        lattice_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'media_id': media_id,
             'emit_fields': emit_fields,
@@ -135,9 +132,10 @@ class ShepherdControl(ActorControl):
                         'center': [0.0, 0.0],
                         'slope': -1.0 / 250.0},
                 }},
-        })
+        }
 
-        self.add_agent(experiment_id, 'lattice', lattice_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -163,14 +161,15 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC']
 
-        experiment_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
             'emit_fields': emit_fields,
             'edge_length_x': 10.0,
-            'patches_per_edge_x': 10})
+            'patches_per_edge_x': 10}
 
-        self.add_agent(experiment_id, 'lattice', experiment_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -196,12 +195,13 @@ class ShepherdControl(ActorControl):
 
         emit_fields = ['GLC', 'G6P']
 
-        experiment_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'run_for': 2.0,
-            'emit_fields': emit_fields})
+            'emit_fields': emit_fields}
 
-        self.add_agent(experiment_id, 'lattice', experiment_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
@@ -224,7 +224,7 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 2.0 mmol 0.1 L, 21600 end'
 
-        experiment_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'edge_length_x': 15.0,
             'patches_per_edge_x': 15,
@@ -234,9 +234,10 @@ class ShepherdControl(ActorControl):
             'translation_jitter': 1.0,
             'emit_fields': [
                 'glc__D_e',
-                'lac__D_e']})
+                'lac__D_e']}
 
-        self.add_agent(experiment_id, 'lattice', experiment_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         time.sleep(10)
 
@@ -262,7 +263,7 @@ class ShepherdControl(ActorControl):
         # timeline_str = '0 {}, 14400 end'.format(media_id)
         timeline_str = '0 {}, 1800 end'.format(media_id)
 
-        chemotaxis_config = dict(agent_config, **{
+        lattice_config = {
             'timeline_str': timeline_str,
             'new_media': new_media,
             'run_for' : 0.05,
@@ -283,9 +284,10 @@ class ShepherdControl(ActorControl):
             # 'rotation_jitter': 0.05,
             'edge_length_x': 500.0,
             'edge_length_y': 100.0,
-            'patches_per_edge_x': 100})
+            'patches_per_edge_x': 100}
 
-        self.add_agent(experiment_id, 'lattice', chemotaxis_config)
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
@@ -326,7 +328,7 @@ class ShepherdControl(ActorControl):
         new_media = {media_id: media}
         timeline_str = '0 {}, 3600 end'.format(media_id)
 
-        swarm_config = dict(agent_config, **{
+        lattice_config = {
             'cell_placement': [0.5, 0.5], # place cells at center of lattice
             'timeline_str': timeline_str,
             'new_media': new_media,
@@ -336,8 +338,10 @@ class ShepherdControl(ActorControl):
             'diffusion': 0.001,
             'edge_length_x': 100.0,
             'edge_length_y': 100.0,
-            'patches_per_edge_x': 50})
-        self.add_agent(experiment_id, 'lattice', swarm_config)
+            'patches_per_edge_x': 50}
+
+        agent_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', agent_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
