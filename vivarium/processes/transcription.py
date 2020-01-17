@@ -34,7 +34,7 @@ class Transcription(Process):
         self.promoter_order = initial_parameters.get('promoter_order', [])
         self.promoter_count = len(self.promoter_affinities)
         self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key]
+            self.promoter_affinities[promoter_key] # TODO(Ryan): incorporate TF states
             for promoter_key in self.promoter_order])
 
         self.elongation_rate = initial_parameters.get('elongation_rate', 50.0)
