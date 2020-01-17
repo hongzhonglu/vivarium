@@ -50,7 +50,7 @@ class Inner(Actor):
     an environmental simulation.
     """
 
-    def __init__(self, agent_id, agent_type, agent_config, sim_initialize):
+    def __init__(self, agent_id, agent_type, actor_config, sim_initialize):
         """
         Construct the agent.
 
@@ -58,7 +58,7 @@ class Inner(Actor):
             agent_id (str): Unique identifier for this agent.
               This agent will only respond to messages addressed to its inner agent_id.
             agent_type (str): The type of this agent, for coordination with the agent shepherd.
-            agent_config (dict): A dictionary containing any information needed to run this
+            actor_config (dict): A dictionary containing any information needed to run this
               inner agent. The only required keys are `outer_id`, `boot` and `kafka_config`
                 * `outer_id`: the id of the outer this inner is embedded in.
                 * `declare`: dict of values to pass to outer in CELL_DECLARE message.
@@ -73,24 +73,24 @@ class Inner(Actor):
                             associated outer agent (given by `outer_id`) and environmental simulation
                         * `shepherd_receive`: The topic this agent will send messages on for
                             adding agents to and removing agents from the environment.
-            sim_initialize: the function for initializing a simulation. agent_config['boot_config']
+            sim_initialize: the function for initializing a simulation. actor_config['boot_config']
               and the response from the environment accompanying the CELL_SYNCHRONIZE message will
               be passed in.
         """
 
-        self.outer_id = agent_config['outer_id']
-        self.declare = agent_config.get('declare', {})
-        self.boot_config = agent_config.get('boot_config', {})
-        self.generation = agent_config.get('generation', 0)
+        self.outer_id = actor_config['outer_id']
+        self.declare = actor_config.get('declare', {})
+        self.boot_config = actor_config.get('boot_config', {})
+        self.generation = actor_config.get('generation', 0)
 
         # mutating in place
-        kafka_config = agent_config['kafka_config']
+        kafka_config = actor_config['kafka_config']
         kafka_config['subscribe'].append(
             kafka_config['topics']['cell_receive'])
 
         self.sim_initialize = sim_initialize
 
-        super(Inner, self).__init__(agent_id, agent_type, agent_config)
+        super(Inner, self).__init__(agent_id, agent_type, actor_config)
 
     def preinitialize(self):
         time.sleep(1.0)
@@ -99,7 +99,7 @@ class Inner(Actor):
             'event': event.CELL_DECLARE,
             'agent_id': self.outer_id,
             'inner_id': self.agent_id,
-            'agent_config': self.agent_config,
+            'agent_config': self.actor_config,
             'state': self.declare})
 
     def initialize_simulation(self, message):
@@ -123,7 +123,7 @@ class Inner(Actor):
             'event': event.CELL_INITIALIZE,
             'outer_id': self.outer_id,
             'inner_id': self.agent_id,
-            'agent_config': self.agent_config,
+            'agent_config': self.actor_config,
             'state': state})
 
     def cell_exchange(self, message):
@@ -167,7 +167,7 @@ class Inner(Actor):
         """
         Perform agent cell division.
 
-        The generation count is increased and added to the daughter cells' agent_config.
+        The generation count is increased and added to the daughter cells' actor_config.
 
         This sends three messages to the agent shepherd: one `ADD_AGENT` for each new daughter cell,
         and finally a `REMOVE_AGENT` for itself. These new agents will initialize and notify the
@@ -183,10 +183,10 @@ class Inner(Actor):
                     'daughter_type',
                     self.agent_type))
 
-            daughter_config = copy.deepcopy(self.agent_config)
+            daughter_config = copy.deepcopy(self.actor_config)
             daughter_config.update(daughter)
 
-            agent_config = dict(
+            actor_config = dict(
                 daughter_config,
                 index=index,
                 parent_id=self.agent_id,
@@ -194,12 +194,12 @@ class Inner(Actor):
                 generation=generation)
 
             # Send the inherited state data as a blob instead of a file path.
-            inherited_state_path = agent_config.pop('inherited_state_path', None)
+            inherited_state_path = actor_config.pop('inherited_state_path', None)
             add_agent_message = {
                 'event': event.ADD_AGENT,
                 'agent_id': daughter_id,
                 'agent_type': daughter_type,
-                'agent_config': agent_config}
+                'agent_config': actor_config}
 
             if inherited_state_path:
                 with open(inherited_state_path, 'rb') as f:

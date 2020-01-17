@@ -6,7 +6,6 @@ from vivarium.actor.process import Compartment, initialize_state, get_compartmen
 from vivarium.actor.emitter import get_emitter
 from vivarium.actor.inner import Simulation
 
-DEFAULT_COLOR = [color/255 for color in [153, 204, 255]]
 
 
 # TODO -- remove these functions once all key manipulation is gone
@@ -36,7 +35,6 @@ class LatticeCompartment(Compartment, Simulation):
     and passes them to the environment upon exchange.
     '''
     def __init__(self, processes, states, configuration):
-        self.color = DEFAULT_COLOR
         self.exchange_role = configuration.get('exchange_role', '')
         self.environment_role = configuration.get('environment_role', '')
 
@@ -133,7 +131,6 @@ class LatticeCompartment(Compartment, Simulation):
         values.update({
             'volume': volume,
             'motile_force': motile_force,
-            'color': self.color,
             'environment_change': environment_change})
 
         return values

@@ -10,7 +10,7 @@ from vivarium.actor.inner import Inner
 from vivarium.actor.stub import SimulationStub, EnvironmentStub
 from vivarium.actor.process import deep_merge
 
-def boot_outer(agent_id, agent_type, agent_config):
+def boot_outer(agent_id, agent_type, actor_config):
     """
     Initialize the `EnvironmentStub`, pass it to the `Outer` agent and launch the process.
 
@@ -27,10 +27,10 @@ def boot_outer(agent_id, agent_type, agent_config):
         'blue': 12}
 
     environment = EnvironmentStub(volume, concentrations)
-    print('outer! {}'.format(agent_config))
-    return Outer(agent_id, agent_type, agent_config, environment)
+    print('outer! {}'.format(actor_config))
+    return Outer(agent_id, agent_type, actor_config, environment)
 
-def boot_inner(agent_id, agent_type, agent_config):
+def boot_inner(agent_id, agent_type, actor_config):
     """
     Initialize the `SimulationStub`, pass it to the `Inner` agent and launch the process.
 
@@ -39,19 +39,19 @@ def boot_inner(agent_id, agent_type, agent_config):
     that would be driven by the Inner agent in response to messages from its corresponding
     Outer agent.
     """
-    if 'outer_id' not in agent_config:
+    if 'outer_id' not in actor_config:
         raise ValueError("--outer-id required")
 
     agent_id = agent_id
-    outer_id = agent_config['outer_id']
+    outer_id = actor_config['outer_id']
     simulation = SimulationStub()
 
-    print('inner... {}'.format(agent_config))
+    print('inner... {}'.format(actor_config))
     return Inner(
         agent_id,
         outer_id,
         agent_type,
-        agent_config,
+        actor_config,
         simulation)
 
 class BootAgent(object):
@@ -109,7 +109,7 @@ class BootAgent(object):
         parse_args = parser.parse_args()
 
         args = vars(parse_args)
-        agent_config = dict(json.loads(args['config']))
+        actor_config = dict(json.loads(args['config']))
 
         kafka_config = copy.deepcopy(DEFAULT_KAFKA_CONFIG)
         emitter_config = copy.deepcopy(DEFAULT_EMITTER_CONFIG[args['emitter']])
@@ -118,17 +118,17 @@ class BootAgent(object):
             'boot_config': {
                 'emitter': emitter_config}}
 
-        agent_config = deep_merge(default_config, agent_config)
-        agent_config = distribute_arguments(
+        actor_config = deep_merge(default_config, actor_config)
+        actor_config = distribute_arguments(
             DEFAULT_DESTINATIONS,
             args,
-            agent_config)
+            actor_config)
 
         if args['outer_id']:
-            agent_config.setdefault('outer_id', args['outer_id'])
+            actor_config.setdefault('outer_id', args['outer_id'])
 
         boot = self.agent_types[args['type']]
-        agent = boot(args['id'], args['type'], agent_config)
+        agent = boot(args['id'], args['type'], actor_config)
         agent.start()
 
 def run():

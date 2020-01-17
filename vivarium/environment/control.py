@@ -11,17 +11,17 @@ from vivarium.utils.units import units
 class ShepherdControl(ActorControl):
     """Send messages to agents in the system to control execution."""
 
-    def __init__(self, agent_config):
-        super(ShepherdControl, self).__init__(str(uuid.uuid1()), agent_config)
+    def __init__(self, actor_config):
+        super(ShepherdControl, self).__init__(str(uuid.uuid1()), actor_config)
 
-    def add_cell(self, agent_type, agent_config):
+    def add_cell(self, agent_type, actor_config):
         # TODO(jerry): Bring back the --variant choice?
         self.add_agent(
             str(uuid.uuid1()),
             agent_type,
-            agent_config)
+            actor_config)
 
-    def lattice_experiment(self, args, agent_config):
+    def lattice_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id()
@@ -47,12 +47,12 @@ class ShepherdControl(ActorControl):
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
-        cell_config = dict(agent_config, **{
+        cell_config = dict(actor_config, **{
             'boot': args.get('agent_boot', 'vivarium.environment.boot'),
             'outer_id': experiment_id,
             'working_dir': args['working_dir']})
@@ -62,7 +62,7 @@ class ShepherdControl(ActorControl):
                 args['type'] or 'lookup',
                 dict(cell_config, seed=index))
 
-    def long_lattice_experiment(self, args, agent_config):
+    def long_lattice_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id()
@@ -90,20 +90,20 @@ class ShepherdControl(ActorControl):
             'translation_jitter': 0.1,
             'rotation_jitter': 0.01}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'lookup', dict(agent_config, **{
+            self.add_cell(args['type'] or 'lookup', dict(actor_config, **{
                 'boot': args.get('agent_boot', 'vivarium.environment.boot'),
                 'boot_config': {},
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
-    def large_lattice_experiment(self, args, agent_config):
+    def large_lattice_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('large_lattice')
@@ -134,19 +134,19 @@ class ShepherdControl(ActorControl):
                 }},
         }
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'ecoli', dict(agent_config, **{
+            self.add_cell(args['type'] or 'ecoli', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
-    def small_lattice_experiment(self, args, agent_config):
+    def small_lattice_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('small_lattice')
@@ -168,19 +168,19 @@ class ShepherdControl(ActorControl):
             'edge_length_x': 10.0,
             'patches_per_edge_x': 10}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(agent_config, **{
+            self.add_cell(args['type'] or 'metabolism', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
-    def glc_g6p_experiment(self, args, agent_config):
+    def glc_g6p_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('glc-g6p')
@@ -200,19 +200,19 @@ class ShepherdControl(ActorControl):
             'run_for': 2.0,
             'emit_fields': emit_fields}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(agent_config, **{
+            self.add_cell(args['type'] or 'metabolism', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
-    def ecoli_core_experiment(self, args, agent_config):
+    def ecoli_core_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('glc-g6p')
@@ -236,19 +236,19 @@ class ShepherdControl(ActorControl):
                 'glc__D_e',
                 'lac__D_e']}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         time.sleep(10)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'kinetic_FBA', dict(agent_config, **{
+            self.add_cell(args['type'] or 'kinetic_FBA', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
-    def chemotaxis_experiment(self, args, agent_config):
+    def chemotaxis_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('chemotaxis')
@@ -286,20 +286,20 @@ class ShepherdControl(ActorControl):
             'edge_length_y': 100.0,
             'patches_per_edge_x': 100}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, **{
+            self.add_cell(args['type'] or 'chemotaxis', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index}))
 
 
-    def swarm_experiment(self, args, agent_config):
+    def swarm_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
             experiment_id = self.get_experiment_id('chemotaxis')
@@ -340,14 +340,14 @@ class ShepherdControl(ActorControl):
             'edge_length_y': 100.0,
             'patches_per_edge_x': 50}
 
-        agent_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', agent_config)
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, 'lattice', actor_config)
 
         # give lattice time before adding the cells
         time.sleep(15)
 
         for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(agent_config, **{
+            self.add_cell(args['type'] or 'chemotaxis', dict(actor_config, **{
                 'boot': 'vivarium.environment.boot',
                 'outer_id': experiment_id,
                 'seed': index}))
@@ -396,31 +396,31 @@ class EnvironmentCommand(AgentCommand):
     def experiment(self, args):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.lattice_experiment(args, self.agent_config)
+        control.lattice_experiment(args, self.actor_config)
         control.shutdown()
 
     def long_experiment(self, args):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.long_lattice_experiment(args, self.agent_config)
+        control.long_lattice_experiment(args, self.actor_config)
         control.shutdown()
 
     def large_experiment(self, args):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.large_lattice_experiment(args, self.agent_config)
+        control.large_lattice_experiment(args, self.actor_config)
         control.shutdown()
 
     def small_experiment(self, args):
         self.require(args, 'number', 'working_dir')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.small_lattice_experiment(args, self.agent_config)
+        control.small_lattice_experiment(args, self.actor_config)
         control.shutdown()
 
     def glc_g6p_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.glc_g6p_experiment(args, self.agent_config)
+        control.glc_g6p_experiment(args, self.actor_config)
         control.shutdown()
 
     def ecoli_core_experiment(self, args):
@@ -432,13 +432,13 @@ class EnvironmentCommand(AgentCommand):
     def chemotaxis_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.chemotaxis_experiment(args, self.agent_config)
+        control.chemotaxis_experiment(args, self.actor_config)
         control.shutdown()
 
     def swarm_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.kafka_config()})
-        control.swarm_experiment(args, self.agent_config)
+        control.swarm_experiment(args, self.actor_config)
         control.shutdown()
 
     def add_arguments(self, parser):

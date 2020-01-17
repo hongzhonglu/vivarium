@@ -56,14 +56,14 @@ from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 def wrap_boot(initialize, initial_state):
-    def boot(agent_id, agent_type, agent_config):
-        initial_state.update(agent_config.get('declare', {}))
-        agent_config['declare'] = initial_state  # 'declare' is for the environment
+    def boot(agent_id, agent_type, actor_config):
+        initial_state.update(actor_config.get('declare', {}))
+        actor_config['declare'] = initial_state  # 'declare' is for the environment
 
         return Inner(
             agent_id,
             agent_type,
-            agent_config,
+            actor_config,
             initialize)
 
     return boot
@@ -94,14 +94,14 @@ def wrap_init_composite(make_composite):
     return initialize
 
 def wrap_boot_environment(intialize):
-    def boot(agent_id, agent_type, agent_config):
-        boot_config = copy.deepcopy(agent_config['boot_config'])
+    def boot(agent_id, agent_type, actor_config):
+        boot_config = copy.deepcopy(actor_config['boot_config'])
 
         # get boot_config from initialize
         boot_config = intialize(boot_config)
 
         # paths
-        working_dir = agent_config.get('working_dir', os.getcwd())
+        working_dir = actor_config.get('working_dir', os.getcwd())
         output_dir = os.path.join(working_dir, 'out', agent_id)
         if os.path.isdir(output_dir):
             shutil.rmtree(output_dir)
@@ -117,11 +117,11 @@ def wrap_boot_environment(intialize):
         # create the environment
         environment = EnvironmentSpatialLattice(boot_config)
 
-        return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+        return EnvironmentActor(agent_id, agent_type, actor_config, environment)
 
     return boot
 
-class EnvironmentAgent(Outer):
+class EnvironmentActor(Outer):
     def build_state(self):
         lattice = {
             molecule: self.environment.lattice[index].tolist()
