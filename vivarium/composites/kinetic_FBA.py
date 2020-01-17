@@ -82,10 +82,11 @@ def compose_kinetic_FBA(config):
     """
 
     ## Declare the processes.
-    ## The order allows earlier declared processes to inform later processes
+    # The order allows earlier declared processes to inform later processes
 
     # Transport
     # load the kinetic parameters
+    # TODO -- transport_config should be set through config
     transport_config = get_transport_config()
     transport_config.update(config.get('transport', {}))
     transport = ConvenienceKinetics(transport_config)
