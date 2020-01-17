@@ -30,9 +30,20 @@ def build_rates(affinities, advancement):
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
+        '''
+        The main parameters here are:
+        * promoter_affinities - a dict where keys are tuples representing promoter
+            states with respect to their transcription factor binding sites, and the
+            values are the affinity RNAP have for that promoter state.
+        * promoter_order - a list representing a canonical ordering of the promoters.
+        * elongation_rate - elongation rate of polymerizing mRNA.
+        * advancement_rate - affinity for RNAP to move from the 'bound' to the 
+            'transcribing' state.
+        '''
+
         self.promoter_affinities = initial_parameters.get('promoter_affinities', {})
         self.promoter_order = initial_parameters.get('promoter_order', [])
-        self.promoter_count = len(self.promoter_affinities)
+        self.promoter_count = len(self.promoter_order)
         self.affinity_vector = np.array([
             self.promoter_affinities[promoter_key] # TODO(Ryan): incorporate TF states
             for promoter_key in self.promoter_order])
