@@ -86,14 +86,14 @@ def compose_kinetic_FBA(config):
 
     # Transport
     # load the kinetic parameters
-    transport_config = copy.deepcopy(config)
-    transport_config.update(get_transport_config())
+    transport_config = get_transport_config()
+    transport_config.update(config.get('transport', {}))
     transport = ConvenienceKinetics(transport_config)
 
     # Metabolism
     # get target fluxes from transport
     # load regulation function
-    metabolism_config = copy.deepcopy(config)
+    metabolism_config = config.get('metabolism', {})
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
     regulation_logic = get_regulation()
 
@@ -108,12 +108,13 @@ def compose_kinetic_FBA(config):
 
     # Division
     # get initial volume from metabolism
-    division_config = copy.deepcopy(config)
+    division_config = config.get('division', {})
     division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
 
     # Other processes
-    deriver = DeriveVolume(config)
+    deriver_config = config.get('volume', {})
+    deriver = DeriveVolume(deriver_config)
 
     # Place processes in layers
     processes = [

@@ -564,7 +564,7 @@ def simulate_with_environment(compartment, settings={}):
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
-    timeline = settings.get('timeline', [(total_time, {})])
+    timeline = copy.deepcopy(settings.get('timeline', [(total_time, {})]))
     end_time = timeline[-1][0]
 
     environment = compartment.states.get(environment_role)

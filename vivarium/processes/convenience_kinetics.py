@@ -23,24 +23,31 @@ class ConvenienceKinetics(Process):
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1 / units.mol
 
+        # retrieve initial parameters
         self.reactions = initial_parameters.get('reactions')
+        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
         roles = initial_parameters.get('roles', EMPTY_ROLES)
-        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
 
-        # Make the kinetic model
+        # make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
+        # roles
         # add volume to internal role
         if 'volume' not in roles.get('internal'):
             roles['internal'].append('volume')
 
+        # fluxes role is used to pass constraints
+        # exchange is equivalent to external, for lattice_compartment
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
             'exchange': roles['external']
         })
 
+        # parameters
         parameters = {}
+        parameters.update(initial_parameters)
+
         super(ConvenienceKinetics, self).__init__(roles, parameters)
 
     def default_settings(self):
@@ -70,13 +77,14 @@ class ConvenienceKinetics(Process):
         volume = states['internal']['volume'] * units.L
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        # kinetic rate law requires a flat dict with 'state_role' keys.
+        # kinetic rate law uses a flat dict with 'state_role' keys.
         flattened_states = flatten_role_dicts(states)
 
         # get flux
         fluxes = self.kinetic_rate_laws.get_fluxes(flattened_states)
 
-        # apply fluxes to state
+        # make the update
+        # add fluxes to update
         update = {role: {} for role in self.roles.keys()}
         update.update({'fluxes': fluxes})
 
@@ -98,7 +106,7 @@ class ConvenienceKinetics(Process):
                         else:
                             update[role_id][state_id] = state_flux
 
-        # note: external and internal roles get update in change in mmol.
+        # note: external and internal roles update change in mmol.
         return update
 
 
