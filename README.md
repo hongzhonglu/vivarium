@@ -50,14 +50,14 @@ agents together with others running under a shepherd.
 
 **Tip:** Run each process in a new terminal tab. Use iTerm split windows to make it easy to watch them all at once.
 
-4. In the first terminal tab, launch an Environment agent:
+3. In the first terminal tab, launch an Environment agent:
 
       `> python -m vivarium.environment.boot --type lattice --id lattice`
 
       The Environment agent will wait for Cell simulation agents to register.
       You can optionally pass in a JSON `--config '{...}'` dictionary.
 
-5. Now start a Cell agent in a new tab:
+4. Now start a Cell agent in a new tab:
 
    `> python -m vivarium.environment.boot --outer-id lattice --type lookup --id 1`
 
@@ -73,7 +73,7 @@ agents together with others running under a shepherd.
 
    `--> cell-receive (ENVIRONMENT_SYNCHRONIZE) [1]: {u'inner_id': u'1', u'state': {u'time': 0}, u'outer_id': u'lattice', u'event': u'ENVIRONMENT_SYNCHRONIZE'}`
 
-6. To debug an agent using the PyCharm debugger, first create a Run/Debug Configuration with the
+5. To debug an agent using the PyCharm debugger, first create a Run/Debug Configuration with the
 module name and parameters on the command lines above, e.g.
 
    ```
@@ -112,7 +112,7 @@ Furthermore, this enables cell division wherein a cell agent process ends and tw
 new ones begin.
 But to debug an agent, see the "One Agent Per Terminal Tab" instructions, above.
 
-Shepherd uses Clojure, which can be set up with [Leiningen](https://leiningen.org)
+Shepherd uses Clojure, which can be set up using the `lein script` found in [Leiningen](https://leiningen.org)
 
 With Clojure working, open a terminal tab and run shepherd with:
 
