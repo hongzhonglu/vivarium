@@ -5,11 +5,17 @@ from vivarium.actor.process import Process
 from vivarium.states.chromosome import Chromosome, Rnap, test_chromosome
 
 def build_stoichiometry(promoter_count):
-    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2), dtype=np.int64)
+    '''
+    Builds a stoichiometry for the given promoters. There are two states per promoter,
+    open and bound, and two reactions per promoter, binding and unbinding. In addition
+    there is a single substrate for available RNAP in the final index.
+    '''
+    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2 + 1), dtype=np.int64)
     for index in range(promoter_count):
         # forward reaction
         stoichiometry[index][index] = -1
         stoichiometry[index][index + promoter_count] = 1
+        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
 
         # reverse reaction
         stoichiometry[index + promoter_count][index] = 1
@@ -70,9 +76,11 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
+        unbound_rnaps = states['molecules']['unbound_rnaps']
         substrate = np.concatenate([
             copy_numbers - bound_rnap,
-            bound_rnap])
+            bound_rnap,
+            [unbound_rnaps]])
 
         # run simulation
         result = self.initiation.evolve(timestep, substrate)
@@ -131,7 +139,7 @@ class Transcription(Process):
         complete = chromosome.polymerize(self.elongation_rate * remaining)
         complete_transcripts.extend(complete)
 
-        return chromosome.to_dict()
+        return chromosome.to_dict(), rnap_bindings, complete_transcripts
 
 
 def test_transcription():
@@ -146,11 +154,15 @@ def test_transcription():
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {}}
+        'molecules': {
+            'unbound_rnaps': 100}}
 
-    update = transcription.next_update(1.0, states)
+    update, bindings, transcripts = transcription.next_update(1.0, states)
     
     print(update)
+    print('bindings: {}'.format(bindings))
+    print('complete!')
+    print(transcripts)
 
 
 
