@@ -41,7 +41,7 @@ def get_phylogeny(client, experiment_id):
 def get_experiment(client, experiment_id):
     query = {'experiment_id': experiment_id}
     data = client.find(query)
-    experiment_config = {}
+    experiment_config = {'agents': {}}
     for row in data:
         if row.get('type') == 'lattice':
             experiment_config['edge_length_x'] = row['edge_length_x']
@@ -49,8 +49,13 @@ def get_experiment(client, experiment_id):
             experiment_config['patches_per_edge_x'] = row['patches_per_edge_x']
             experiment_config['patches_per_edge_y'] = row['patches_per_edge_y']
             experiment_config['cell_radius'] = row['cell_radius']
-        elif row.get('topology'):
-            experiment_config['topology'] = row['topology']
+            experiment_config['description'] = row['description']
+
+        elif row.get('type') == 'compartment':
+            sim_id = row.get('simulation_id')
+            experiment_config['agents'][sim_id] = {}
+            experiment_config['agents'][sim_id]['topology'] = row.get('topology')
+            experiment_config['agents'][sim_id]['name'] = row.get('name')
 
     return experiment_config
 

@@ -147,6 +147,7 @@ def compose_kinetic_FBA(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
+        'name': 'kinetic_FBA_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,

@@ -12,10 +12,19 @@ class Topology(Analysis):
         return
 
     def analyze(self, experiment_config, history_data, output_dir):
-        topology = experiment_config.get('topology')
+        agents = experiment_config.get('agents')
+
+        topologies = {}
+        for agent_id, specs in agents.items():
+            name = specs.get('name')
+            topology = specs.get('topology')
+
+            topologies[agent_id] = {
+                'name': name,
+                'topology': topology}
 
         # save topology
-        json_out = json.dumps(topology)
+        json_out = json.dumps(topologies)
         f = open(output_dir + '/topology.json', 'w')
         f.write(json_out)
         f.close()
