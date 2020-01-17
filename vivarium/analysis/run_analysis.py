@@ -96,7 +96,7 @@ class Analyze(object):
 
         # create singleton instance of mongo client
         if Analyze.client is None:
-            Analyze.client = MongoClient(url)
+            Analyze.client = MongoClient(args.mongo_host)
 
         self.path = args.path
         self.experiment_id = args.experiment
@@ -231,6 +231,11 @@ class Analyze(object):
             type=str,
             default='',
             help='the experiment id')
+
+		parser.add_argument(
+			'-m', '--mongo-host',
+			type=str,
+			default='localhost:27017')
 
         parser.add_argument(
             '-a', '--analyses',
