@@ -22,10 +22,6 @@ analysis_classes = {
     'topology': Topology,
 }
 
-# mongoDB local url
-url='localhost:27017'
-
-
 class AnalysisError(Exception):
     pass
 
@@ -232,10 +228,10 @@ class Analyze(object):
             default='',
             help='the experiment id')
 
-		parser.add_argument(
-			'-m', '--mongo-host',
-			type=str,
-			default='localhost:27017')
+        parser.add_argument(
+            '-m', '--mongo-host',
+            type=str,
+            default='localhost:27017')
 
         parser.add_argument(
             '-a', '--analyses',
