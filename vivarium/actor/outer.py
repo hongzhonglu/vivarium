@@ -89,14 +89,14 @@ class Outer(Actor):
     The context environmental simulation is an instance of EnvironmentSimulation.
     """
 
-    def __init__(self, agent_id, agent_type, agent_config, environment):
+    def __init__(self, agent_id, agent_type, actor_config, environment):
         """
         Construct the Agent.
 
         Args:
             agent_id (str): Unique identifier for this agent.
             agent_type (str): The type of this agent, for coordination with the agent shepherd.
-            agent_config (dict): A dictionary containing any information needed to run this
+            actor_config (dict): A dictionary containing any information needed to run this
                 outer agent. The only required key is `kafka_config` containing Kafka configuration
                 information with the following keys:
 
@@ -113,11 +113,11 @@ class Outer(Actor):
                 the calculations.
         """
 
-        kafka_config = agent_config['kafka_config']
+        kafka_config = actor_config['kafka_config']
         kafka_config['subscribe'].append(
             kafka_config['topics']['environment_receive'])
 
-        super(Outer, self).__init__(agent_id, agent_type, agent_config)
+        super(Outer, self).__init__(agent_id, agent_type, actor_config)
 
         self.environment = environment
         self.simulations = {}

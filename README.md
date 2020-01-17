@@ -19,7 +19,7 @@ The agents communicate through message passing and are coordinated by the enviro
 
 ### Zookeeper and Kafka
 
-2. See [actor/README.md](vivarium/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
+1. See [actor/README.md](vivarium/actor/README.md) for instructions to set up, start, and stop your Zookeeper and Kafka servers. To recap:
 
    1. Start Zookeeper in the directory where you untarred the Kafka and Zookeeper software:
 
@@ -31,7 +31,7 @@ The agents communicate through message passing and are coordinated by the enviro
 
 ### mongoDB
     
-4. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
+2. Run mongoDB. Homebrew installation: [homebrew.](https://github.com/mongodb/homebrew-brew) Docs: [mongoDB docs.](https://docs.mongodb.com/manual/mongo/#start-the-mongo-shell-and-connect-to-mongodb)
     1. Run mongod as a service. To have launched start mongodb/brew/mongodb-community now and restart at login:
     
       `> brew services start mongodb/brew/mongodb-community`
@@ -50,14 +50,14 @@ agents together with others running under a shepherd.
 
 **Tip:** Run each process in a new terminal tab. Use iTerm split windows to make it easy to watch them all at once.
 
-4. In the first terminal tab, launch an Environment agent:
+3. In the first terminal tab, launch an Environment agent:
 
       `> python -m vivarium.environment.boot --type lattice --id lattice`
 
       The Environment agent will wait for Cell simulation agents to register.
       You can optionally pass in a JSON `--config '{...}'` dictionary.
 
-5. Now start a Cell agent in a new tab:
+4. Now start a Cell agent in a new tab:
 
    `> python -m vivarium.environment.boot --outer-id lattice --type lookup --id 1`
 
@@ -73,7 +73,7 @@ agents together with others running under a shepherd.
 
    `--> cell-receive (ENVIRONMENT_SYNCHRONIZE) [1]: {u'inner_id': u'1', u'state': {u'time': 0}, u'outer_id': u'lattice', u'event': u'ENVIRONMENT_SYNCHRONIZE'}`
 
-6. To debug an agent using the PyCharm debugger, first create a Run/Debug Configuration with the
+5. To debug an agent using the PyCharm debugger, first create a Run/Debug Configuration with the
 module name and parameters on the command lines above, e.g.
 
    ```
@@ -106,28 +106,23 @@ separate terminal tab or PyCharm run/debug tab.
 ## Agent Shepherd
 
 The usual way to start the simulation is to use the agent "Shepherd", which is a process
-that spawns agents in subprocesses (as requested via Kafka messages) so you don't have to
+that spawns agents in new threads (as requested via Kafka messages) so you don't have to
 launch each agent in its own terminal tab.
 Furthermore, this enables cell division wherein a cell agent process ends and two
 new ones begin.
 But to debug an agent, see the "One Agent Per Terminal Tab" instructions, above.
 
-Clone the [CovertLab/shepherd](https://github.com/CovertLab/shepherd) repo and run:
+Shepherd uses Clojure, which can be set up using the `lein script` found in [Leiningen](https://leiningen.org)
+
+With Clojure working, open a terminal tab and run shepherd with:
 
    `> lein run`
 
-Use a "vivarium" browser page to view the agents in action. To do this, open another shell
-tab onto the shepherd repo directory and run:
-
-   `> lein run -m shepherd.Lens`
-
-then open a browser window onto [http://localhost:33332/](http://localhost:33332/)
-
-Now you can start a virtual microscope experiment in a "command" terminal tab:
+Then, in a new terminal tab initiate an experiment:
 
    `> python -m vivarium.environment.control experiment --number 3 --type metabolism --experiment_id exp123`
 
-This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ agent and three for the _cell simulation_ agents. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
+This will send four `ADD_AGENT` messages to the shepherd: one for the _lattice environment_ actor and three for the _cell simulation_ actors. Note the `agent_id` for the lattice as you will need this for future control messages (like `run` and `shutdown`). These messages are received by the shepherd and you will see all the agents' logs in the "shepherd" tab.
 
 You can `run`/`pause` the simulation at will:
 

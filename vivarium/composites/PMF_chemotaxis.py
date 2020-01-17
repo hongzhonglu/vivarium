@@ -61,6 +61,7 @@ def compose_pmf_chemotaxis(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
+        'name': 'PMF_chemotaxis_composite',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'environment_role': 'environment',

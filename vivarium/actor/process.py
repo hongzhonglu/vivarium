@@ -314,9 +314,14 @@ class Compartment(object):
         connect_topology(processes, self.states, self.topology)
 
         # log experiment configuration
+        data = {
+            'type': 'compartment',
+            'name': configuration.get('name', 'compartment'),
+            'topology': self.topology}
+
         emit_config = {
             'table': 'configuration',
-            'data': {'topology': self.topology}}
+            'data': data}
         self.emitter.emit(emit_config)
 
     def update(self, timestep):

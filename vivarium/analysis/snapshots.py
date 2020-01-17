@@ -56,14 +56,14 @@ class Snapshots(Analysis):
             return time_dict
 
         elif type is 'environment':
-            # get data about agent locations ('type': 'lattice')
-            query_lattice = {'type': 'lattice'}
+            # get data about agent locations ('type': 'lattice-agent')
+            query_lattice = {'type': 'lattice-agent'}
             query_lattice.update(query)
             data_lattice = client.find(query_lattice)
             data_lattice.sort('time')
 
-            # get data about concentrations ('type': 'lattice-field')
-            query_field = {'type': 'lattice-field'}
+            # get data about concentrations ('type': 'lattice-fields')
+            query_field = {'type': 'lattice-fields'}
             query_field.update(query)
             data_field = client.find(query_field)
             data_field.sort('time')
@@ -103,7 +103,8 @@ class Snapshots(Analysis):
         compartments = data['compartments']
         edge_length_x = experiment_config['edge_length_x']
         edge_length_y = experiment_config['edge_length_y']
-        cell_radius = experiment_config['cell_radius']
+        cell_radius = experiment_config['cell_radius'] # TODO --get cell_radius from compartments
+
         time_vec = list(time_data.keys())
 
         # time steps that will be used
