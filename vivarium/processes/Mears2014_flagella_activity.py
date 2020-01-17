@@ -6,6 +6,10 @@ import random
 import math
 import uuid
 
+import matplotlib.pyplot as plt
+from matplotlib import colors
+from matplotlib.patches import Patch
+
 from vivarium.actor.process import Process, deep_merge
 
 
@@ -41,7 +45,7 @@ INITIAL_STATE = {
     'CheY': 2.59,
     'CheY_P': 2.59,  # (uM) mean concentration of CheY-P
     'cw_bias': 0.5,  # (made up)
-    'motile_state': 0, # 1 for tumble, 0 for run
+    'motile_state': 0, # 1 for tumble, -1 for run, 0 for none
     'motile_force': 0,
     'motile_torque': 0,
 }
@@ -87,7 +91,7 @@ class FlagellaActivity(Process):
                 'motile_state',
                 'motile_force',
                 'motile_torque',
-            ],
+                'n_flagella'],
             'membrane': ['PMF', 'protons_flux_accumulated'],
             'flagella': self.flagella_ids,
             'external': []
@@ -100,17 +104,22 @@ class FlagellaActivity(Process):
     def default_settings(self):
 
         # default state
-        # flagella motor state: 0 for CCW, 1 for CW
+        # flagella motor state: -1 for CCW, 1 for CW
+        # motile state: -1 for run, 1 for tumble, 0 for no state
         internal = INITIAL_STATE
         default_state = {
             'external': {},
             'membrane': {'PMF': DEFAULT_PMF, 'PROTONS': 0},
-            'flagella': {flagella_id: random.choice([0, 1]) for flagella_id in self.flagella_ids},
-            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': DEFAULT_N_FLAGELLA})}
+            'flagella': {flagella_id: random.choice([-1, 1]) for flagella_id in self.flagella_ids},
+            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': self.n_flagella})}
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': [],
+            'internal': [
+                'n_flagella',
+                'motile_force',
+                'motile_torque',
+                'motile_state'],
             'flagella': [],
             'external': [],
         }
@@ -176,12 +185,18 @@ class FlagellaActivity(Process):
 
         ## get cell motile state.
         # if any flagella is rotating CW, the cell tumbles.
-        if any(flagella_update.values()) == 1:
-            motile_state = 1  # 1 for tumble
-            [force, torque] = tumble(PMF)  # TODO -- add # of motors
-        else:
-            motile_state = 0  # 0 for run
+        # flagella motor state: -1 for CCW, 1 for CW
+        # motile state: -1 for run, 1 for tumble, 0 for no state
+        if any(state == 1 for state in flagella_update.values()):
+            motile_state = 1
+            [force, torque] = tumble(PMF)
+        elif len(flagella_update) > 0:
+            motile_state = -1
             [force, torque] = run(PMF)
+        else:
+            motile_state = 0
+            force = 0
+            torque = 0
 
         return {
             'flagella': flagella_update,
@@ -216,17 +231,18 @@ class FlagellaActivity(Process):
         CCW_to_CW = omega * math.exp(-delta_g)
         # switch_freq = CCW_to_CW * (1 - cw_bias) + CW_to_CCW * cw_bias
 
-        if motor_state == 0:  # 0 for CCW
+        # flagella motor state: -1 for CCW, 1 for CW
+        if motor_state == -1:
             prob_switch = CCW_to_CW * timestep
             if np.random.random(1)[0] <= prob_switch:
                 new_motor_state = 1
             else:
-                new_motor_state = 0
+                new_motor_state = -1
 
-        elif motor_state == 1:  # 1 for CW
+        elif motor_state == 1:
             prob_switch = CW_to_CCW * timestep
             if np.random.random(1)[0] <= prob_switch:
-                new_motor_state = 0
+                new_motor_state = -1
             else:
                 new_motor_state = 1
 
@@ -235,10 +251,11 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_activity(total_time=10):
+def test_activity(parameters, total_time=10):
     # TODO -- add asserts for test
 
     initial_params = {}
+    initial_params.update(parameters)
 
     motor = FlagellaActivity(initial_params)
     settings = motor.default_settings()
@@ -306,14 +323,7 @@ def test_motor_PMF():
         'PMF': PMF_values,
     }
 
-def plot_activity(output, out_dir='out'):
-    # TODO -- make this into an analysis figure
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    from matplotlib import colors
-
+def plot_activity(output, out_dir='out', filename='motor_control'):
     # receptor_activities = output['receptor_activities']
     CheY_vec = output['internal']['CheY']
     CheY_P_vec = output['internal']['CheY_P']
@@ -323,26 +333,39 @@ def plot_activity(output, out_dir='out'):
     time_vec = output['time']
 
     # get all flagella states into an activity grid
-    flagella_ids = flagella.keys()
+    flagella_ids = list(flagella.keys())
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
     total_CW = np.zeros((len(time_vec)))
-    for flagella_id, motor_states in flagella.items():
+    for flagella_id, rotation_states in flagella.items():
         flagella_index = flagella_ids.index(flagella_id)
-        activity_grid[flagella_index, :] = [x + 1 for x in motor_states]
-        total_CW += np.array(motor_states)
+        modified_rotation_state = [1 if x==-1 else 2 if x==1 else 0 for x in rotation_states]
+        activity_grid[flagella_index, :] = modified_rotation_state
+
+        CW_rotation_state = [1 if x == 1 else 0 for x in rotation_states]
+        total_CW += np.array(CW_rotation_state)
 
     # grid for cell state
-    cell_grid = np.zeros((1, len(time_vec)))
-    cell_grid[0, :] = motile_state_vec
+    motile_state_grid = np.zeros((1, len(time_vec)))
+    motile_state_grid[0, :] = motile_state_vec
 
     # set up colormaps
-    cmap1 = colors.ListedColormap(['white', 'black'])
-    bounds1 = [0, 0.5, 1]
+    # cell motile state
+    cmap1 = colors.ListedColormap(['black', 'red', 'white'])
+    bounds1 = [-1, -1/3, 1/3, 1]
     norm1 = colors.BoundaryNorm(bounds1, cmap1.N)
+    motile_legend_elements = [
+        Patch(facecolor='k', edgecolor='k', label='Run'),
+        Patch(facecolor='r', edgecolor='k', label='None'),
+        Patch(facecolor='w', edgecolor='k', label='Tumble')]
 
+    # rotational state
     cmap2 = colors.ListedColormap(['black', 'white', 'blue'])
     bounds2 = [0, 0.5, 1.5, 2]
     norm2 = colors.BoundaryNorm(bounds2, cmap2.N)
+    rotational_legend_elements = [
+        Patch(facecolor='b', edgecolor='k', label='CW'),
+        Patch(facecolor='w', edgecolor='k', label='CCW')]
+
 
     # plot results
     cols = 1
@@ -359,17 +382,19 @@ def plot_activity(output, out_dir='out'):
     # plot Che-P state
     ax1.plot(time_vec, CheY_vec, label='CheY')
     ax1.plot(time_vec, CheY_P_vec, label='CheY_P')
-    ax1.legend()
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax1.set_xticks([])
+    ax1.set_xlim(time_vec[0], time_vec[-1])
     ax1.set_ylabel('concentration (uM)')
 
     # plot CW bias
     ax2.plot(time_vec, cw_bias_vec)
     ax2.set_xticks([])
+    ax2.set_xlim(time_vec[0], time_vec[-1])
     ax2.set_ylabel('CW bias')
 
-    # plot cell state
-    im1 = ax3.imshow(cell_grid,
+    # plot cell motile state
+    im1 = ax3.imshow(motile_state_grid,
                interpolation='nearest',
                aspect='auto',
                cmap=cmap1,
@@ -379,34 +404,47 @@ def plot_activity(output, out_dir='out'):
     ax3.set_xticks([])
     ax3.set_ylabel('cell motile state')
 
+    # legend
+    ax3.legend(
+        handles=motile_legend_elements,
+        loc='center left',
+        bbox_to_anchor=(1, 0.5))
+
     # plot flagella states in a grid
-    im2 = ax4.imshow(activity_grid,
-               interpolation='nearest',
-               aspect='auto',
-               cmap=cmap2,
-               norm=norm2)
-    # cbar = plt.colorbar(im2, cmap=cmap2, norm=norm2, boundaries=bounds2, ticks=[0,1,2])
-    # cbar.set_ticklabels(['none', 'CCW', 'CW'])
-    plt.locator_params(axis='y', nbins=len(flagella_ids))
-    ax4.set_yticks(list(range(len(flagella_ids))))
-    ax4.set_xticks([])
-    ax4.set_ylabel('flagella #')
+    if len(activity_grid) > 0:
+        im2 = ax4.imshow(activity_grid,
+                   interpolation='nearest',
+                   aspect='auto',
+                   cmap=cmap2,
+                   norm=norm2)
+        # cbar = plt.colorbar(im2, cmap=cmap2, norm=norm2, boundaries=bounds2, ticks=[0,1,2])
+        # cbar.set_ticklabels(['none', 'CCW', 'CW'])
+        plt.locator_params(axis='y', nbins=len(flagella_ids))
+        ax4.set_yticks(list(range(len(flagella_ids))))
+        ax4.set_xticks([])
+        ax4.set_ylabel('flagella #')
+
+        # legend
+        ax4.legend(
+            handles=rotational_legend_elements,
+            loc='center left',
+            bbox_to_anchor=(1, 0.5))
+    else:
+        # no flagella
+        ax4.set_axis_off()
 
     # plot number of flagella CW
     ax5.plot(time_vec, total_CW)
+    ax5.set_xlim(time_vec[0], time_vec[-1])
     ax5.set_xlabel('time (sec)')
     ax5.set_ylabel('number of flagella CW')
 
     # save figure
-    fig_path = os.path.join(out_dir, 'motor_control')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 def plot_motor_PMF(output, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-
     motile_state = output['motile_state']
     motile_force = output['motile_force']
     motile_torque = output['motile_torque']
@@ -436,8 +474,13 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_activity(12)
-    plot_activity(output1, out_dir)
+    zero_flagella = {'n_flagella': 0}
+    output1 = test_activity(zero_flagella, 10)
+    plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
-    output2 = test_motor_PMF()
-    plot_motor_PMF(output2, out_dir)
+    five_flagella = {'n_flagella': 5}
+    output2 = test_activity(five_flagella, 10)
+    plot_activity(output2, out_dir, 'motor_control')
+
+    output3 = test_motor_PMF()
+    plot_motor_PMF(output3, out_dir)
