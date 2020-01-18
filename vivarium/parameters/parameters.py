@@ -4,11 +4,13 @@ import copy
 
 import numpy as np
 
-from vivarium.actor.process import load_compartment, simulate_compartment, simulate_with_environment
+from vivarium.actor.process import load_compartment, simulate_compartment
 
 # composites
 from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
 
+
+null_emitter = {'emitter': 'null'}
 
 def get_nested(dict, keys):
     d = dict
@@ -38,7 +40,7 @@ def parameter_scan(composite, scan_params, output_values):
     n_combinations = np.prod(np.array(n_values))
 
     # get initial parameters
-    compartment = load_compartment(composite)
+    compartment = load_compartment(composite, null_emitter)
     initial_params = compartment.current_parameters()
 
     # make list of parameters to place in compartment
@@ -58,6 +60,7 @@ def parameter_scan(composite, scan_params, output_values):
 
     results = []
     for params in param_sets:
+        params.update(null_emitter)
         new_compartment = load_compartment(compose_kinetic_FBA, params)
         sim_out = simulate_compartment(new_compartment, settings)  # TODO -- supress emitter. null emitter?
         last_state = sim_out[total_time]
@@ -70,7 +73,15 @@ def parameter_scan(composite, scan_params, output_values):
     return results
 
 def scan_kinetic_FBA():
+    composite = compose_kinetic_FBA
+
+    compartment = load_compartment(composite, null_emitter)
+    default_params = compartment.current_parameters()
+    print('default parameters: {}'.format(default_params))
+
+    # define scanned parameters, to replace defaults
     scan_params = {
+        # ('metabolism', 'model_path'): ['models/e_coli_core.json'],
         ('transport', 'kinetic_parameters', 'EX_glc__D_e', 'PTSG_internal', 'kcat_f'): [-3e4, -3e3, -3e2, -3e1]
     }
 
@@ -78,10 +89,9 @@ def scan_kinetic_FBA():
         ('reactions', 'EX_glc__D_e')
     ]
 
-    results = parameter_scan(compose_kinetic_FBA, scan_params, output_values)
+    results = parameter_scan(composite, scan_params, output_values)
 
     print('results: {}'.format(results))
-
 
     import ipdb;
     ipdb.set_trace()

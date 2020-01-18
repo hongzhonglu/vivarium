@@ -303,7 +303,11 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        if configuration.get('emitter'):
+        if configuration.get('emitter') == 'null':
+            emitter = emit.get_emitter({'type': 'null'})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
+        elif configuration.get('emitter'):
             self.emitter_keys = configuration['emitter'].get('keys')
             self.emitter = configuration['emitter'].get('object')
         else:
@@ -530,6 +534,7 @@ def load_compartment(composite=toy_composite, boot_config={}):
     processes = composite_config['processes']
     states = composite_config['states']
     options = composite_config['options']
+    options.update({'emitter': boot_config.get('emitter')})
 
     compartment = Compartment(processes, states, options)
     # print('current_parameters: {}'.format(compartment.current_parameters()))
