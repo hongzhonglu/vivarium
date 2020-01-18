@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
+import itertools
 
 import numpy as np
 
@@ -41,16 +42,19 @@ def parameter_scan(composite, scan_params, output_values):
 
     # get initial parameters
     compartment = load_compartment(composite, null_emitter)
-    initial_params = compartment.current_parameters()
+    default_params = compartment.current_parameters()
 
-    # make list of parameters to place in compartment
-    # TODO -- need to make all combinations, not just 1 parameter at a time
+    # make list with combinations of all scanned parameters,
+    # nested in the compartment's default parameters
+    param_keys = list(scan_params.keys())
+    param_values = list(scan_params.values())
+    param_combinations = list(itertools.product(*param_values))
     param_sets = []
-    for param_id, values in scan_params.items():
-        for value in values:
-            params = copy.deepcopy(initial_params)
-            new_params = set_nested(params, param_id, value)
-            param_sets.append(new_params)
+    for combo in param_combinations:
+        new_params = copy.deepcopy(default_params)
+        for param_key, value in zip(param_keys, combo):
+            new_params = set_nested(new_params, param_key, value)
+        param_sets.append(new_params)
 
     # simulation settings
     total_time = 10
@@ -58,6 +62,7 @@ def parameter_scan(composite, scan_params, output_values):
         'timestep': 1,
         'total_time': total_time}
 
+    # run all parameters, and save results
     results = []
     for params in param_sets:
         params.update(null_emitter)
@@ -75,13 +80,13 @@ def parameter_scan(composite, scan_params, output_values):
 def scan_kinetic_FBA():
     composite = compose_kinetic_FBA
 
-    compartment = load_compartment(composite, null_emitter)
-    default_params = compartment.current_parameters()
-    print('default parameters: {}'.format(default_params))
+    # compartment = load_compartment(composite, null_emitter)
+    # default_params = compartment.current_parameters()
+    # print('default parameters: {}'.format(default_params))
 
     # define scanned parameters, to replace defaults
     scan_params = {
-        # ('metabolism', 'model_path'): ['models/e_coli_core.json'],
+        ('metabolism', 'model_path'): ['models/e_coli_core.json'],
         ('transport', 'kinetic_parameters', 'EX_glc__D_e', 'PTSG_internal', 'kcat_f'): [-3e4, -3e3, -3e2, -3e1]
     }
 
@@ -93,8 +98,7 @@ def scan_kinetic_FBA():
 
     print('results: {}'.format(results))
 
-    import ipdb;
-    ipdb.set_trace()
+    import ipdb;  ipdb.set_trace()
 
 
 
