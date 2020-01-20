@@ -75,7 +75,7 @@ def compose_kinetic_FBA(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
-        'name': 'kinetic_FBA_composite',
+        'name': config.get('name', 'kinetic_FBA_composite'),
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
@@ -90,6 +90,7 @@ def compose_kinetic_FBA(config):
 
 
 
+# toy functions/ defaults
 def default_metabolism_config():
     metabolism_file = os.path.join('models', 'e_coli_core.json')
     regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
@@ -101,18 +102,11 @@ def default_metabolism_config():
         'regulation_logic': regulation_logic}
 
 def default_transport_config():
-    """
-    Convenience kinetics configuration for simplified glucose transport.
-    This abstracts the PTS/GalP system to a single uptake kinetic
-    with glc__D_e_external as the only cofactor.
-    """
     transport_reactions = {
         'EX_glc__D_e': {
             'stoichiometry': {
                 ('internal', 'g6p_c'): 1.0,
                 ('external', 'glc__D_e'): -1.0,
-                # ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
-                # ('internal', 'pyr_c'): 1.0
             },
             'is reversible': False,
             'catalyzed by': [('internal', 'PTSG')]}}
@@ -161,14 +155,7 @@ if __name__ == '__main__':
     options = compose_kinetic_FBA({})['options']
 
     # define timeline
-    timeline = [
-        (0, {'environment': {
-            'lac__D_e': 12.0}
-        }),
-        (1000, {'environment': {
-            'glc__D_e': 0.0}
-        }),
-        (3500, {})]
+    timeline = [(1000, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -180,17 +167,7 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'show_state': [
-            ('environment', 'glc__D_e'),
-            ('environment', 'lac__D_e'),
-            ('reactions', 'GLCpts'),
-            ('reactions', 'EX_glc__D_e'),
-            ('reactions', 'EX_lac__D_e'),
-            ('cell', 'g6p_c'),
-            ('cell', 'pep_c'),
-            ('cell', 'pyr_c'),
-            ('cell', 'PTSG'),
-        ]}
+        }
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
