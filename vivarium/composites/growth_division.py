@@ -8,7 +8,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.derive_volume import DeriveVolume
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.protein_expression import ProteinExpression
+from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 
 
@@ -59,7 +59,7 @@ def compose_growth_division(config):
     transport = ConvenienceKinetics(transport_config)
     growth = Growth(config)
     division = Division(config)
-    expression = ProteinExpression(config)
+    expression = MinimalExpression(config)
     deriver = DeriveVolume(config)
 
     # place processes in layers

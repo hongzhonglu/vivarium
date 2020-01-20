@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import copy
 
 from scipy import constants
 
@@ -88,7 +89,7 @@ class ConvenienceKinetics(Process):
                     # separate the state_id and role_id
                     if role_id in role_state_id:
                         state_id = role_state_id[1]
-                        state_flux = coeff * flux
+                        state_flux = coeff * flux * timestep
 
                         if role_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_count
@@ -136,7 +137,7 @@ toy_initial_state = {
     }
 
 # test
-def test_convenience_kinetics():
+def test_convenience_kinetics(end_time=10):
     toy_config = {
         'reactions': toy_reactions,
         'kinetic_parameters': toy_kinetics,
@@ -156,7 +157,6 @@ def test_convenience_kinetics():
     # run the simulation
     time = 0
     timestep = 1
-    end_time = 10
     saved_state[time] = state
     while time < end_time:
         time += timestep
@@ -168,7 +168,7 @@ def test_convenience_kinetics():
             if role_id not in skip_roles:
                 for state_id, change in states_update.items():
                     state[role_id][state_id] += change
-        saved_state[time] = state
+        saved_state[time] = copy.deepcopy(state)
 
     return saved_state
 
