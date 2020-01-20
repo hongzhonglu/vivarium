@@ -89,7 +89,7 @@ class ConvenienceKinetics(Process):
                     # separate the state_id and role_id
                     if role_id in role_state_id:
                         state_id = role_state_id[1]
-                        state_flux = coeff * flux
+                        state_flux = coeff * flux * timestep
 
                         if role_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_count
