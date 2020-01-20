@@ -50,7 +50,7 @@ from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
+from vivarium.composites.ecoli_master import compose_ecoli_master
 from vivarium.composites.variable_flagella import compose_variable_flagella
 
 
@@ -444,7 +444,7 @@ class BootEnvironment(BootAgent):
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
-            'kinetic_FBA': wrap_boot(wrap_init_composite(compose_kinetic_FBA), {'volume': 1.0}),
+            'ecoli_master': wrap_boot(wrap_init_composite(compose_ecoli_master), {'volume': 1.0}),
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),

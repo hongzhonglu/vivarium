@@ -10,33 +10,33 @@ from vivarium.actor.process import Process, convert_to_timeseries, plot_simulati
 
 default_step_size = 1
 
-class MinimalExpression(Process):
+class MinimalDegradation(Process):
     '''
-    a minimal protein expression process
+    a minimal protein degradation process
 
     parameters:
-        expression_rates (dict) with {'mol_id': probability_of_expression (1/sec)}
+        degradation_rates (dict) with {'mol_id': probability_of_degradation (1/sec)}
     '''
     def __init__(self, initial_parameters={}):
 
-        expression_rates = initial_parameters.get('expression_rates')
-        self.internal_states = list(expression_rates.keys()) if expression_rates else []
+        degradation_rates = initial_parameters.get('degradation_rates')
+        self.internal_states = list(degradation_rates.keys()) if degradation_rates else []
 
         roles = {'internal': self.internal_states}
 
         parameters = {
-            'expression_rates': expression_rates,
+            'degradation_rates': degradation_rates,
             'step_size': initial_parameters.get('step_size', default_step_size)
         }
         parameters.update(initial_parameters)
 
-        super(MinimalExpression, self).__init__(roles, parameters)
+        super(MinimalDegradation, self).__init__(roles, parameters)
 
     def default_settings(self):
 
         # default state
         # TODO -- load in initial state, or have compartment set to 0
-        internal = {state_id: 0 for state_id in self.internal_states}
+        internal = {state_id: 100 for state_id in self.internal_states}
         default_state = {'internal': internal}
 
         # default emitter keys
@@ -59,30 +59,30 @@ class MinimalExpression(Process):
 
         internal_update = {state_id: 0 for state_id in internal.keys()}
         for state_id in internal.keys():
-            rate = self.parameters['expression_rates'][state_id]
+            rate = self.parameters['degradation_rates'][state_id]
             for step in range(n_steps):
                 if random.random() < rate:
-                    internal_update[state_id] += 1
+                    internal_update[state_id] -= 1
 
         return {'internal': internal_update}
 
 
 
 # test functions
-def test_expression(end_time=10):
-    toy_expression_rates = {
+def test_degradation(end_time=10):
+    toy_degradation_rates = {
         'protein1': 1e-3,
         'protein2': 1e-2,
         'protein3': 1e-1}
 
-    expression_config = {
-        'expression_rates': toy_expression_rates}
+    degradation_config = {
+        'degradation_rates': toy_degradation_rates}
 
     # load process
-    expression = MinimalExpression(expression_config)
+    degradation = MinimalDegradation(degradation_config)
 
     # get initial state and parameters
-    settings = expression.default_settings()
+    settings = degradation.default_settings()
     state = settings['state']
     skip_roles = ['exchange']
 
@@ -97,7 +97,7 @@ def test_expression(end_time=10):
     while time < end_time:
         time += timestep
         # get update
-        update = expression.next_update(timestep, state)
+        update = degradation.next_update(timestep, state)
 
         # apply update
         for role_id, states_update in update.items():
@@ -112,11 +112,11 @@ def test_expression(end_time=10):
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'minimal_expression')
+    out_dir = os.path.join('out', 'tests', 'minimal_degradation')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression(1000)
+    saved_data = test_degradation(1000)
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)

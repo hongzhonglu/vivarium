@@ -11,10 +11,12 @@ from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.BiGG_metabolism import BiGGMetabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.minimal_expression import MinimalExpression
+from vivarium.processes.minimal_degradation import MinimalDegradation
+
 
 
 # the composite function
-def compose_kinetic_FBA(config):
+def compose_ecoli_master(config):
     """
     A composite with kinetic transport, metabolism, and regulation
     TODO (eran) -- fit glc/lct uptake rates to growth rates
@@ -34,9 +36,12 @@ def compose_kinetic_FBA(config):
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
-    # Gene expression
+    # expression/degradation
     expression_config = config.get('expression', {})
     expression = MinimalExpression(expression_config)
+
+    degradation_config = config.get('degradation', {})
+    degradation = MinimalDegradation(degradation_config)
 
     # Division
     # get initial volume from metabolism
@@ -51,7 +56,8 @@ def compose_kinetic_FBA(config):
     # Place processes in layers
     processes = [
         {'transport': transport,
-         'expression': expression},
+         'expression': expression,
+         'degradation': degradation},
         {'metabolism': metabolism},
         {'deriver': deriver,
          'division': division}
@@ -65,14 +71,16 @@ def compose_kinetic_FBA(config):
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
             'fluxes': 'flux_bounds'},
-        'expression' : {
-            'internal': 'cell'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
+        'expression' : {
+            'internal': 'cell'},
+        'degradation': {
+            'internal': 'cell'},
         'division': {
             'internal': 'cell'},
         'deriver': {
@@ -157,10 +165,10 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_kinetic_FBA)
+    compartment = load_compartment(compose_ecoli_master)
 
     # settings for simulation and plot
-    options = compose_kinetic_FBA({})['options']
+    options = compose_ecoli_master({})['options']
 
     # define timeline
     timeline = [(1000, {})]

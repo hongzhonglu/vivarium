@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
+from vivarium.composites.ecoli_master import compose_ecoli_master
 
 
 
@@ -85,18 +85,27 @@ def get_metabolism_config():
         'regulation_logic': regulation_logic}
 
 def get_expression_config():
-    expression_rates = {'LacY': 1e-2}
+    expression_rates = {'LacY': 1e-1}
     return {
         'expression_rates': expression_rates}
 
-
+def get_degradation_config():
+    degradation_rates = {'LacY': 1e-2}
+    return {
+        'degradation_rates': degradation_rates}
 
 def get_default_config():
+
+
+    # TODO -- in reconciler, make sure degradation never lowers state below 0
+
+
     return {
         'name': 'glc_lct_shifter',
         'transport': get_transport_config(),
         'metabolism': get_metabolism_config(),
-        'expression': get_expression_config()
+        'expression': get_expression_config(),
+        'degradation': get_degradation_config()
     }
 
 
@@ -107,7 +116,7 @@ def GlcLctShifter(config):
     shifter_config = get_default_config()
     config.update(shifter_config)
 
-    return compose_kinetic_FBA(config)
+    return compose_ecoli_master(config)
 
 
 
