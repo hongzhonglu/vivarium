@@ -18,16 +18,16 @@ def get_transport_config():
     transport_reactions = {
         'GLC_transport': {
             'stoichiometry': {
-                'GLC_external': -1.0,
-                'GLC_internal': 1.0},
+                ('external', 'GLC'): -1.0,
+                ('internal', 'GLC'): 1.0},
             'is reversible': False,
-            'catalyzed by': ['transporter_internal']}}
+            'catalyzed by': [('internal', 'transporter')]}}
 
     # very simplified PTS
     transport_kinetics = {
         'GLC_transport': {
-            'transporter_internal': {
-                'GLC_external': 1.0,  # km for GLC
+            ('internal', 'transporter'): {
+                ('external', 'GLC'): 1.0,  # km for GLC
                 'kcat_f': 1e-9}}}
 
     transport_initial_state = {

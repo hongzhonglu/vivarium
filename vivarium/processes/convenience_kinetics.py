@@ -6,7 +6,7 @@ from scipy import constants
 
 from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
-from vivarium.utils.dict_utils import flatten_role_dicts
+from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.units import units
 
 EMPTY_ROLES = {
@@ -70,8 +70,8 @@ class ConvenienceKinetics(Process):
         volume = states['internal']['volume'] * units.L
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        # kinetic rate law requires a flat dict with 'state_role' keys.
-        flattened_states = flatten_role_dicts(states)
+        # kinetic rate law requires a flat dict with ('role', 'state') keys.
+        flattened_states = tuplify_role_dicts(states)
 
         # get flux
         fluxes = self.kinetic_rate_laws.get_fluxes(flattened_states)
@@ -83,12 +83,11 @@ class ConvenienceKinetics(Process):
         # get exchange
         for reaction_id, flux in fluxes.items():
             stoichiometry = self.reactions[reaction_id]['stoichiometry']
-            for state_role_id, coeff in stoichiometry.items():
+            for role_state_id, coeff in stoichiometry.items():
                 for role_id, state_list in self.roles.items():
                     # separate the state_id and role_id
-                    if role_id in state_role_id:
-                        role_string = '_{}'.format(role_id)
-                        state_id = state_role_id.replace(role_string, '')
+                    if role_id in role_state_id:
+                        state_id = role_state_id[1]
                         state_flux = coeff * flux
 
                         if role_id == 'external':
@@ -107,16 +106,16 @@ class ConvenienceKinetics(Process):
 toy_reactions = {
     'reaction1': {
         'stoichiometry': {
-            'A_internal': 1,
-            'B_external': -1},
+            ('internal', 'A'): 1,
+            ('external', 'B'): -1},
         'is reversible': False,
-        'catalyzed by': ['enzyme1_internal']}
+        'catalyzed by': [('internal', 'enzyme1')]}
     }
 
 toy_kinetics = {
     'reaction1': {
-        'enzyme1_internal': {
-            'B_external': 0.1,
+        ('internal', 'enzyme1'): {
+            ('external', 'B'): 0.1,
             'kcat_f': 0.1}
         }
     }
