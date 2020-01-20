@@ -8,7 +8,7 @@ from vivarium.composites.ecoli_master import compose_ecoli_master
 
 def get_transport_config():
     """
-    Convenience kinetics configuration for simplified glucose transport.
+    Convenience kinetics configuration for simplified glucose/lactose transport.
     This abstracts the PTS/GalP system to a single uptake kinetic
     with glc__D_e_external as the only cofactor.
     """
@@ -96,7 +96,7 @@ def get_degradation_config():
 
 def get_default_config():
 
-
+    # TODO -- Lac expression only if ('internal', 'lac__D_c') is present
     # TODO -- in reconciler, make sure degradation never lowers state below 0
 
 
