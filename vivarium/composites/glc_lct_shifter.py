@@ -12,7 +12,8 @@ def get_metabolism_config():
     return {
         'moma': False,
         'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0]},
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lac__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
         'regulation_logic': regulation_logic}
 
@@ -31,29 +32,51 @@ def get_transport_config():
                 # ('internal', 'pyr_c'): 1.0
             },
             'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]}}
+            'catalyzed by': [('internal', 'PTSG')]},
+        'EX_lac__D_e': {
+            'stoichiometry': {
+                ('external', 'lac__D_e'): -1.0,
+                ('external', 'h_e'): -1.0,
+                ('internal', 'lac__D_c'): 1.0,
+                ('internal', 'h_c'): 1.0,
+            },
+            'is reversible': False,
+            'catalyzed by': [('internal', 'LacY')]},
+        }
 
     transport_kinetics = {
         'EX_glc__D_e': {
             ('internal', 'PTSG'): {
                 ('external', 'glc__D_e'): 1e-1,
                 ('internal', 'pep_c'): None,
-                'kcat_f': -3e5}}}
+                'kcat_f': -3e5}},
+        'EX_lac__D_e': {   # TODO -- GLC inhibition?
+            ('internal', 'LacY'): {
+                ('external', 'lac__D_e'): 1e-1,
+                ('external', 'h_e'): None,
+                'kcat_f': -3e5}},
+        }
 
     transport_initial_state = {
         'internal': {
+            'PTSG': 1.8e-6,
             'g6p_c': 0.0,
             'pep_c': 1.8e-1,
             'pyr_c': 0.0,
-            'PTSG': 1.8e-6},
+            'LacY': 0.0,
+            'lac__D_c': 0.0,
+            'h_c': 100.0},
         'external': {
-            'glc__D_e': 12.0},
+            'glc__D_e': 12.0,
+            'lac__D_e': 0.0,
+            'h_e': 100.0},
         'fluxes': {
-            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
+            'EX_glc__D_e': 0.0,
+            'EX_lac__D_e': 0.0}}  # TODO -- is this needed?
 
     transport_roles = {
-        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
-        'external': ['glc__D_e']}
+        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'h_c', 'PTSG', 'LacY'],
+        'external': ['glc__D_e', 'lac__D_e', 'h_e']}
 
     return {
         'reactions': transport_reactions,
@@ -98,10 +121,10 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (1000, {'environment': {
+        (500, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (3500, {})]
+        (1000, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -116,6 +139,7 @@ if __name__ == '__main__':
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lac__D_e'),
+            ('environment', 'h_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lac__D_e'),
@@ -123,6 +147,8 @@ if __name__ == '__main__':
             ('cell', 'pep_c'),
             ('cell', 'pyr_c'),
             ('cell', 'PTSG'),
+            ('cell', 'lac__D_c'),
+            ('cell', 'h_c'),
         ]}
 
     # saved_state = simulate_compartment(compartment, settings)
