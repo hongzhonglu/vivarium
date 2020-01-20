@@ -13,7 +13,6 @@ default_step_size = 1
 class MinimalExpression(Process):
     '''
     a minimal protein expression process
-
     parameters:
         expression_rates (dict) with {'mol_id': probability_of_expression (1/sec)}
     '''
@@ -120,3 +119,4 @@ if __name__ == '__main__':
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
+    
