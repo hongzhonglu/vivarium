@@ -9,9 +9,6 @@ from vivarium.actor.process import Process, convert_to_timeseries, plot_simulati
 
 
 default_step_size = 1
-default_expression_rates = {
-    'protein1': 1e-3,
-    'protein2': 1e-2}
 
 class MinimalExpression(Process):
     '''
@@ -22,9 +19,8 @@ class MinimalExpression(Process):
     '''
     def __init__(self, initial_parameters={}):
 
-        expression_rates = initial_parameters.get(
-            'expression_rates', default_expression_rates)
-        self.internal_states = list(expression_rates.keys())
+        expression_rates = initial_parameters.get('expression_rates')
+        self.internal_states = list(expression_rates.keys()) if expression_rates else []
 
         roles = {'internal': self.internal_states}
 
@@ -39,6 +35,7 @@ class MinimalExpression(Process):
     def default_settings(self):
 
         # default state
+        # TODO -- load in initial state, or have compartment set to 0
         internal = {state_id: 0 for state_id in self.internal_states}
         default_state = {'internal': internal}
 

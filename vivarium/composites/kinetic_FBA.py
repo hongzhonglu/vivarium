@@ -10,6 +10,7 @@ from vivarium.processes.derive_volume import DeriveVolume
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.BiGG_metabolism import BiGGMetabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
+from vivarium.processes.minimal_expression import MinimalExpression
 
 
 # the composite function
@@ -33,6 +34,10 @@ def compose_kinetic_FBA(config):
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = BiGGMetabolism(metabolism_config)
 
+    # Gene expression
+    expression_config = config.get('expression', {})
+    expression = MinimalExpression(expression_config)
+
     # Division
     # get initial volume from metabolism
     division_config = config.get('division', {})
@@ -45,7 +50,8 @@ def compose_kinetic_FBA(config):
 
     # Place processes in layers
     processes = [
-        {'transport': transport},
+        {'transport': transport,
+         'expression': expression},
         {'metabolism': metabolism},
         {'deriver': deriver,
          'division': division}
@@ -59,6 +65,8 @@ def compose_kinetic_FBA(config):
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
             'fluxes': 'flux_bounds'},
+        'expression' : {
+            'internal': 'cell'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',

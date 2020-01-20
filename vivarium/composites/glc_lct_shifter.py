@@ -6,17 +6,6 @@ from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
 
 
 
-def get_metabolism_config():
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-    regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
-    return {
-        'moma': False,
-        'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]},
-        'model_path': metabolism_file,
-        'regulation_logic': regulation_logic}
-
 def get_transport_config():
     """
     Convenience kinetics configuration for simplified glucose transport.
@@ -84,11 +73,30 @@ def get_transport_config():
         'initial_state': transport_initial_state,
         'roles': transport_roles}
 
+def get_metabolism_config():
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
+    regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
+    return {
+        'moma': False,
+        'tolerance': {
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lac__D_e': [1.05, 1.0]},
+        'model_path': metabolism_file,
+        'regulation_logic': regulation_logic}
+
+def get_expression_config():
+    expression_rates = {'LacY': 1e-2}
+    return {
+        'expression_rates': expression_rates}
+
+
+
 def get_default_config():
     return {
         'name': 'glc_lct_shifter',
         'transport': get_transport_config(),
-        'metabolism': get_metabolism_config()
+        'metabolism': get_metabolism_config(),
+        'expression': get_expression_config()
     }
 
 
@@ -149,6 +157,7 @@ if __name__ == '__main__':
             ('cell', 'PTSG'),
             ('cell', 'lac__D_c'),
             ('cell', 'h_c'),
+            ('cell', 'LacY'),
         ]}
 
     # saved_state = simulate_compartment(compartment, settings)
