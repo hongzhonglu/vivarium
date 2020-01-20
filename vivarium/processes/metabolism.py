@@ -9,12 +9,15 @@ from vivarium.actor.process import Process, deep_merge
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
-import vivarium.utils.regulation_logic as rl
-from vivarium.utils.dict_utils import flatten_role_dicts
+from vivarium.utils.dict_utils import tuplify_role_dicts
 
 # concentrations are lower than threshold are considered depleted
 REGULATION_THRESHOLD = 1.0  # TODO -- regulation thresholds should be implemented in regulation_logic
 EXCHANGE_THRESHOLD = 0.1
+
+
+def null_function(state):
+    return {}
 
 
 class Metabolism(Process):
@@ -41,10 +44,8 @@ class Metabolism(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
-        # make regulation functions from regulation_logic strings
-        regulation_logic = initial_parameters.get('regulation_logic', {})
-        self.regulation = {rxn_id: rl.build_rule(logic_string)
-            for rxn_id, logic_string in regulation_logic.items()}
+        # get regulation functions
+        self.regulation = initial_parameters.get('regulation', null_function)
 
         # get molecules in objective
         self.objective_molecules = []
@@ -126,14 +127,9 @@ class Metabolism(Process):
         exchange_constraints = {mol_id: 0.0
             for mol_id, conc in external_state.items() if conc <= REGULATION_THRESHOLD}
 
-        # availability is boolean state of all molecules present
-        # regulation_state determines state of regulated reactions (True/False)
-        availability = flatten_role_dicts({role: states[role]
-            for role in ('internal', 'external')})
-        availability = {state: value > EXCHANGE_THRESHOLD
-            for state, value in availability.items()}
-        regulation_state = {rxn_id: logic(availability)
-            for rxn_id, logic in self.regulation.items()}
+        # get state of regulated reactions (True/False)
+        flattened_states = tuplify_role_dicts(states)
+        regulation_state = self.regulation(flattened_states)
 
         ## apply flux constraints
         # first, add exchange constraints
@@ -414,19 +410,18 @@ if __name__ == '__main__':
         }
         return transport_kinetics
 
-    def toy_regulation():
-        regulation = {
-            'R4': 'IF (O2_external) and not (F_external)',
+    def toy_regulation(state):
+        regulation_logic = {
+            'R4': bool(state[('external', 'O2')] > 0 and not state[('external', 'F')] > 0),
         }
-        return regulation
+        return regulation_logic
 
     # configure toy model
     toy_config = get_toy_configuration()
     transport = toy_transport()
-    regulation = toy_regulation()
-    toy_config['constrained_reaction_ids'] = list(transport.keys())
-    toy_config['regulation'] = regulation
 
+    toy_config['constrained_reaction_ids'] = list(transport.keys())
+    toy_config['regulation'] = toy_regulation
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
