@@ -8,7 +8,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.derive_volume import DeriveVolume
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.protein_expression import ProteinExpression
+from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 
 
@@ -18,16 +18,16 @@ def get_transport_config():
     transport_reactions = {
         'GLC_transport': {
             'stoichiometry': {
-                'GLC_external': -1.0,
-                'GLC_internal': 1.0},
+                ('external', 'GLC'): -1.0,
+                ('internal', 'GLC'): 1.0},
             'is reversible': False,
-            'catalyzed by': ['transporter_internal']}}
+            'catalyzed by': [('internal', 'transporter')]}}
 
     # very simplified PTS
     transport_kinetics = {
         'GLC_transport': {
-            'transporter_internal': {
-                'GLC_external': 1.0,  # km for GLC
+            ('internal', 'transporter'): {
+                ('external', 'GLC'): 1.0,  # km for GLC
                 'kcat_f': 1e-9}}}
 
     transport_initial_state = {
@@ -59,7 +59,7 @@ def compose_growth_division(config):
     transport = ConvenienceKinetics(transport_config)
     growth = Growth(config)
     division = Division(config)
-    expression = ProteinExpression(config)
+    expression = MinimalExpression(config)
     deriver = DeriveVolume(config)
 
     # place processes in layers

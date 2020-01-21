@@ -38,10 +38,9 @@ from vivarium.utils.units import units
 # processes
 from vivarium.processes.transport_lookup import TransportLookup
 from vivarium.processes.BiGG_metabolism import BiGGMetabolism
-from vivarium.processes.CovertPalsson2002_regulation import Regulation
 from vivarium.processes.Kremling2007_transport import Transport
 from vivarium.processes.growth import Growth
-from vivarium.processes.protein_expression import ProteinExpression
+from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
@@ -434,10 +433,9 @@ class BootEnvironment(BootAgent):
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_init_basic(BiGGMetabolism), {'volume': 1.0}),
-            'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
-            'expression': wrap_boot(wrap_init_basic(ProteinExpression), {'volume': 1.0}),
+            'expression': wrap_boot(wrap_init_basic(MinimalExpression), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),

@@ -787,7 +787,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     # save figure
     fig_path = os.path.join(out_dir, 'simulation')
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
-    plt.savefig(fig_path + '.pdf', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
 
 
 if __name__ == '__main__':

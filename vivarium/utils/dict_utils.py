@@ -19,3 +19,16 @@ def flatten_role_dicts(dicts):
         for state, value in states_dict.items():
             merge.update({state + '_' + role: value})
     return merge
+
+def tuplify_role_dicts(dicts):
+    '''
+    Input:
+        dicts (dict): embedded state dictionaries with the {'role_id': {'state_id': state_value}}
+    Return:
+        merge (dict): tuplified dictionary with {(role_id','state_id'): value}
+    '''
+    merge = {}
+    for role, states_dict in dicts.items():
+        for state, value in states_dict.items():
+            merge.update({(role, state): value})
+    return merge

@@ -90,14 +90,20 @@ def compose_kinetic_FBA(config):
 
 
 def default_metabolism_config():
+    def regulation(state):
+        regulation_logic = {
+            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
+        }
+        return regulation_logic
+
     metabolism_file = os.path.join('models', 'e_coli_core.json')
-    regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
+
     return {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation_logic': regulation_logic}
+        'regulation': regulation}
 
 def default_transport_config():
     """
@@ -108,19 +114,19 @@ def default_transport_config():
     transport_reactions = {
         'EX_glc__D_e': {
             'stoichiometry': {
-                'g6p_c_internal': 1.0,
-                'glc__D_e_external': -1.0,
-                # 'pep_c_internal': -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
-                # 'pyr_c_internal': 1.0
+                ('internal', 'g6p_c'): 1.0,
+                ('external', 'glc__D_e'): -1.0,
+                # ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
+                # ('internal', 'pyr_c'): 1.0
             },
             'is reversible': False,
-            'catalyzed by': ['PTSG_internal']}}
+            'catalyzed by': [('internal', 'PTSG')]}}
 
     transport_kinetics = {
         'EX_glc__D_e': {
-            'PTSG_internal': {
-                'glc__D_e_external': 1e-1,
-                'pep_c_internal': None,
+            ('internal', 'PTSG'): {
+                ('external', 'glc__D_e'): 1e-1,
+                ('internal', 'pep_c'): None,
                 'kcat_f': -3e5}}}
 
     transport_initial_state = {
