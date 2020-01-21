@@ -45,6 +45,7 @@ class Metabolism(Process):
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # get regulation functions
+        # TODO -- pass regulation logic in as data, and construct functions in init
         self.regulation = initial_parameters.get('regulation', null_function)
 
         # get molecules in objective
