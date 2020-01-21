@@ -2,10 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+from vivarium.environment.make_media import Media
+from vivarium.utils.units import units
+
 from vivarium.composites.master import compose_master
 
 
-
+# processes configurations
 def get_transport_config():
     """
     Convenience kinetics configuration for simplified glucose/lactose transport.
@@ -43,12 +46,12 @@ def get_transport_config():
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': -1e-1}},
+                'kcat_f': -1e5}},
         }
 
     transport_initial_state = {
         'internal': {
-            'PTSG': 1.8e-6,
+            'PTSG': 1.8e-6,  # concentration (mmol/L)
             'g6p_c': 0.0,
             'pep_c': 1.8e-1,
             'pyr_c': 0.0,
@@ -84,42 +87,50 @@ def get_metabolism_config():
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
+    # initial state
+    # internal
+    mass = 1339 * units.fg
+    density = 1100 * units.g / units.L
+    volume = mass.to('g') / density
+    internal = {
+        'mass': mass.magnitude,  # fg
+        'volume': volume.to('fL').magnitude}
+
+    # external
+    # TODO -- generalize external to whatever BiGG model is loaded
+    make_media = Media()
+    external = make_media.get_saved_media('ecoli_core_GLC')
+    initial_state = {
+        'internal': internal,
+        'external': external}
+
     return {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
             'EX_lac__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation': regulation}
+        'regulation': regulation,
+        'initial_state': initial_state}
 
 def get_expression_config():
-    expression_rates = {'LacY': 5e-2}
+    expression_rates = {'LacY': 0.005}
     return {
+        'counted_molecules': list(expression_rates.keys()),
         'expression_rates': expression_rates}
 
-def get_degradation_config():
-    degradation_rates = {'LacY': 2e-2}
-    return {
-        'degradation_rates': degradation_rates}
-
-def get_default_config():
-    # TODO -- Lac expression only if ('internal', 'lac__D_c') is present
-    # TODO -- in reconciler, make sure degradation never lowers state below 0
-
-    return {
+# composite configuration
+def compose_glc_lct_shifter(config):
+    """
+    Load a glucose/lactose diauxic shift configuration into the kinetic_FBA composite
+    TODO (eran) -- fit glc/lct uptake rates to growth rates
+    """
+    shifter_config = {
         'name': 'glc_lct_shifter',
         'transport': get_transport_config(),
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
-        'degradation': get_degradation_config()
-    }
-
-
-def compose_glc_lct_shifter(config):
-    """
-    Load a glucose/lactose diauxic shift configuration into the kinetic_FBA composite
-    """
-    shifter_config = get_default_config()
+        'deriver': get_expression_config()}
     config.update(shifter_config)
 
     return compose_master(config)
@@ -134,7 +145,8 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_glc_lct_shifter)
+    boot_config = {'emitter': 'null'}
+    compartment = load_compartment(compose_glc_lct_shifter, boot_config)
 
     # settings for simulation and plot
     options = compose_glc_lct_shifter({})['options']
