@@ -98,7 +98,8 @@ def scan_master():
 
     output_values = [
         ('reactions', 'EX_glc__D_e'),
-        ('reactions', 'GLCpts')
+        ('reactions', 'GLCpts'),
+        ('cell', 'growth_rate')
     ]
 
     results = parameter_scan(composite, scan_params, output_values)
