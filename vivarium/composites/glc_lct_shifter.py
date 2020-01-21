@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.composites.ecoli_master import compose_ecoli_master
+from vivarium.composites.master import compose_master
 
 
 
@@ -17,8 +17,8 @@ def get_transport_config():
             'stoichiometry': {
                 ('internal', 'g6p_c'): 1.0,
                 ('external', 'glc__D_e'): -1.0,
-                # ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
-                # ('internal', 'pyr_c'): 1.0
+                ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
+                ('internal', 'pyr_c'): 1.0
             },
             'is reversible': False,
             'catalyzed by': [('internal', 'PTSG')]},
@@ -43,7 +43,7 @@ def get_transport_config():
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': -3e5}},
+                'kcat_f': -1e-1}},
         }
 
     transport_initial_state = {
@@ -74,31 +74,37 @@ def get_transport_config():
         'roles': transport_roles}
 
 def get_metabolism_config():
+
+    # regulation functions
+    def regulation(state):
+        regulation_logic = {
+            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
+        }
+        return regulation_logic
+
     metabolism_file = os.path.join('models', 'e_coli_core.json')
-    regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
+
     return {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
             'EX_lac__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation_logic': regulation_logic}
+        'regulation': regulation}
 
 def get_expression_config():
-    expression_rates = {'LacY': 1e-1}
+    expression_rates = {'LacY': 5e-2}
     return {
         'expression_rates': expression_rates}
 
 def get_degradation_config():
-    degradation_rates = {'LacY': 1e-2}
+    degradation_rates = {'LacY': 2e-2}
     return {
         'degradation_rates': degradation_rates}
 
 def get_default_config():
-
     # TODO -- Lac expression only if ('internal', 'lac__D_c') is present
     # TODO -- in reconciler, make sure degradation never lowers state below 0
-
 
     return {
         'name': 'glc_lct_shifter',
@@ -109,14 +115,14 @@ def get_default_config():
     }
 
 
-def GlcLctShifter(config):
+def compose_glc_lct_shifter(config):
     """
     Load a glucose/lactose diauxic shift configuration into the kinetic_FBA composite
     """
     shifter_config = get_default_config()
     config.update(shifter_config)
 
-    return compose_ecoli_master(config)
+    return compose_master(config)
 
 
 
@@ -128,10 +134,10 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(GlcLctShifter)
+    compartment = load_compartment(compose_glc_lct_shifter)
 
     # settings for simulation and plot
-    options = GlcLctShifter({})['options']
+    options = compose_glc_lct_shifter({})['options']
 
     # define timeline
     timeline = [

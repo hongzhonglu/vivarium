@@ -16,7 +16,7 @@ from vivarium.processes.minimal_degradation import MinimalDegradation
 
 
 # the composite function
-def compose_ecoli_master(config):
+def compose_master(config):
     """
     A composite with kinetic transport, metabolism, and regulation
     TODO (eran) -- fit glc/lct uptake rates to growth rates
@@ -171,10 +171,10 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_ecoli_master)
+    compartment = load_compartment(compose_master)
 
     # settings for simulation and plot
-    options = compose_ecoli_master({})['options']
+    options = compose_master({})['options']
 
     # define timeline
     timeline = [(1000, {})]
