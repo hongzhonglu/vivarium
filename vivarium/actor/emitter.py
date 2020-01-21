@@ -40,6 +40,8 @@ def get_emitter(config):
         emitter = KafkaEmitter(config)
     elif emitter_type == 'database':
         emitter = DatabaseEmitter(config)
+    elif emitter_type == 'null':
+        emitter = NullEmitter(config)
     else:
         emitter = Emitter(config)
 
@@ -84,6 +86,14 @@ class Emitter(object):
 
     def emit(self, data):
         print(data)
+
+
+class NullEmitter(Emitter):
+    '''
+    Don't emit anything
+    '''
+    def emit(self, data):
+        pass
 
 
 class KafkaEmitter(Emitter):
