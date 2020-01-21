@@ -91,14 +91,20 @@ def compose_kinetic_FBA(config):
 
 
 def default_metabolism_config():
+    def regulation(state):
+        regulation_logic = {
+            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
+        }
+        return regulation_logic
+
     metabolism_file = os.path.join('models', 'e_coli_core.json')
-    regulation_logic = {'EX_lac__D_e': 'IF not (glc__D_e_external)'}
+
     return {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation_logic': regulation_logic}
+        'regulation': regulation}
 
 def default_transport_config():
     """
