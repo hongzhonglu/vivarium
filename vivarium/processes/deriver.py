@@ -18,13 +18,13 @@ class Deriver(Process):
     """
     def __init__(self, initial_parameters={}):
 
-
         # get counted molecules
         counted_molecules = initial_parameters.get('counted_molecules', [])
 
         roles = {
-            'state': ['mass', 'volume'] + counted_molecules,
-            'counts': counted_molecules}
+            'state': ['mass', 'volume', 'growth_rate'] + counted_molecules,
+            'counts': counted_molecules,
+            'prior_state': ['mass']}
 
         parameters = {
             'density': 1100 * units.g / units.L,
@@ -34,14 +34,15 @@ class Deriver(Process):
         super(Deriver, self).__init__(roles, parameters)
 
     def default_settings(self):
-
         # default state
         mass = 1339 * units.fg  # wet mass in fg
         density = self.parameters['density']
         volume = mass/density
         cell_state = {
+            'growth_rate': 0.0,
             'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude}
+        prior_state = {'mass': mass.magnitude}
 
         molecule_ids = self.roles['counts']
         counted_molecules = {mol_id: 0 for mol_id in molecule_ids}
@@ -49,16 +50,18 @@ class Deriver(Process):
 
         default_state = {
             'state': cell_state,
-            'counts': counted_molecules}
+            'counts': counted_molecules,
+            'prior_state': prior_state}
 
         # default emitter keys
         default_emitter_keys = {
-            'state': ['mass', 'volume'] + molecule_ids}
+            'state': molecule_ids + ['volume', 'growth_rate']}
 
         # default updaters
-        set_states = molecule_ids + ['volume']
+        set_states = molecule_ids + ['volume', 'growth_rate']
         default_updaters = {
-            'state': {state_id: 'set' for state_id in set_states}}
+            'state': {state_id: 'set' for state_id in set_states},
+            'prior_state': {'mass': 'set'}}
 
         default_settings = {
             'state': default_state,
@@ -74,22 +77,29 @@ class Deriver(Process):
         nAvogadro = self.parameters['nAvogadro']
 
         # states
+        prior_mass = states['prior_state']['mass'] * units.fg
         mass = states['state']['mass'] * units.fg
         counts = states['counts']
 
         # initialize update
         update = {'state': {}}
 
-        # volume update
+        # update volume and growth rate
         volume =  mass / density
-        volume_update = {'volume': volume.to('fL').magnitude}
-        update['state'].update(volume_update)
+        growth_rate = (mass - prior_mass) / timestep / mass
+        deriver_update = {
+            'volume': volume.to('fL').magnitude,
+            'growth_rate': growth_rate.magnitude}
 
         # concentration update
         mmol_to_count = nAvogadro.to('1/mmol') * volume.to('L')
         concentration_update = {mol_id: (count / mmol_to_count).magnitude
             for mol_id, count in counts.items()}
+
+        # combine updates
+        update['state'].update(deriver_update)
         update['state'].update(concentration_update)
+        update['prior_state'] = {'mass': mass.magnitude}
 
         return update
 
@@ -136,6 +146,7 @@ def test_deriver(total_time=10):
 
         # set derived state
         state['state'].update(update['state'])
+        state['prior_state'].update(update['prior_state'])
 
         # save state
         saved_state[time] = copy.deepcopy(state)
@@ -149,7 +160,6 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     plot_settings = {}
-
     saved_data = test_deriver(100)
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)

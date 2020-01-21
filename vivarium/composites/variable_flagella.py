@@ -68,7 +68,9 @@ def compose_variable_flagella(config):
         'division': {
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
     }
 
     ## Initialize the states
@@ -113,7 +115,7 @@ if __name__ == '__main__':
 
     plot_settings = {
         'max_rows': 20,
-    }
+        'skip_roles': ['prior_state']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

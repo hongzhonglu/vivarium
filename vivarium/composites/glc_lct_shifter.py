@@ -184,8 +184,9 @@ if __name__ == '__main__':
             ('cell', 'PTSG'),
             ('cell', 'lac__D_c'),
             ('cell', 'h_c'),
-            ('cell', 'LacY'),
-        ]}
+            ('cell', 'LacY')],
+        'skip_roles': ['prior_state', 'null']
+    }
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

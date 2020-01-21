@@ -85,7 +85,8 @@ def compose_master(config):
             'internal': 'cell'},
         'deriver': {
             'counts': 'cell_counts',
-            'state': 'cell'},
+            'state': 'cell',
+            'prior_state': 'prior_state'},
     }
 
     # Initialize the states
@@ -208,6 +209,7 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
+        'skip_roles': ['prior_state', 'null']
         }
 
     # saved_state = simulate_compartment(compartment, settings)

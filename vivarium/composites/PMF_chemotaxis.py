@@ -52,7 +52,9 @@ def compose_pmf_chemotaxis(config):
             'membrane': 'membrane',
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
         'division': {
             'internal': 'cell'},
         }
