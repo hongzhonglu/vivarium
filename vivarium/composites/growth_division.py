@@ -5,7 +5,7 @@ import os
 from vivarium.actor.process import initialize_state
 
 # processes
-from vivarium.processes.derive_volume import DeriveVolume
+from vivarium.processes.deriver import Deriver
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.minimal_expression import MinimalExpression
@@ -60,7 +60,7 @@ def compose_growth_division(config):
     growth = Growth(config)
     division = Division(config)
     expression = MinimalExpression(config)
-    deriver = DeriveVolume(config)
+    deriver = Deriver(config)
 
     # place processes in layers
     processes = [

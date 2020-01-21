@@ -4,7 +4,11 @@ from vivarium.actor.process import Process
 from vivarium.utils.units import units
 
 
-class DeriveVolume(Process):
+class Deriver(Process):
+    """
+    Process for deriving volume and molecule concentrations
+    from the cell state (mass, molecule counts)
+    """
     def __init__(self, initial_parameters={}):
 
         parameters = {
@@ -13,7 +17,7 @@ class DeriveVolume(Process):
             'internal': ['mass', 'volume']}
         parameters.update(initial_parameters)
 
-        super(DeriveVolume, self).__init__(roles, parameters)
+        super(Deriver, self).__init__(roles, parameters)
 
     def default_settings(self):
 
