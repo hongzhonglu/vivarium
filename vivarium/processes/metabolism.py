@@ -385,13 +385,13 @@ def test_config(get_config=get_toy_configuration):
     print(metabolism.fba.get_reaction_bounds())
     print(metabolism.fba.read_exchange_fluxes())
 
-def kinetic_rate(mol_id, vmax, km=0.0):
+def make_kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
         flux = (vmax * state[mol_id]) / (km + state[mol_id])
         return flux
     return rate
 
-def random_rate(mu=0, sigma=1):
+def make_random_rate(mu=0, sigma=1):
     def rate(state):
         return np.random.normal(loc=mu, scale=sigma)
     return rate
@@ -407,7 +407,7 @@ if __name__ == '__main__':
     def toy_transport():
         # process-like function for transport kinetics, used by simulate_metabolism
         transport_kinetics = {
-            "EX_A": kinetic_rate("A", -1e-1, 5),  # A import
+            "EX_A": make_kinetic_rate("A", -1e-1, 5),  # A import
         }
         return transport_kinetics
 
