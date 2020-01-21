@@ -412,7 +412,7 @@ if __name__ == '__main__':
 
     def toy_regulation(state):
         regulation_logic = {
-            'R4': bool(state[('external', 'O2')] > 0 and not state[('external', 'F')] > 0),
+            'R4': bool(state[('external', 'O2')] > 0.1 and not state[('external', 'F')] > 0.1),
         }
         return regulation_logic
 

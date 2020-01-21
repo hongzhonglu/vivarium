@@ -93,7 +93,7 @@ def compose_kinetic_FBA(config):
 def default_metabolism_config():
     def regulation(state):
         regulation_logic = {
-            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0),
+            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
         }
         return regulation_logic
 
