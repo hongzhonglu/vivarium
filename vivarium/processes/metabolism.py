@@ -12,7 +12,6 @@ from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import tuplify_role_dicts
 
 # concentrations are lower than threshold are considered depleted
-REGULATION_THRESHOLD = 1.0  # TODO -- regulation thresholds should be implemented in regulation_logic
 EXCHANGE_THRESHOLD = 0.1
 
 
@@ -126,7 +125,7 @@ class Metabolism(Process):
         ## get flux constraints
         # exchange_constraints based on external availability
         exchange_constraints = {mol_id: 0.0
-            for mol_id, conc in external_state.items() if conc <= REGULATION_THRESHOLD}
+            for mol_id, conc in external_state.items() if conc <= EXCHANGE_THRESHOLD}
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
