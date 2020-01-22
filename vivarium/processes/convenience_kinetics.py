@@ -124,8 +124,9 @@ toy_reactions = {
 toy_kinetics = {
     'reaction1': {
         ('internal', 'enzyme1'): {
-            ('external', 'B'): 0.1,
-            'kcat_f': 0.1}
+            # Set k_m = None to make a reactant non-limiting
+            ('external', 'B'): 0.1, # k_m for external [B]
+            'kcat_f': 0.1}  # kcat for the forward direction
         }
     }
 
