@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import copy
+
 from scipy import constants
 import numpy as np
-import copy
+import matplotlib.pyplot as plt
 
 from vivarium.actor.process import Process, deep_merge
 from vivarium.utils.units import units
@@ -256,6 +258,62 @@ def simulate_metabolism(config):
 
     return saved_state
 
+def plot_exchanges(timeseries, sim_config, out_dir):
+    # plot focused on exchanges
+
+    env_volume = sim_config['environment_volume']
+    timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
+    external_ts = timeseries['external']
+    internal_ts = timeseries['internal']
+
+    # pull volume and mass out from internal
+    volume = internal_ts.pop('volume')
+    mass = internal_ts.pop('mass')
+
+    # plot results
+    cols = 1
+    rows = 3
+    plt.figure(figsize=(cols * 8, rows * 1.5))
+
+    # define subplots
+    ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
+    ax3 = plt.subplot(rows, cols, 3)
+
+    # plot external state
+    for mol_id, series in external_ts.items():
+        ax1.plot(series, label=mol_id)
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.title.set_text('environment: {} (fL)'.format(env_volume))
+    ax1.set_ylabel('concentrations')
+
+    # plot internal state
+    for mol_id, series in internal_ts.items():
+        ax2.plot(series, label=mol_id)
+    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax2.title.set_text('internal')
+    ax2.set_yscale('log')
+    ax2.set_ylabel('counts (log)')
+
+    # plot mass
+    ax3.plot(mass, label='mass')
+    ax3.set_ylabel('mass (fg)')
+
+    # adjust axes
+    for axis in [ax1, ax2, ax3]:
+        axis.spines['right'].set_visible(False)
+        axis.spines['top'].set_visible(False)
+
+    ax1.set_xticklabels([])
+    ax2.set_xticklabels([])
+    ax3.set_xlabel('time (s)', fontsize=12)
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'exchanges')
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
+    plt.savefig(fig_path, bbox_inches='tight')
+
+
 def save_network(config, out_dir='out'):
     # TODO -- make this function into an analysis
     import math
@@ -425,6 +483,7 @@ if __name__ == '__main__':
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
+    # timeline = [(3500, {})]
     timeline = [
         (300, {'external': {
             'A': 1}
@@ -438,7 +497,7 @@ if __name__ == '__main__':
         'process': toy_metabolism,
         'timeline': timeline,
         'transport_kinetics': transport,
-        'environment_volume': 5e-13}
+        'environment_volume': 1e-14}
 
     plot_settings = {
         'skip_roles': ['exchange'],
@@ -449,6 +508,7 @@ if __name__ == '__main__':
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_exchanges(timeseries, simulation_config, out_dir)
 
     # make flux network from toy model
     network_config = {
