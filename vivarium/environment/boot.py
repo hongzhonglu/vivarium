@@ -38,10 +38,9 @@ from vivarium.utils.units import units
 # processes
 from vivarium.processes.transport_lookup import TransportLookup
 from vivarium.processes.BiGG_metabolism import BiGGMetabolism
-from vivarium.processes.CovertPalsson2002_regulation import Regulation
 from vivarium.processes.Kremling2007_transport import Transport
 from vivarium.processes.growth import Growth
-from vivarium.processes.protein_expression import ProteinExpression
+from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
@@ -51,19 +50,20 @@ from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
+from vivarium.composites.variable_flagella import compose_variable_flagella
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
 
 def wrap_boot(initialize, initial_state):
-    def boot(agent_id, agent_type, agent_config):
-        initial_state.update(agent_config.get('declare', {}))
-        agent_config['declare'] = initial_state  # 'declare' is for the environment
+    def boot(agent_id, agent_type, actor_config):
+        initial_state.update(actor_config.get('declare', {}))
+        actor_config['declare'] = initial_state  # 'declare' is for the environment
 
         return Inner(
             agent_id,
             agent_type,
-            agent_config,
+            actor_config,
             initialize)
 
     return boot
@@ -94,14 +94,14 @@ def wrap_init_composite(make_composite):
     return initialize
 
 def wrap_boot_environment(intialize):
-    def boot(agent_id, agent_type, agent_config):
-        boot_config = copy.deepcopy(agent_config['boot_config'])
+    def boot(agent_id, agent_type, actor_config):
+        boot_config = copy.deepcopy(actor_config['boot_config'])
 
         # get boot_config from initialize
         boot_config = intialize(boot_config)
 
         # paths
-        working_dir = agent_config.get('working_dir', os.getcwd())
+        working_dir = actor_config.get('working_dir', os.getcwd())
         output_dir = os.path.join(working_dir, 'out', agent_id)
         if os.path.isdir(output_dir):
             shutil.rmtree(output_dir)
@@ -117,11 +117,11 @@ def wrap_boot_environment(intialize):
         # create the environment
         environment = EnvironmentSpatialLattice(boot_config)
 
-        return EnvironmentAgent(agent_id, agent_type, agent_config, environment)
+        return EnvironmentActor(agent_id, agent_type, actor_config, environment)
 
     return boot
 
-class EnvironmentAgent(Outer):
+class EnvironmentActor(Outer):
     def build_state(self):
         lattice = {
             molecule: self.environment.lattice[index].tolist()
@@ -158,13 +158,18 @@ class EnvironmentAgent(Outer):
 
 # Define environment initialization functions
 def initialize_lattice(boot_config):
+
+    lattice_config = {
+        'name': 'lattice',
+        'description': 'a standard lattice environment'}
+
     # set up media
     media_id = boot_config.get('media_id', 'minimal')
     media = boot_config.get('media', {})
     if media:
-        lattice_config = {'concentrations': media}
+        lattice_config.update({'concentrations': media})
     else:
-        lattice_config = {'media_id': media_id}
+        lattice_config.update({'media_id': media_id})
 
     boot_config.update(lattice_config)
     return boot_config
@@ -174,6 +179,7 @@ def initialize_glc_g6p_small(boot_config):
     media_id = 'GLC_G6P'
     timeline_str = '0 {}, 1800 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'glc_g6p_small',
         'timeline_str': timeline_str,
         'run_for': 2.0,
         'depth': 1e-01, # 3000 um is default
@@ -221,6 +227,7 @@ def initialize_custom_small(boot_config):
 def initialize_glc_g6p(boot_config):
     timeline_str = '0 GLC_G6P, 3600 end'
     lattice_config = {
+        'name': 'glc_g6p',
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'G6P']
     }
@@ -231,6 +238,7 @@ def initialize_glc_g6p(boot_config):
 def initialize_glc_lct(boot_config):
     timeline_str = '0 GLC_LCT, 3600 end'
     lattice_config = {
+        'name': 'glc_lct',
         'timeline_str': timeline_str,
         'emit_fields': ['GLC', 'LCTS']
     }
@@ -240,7 +248,9 @@ def initialize_glc_lct(boot_config):
 
 def initialize_glc_lct_shift(boot_config):
     timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
-    lattice_config = {'timeline_str': timeline_str}
+    lattice_config = {
+        'name': 'glc_lct_shift',
+        'timeline_str': timeline_str}
 
     boot_config.update(lattice_config)
     return boot_config
@@ -253,6 +263,7 @@ def initialize_ecoli_core_glc(boot_config):
     timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
 
     lattice_config = {
+        'name': 'ecoli_core_glc',
         'diffusion': 1e-4,
         'depth': 1e-4,
         'timeline_str': timeline_str,
@@ -271,6 +282,7 @@ def initialize_measp(boot_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'measp',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['MeAsp'],
@@ -301,6 +313,7 @@ def initialize_measp_long(boot_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
+        'name': 'measp_long',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
@@ -351,6 +364,7 @@ def initialize_measp_large(boot_config):
     emit_field = ['GLC', 'MeAsp']
 
     lattice_config = {
+        'name': 'measp_large',
         'timeline_str': timeline_str,
         'new_media': new_media,
         'run_for': 1.0,
@@ -385,6 +399,7 @@ def initialize_measp_timeline(boot_config):
                    '1600 end'
 
     lattice_config = {
+        'name': 'measp_timeline',
         'timeline_str': timeline_str,
         'run_for': 1.0,
         'static_concentrations': True,
@@ -418,19 +433,19 @@ class BootEnvironment(BootAgent):
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
             'metabolism': wrap_boot(wrap_init_basic(BiGGMetabolism), {'volume': 1.0}),
-            'regulation': wrap_boot(wrap_init_basic(Regulation), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
-            'expression': wrap_boot(wrap_init_basic(ProteinExpression), {'volume': 1.0}),
+            'expression': wrap_boot(wrap_init_basic(MinimalExpression), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
-            'chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
-            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             'kinetic_FBA': wrap_boot(wrap_init_composite(compose_kinetic_FBA), {'volume': 1.0}),
+            'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
+            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
+            'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
             }
 
 def run():

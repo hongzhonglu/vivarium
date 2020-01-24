@@ -60,8 +60,8 @@ def distribute_arguments(destinations, arguments, config):
 class ActorControl(Actor):
     """Send messages to agents in the system to control execution."""
 
-    def __init__(self, agent_id, agent_config={}):
-        super(ActorControl, self).__init__(agent_id, 'control', agent_config)
+    def __init__(self, agent_id, actor_config={}):
+        super(ActorControl, self).__init__(agent_id, 'control', actor_config)
 
     def get_experiment_id(self, name='lattice'):
         time_stamp = filepath.timestamp()
@@ -101,15 +101,15 @@ class ActorControl(Actor):
             'agent_id': agent_id})
 
     # TODO (Ryan): set this up to send messages to a particular shepherd.
-    def add_agent(self, agent_id, agent_type, agent_config):
-        if not 'kafka_config' in agent_config:
-            agent_config['kafka_config'] = self.agent_config['kafka_config']
+    def add_agent(self, agent_id, agent_type, actor_config):
+        if not 'kafka_config' in actor_config:
+            actor_config['kafka_config'] = self.actor_config['kafka_config']
 
         self.send(self.topics['shepherd_receive'], {
             'event': event.ADD_AGENT,
             'agent_id': agent_id,
             'agent_type': agent_type,
-            'agent_config': agent_config})
+            'agent_config': actor_config})
 
     def remove_agent(self, agent_query):
         """
@@ -165,15 +165,15 @@ class AgentCommand(object):
         self.args = self.parser.parse_args()
 
         self.emitter = self.args.emitter
-        agent_config = {
+        actor_config = {
             'kafka_config': DEFAULT_KAFKA_CONFIG,
             'boot_config': {
                 'emitter': DEFAULT_EMITTER_CONFIG.get(self.emitter, {})}}
 
-        self.agent_config = distribute_arguments(
+        self.actor_config = distribute_arguments(
             self.arg_destinations,
             vars(self.args),
-            agent_config)
+            actor_config)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -271,7 +271,7 @@ class AgentCommand(object):
                 raise ValueError('--{} needed'.format(name))
 
     def kafka_config(self):
-        return self.agent_config['kafka_config']
+        return self.actor_config['kafka_config']
 
     def run(self, args):
         control = ActorControl('control', {'kafka_config': self.kafka_config()})
@@ -286,7 +286,7 @@ class AgentCommand(object):
     def add(self, args):
         self.require(args, 'id', 'type')
         control = ActorControl('control', {'kafka_config': self.kafka_config()})
-        config = self.agent_config
+        config = self.actor_config
         control.add_agent(
             str(uuid.uuid1()),
             args['type'] or 'lookup',

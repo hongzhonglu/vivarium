@@ -36,6 +36,7 @@ def compose_simple_chemotaxis(config):
     time_step = get_compartment_timestep(processes_layers)
 
     options = {
+        'name': 'simple_chemotaxis_composite',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,

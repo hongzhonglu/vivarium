@@ -1,12 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import copy
 
 from scipy import constants
 
 from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
-from vivarium.utils.dict_utils import flatten_role_dicts
+from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.units import units
 
 EMPTY_ROLES = {
@@ -23,24 +24,31 @@ class ConvenienceKinetics(Process):
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1 / units.mol
 
+        # retrieve initial parameters
         self.reactions = initial_parameters.get('reactions')
+        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
         roles = initial_parameters.get('roles', EMPTY_ROLES)
-        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
 
-        # Make the kinetic model
+        # make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
+        # roles
         # add volume to internal role
         if 'volume' not in roles.get('internal'):
             roles['internal'].append('volume')
 
+        # fluxes role is used to pass constraints
+        # exchange is equivalent to external, for lattice_compartment
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
             'exchange': roles['external']
         })
 
+        # parameters
         parameters = {}
+        parameters.update(initial_parameters)
+
         super(ConvenienceKinetics, self).__init__(roles, parameters)
 
     def default_settings(self):
@@ -70,26 +78,26 @@ class ConvenienceKinetics(Process):
         volume = states['internal']['volume'] * units.L
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
-        # kinetic rate law requires a flat dict with 'state_role' keys.
-        flattened_states = flatten_role_dicts(states)
+        # kinetic rate law requires a flat dict with ('role', 'state') keys.
+        flattened_states = tuplify_role_dicts(states)
 
         # get flux
         fluxes = self.kinetic_rate_laws.get_fluxes(flattened_states)
 
-        # apply fluxes to state
+        # make the update
+        # add fluxes to update
         update = {role: {} for role in self.roles.keys()}
         update.update({'fluxes': fluxes})
 
         # get exchange
         for reaction_id, flux in fluxes.items():
             stoichiometry = self.reactions[reaction_id]['stoichiometry']
-            for state_role_id, coeff in stoichiometry.items():
+            for role_state_id, coeff in stoichiometry.items():
                 for role_id, state_list in self.roles.items():
                     # separate the state_id and role_id
-                    if role_id in state_role_id:
-                        role_string = '_{}'.format(role_id)
-                        state_id = state_role_id.replace(role_string, '')
-                        state_flux = coeff * flux
+                    if role_id in role_state_id:
+                        state_id = role_state_id[1]
+                        state_flux = coeff * flux * timestep
 
                         if role_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_count
@@ -98,7 +106,7 @@ class ConvenienceKinetics(Process):
                         else:
                             update[role_id][state_id] = state_flux
 
-        # note: external and internal roles get update in change in mmol.
+        # note: external and internal roles update change in mmol.
         return update
 
 
@@ -107,16 +115,16 @@ class ConvenienceKinetics(Process):
 toy_reactions = {
     'reaction1': {
         'stoichiometry': {
-            'A_internal': 1,
-            'B_external': -1},
+            ('internal', 'A'): 1,
+            ('external', 'B'): -1},
         'is reversible': False,
-        'catalyzed by': ['enzyme1_internal']}
+        'catalyzed by': [('internal', 'enzyme1')]}
     }
 
 toy_kinetics = {
     'reaction1': {
-        'enzyme1_internal': {
-            'B_external': 0.1,
+        ('internal', 'enzyme1'): {
+            ('external', 'B'): 0.1,
             'kcat_f': 0.1}
         }
     }
@@ -137,7 +145,7 @@ toy_initial_state = {
     }
 
 # test
-def test_convenience_kinetics():
+def test_convenience_kinetics(end_time=10):
     toy_config = {
         'reactions': toy_reactions,
         'kinetic_parameters': toy_kinetics,
@@ -157,7 +165,6 @@ def test_convenience_kinetics():
     # run the simulation
     time = 0
     timestep = 1
-    end_time = 10
     saved_state[time] = state
     while time < end_time:
         time += timestep
@@ -169,7 +176,7 @@ def test_convenience_kinetics():
             if role_id not in skip_roles:
                 for state_id, change in states_update.items():
                     state[role_id][state_id] += change
-        saved_state[time] = state
+        saved_state[time] = copy.deepcopy(state)
 
     return saved_state
 

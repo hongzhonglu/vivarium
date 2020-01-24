@@ -50,6 +50,9 @@ def gaussian(deviation, distance):
 class EnvironmentSpatialLattice(EnvironmentSimulation):
     def __init__(self, config):
 
+        self.name = config.get('name', 'lattice')
+        self.description = config.get('description', 'none')
+
         ## Simulation Parameters
         self._time = 0
         self._max_time = 10e6
@@ -505,7 +508,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for index, molecule_id in zip(self.emit_indices, self.emit_fields):
             emit_fields[molecule_id] = self.lattice[index].tolist()
         data = {
-            'type': 'lattice-field',
+            'type': 'lattice-fields',
             'fields': emit_fields,
             'time': self.time()}
         emit_config = {
@@ -518,7 +521,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
             agent_state = self.simulations[agent_id]['state']
             data = {
-                'type': 'lattice',
+                'type': 'lattice-agent',
                 'agent_id': agent_id,
                 'location': agent_location,
                 'volume': agent_state['volume'],
@@ -535,12 +538,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
+            'name': self.name,
+            'description': self.description,
             'cell_radius': self.cell_radius,
+            'emit_fields': self.emit_fields,
             'edge_length_x': self.edge_length_x,
             'edge_length_y': self.edge_length_y,
             'patches_per_edge_x': self.patches_per_edge_x,
             'patches_per_edge_y': self.patches_per_edge_y,
-            'total_volume': self.total_volume,
+            'environment_volume': self.total_volume,
             'timeline': self.timeline}
 
         emit_config = {
