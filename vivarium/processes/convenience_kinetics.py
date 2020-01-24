@@ -75,8 +75,9 @@ class ConvenienceKinetics(Process):
     def next_update(self, timestep, states):
 
         # get mmol_to_count for converting flux to exchange counts
-        volume = states['internal']['volume'] * units.L
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        volume = states['internal']['volume'] * units.fL
+        # volume.to('L') is needed because pint does not simplify fL/L.
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # kinetic rate law requires a flat dict with ('role', 'state') keys.
         flattened_states = tuplify_role_dicts(states)
@@ -97,14 +98,15 @@ class ConvenienceKinetics(Process):
                     # separate the state_id and role_id
                     if role_id in role_state_id:
                         state_id = role_state_id[1]
-                        state_flux = coeff * flux * timestep
+                        state_flux = (coeff * flux * timestep *
+                            units.mmol / units.L)
 
                         if role_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_count
                             delta_counts = int((state_flux * mmol_to_count).magnitude)
                             update['exchange'][state_id] = delta_counts
                         else:
-                            update[role_id][state_id] = state_flux
+                            update[role_id][state_id] = state_flux.magnitude
 
         # note: external and internal roles update change in mmol.
         return update
