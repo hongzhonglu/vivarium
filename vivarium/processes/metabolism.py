@@ -261,19 +261,23 @@ def simulate_metabolism(config):
 def plot_exchanges(timeseries, sim_config, out_dir):
     # plot focused on exchanges
 
+    nAvogadro = constants.N_A * 1/units.mol
     env_volume = sim_config['environment_volume']
     timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
     external_ts = timeseries['external']
     internal_ts = timeseries['internal']
 
     # pull volume and mass out from internal
-    volume = internal_ts.pop('volume')
+    volume = internal_ts.pop('volume') * units.fL
     mass = internal_ts.pop('mass')
+
+    # conversion factor
+    mmol_to_count = [nAvogadro.to('1/mmol') * vol.to('L') for vol in volume]
 
     # plot results
     cols = 1
     rows = 3
-    plt.figure(figsize=(cols * 8, rows * 1.5))
+    plt.figure(figsize=(cols * 6, rows * 1.5))
 
     # define subplots
     ax1 = plt.subplot(rows, cols, 1)
@@ -287,13 +291,15 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     ax1.title.set_text('environment: {} (fL)'.format(env_volume))
     ax1.set_ylabel('concentrations')
 
-    # plot internal state
-    for mol_id, series in internal_ts.items():
-        ax2.plot(series, label=mol_id)
+    # plot internal concentrations
+    for mol_id, counts_series in internal_ts.items():
+        conc_series = [(count / conversion).to('mmol/L').magnitude
+           for count, conversion in zip(counts_series, mmol_to_count)]
+        ax2.plot(conc_series, label=mol_id)
+
     ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax2.title.set_text('internal')
-    ax2.set_yscale('log')
-    ax2.set_ylabel('counts (log)')
+    ax2.title.set_text('internal metabolites')
+    ax2.set_ylabel('conc (mM)')
 
     # plot mass
     ax3.plot(mass, label='mass')
