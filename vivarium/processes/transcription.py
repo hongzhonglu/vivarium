@@ -52,7 +52,8 @@ class Elongation(object):
         Returns number of RNAP that terminated transcription this step.
         '''
 
-        self.elongation += rate * (now - self.time)
+        progress = rate * (now - self.time)
+        self.elongation += progress
         elongations = int(self.elongation) - self.previous_elongations
         self.time = now
         terminated = 0
@@ -61,7 +62,7 @@ class Elongation(object):
             iterations, monomers, complete = chromosome.next_polymerize(elongations)
             self.monomers += monomers
             self.complete_transcripts.extend(complete)
-            self.previous_elongations = elongations
+            self.previous_elongations = int(self.elongation)
             terminated += len(complete)
 
         return terminated
@@ -86,11 +87,11 @@ class Transcription(Process):
         self.promoter_order = initial_parameters.get('promoter_order', [])
         self.promoter_count = len(self.promoter_order)
         self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key] # TODO(Ryan): incorporate TF states
+            self.promoter_affinities[promoter_key]
             for promoter_key in self.promoter_order])
 
         self.elongation = 0
-        self.elongation_rate = initial_parameters.get('elongation_rate', 50.0)
+        self.elongation_rate = initial_parameters.get('elongation_rate', 1.0)
         self.advancement_rate = initial_parameters.get('advancement_rate', 1.0)
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
@@ -105,11 +106,11 @@ class Transcription(Process):
         chromosome = Chromosome(states['chromosome'])
         molecules = states['molecules']
 
-        # Find out how many promoters are currently blocked by a
-        # newly initiated rnap
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
 
+        # Find out how many promoters are currently blocked by a
+        # newly initiated rnap
         bound_rnap = []
         open_domains = {}
         bound_domains = {}
@@ -247,7 +248,8 @@ def test_transcription():
             'pA': 1.0,
             'pB': 1.0},
         'promoter_order': ['pA', 'pB'],
-        'advancement_rate': 100.0}
+        'elongation_rate': 10.0,
+        'advancement_rate': 10.0}
 
     chromosome = test_chromosome()
     transcription = Transcription(parameters)
