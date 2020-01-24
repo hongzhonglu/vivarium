@@ -21,6 +21,19 @@ def flatten(l):
         for sublist in l
         for item in sublist]
 
+def frequencies(l):
+    result = {}
+    for item in l:
+        if not item in result:
+            result[item] = 0
+        result[item] += 1
+    return result
+
+def merge_sum(a, b):
+    return {
+        key: a.get(key, 0) + b.get(key, 0)
+        for key in set(a.keys()).union(set(b.keys()))}
+
 def traverse(tree, key, f, combine):
     node = tree[key]
     if node.children:
@@ -173,43 +186,56 @@ class Promoter(Datum):
             total += self.terminators[index].strength
         return total
 
-    def crossing_terminators(self, before, elongation):
-        after = before + (elongation * self.direction)
-        return [
-            terminator_index
-            for terminator_index in range(len(self.terminators))
-            if self.terminators[terminator_index].between(before, after)]
+    def next_terminator(self, position):
+        for index, terminator in enumerate(self.terminators):
+            if terminator.position * self.direction > position * self.direction:
+                break
+        return index
 
-    def find_terminator(self, before, after):
-        crossing_terminators = self.crossing_terminators(
-            before,
-            after)
+    # def crossing_terminators(self, before, elongation):
+    #     after = before + (elongation * self.direction)
+    #     return [
+    #         terminator_index
+    #         for terminator_index in range(len(self.terminators))
+    #         if self.terminators[terminator_index].between(before, after)]
 
-        termination = False
-        for terminator_index in crossing_terminators:
-            terminator = self.terminators[terminator_index]
+    # def find_terminator(self, before, after):
+    #     crossing_terminators = self.crossing_terminators(
+    #         before,
+    #         after)
 
-            if terminator_index == len(self.terminators) - 1:
-                terminated = True
-            else:
-                total = self.strength_from(terminator_index)
-                terminated = random.random() <= terminator.strength / total
-                total -= terminator.strength
+    #     termination = False
+    #     for terminator_index in crossing_terminators:
+    #         terminator = self.terminators[terminator_index]
 
-            if terminated:
-                return terminator
+    #         if terminator_index == len(self.terminators) - 1:
+    #             terminated = True
+    #         else:
+    #             total = self.strength_from(terminator_index)
+    #             terminated = random.random() <= terminator.strength / total
+    #             total -= terminator.strength
 
-    def choose_terminator(self):
-        if len(self.terminators) > 1:
-            choice = random.random() * self.terminator_strength
-            for terminator in self.terminators:
+    #         if terminated:
+    #             return terminator
+
+    def terminates_at(self, index=0):
+        if len(self.terminators[index:]) > 1:
+            choice = random.random() * self.strength_from(index)
+            return choice <= self.terminators[index].strength
+        else:
+            return True
+
+    def choose_terminator(self, index=0):
+        if len(self.terminators[index:]) > 1:
+            choice = random.random() * self.strength_from(index)
+            for terminator in self.terminators[index:]:
                 if choice <= terminator.strength:
                     break
                 else:
                     choice -= terminator.strength
             return terminator
         else:
-            return self.terminators[0]
+            return self.terminators[index]
 
     def choose_operon(self, genes):
         terminator = self.choose_terminator()
@@ -223,6 +249,7 @@ class Promoter(Datum):
 class Rnap(Datum):
     defaults = {
         'promoter': '',
+        'terminator': 0,
         'domain': 0,
         'state': None, # other states: ['bound', 'transcribing', 'complete']
         'position': 0}
@@ -318,31 +345,88 @@ class Chromosome(Datum):
         self.rnaps.append(new_rnap)
         return new_rnap
 
-    def polymerize(self, elongation):
-        complete_transcripts = []
-
+    def terminator_distance(self):
+        distance = None
         for rnap in self.rnaps:
             if rnap.is_transcribing():
                 promoter = self.promoters[rnap.promoter]
-                extent = elongation * promoter.direction
+                terminator_index = promoter.next_terminator(rnap.position)
+                rnap.terminator = terminator_index
+                terminator = promoter.terminators[terminator_index]
+                span = abs(terminator.position - rnap.position)
+                if not distance or span < distance:
+                    distance = span
+        return distance
+
+    def sequence_monomers(self, begin, end):
+        if begin < end:
+            return self.sequence[begin:end]
+        else:
+            return self.sequence[end:begin]
+
+    def next_polymerize(self, limit):
+        distance = self.terminator_distance()
+        elongate_to = min(limit, distance)
+
+        complete_transcripts = []
+        monomers = ''
+        for rnap in self.rnaps:
+            if rnap.is_transcribing():
+                promoter = self.promoters[rnap.promoter]
+                extent = elongate_to * promoter.direction
                 projection = rnap.position + extent
-                terminator = promoter.find_terminator(
-                    rnap.position,
-                    projection)
+                print(rnap.position)
+                print(projection)
+                monomers += self.sequence_monomers(rnap.position, projection)
+                rnap.position = projection
 
-                if terminator:
-                    rnap.position = terminator.position
-                    rnap.complete()
-                    complete_transcripts.append(terminator.operon)
-                else:
-                    rnap.position = projection
+                terminator = promoter.terminators[rnap.terminator]
+                if terminator.position == rnap.position:
+                    if promoter.terminates_at(rnap.terminator):
+                        rnap.complete()
+                        complete_transcripts.append(terminator.operon)
 
-        self.rnaps = [
-            rnap
-            for rnap in self.rnaps
-            if not rnap.is_complete()]
+        return elongate_to, frequencies(monomers), complete_transcripts
 
-        return complete_transcripts
+    def polymerize(self, elongation):
+        iterations = 0
+        attained = 0
+        all_monomers = {}
+        complete_transcripts = []
+
+        while attained < elongation:
+            elongated, monomers, complete = self.next_polymerize(elongation - attained)
+            attained += elongated
+            all_monomers = merge_sum(all_monomers, monomers)
+            complete_transcripts += complete
+            iterations += 1
+
+        return iterations, all_monomers, complete_transcripts
+
+        # complete_transcripts = []
+
+        # for rnap in self.rnaps:
+        #     if rnap.is_transcribing():
+        #         promoter = self.promoters[rnap.promoter]
+        #         extent = elongation * promoter.direction
+        #         projection = rnap.position + extent
+        #         terminator = promoter.find_terminator(
+        #             rnap.position,
+        #             projection)
+
+        #         if terminator:
+        #             rnap.position = terminator.position
+        #             rnap.complete()
+        #             complete_transcripts.append(terminator.operon)
+        #         else:
+        #             rnap.position = projection
+
+        # self.rnaps = [
+        #     rnap
+        #     for rnap in self.rnaps
+        #     if not rnap.is_complete()]
+
+        # return complete_transcripts
 
     def initiate_replication(self):
         leaves = [leaf for leaf in self.domains.values() if not leaf.children]
