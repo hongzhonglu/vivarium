@@ -22,6 +22,10 @@ def flatten(l):
         for item in sublist]
 
 def frequencies(l):
+    '''
+    Return number of times each item appears in the list.
+    '''
+
     result = {}
     for item in l:
         if not item in result:
@@ -29,12 +33,12 @@ def frequencies(l):
         result[item] += 1
     return result
 
-def merge_sum(a, b):
-    return {
-        key: a.get(key, 0) + b.get(key, 0)
-        for key in set(a.keys()).union(set(b.keys()))}
-
 def traverse(tree, key, f, combine):
+    '''
+    Traverse the given tree starting using the `key` node as the root and calling `f` on each leaf,
+    combining values with `combine` at each subsequent level to create new leaves for `f`.
+    '''
+
     node = tree[key]
     if node.children:
         eldest = traverse(tree, node.children[0], f, combine)
@@ -46,6 +50,19 @@ def traverse(tree, key, f, combine):
 
 
 class Datum(object):
+    '''
+    The Datum class enables functions to be defined on dicts of a certain schema. 
+    It provides two class level variables:
+      * `defaults`: a dictionary of keys to default values this Datum will have if 
+           none is provided to __init__
+      * `schema`: a dictionary of keys to constructors which invoke subdata. 
+
+    Once these are defined, a Datum subclass can be constructed with a dict that provides any
+    values beyond the defaults, and then all of the defined methods for that Datum subclass
+    are available to operate on its values. Once the modifications are complete, it can be
+    rendered back into a dict using the `to_dict()` method.
+    '''
+
     schema = {}
 
     def __init__(self, config, default):
@@ -127,6 +144,10 @@ class BindingSite(Datum):
         super(BindingSite, self).__init__(config, self.defaults)
 
     def state_when(self, levels):
+        '''
+        Provide the binding state for the given levels of transcription factors. 
+        '''
+
         state = None
         for tf, threshold in thresholds:
             if levels[tf] >= threshold:
@@ -155,6 +176,12 @@ class Terminator(Datum):
         return before < self.position < after or after < self.position < before
 
 class Promoter(Datum):
+    '''
+    Promoters are the main unit of expression. They define a direction of polymerization, 
+    contain binding sites for transcription factors, and declare some number of terminators,
+    each of which has a strength and corresponds to a particular operon if chosen.
+    '''
+
     schema = {
         'sites': BindingSite,
         'terminators': Terminator}
@@ -191,32 +218,6 @@ class Promoter(Datum):
             if terminator.position * self.direction > position * self.direction:
                 break
         return index
-
-    # def crossing_terminators(self, before, elongation):
-    #     after = before + (elongation * self.direction)
-    #     return [
-    #         terminator_index
-    #         for terminator_index in range(len(self.terminators))
-    #         if self.terminators[terminator_index].between(before, after)]
-
-    # def find_terminator(self, before, after):
-    #     crossing_terminators = self.crossing_terminators(
-    #         before,
-    #         after)
-
-    #     termination = False
-    #     for terminator_index in crossing_terminators:
-    #         terminator = self.terminators[terminator_index]
-
-    #         if terminator_index == len(self.terminators) - 1:
-    #             terminated = True
-    #         else:
-    #             total = self.strength_from(terminator_index)
-    #             terminated = random.random() <= terminator.strength / total
-    #             total -= terminator.strength
-
-    #         if terminated:
-    #             return terminator
 
     def terminates_at(self, index=0):
         if len(self.terminators[index:]) > 1:
