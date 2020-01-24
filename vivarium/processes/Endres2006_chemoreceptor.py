@@ -160,8 +160,7 @@ def test_receptor():
         (1400, 0.0),
         (1800, 1.0),
         (2200, 0.0),
-        (2600, 10.0),
-        (3000, 0.0),
+        (2400, 0.0),
     ]
     time = 0
     timestep = 1
@@ -215,7 +214,7 @@ def plot_output(output, out_dir='out'):
     # plot results
     cols = 1
     rows = 3
-    plt.figure(figsize=(cols * 8, rows * 1.5))
+    plt.figure(figsize=(cols * 4, rows * 1.5))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)

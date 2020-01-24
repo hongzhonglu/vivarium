@@ -370,7 +370,7 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     # plot results
     cols = 1
     rows = 4
-    plt.figure(figsize=(8 * cols, 1.5 * rows))
+    plt.figure(figsize=(4 * cols, 1.5 * rows))
 
     # define subplots
     ax1 = plt.subplot(rows, cols, 1)
@@ -475,11 +475,11 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     zero_flagella = {'n_flagella': 0}
-    output1 = test_activity(zero_flagella, 10)
+    output1 = test_activity(zero_flagella, 5)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
     five_flagella = {'n_flagella': 5}
-    output2 = test_activity(five_flagella, 10)
+    output2 = test_activity(five_flagella, 5)
     plot_activity(output2, out_dir, 'motor_control')
 
     output3 = test_motor_PMF()
