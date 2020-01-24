@@ -26,7 +26,7 @@ class Motor(Analysis):
             return compartment_history
 
         elif type is 'environment':
-            query.update({'type': 'lattice'})
+            query.update({'type': 'lattice-agent'})
             history_data = client.find(query)
             history_data.sort('time')
             lattice_history = get_lattice(history_data)
@@ -41,7 +41,10 @@ class Motor(Analysis):
         expected_tumble = 0.14  # s (Berg)
 
         # compartment data
-        internal_role = experiment_config['topology']['motor']['internal']  # get the internal role
+        # get the internal role. assumes there is only one in all agents.
+        internal_role = None
+        for agent_id, specs in experiment_config['agents'].items():
+            internal_role = specs['topology']['motor']['internal']
         compartment_data = data['compartment']
         sim_id = compartment_data['sim_id']
         time_vec = compartment_data['time']  # convert to hours
