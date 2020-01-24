@@ -563,6 +563,42 @@ def simulate_compartment(compartment, settings={}):
 
     return saved_state
 
+def simulate_process_with_environment(process, settings={}):
+    '''
+    Simulate running a process in an environment. In settings,
+    exchange_role and environment_role must be specified.
+    '''
+    process_settings = process.default_settings()
+    state = process_settings['state']
+    exchange_role = settings['exchange_role']
+    environment_role = settings['environment_role']
+    iterations = settings.get('iterations', 10)
+    env_volume = settings.get('environment_volume', 1e-12) * units.L
+
+    nAvogadro = constants.N_A * 1 / units.mol
+    mmol_to_count = (nAvogadro * env_volume).to('L/mmol').magnitude
+
+    # Run Simulation
+    time = 0
+    timestep = 1
+    end_time = iterations * timestep
+    saved_state = {
+        time: state
+    }
+    while time < end_time:
+        time += timestep
+        update = process.next_update(timestep, state)
+        for role_id, states_update in update.items():
+            if role_id == exchange_role:
+                for state_id, delta_count in states_update.items():
+                    delta_conc = delta_count / mmol_to_count
+                    state[environment_role][state_id] += delta_conc
+            else:
+                for state_id, change in states_update.items():
+                    state[role_id][state_id] += change
+        saved_state[time] = copy.deepcopy(state)
+    return saved_state
+
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
