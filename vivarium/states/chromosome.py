@@ -248,6 +248,7 @@ class Promoter(Datum):
 
 class Rnap(Datum):
     defaults = {
+        'id': 0,
         'promoter': '',
         'terminator': 0,
         'domain': 0,
@@ -265,6 +266,7 @@ class Rnap(Datum):
 
     def complete(self):
         self.state = 'complete'
+        print('RNAP completing transcription: {}'.format(self.to_dict()))
 
     def is_bound(self):
         return self.state == 'bound'
@@ -314,10 +316,13 @@ class Chromosome(Datum):
 
     def promoter_rnaps(self):
         by_promoter = {
-            promoter_key: []
+            promoter_key: {}
             for promoter_key in self.promoter_order}
+
         for rnap in self.rnaps:
-            by_promoter[rnap.promoter].append(rnap)
+            if rnap.is_bound():
+                by_promoter[rnap.promoter][rnap.domain] = rnap
+
         return by_promoter
 
     def promoter_domains(self):
@@ -337,7 +342,9 @@ class Chromosome(Datum):
                 for child in domain.children])
 
     def bind_rnap(self, promoter_key, domain):
+        self.rnap_id += 1
         new_rnap = Rnap({
+            'id': self.rnap_id,
             'promoter': promoter_key,
             'domain': domain,
             'position': self.promoters[promoter_key].position})
@@ -346,7 +353,7 @@ class Chromosome(Datum):
         return new_rnap
 
     def terminator_distance(self):
-        distance = None
+        distance = float('inf')
         for rnap in self.rnaps:
             if rnap.is_transcribing():
                 promoter = self.promoters[rnap.promoter]
@@ -354,8 +361,10 @@ class Chromosome(Datum):
                 rnap.terminator = terminator_index
                 terminator = promoter.terminators[terminator_index]
                 span = abs(terminator.position - rnap.position)
-                if not distance or span < distance:
+                if span < distance:
                     distance = span
+        if distance == float('inf'):
+            distance = 1
         return distance
 
     def sequence_monomers(self, begin, end):
@@ -375,8 +384,6 @@ class Chromosome(Datum):
                 promoter = self.promoters[rnap.promoter]
                 extent = elongate_to * promoter.direction
                 projection = rnap.position + extent
-                print(rnap.position)
-                print(projection)
                 monomers += self.sequence_monomers(rnap.position, projection)
                 rnap.position = projection
 
@@ -386,47 +393,27 @@ class Chromosome(Datum):
                         rnap.complete()
                         complete_transcripts.append(terminator.operon)
 
-        return elongate_to, frequencies(monomers), complete_transcripts
+        self.rnaps = [
+            rnap
+            for rnap in self.rnaps
+            if not rnap.is_complete()]
+
+        return elongate_to, monomers, complete_transcripts
 
     def polymerize(self, elongation):
         iterations = 0
         attained = 0
-        all_monomers = {}
+        all_monomers = ''
         complete_transcripts = []
 
         while attained < elongation:
             elongated, monomers, complete = self.next_polymerize(elongation - attained)
             attained += elongated
-            all_monomers = merge_sum(all_monomers, monomers)
+            all_monomers += monomers
             complete_transcripts += complete
             iterations += 1
 
-        return iterations, all_monomers, complete_transcripts
-
-        # complete_transcripts = []
-
-        # for rnap in self.rnaps:
-        #     if rnap.is_transcribing():
-        #         promoter = self.promoters[rnap.promoter]
-        #         extent = elongation * promoter.direction
-        #         projection = rnap.position + extent
-        #         terminator = promoter.find_terminator(
-        #             rnap.position,
-        #             projection)
-
-        #         if terminator:
-        #             rnap.position = terminator.position
-        #             rnap.complete()
-        #             complete_transcripts.append(terminator.operon)
-        #         else:
-        #             rnap.position = projection
-
-        # self.rnaps = [
-        #     rnap
-        #     for rnap in self.rnaps
-        #     if not rnap.is_complete()]
-
-        # return complete_transcripts
+        return iterations, frequencies(all_monomers), complete_transcripts
 
     def initiate_replication(self):
         leaves = [leaf for leaf in self.domains.values() if not leaf.children]
@@ -499,6 +486,7 @@ class Chromosome(Datum):
     def __init__(self, config):
         super(Chromosome, self).__init__(config, self.defaults)
         self.promoter_order = list(self.promoters.keys())
+        self.rnap_id = 0
 
 
 def test_chromosome():
@@ -538,7 +526,7 @@ def test_chromosome():
                         ('tfX', 0.5)]}],
                 'terminators': [
                     {
-                        'position': -6,
+                        'position': -8,
                         'strength': 0.5,
                         'operon': 'oB'},
                     {
