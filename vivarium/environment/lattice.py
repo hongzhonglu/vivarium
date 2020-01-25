@@ -580,7 +580,6 @@ def run():
     torque = 0.0
     return [force, torque]
 
-
 def test_diffusion(config):
     test_diffusion = 'GLC'
 
@@ -655,7 +654,6 @@ def test_diffusion(config):
     }
     return data
 
-
 def test_lattice(config):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
@@ -664,9 +662,10 @@ def test_lattice(config):
     total_time = config.get('total_time', 10)
     timestep = config.get('timestep', 0.1)
     edge_length = config.get('edge_length', 100.0)
-    translation_jitter = config.get('translation_jitter', 0.0)
-    rotation_jitter = config.get('rotation_jitter', 0.0)
+    translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
+    rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
     depth = config.get('depth', 0.01)  # 3000 um is default
+    motile_cells = config.get('motile_cells', False)  # 3000 um is default
 
     # get emitter
     emitter = get_emitter({'type': 'null'})  # TODO -- is an emitter really necessary?
@@ -716,29 +715,30 @@ def test_lattice(config):
     time_in_motor_state = 0
     while time < total_time:
 
-        # get forces
-        if motor_state == 1: # tumble
-            if time_in_motor_state < tumble_time:
-                motile_force = tumble()
-                time_in_motor_state += timestep
-            else:
-                # switch
-                motile_force = run()
-                motor_state = 0
-                time_in_motor_state = 0
+        if motile_cells:
+            # get forces
+            if motor_state == 1: # tumble
+                if time_in_motor_state < tumble_time:
+                    motile_force = tumble()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = run()
+                    motor_state = 0
+                    time_in_motor_state = 0
 
-        elif motor_state == 0:  # run
-            if time_in_motor_state < run_time:
-                motile_force = run()
-                time_in_motor_state += timestep
-            else:
-                # switch
-                motile_force = tumble()
-                motor_state = 1
-                time_in_motor_state = 0
+            elif motor_state == 0:  # run
+                if time_in_motor_state < run_time:
+                    motile_force = run()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = tumble()
+                    motor_state = 1
+                    time_in_motor_state = 0
 
-        # apply forces
-        lattice.motile_forces[agent_id] = motile_force
+            # apply forces
+            lattice.motile_forces[agent_id] = motile_force
 
         # run lattice and get new locations
         lattice.run_incremental(time)
@@ -763,10 +763,7 @@ def test_lattice(config):
     }
     return data
 
-
-def plot_motility(data, out_dir='out'):
-    import matplotlib.pyplot as plt
-
+def plot_motility(data, filename='motility', out_dir='out'):
     expected_speed = 14.2  # um/s (Berg)
     expected_angle_between_runs = 68 # degrees (Berg)
 
@@ -837,12 +834,11 @@ def plot_motility(data, out_dir='out'):
     ax3.set_yticklabels(["run", "tumble"])
 
     # save figure
-    fig_path = os.path.join(out_dir, 'motility')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.9)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
 
-
-def plot_trajectory(data, out_dir='out'):
+def plot_trajectory(data, filename='trajectory', out_dir='out'):
     x_length = data['x_length']
     y_length = data['y_length']
     y_ratio = y_length/x_length
@@ -879,13 +875,12 @@ def plot_trajectory(data, out_dir='out'):
     plt.xlim((0, x_length))
     plt.ylim((0, y_length))
 
-    fig_path = os.path.join(out_dir, 'trajectory')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
-
-def plot_field(data, out_dir='out'):
+def plot_field(data, filename='field', out_dir='out'):
     x_length = data['x_length']
     y_length = data['y_length']
     saved_state = data['saved_state']
@@ -922,9 +917,9 @@ def plot_field(data, out_dir='out'):
                    cmap='YlGn')
 
     plt.colorbar()
-    fig_path = os.path.join(out_dir, 'field')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -933,19 +928,40 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    test1_config = {
-        'total_time': 20,
-        'timestep': 1}
+    # test jitter
+    jitter_config = {
+        'total_time': 100,
+        'timestep': 1,
+        'translation_jitter': 10,
+        'rotation_jitter': 5,
+        'motile_cells': False}
 
-    output1 = test_lattice(test1_config)
-    plot_motility(output1, out_dir)
-    plot_trajectory(output1, out_dir)
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
 
+    # test motility
+    motile_config = {
+        'total_time': 1000,
+        'timestep': 1,
+        'translation_jitter': 0.0,
+        'rotation_jitter': 0.0,
+        'motile_cells': True}
 
-    difffusion_config = {
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+
+    # test motility short ts
+    motile_config.update({'timestep': 0.1})
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state_short_ts', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
+
+    # test diffusion
+    diffusion_config = {
         'total_time': 2,
         'timestep': 0.01,
         'diffusion': 1e2}
 
-    output2 = test_diffusion(test1_config)
-    plot_field(output2, out_dir)
+    diffusion_out = test_diffusion(diffusion_config)
+    plot_field(diffusion_out, 'diffusion', out_dir)
