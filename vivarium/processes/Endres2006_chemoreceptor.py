@@ -160,8 +160,7 @@ def test_receptor():
         (1400, 0.0),
         (1800, 1.0),
         (2200, 0.0),
-        (2600, 10.0),
-        (3000, 0.0),
+        (2400, 0.0),
     ]
     time = 0
     timestep = 1
@@ -206,8 +205,6 @@ def test_receptor():
         'n_methyl_vec': n_methyl_vec}
 
 def plot_output(output, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     ligand_vec = output['ligand_vec']
@@ -217,7 +214,7 @@ def plot_output(output, out_dir='out'):
     # plot results
     cols = 1
     rows = 3
-    plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(cols * 4, rows * 1.5))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
@@ -228,10 +225,21 @@ def plot_output(output, out_dir='out'):
     ax3.plot(n_methyl_vec, 'b')
 
     ax1.set_xticklabels([])
-    ax1.set_ylabel("ligand \n log(mM) ", fontsize=10)
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    ax1.tick_params(right=False, top=False)
+    ax1.set_ylabel("external ligand \n log(mM) ", fontsize=10)
     ax1.set_yscale('log')
+
     ax2.set_xticklabels([])
-    ax2.set_ylabel("activity \n P(on)", fontsize=10)
+    ax2.spines['right'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax2.tick_params(right=False, top=False)
+    ax2.set_ylabel("cluster activity \n P(on)", fontsize=10)
+
+    ax3.spines['right'].set_visible(False)
+    ax3.spines['top'].set_visible(False)
+    ax3.tick_params(right=False, top=False)
     ax3.set_xlabel("time (s)", fontsize=12)
     ax3.set_ylabel("average \n methylation", fontsize=10)
 
