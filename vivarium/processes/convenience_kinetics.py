@@ -64,7 +64,7 @@ class ConvenienceKinetics(Process):
         default_updaters = {}
 
         default_settings = {
-            'process_id': 'template',
+            'process_id': 'convenience_kinetics',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,
@@ -75,7 +75,7 @@ class ConvenienceKinetics(Process):
     def next_update(self, timestep, states):
 
         # get mmol_to_count for converting flux to exchange counts
-        volume = states['internal']['volume'] * units.L
+        volume = states['internal']['volume'] * units.fL
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # kinetic rate law requires a flat dict with ('role', 'state') keys.
