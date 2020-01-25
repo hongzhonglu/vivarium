@@ -22,6 +22,7 @@ PI = math.pi
 
 ELASTICITY = 0.95
 FRICTION = 0.9
+PHYSICS_TS = 0.005
 
 
 class MultiCellPhysics(object):
@@ -38,9 +39,7 @@ class MultiCellPhysics(object):
         self.space = pymunk.Space()
 
         # Physics
-        self.timestep = 1
-        self.physics_steps_per_frame = 10
-        self.physics_dt = self.timestep / self.physics_steps_per_frame
+        self.physics_dt = PHYSICS_TS
 
         if self.pygame_viz:
             pygame.init()
@@ -103,39 +102,41 @@ class MultiCellPhysics(object):
         body.motile_force = (force, torque)
 
     def run_incremental(self, run_for):
+        assert self.physics_dt < run_for
+
+        # apply forces
+        for body in self.space.bodies:
+            width, length = body.dimensions
+
+            # random jitter
+            jitter_torque = random.normalvariate(0, self.rotation_jitter)
+            jitter_force = [
+                random.normalvariate(0, self.translation_jitter),
+                random.normalvariate(0, self.translation_jitter)]
+            location = (width / 2, 0)  # self.random_body_position(body)
+
+            # motile forces
+            motile_torque = 0.0
+            motile_force = [0.0, 0.0]
+            if hasattr(body, 'motile_force'):
+                force, motile_torque = body.motile_force
+                motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
+
+            body.angular_velocity = (jitter_torque + motile_torque)
+            total_force = [a + b for a, b in zip(jitter_force, motile_force)]
+            body.apply_force_at_local_point(total_force, location)
+
+        # run physics
         time = 0
         while time < run_for:
-            time += self.timestep
+            time += self.physics_dt
+            self.space.step(self.physics_dt)
 
-            # Progress time forward
-            for x in range(self.physics_steps_per_frame * self.timestep):
-                for body in self.space.bodies:
-                    width, length = body.dimensions
-
-                    # random jitter
-                    jitter_torque = random.normalvariate(0, self.rotation_jitter)
-                    jitter_force = [
-                        random.normalvariate(0, self.translation_jitter),
-                        random.normalvariate(0, self.translation_jitter)]
-                    location = (length/2, width/2)  #self.random_body_position(body)
-
-                    # motile forces
-                    motile_torque = 0.0
-                    motile_force = [0.0, 0.0]
-                    if hasattr(body, 'motile_force'):
-                        force, motile_torque = body.motile_force
-                        motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-
-                    body.angular_velocity = (jitter_torque + motile_torque)  # TODO (eran) add to angular velocity rather than replace it. Needs better damping first
-                    total_force = [a + b for a, b in zip(jitter_force, motile_force)]
-                    body.apply_force_at_local_point(total_force, location)
-
-                self.space.step(self.physics_dt)
-
-            # Disable momentum at low Reynolds number (the ratio of inertial and viscous forces)
+            # reduce velocity at low Reynolds number (the ratio of inertial and viscous forces)
+            # TODO (Eran) this should be function of viscosity
             for body in self.space.bodies:
-                body.velocity -= (0.5 * body.velocity * self.timestep)
-                body.angular_velocity -= (0.5 * body.angular_velocity * self.timestep)  # TODO (Eran) this should be function of viscosity
+                body.velocity -= (0.5 * body.velocity * self.physics_dt)
+                body.angular_velocity -= (0.5 * body.angular_velocity * self.physics_dt)
 
             if self.pygame_viz:
                 self._update_screen()

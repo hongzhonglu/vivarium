@@ -39,8 +39,8 @@ CELL_DENSITY = 1100
 # Lattice parameters
 DIFFUSION_CONSTANT = 1e3
 DEFAULT_DEPTH = 3000.0  # um
-TRANSLATION_JITTER = 0.1
-ROTATION_JITTER = 0.05
+TRANSLATION_JITTER = 100
+ROTATION_JITTER = 0.5
 
 DEFAULT_TIMESTEP = 1.0
 
@@ -145,8 +145,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics = MultiCellPhysics(
             bounds,
             translation_jitter,
-            rotation_jitter,
-            self.run_for)
+            rotation_jitter)
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
@@ -570,13 +569,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    tumble_jitter = 0.4  # (radians)
-    force = 1.0
+    force = 10000
+    tumble_jitter = 30
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 2.1
+    force = 25000
     torque = 0.0
     return [force, torque]
 
@@ -662,6 +661,7 @@ def test_lattice(config):
     total_time = config.get('total_time', 10)
     timestep = config.get('timestep', 0.1)
     edge_length = config.get('edge_length', 100.0)
+    patches_per_edge_x = config.get('patches_per_edge', int(edge_length/2))
     translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
     rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
     depth = config.get('depth', 0.01)  # 3000 um is default
@@ -677,7 +677,7 @@ def test_lattice(config):
         'depth': depth,
         'static_concentrations': True,
         'edge_length_x': edge_length,
-        'patches_per_edge_x': int(edge_length/2),
+        'patches_per_edge_x': patches_per_edge_x,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'emitter': emitter
     }
@@ -932,17 +932,21 @@ if __name__ == '__main__':
     jitter_config = {
         'total_time': 100,
         'timestep': 1,
-        'translation_jitter': 10,
-        'rotation_jitter': 5,
+        'edge_length': 2,
+        'patches_per_edge': 1,
         'motile_cells': False}
 
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
 
+    jitter_config.update({'timestep': 0.1})
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
+
     # test motility
     motile_config = {
-        'total_time': 1000,
-        'timestep': 1,
+        'total_time': 100,
+        'timestep': 0.1,
         'translation_jitter': 0.0,
         'rotation_jitter': 0.0,
         'motile_cells': True}
@@ -952,7 +956,7 @@ if __name__ == '__main__':
     plot_trajectory(motile_output, 'motility_trajectory', out_dir)
 
     # test motility short ts
-    motile_config.update({'timestep': 0.1})
+    motile_config.update({'timestep': 0.01})
     motile_output = test_lattice(motile_config)
     plot_motility(motile_output, 'motility_state_short_ts', out_dir)
     plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
@@ -960,7 +964,7 @@ if __name__ == '__main__':
     # test diffusion
     diffusion_config = {
         'total_time': 2,
-        'timestep': 0.01,
+        'timestep': 0.05,
         'diffusion': 1e2}
 
     diffusion_out = test_diffusion(diffusion_config)
