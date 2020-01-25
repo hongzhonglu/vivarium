@@ -24,8 +24,10 @@ class LatticeTrace(Analysis):
         time_vec = [t / 3600 for t in history_data['time']]  # convert to hours
         edge_x = experiment_config['edge_length_x']
         edge_y = experiment_config['edge_length_y']
-        scaling = 8 / min(edge_x, edge_y)
+        min_edge = min(edge_x, edge_y)
+        scaling = 8 / min_edge
         markersize = 20
+        n_ticks = 5
 
         # plot trajectories
         fig = plt.figure(figsize=(scaling*edge_x, scaling*edge_y))
@@ -47,8 +49,9 @@ class LatticeTrace(Analysis):
         plt.xlabel(u'\u03bcm')
         plt.ylabel(u'\u03bcm')
         # specify the number of ticks
-        plt.locator_params(axis='y', nbins=int(edge_y/20))
-        plt.locator_params(axis='x', nbins=int(edge_x/20))
+        [x_bins, y_bins] = [int(n_ticks*edge/min_edge) for edge in [edge_x, edge_y]]
+        plt.locator_params(axis='y', nbins=y_bins)
+        plt.locator_params(axis='x', nbins=x_bins)
 
         # create legend for agent ids
         first_legend = plt.legend(title='agent ids', loc='center left', bbox_to_anchor=(1.01, 0.5))
