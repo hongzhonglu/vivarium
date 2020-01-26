@@ -101,7 +101,7 @@ class MotorActivity(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,
-            'time_step': 0.01}
+            'time_step': 0.1}
 
         return default_settings
 
@@ -147,18 +147,18 @@ class MotorActivity(Process):
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
-                force, torque = self.tumble()
+                force, torque = tumble()
             else:
-                force, torque = self.run()
+                force, torque = run()
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
-                [force, torque] = self.run()
+                [force, torque] = run()
             else:
-                [force, torque] = self.tumble()
+                [force, torque] = tumble()
 
         # TODO -- should force/torque accumulate over exchange timestep?
         update = {
@@ -173,16 +173,16 @@ class MotorActivity(Process):
         }
         return update
 
-    def tumble(self):
-        tumble_jitter = 0.4  # (radians)  # TODO -- put in parameters
-        force = 1.0  # 22.5
-        torque = random.normalvariate(0, tumble_jitter)
-        return [force, torque]
+def tumble():
+    force = 500
+    tumble_jitter = 30
+    torque = random.normalvariate(0, tumble_jitter)
+    return [force, torque]
 
-    def run(self):
-        force = 2.1
-        torque = 0.0
-        return [force, torque]
+def run():
+    force = 2000
+    torque = 0.0
+    return [force, torque]
 
 
 def test_motor_control(total_time=10):
@@ -276,9 +276,6 @@ def test_variable_receptor():
 
 def plot_motor_control(output, out_dir='out'):
     # TODO -- make this into an analysis figure
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     expected_run = 0.42  # s (Berg) expected run length without chemotaxis

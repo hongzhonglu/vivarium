@@ -264,36 +264,37 @@ class ShepherdControl(ActorControl):
 
         media_id = 'MeAsp'
         media = {'GLC': 20.0,
-                 'MeAsp': 1.0}
+                 'MeAsp': 1000.0}
         new_media = {media_id: media}
         # timeline_str = '0 {}, 14400 end'.format(media_id)
         timeline_str = '0 {}, 1800 end'.format(media_id)
 
         lattice_config = {
             'name': 'chemotaxis_experiment',
-            'description': 'a large enivronment with a static gradient for observing chemotactic cells',
+            'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+                           'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+                           'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
             'timeline_str': timeline_str,
             'new_media': new_media,
-            'run_for' : 0.05,
-            'emit_fields': ['MeAsp', 'GLC'],
+
+
+            'emit_fields': ['GLC','MeAsp'],
+            'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
             'static_concentrations': True,
-            'cell_placement': [0.5, 0.001],  # place cells away from gradient
+            'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
             'gradient': {
                 'type': 'linear',
                 'molecules': {
                     'GLC': {
-                        'center': [0.5, 1.0],
-                        'slope': -1.0/150.0},
+                        'center': [1.0, 0.5],
+                        'slope': -1.0/100.0},
                     'MeAsp': {
-                        'center': [0.5, 1.0],
-                        'slope': -1.0/150.0}
+                        'center': [1.0, 0.5],
+                        'slope': -1.0/2.0}
                 }},
-            'diffusion': 0.0,
-            # 'translation_jitter': 0.1,
-            # 'rotation_jitter': 0.05,
-            'edge_length_x': 100.0,
-            'edge_length_y': 500.0,
-            'patches_per_edge_x': 50}
+            'edge_length_x': 2000.0,
+            'edge_length_y': 400.0,
+            'patches_per_edge_x': 100}
 
         actor_config['boot_config'].update(lattice_config)
         self.add_agent(experiment_id, 'lattice', actor_config)
