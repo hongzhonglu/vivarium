@@ -233,7 +233,7 @@ class ShepherdControl(ActorControl):
             'name': 'ecoli_core_experiment',
             'timeline_str': timeline_str,
             'edge_length_x': 15.0,
-            'patches_per_edge_x': 15,
+            'patches_per_edge_x': 10,
             'run_for': 2.0,
             'diffusion': 1e-3,
             'depth': 1e-2,
