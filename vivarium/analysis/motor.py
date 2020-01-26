@@ -133,7 +133,7 @@ class Motor(Analysis):
         max_length = max(run_lengths + tumble_lengths)
         bins = np.linspace(0, max_length, 10)
         logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
-        ax5.hist([run_lengths, tumble_lengths], bins=logbins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
+        ax5.hist([run_lengths, tumble_lengths], bins=bins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
 
         # plot expected values
         ax5.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
