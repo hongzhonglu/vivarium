@@ -337,7 +337,7 @@ def initialize_measp_long(boot_config):
         # 'rotation_jitter': 0.05,
         'edge_length_x': 2000.0,
         'edge_length_y': 400.0,
-        'patches_per_edge_x': 80}
+        'patches_per_edge_x': 100}
 
     boot_config.update(lattice_config)
     return boot_config

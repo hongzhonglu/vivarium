@@ -264,7 +264,7 @@ class ShepherdControl(ActorControl):
 
         media_id = 'MeAsp'
         media = {'GLC': 20.0,
-                 'MeAsp': 1000.0}
+                 'MeAsp': 3600.0}
         new_media = {media_id: media}
         # timeline_str = '0 {}, 14400 end'.format(media_id)
         timeline_str = '0 {}, 1800 end'.format(media_id)
@@ -281,19 +281,21 @@ class ShepherdControl(ActorControl):
             'emit_fields': ['GLC','MeAsp'],
             'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
             'static_concentrations': True,
-            'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
+            'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
             'gradient': {
                 'type': 'linear',
                 'molecules': {
                     'GLC': {
                         'center': [1.0, 0.5],
-                        'slope': -1.0/100.0},
+                        'slope': -1e-2},
                     'MeAsp': {
                         'center': [1.0, 0.5],
-                        'slope': -1.0/2.0}
+                        'slope': -2e0}
                 }},
             'edge_length_x': 2000.0,
             'edge_length_y': 400.0,
+            'translation_jitter': 1.0,
+            # 'rotation_jitter': 0.05,
             'patches_per_edge_x': 100}
 
         actor_config['boot_config'].update(lattice_config)
