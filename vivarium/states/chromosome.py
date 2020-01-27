@@ -561,7 +561,7 @@ test_chromosome_config = {
             'position': 0}]}
 
 def test_chromosome():
-    chromosome = Chromosome(chromosome_config)
+    chromosome = Chromosome(test_chromosome_config)
     print(chromosome.promoters['pA'].terminators[0].operon)
     print(chromosome)
 
