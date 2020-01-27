@@ -44,6 +44,7 @@ from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
+from vivarium.processes.antibiotic_import import AntibioticImport
 
 # composites
 from vivarium.composites.growth_division import compose_growth_division
@@ -339,6 +340,30 @@ def initialize_measp_long(boot_config):
     return boot_config
 
 
+def initialize_antibiotic(boot_config):
+    media_id = 'antibiotic_media'
+    media = {
+        'antibiotic': 1.0,  # mmol/L
+    }
+    new_media = {media_id: media}
+    lattice_config = {
+        'name': 'measp_long',
+        'new_media': new_media,
+        'timeline_str': '0 {}, 5000 end'.format(media_id),
+        'emit_fields': ['antibiotic'],
+        'run_for': 1.0,  # timestep, in sec
+        'rotation_jitter': 0.005,
+        'edge_length_x': 1.0,  # µm
+        'edge_length_y': 1.0,  # µm
+        'depth': 1.0,  # µm
+        # Patches discretize space for diffusion
+        'patches_per_edge_x': 1,
+    }
+
+    boot_config.update(lattice_config)
+    return boot_config
+
+
 def initialize_measp_large(boot_config):
 
     ## Make media: GLC_G6P with MeAsp
@@ -429,6 +454,7 @@ class BootEnvironment(BootAgent):
             'measp_long': wrap_boot_environment(initialize_measp_long),
             'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
+            'antibiotic_environment': wrap_boot_environment(initialize_antibiotic),
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
@@ -439,6 +465,9 @@ class BootEnvironment(BootAgent):
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
+            'antibiotic': wrap_boot(wrap_init_basic(AntibioticImport),
+                {'volume': 1.0}
+            ),
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),

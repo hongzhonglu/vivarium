@@ -217,6 +217,12 @@ class ShepherdControl(ActorControl):
                 'working_dir': args['working_dir'],
                 'seed': index}))
 
+    def antibiotic_experiment(self, args, actor_config):
+        experiment_id = args.get('experiment_id', 'antibiotic')
+        print('Creating lattice agent_id {} and {} cell agents'.format(
+            experiment_id, args['number']))
+
+
     def ecoli_core_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
@@ -371,7 +377,7 @@ class EnvironmentCommand(AgentCommand):
     def __init__(self, choices=[], description=''):
         full_description = '''
     Run an agent for the environmental context simulation.
-    
+
     The commands are:
     `add --id OUTER_ID [--type T] [--config C]` ask the Shepherd to add an agent of
         type T with JSON configuration C to the environment OUTER_ID,
