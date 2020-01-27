@@ -1,9 +1,10 @@
+import copy
 import math
 import numpy as np
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
-from vivarium.states.chromosome import Chromosome, Rnap, test_chromosome, frequencies
+from vivarium.states.chromosome import Chromosome, Rnap, frequencies, test_chromosome_config
 
 def build_stoichiometry(promoter_count):
     '''
@@ -83,13 +84,21 @@ class Transcription(Process):
             'transcribing' state.
         '''
 
-        self.promoter_affinities = initial_parameters.get('promoter_affinities', {})
-        self.promoter_order = initial_parameters.get('promoter_order', [])
+        print('inital_parameters: {}'.format(initial_parameters))
+
+        self.promoter_affinities = initial_parameters.get(
+            'promoter_affinities',
+            {'unity': 1})
+        self.promoter_order = initial_parameters.get(
+            'promoter_order',
+            list(self.promoter_affinities.keys()))
         self.promoter_count = len(self.promoter_order)
         self.affinity_vector = np.array([
             self.promoter_affinities[promoter_key]
-            for promoter_key in self.promoter_order])
+            for promoter_key in self.promoter_order], dtype=np.float64)
 
+        self.molecule_ids = initial_parameters.get('molecule_ids', [])
+        self.transcript_ids = initial_parameters.get('transcript_ids', [])
         self.elongation = 0
         self.elongation_rate = initial_parameters.get('elongation_rate', 1.0)
         self.advancement_rate = initial_parameters.get('advancement_rate', 1.0)
@@ -99,8 +108,50 @@ class Transcription(Process):
             self.affinity_vector,
             self.advancement_rate)
 
+        print('stoichiometry: {}'.format(self.stoichiometry))
+        print('rates: {}'.format(self.rates))
         self.initiation = StochasticSystem(self.stoichiometry, self.rates)
 
+        self.roles = {
+            'chromosome': Chromosome({}).fields(),
+            'molecules': self.molecule_ids,
+            'transcripts': self.transcript_ids}
+
+        parameters = copy.deepcopy(initial_parameters)
+        super(Transcription, self).__init__(self.roles, parameters)
+
+    def default_settings(self):
+        default_state = {
+            'chromosome': test_chromosome_config,
+            'molecules': {
+                'A': 1000,
+                'T': 1000,
+                'G': 1000,
+                'C': 1000,
+                'unbound_rnaps': 10},
+            'transcripts': {}}
+
+        chromosome = Chromosome(default_state['chromosome'])
+        operons = [operon.id for operon in chromosome.operons()]
+
+        default_emitter_keys = {
+            'chromosome': ['rnaps'],
+            'molecules': ['A', 'T', 'G', 'C', 'unbound_rnaps'],
+            'transcripts': operons}
+
+        default_updaters = {
+            'chromosome': {},
+            'molecules': {
+                molecule: 'accumulate'
+                for molecule in default_state['molecules'].items()},
+            'transcripts': {
+                operon: 'accumulate'
+                for operon in operons}}
+
+        return {
+            'state': default_state,
+            'emitter_keys': default_emitter_keys,
+            'updaters': default_updaters}
 
     def next_update(self, timestep, states):
         chromosome = Chromosome(states['chromosome'])
@@ -247,11 +298,10 @@ def test_transcription():
         'promoter_affinities': {
             'pA': 1.0,
             'pB': 1.0},
-        'promoter_order': ['pA', 'pB'],
         'elongation_rate': 10.0,
         'advancement_rate': 10.0}
 
-    chromosome = test_chromosome()
+    chromosome = Chromosome(test_chromosome_config)
     transcription = Transcription(parameters)
 
     states = {

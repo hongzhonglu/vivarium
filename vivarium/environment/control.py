@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
 import time
 import uuid
 
@@ -35,7 +36,8 @@ class ShepherdControl(ActorControl):
         if not timeline_str:
             timeline_str = '0 {}, 7200 end'.format(media_id)
 
-        lattice_config = {
+        lattice_config = copy.deepcopy(actor_config)
+        lattice_config.update({
             'name': 'lattice_experiment',
             'timeline_str': timeline_str,
             'media_id': media_id,
@@ -46,10 +48,9 @@ class ShepherdControl(ActorControl):
             'edge_length_x': 20,
             'patches_per_edge_x': 10,
             'translation_jitter': 0.1,
-            'rotation_jitter': 0.01}
+            'rotation_jitter': 0.01})
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        self.add_agent(experiment_id, 'lattice', lattice_config)
 
         time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
 
