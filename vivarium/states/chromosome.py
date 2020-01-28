@@ -415,20 +415,22 @@ class Chromosome(Datum):
 
         return elongate_to, monomers, complete_transcripts, monomer_limits
 
-    def polymerize(self, elongation):
+    def polymerize(self, elongation, monomer_limits):
         iterations = 0
         attained = 0
         all_monomers = ''
         complete_transcripts = []
 
         while attained < elongation:
-            elongated, monomers, complete = self.next_polymerize(elongation - attained)
+            elongated, monomers, complete, monomer_limits = self.next_polymerize(
+                elongation_limit=elongation - attained,
+                monomer_limits=monomer_limits)
             attained += elongated
             all_monomers += monomers
             complete_transcripts += complete
             iterations += 1
 
-        return iterations, frequencies(all_monomers), complete_transcripts
+        return iterations, frequencies(all_monomers), complete_transcripts, monomer_limits
 
     def initiate_replication(self):
         leaves = [leaf for leaf in self.domains.values() if not leaf.children]
@@ -553,7 +555,8 @@ def test_chromosome():
     print([rnap.to_dict() for rnap in chromosome.rnaps])
 
     print('completed after advancing 5')
-    print(chromosome.polymerize(5))
+    print(chromosome.polymerize(5, {
+        'A': 100, 'T': 100, 'G': 100, 'C': 100}))
 
     print('rnaps after polymerizing')
     print(chromosome.rnaps)
