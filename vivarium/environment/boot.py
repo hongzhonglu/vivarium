@@ -44,6 +44,7 @@ from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
+from vivarium.processes.transcription import Transcription
 
 # composites
 from vivarium.composites.master import compose_master
@@ -440,6 +441,7 @@ class BootEnvironment(BootAgent):
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
+            'transcription': wrap_boot(wrap_init_basic(Transcription), {'volume': 1.0}),
 
             # composite compartments
             'master': wrap_boot(wrap_init_composite(compose_master), {'volume': 1.0}),
