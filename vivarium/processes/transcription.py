@@ -237,6 +237,7 @@ class Transcription(Process):
             interval = distance / self.elongation_rate
 
             print('interval: {}'.format(interval))
+            print('substrates: {}'.format(substrate))
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(interval, substrate)
@@ -297,7 +298,7 @@ class Transcription(Process):
             # until the end of this interval.
             terminations, monomer_limits = elongation.elongate(
                 chromosome,
-                time + now,
+                time + interval,
                 self.elongation_rate,
                 monomer_limits)
             unbound_rnaps += terminations
