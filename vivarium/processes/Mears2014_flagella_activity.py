@@ -1,11 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import numpy as np
 import random
 import math
 import uuid
 
+import numpy as np
+from numpy import linspace
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.patches import Patch
@@ -251,7 +252,7 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_activity(parameters, total_time=10):
+def test_activity(parameters={'n_flagella': 5}, total_time=10):
     # TODO -- add asserts for test
 
     initial_params = {}
@@ -289,7 +290,6 @@ def test_activity(parameters, total_time=10):
     return saved_data
 
 def test_motor_PMF():
-    from numpy import linspace
 
     # range of PMF value for test
     PMF_values = linspace(50.0, 200.0, 501).tolist()
