@@ -165,6 +165,8 @@ class Transcription(Process):
                 'promoters': 'set',
                 'domains': 'set',
                 'root_domain': 'set',
+                'promoter_order': 'set',
+                'rnap_id': 'set',
                 'rnaps': 'set'},
             'molecules': {},
             'transcripts': {}}

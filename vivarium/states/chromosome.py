@@ -296,8 +296,10 @@ class Chromosome(Datum):
         'sequence': '',
         'genes': {},
         'promoters': {},
+        'promoter_order': [],
         'domains': {},
         'root_domain': 0,
+        'rnap_id': 0,
         'rnaps': []}
 
     def operons(self):
