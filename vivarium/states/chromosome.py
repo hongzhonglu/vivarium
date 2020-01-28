@@ -2,6 +2,10 @@ import random
 import copy
 import numpy as np
 
+from vivarium.data.chromosome import test_chromosome_config
+
+INFINITY = float('inf')
+
 def first(l):
     if l:
         return l[0]
@@ -358,7 +362,7 @@ class Chromosome(Datum):
         return new_rnap
 
     def terminator_distance(self):
-        distance = float('inf')
+        distance = INFINITY
         for rnap in self.rnaps:
             if rnap.is_transcribing():
                 promoter = self.promoters[rnap.promoter]
@@ -368,7 +372,7 @@ class Chromosome(Datum):
                 span = abs(terminator.position - rnap.position)
                 if span < distance:
                     distance = span
-        if distance == float('inf'):
+        if distance == INFINITY:
             distance = 1
         return distance
 
@@ -378,33 +382,38 @@ class Chromosome(Datum):
         else:
             return self.sequence[end:begin]
 
-    def next_polymerize(self, limit):
+    def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
-        elongate_to = min(limit, distance)
+        elongate_to = min(elongation_limit, distance)
 
         complete_transcripts = []
         monomers = ''
-        for rnap in self.rnaps:
-            if rnap.is_transcribing():
-                promoter = self.promoters[rnap.promoter]
-                extent = elongate_to * promoter.direction
-                projection = rnap.position + extent
 
-                monomers += self.sequence_monomers(rnap.position, projection)
-                rnap.position = projection
+        for step in range(elongate_to):
+            for rnap in self.rnaps:
+                if rnap.is_transcribing():
+                    promoter = self.promoters[rnap.promoter]
+                    extent = promoter.direction
+                    projection = rnap.position + extent
 
-                terminator = promoter.terminators[rnap.terminator]
-                if terminator.position == rnap.position:
-                    if promoter.terminates_at(rnap.terminator):
-                        rnap.complete()
-                        complete_transcripts.append(terminator.operon)
+                    monomer = self.sequence[projection]
+                    if monomer_limits[monomer] > 0:
+                        monomer_limits[monomer] -= 1
+                        monomers += monomer
+                        rnap.position = projection
+
+                        terminator = promoter.terminators[rnap.terminator]
+                        if terminator.position == rnap.position:
+                            if promoter.terminates_at(rnap.terminator):
+                                rnap.complete()
+                                complete_transcripts.append(terminator.operon)
 
         self.rnaps = [
             rnap
             for rnap in self.rnaps
             if not rnap.is_complete()]
 
-        return elongate_to, monomers, complete_transcripts
+        return elongate_to, monomers, complete_transcripts, monomer_limits
 
     def polymerize(self, elongation):
         iterations = 0
@@ -495,71 +504,6 @@ class Chromosome(Datum):
         self.rnap_id = 0
 
 
-test_chromosome_config = {
-    'sequence': 'ATACGGCACGTGACCGTCAACTTA',
-    'genes': {
-        'oAZ': ['A', 'Z'],
-        'oA': ['A'],
-        'oB': ['B']},
-    'promoters': {
-        'pA': {
-            'id': 'pA',
-            'position': 3,
-            'direction': 1,
-            'sites': [{
-                'position': 0,
-                'length': 3,
-                'thresholds': [
-                    ('tfX', 0.3)]}],
-            'terminators': [
-                {
-                    'position': 6,
-                    'strength': 0.5,
-                    'operon': 'oA'},
-                {
-                    'position': 11,
-                    'strength': 1.0,
-                    'operon': 'oAZ'}]},
-        'pB': {
-            'id': 'pB',
-            'position': -3,
-            'direction': -1,
-            'sites': [{
-                'position': 0,
-                'length': 3,
-                'thresholds': [
-                    ('tfX', 0.5)]}],
-            'terminators': [
-                {
-                    'position': -8,
-                    'strength': 0.5,
-                    'operon': 'oB'},
-                {
-                    'position': -11,
-                    'strength': 1.0,
-                    'operon': 'oBY'}]}},
-    'domains': {
-        0: {
-            'id': 0,
-            'lead': 0,
-            'lag': 0,
-            'children': []}},
-    'rnaps': [
-        {
-            'promoter': 'pA',
-            'domain': 0,
-            'state': 'transcribing',
-            'position': 3},
-        {
-            'promoter': 'pA',
-            'domain': 0,
-            'state': 'transcribing',
-            'position': 6},
-        {
-            'promoter': 'pA',
-            'domain': 0,
-            'state': 'transcribing',
-            'position': 0}]}
 
 def test_chromosome():
     chromosome = Chromosome(test_chromosome_config)
