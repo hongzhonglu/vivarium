@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 20}
+        'total_time': 40}
     saved_state = simulate_compartment(gene_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
