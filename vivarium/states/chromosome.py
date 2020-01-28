@@ -389,6 +389,7 @@ class Chromosome(Datum):
                 promoter = self.promoters[rnap.promoter]
                 extent = elongate_to * promoter.direction
                 projection = rnap.position + extent
+
                 monomers += self.sequence_monomers(rnap.position, projection)
                 rnap.position = projection
 

@@ -42,7 +42,7 @@ class Elongation(object):
         self.time = 0
         self.monomers = ''
         self.complete_transcripts = []
-        self.previous_elongations = elongation
+        self.previous_elongations = int(elongation)
         self.elongation = elongation
 
     def elongate(self, chromosome, now, rate):
@@ -66,6 +66,10 @@ class Elongation(object):
             self.previous_elongations = int(self.elongation)
             terminated += len(complete)
 
+            print('iterations: {}, monomers: {}, complete: {}'.format(
+                iterations, monomers, complete))
+            print('terminated: {}'.format(terminated))
+
         return terminated
 
     def complete(self):
@@ -86,22 +90,34 @@ class Transcription(Process):
 
         print('inital_parameters: {}'.format(initial_parameters))
 
-        self.promoter_affinities = initial_parameters.get(
-            'promoter_affinities',
-            {'unity': 1})
-        self.promoter_order = initial_parameters.get(
-            'promoter_order',
-            list(self.promoter_affinities.keys()))
+        self.default_parameters = {
+            'promoter_affinities': {
+                'pA': 1.0,
+                'pB': 1.0},
+            'elongation_rate': 1.0,
+            'advancement_rate': 1.0,
+            'molecule_ids': [
+                'A', 'T', 'G', 'C', 'unbound_rnaps'],
+            'transcript_ids': [
+                'oA', 'oAZ', 'oB', 'oBY']}
+        self.default_parameters['promoter_order'] = list(
+            self.default_parameters['promoter_affinities'].keys())
+
+        parameters = copy.deepcopy(self.default_parameters)
+        parameters.update(initial_parameters)
+
+        self.promoter_affinities = parameters['promoter_affinities']
+        self.promoter_order = parameters['promoter_order']
         self.promoter_count = len(self.promoter_order)
         self.affinity_vector = np.array([
             self.promoter_affinities[promoter_key]
             for promoter_key in self.promoter_order], dtype=np.float64)
 
-        self.molecule_ids = initial_parameters.get('molecule_ids', [])
-        self.transcript_ids = initial_parameters.get('transcript_ids', [])
+        self.molecule_ids = parameters['molecule_ids']
+        self.transcript_ids = parameters['transcript_ids']
         self.elongation = 0
-        self.elongation_rate = initial_parameters.get('elongation_rate', 1.0)
-        self.advancement_rate = initial_parameters.get('advancement_rate', 1.0)
+        self.elongation_rate = parameters['elongation_rate']
+        self.advancement_rate = parameters['advancement_rate']
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.rates = build_rates(
@@ -117,7 +133,6 @@ class Transcription(Process):
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_ids}
 
-        parameters = copy.deepcopy(initial_parameters)
         super(Transcription, self).__init__(self.roles, parameters)
 
     def default_settings(self):
@@ -140,18 +155,21 @@ class Transcription(Process):
             'transcripts': operons}
 
         default_updaters = {
-            'chromosome': {},
-            'molecules': {
-                molecule: 'accumulate'
-                for molecule in default_state['molecules'].items()},
-            'transcripts': {
-                operon: 'accumulate'
-                for operon in operons}}
+            'chromosome': {
+                'sequence': 'set',
+                'genes': 'set',
+                'promoters': 'set',
+                'domains': 'set',
+                'root_domain': 'set',
+                'rnaps': 'set'},
+            'molecules': {},
+            'transcripts': {}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'parameters': self.default_parameters}
 
     def next_update(self, timestep, states):
         chromosome = Chromosome(states['chromosome'])
@@ -265,7 +283,7 @@ class Transcription(Process):
 
             # now that all events have been accounted for, elongate
             # until the end of this interval.
-            elongation.elongate(
+            unbound_rnaps += elongation.elongate(
                 chromosome,
                 time + interval,
                 self.elongation_rate)
@@ -287,10 +305,14 @@ class Transcription(Process):
 
         transcripts = frequencies(elongation.complete_transcripts)
 
-        return {
+        update = {
             'chromosome': chromosome.to_dict(),
             'molecules': molecules,
             'transcripts': transcripts}
+
+        print('molecules update {}'.format(molecules))
+
+        return update
 
 
 def test_transcription():
