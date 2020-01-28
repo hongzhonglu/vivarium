@@ -42,13 +42,19 @@ class Motor(Analysis):
         expected_angle_between_runs = 68  # degrees (Berg)
 
         # compartment data
+        compartment_data = data['compartment']
+        sim_id = compartment_data['sim_id']
+        time_vec = compartment_data['time']  # convert to hours
+
         # get the internal role. assumes there is only one in all agents.
         internal_role = None
         for agent_id, specs in experiment_config['agents'].items():
             internal_role = specs['topology']['motor']['internal']
-        compartment_data = data['compartment']
-        sim_id = compartment_data['sim_id']
-        time_vec = compartment_data['time']  # convert to hours
+
+        # TODO -- why can internal_role be incorrect in topology?
+        if internal_role not in compartment_data:
+            internal_role = 'cell'
+
         CheY_P_vec = compartment_data[internal_role]['CheY_P']
         ccw_motor_bias_vec = compartment_data[internal_role]['ccw_motor_bias']
         ccw_to_cw_vec = compartment_data[internal_role]['ccw_to_cw']
@@ -133,7 +139,7 @@ class Motor(Analysis):
         max_length = max(run_lengths + tumble_lengths)
         bins = np.linspace(0, max_length, 10)
         logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
-        ax5.hist([run_lengths, tumble_lengths], bins=bins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
+        ax5.hist([run_lengths, tumble_lengths], bins=logbins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
 
         # plot expected values
         ax5.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
