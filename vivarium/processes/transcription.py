@@ -211,6 +211,7 @@ class Transcription(Process):
         unbound_rnaps = original_unbound_rnaps
 
         time = 0
+        now = 0
         elongation = Elongation(self.elongation, monomer_limits)
 
         while time < timestep:
