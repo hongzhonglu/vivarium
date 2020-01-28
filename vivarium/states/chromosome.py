@@ -504,8 +504,8 @@ class Chromosome(Datum):
 
     def __init__(self, config):
         super(Chromosome, self).__init__(config, self.defaults)
-        self.promoter_order = list(self.promoters.keys())
-        self.rnap_id = 0
+        if not self.promoter_order:
+            self.promoter_order = list(self.promoters.keys())
 
 
 
