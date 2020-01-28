@@ -309,7 +309,7 @@ def initialize_measp(boot_config):
 def initialize_measp_long(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 3600.0}
+             'MeAsp': 8000.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 1800 end'.format(media_id)
     lattice_config = {
@@ -320,7 +320,7 @@ def initialize_measp_long(boot_config):
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
-        'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
+        'run_for': 0.05,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
         'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
         'gradient': {
@@ -333,10 +333,10 @@ def initialize_measp_long(boot_config):
                     'center': [1.0, 0.5],
                     'slope': -2e0}
             }},
-        'translation_jitter': 1.0,
+        'translation_jitter': 2.0,
         # 'rotation_jitter': 0.05,
-        'edge_length_x': 2000.0,
-        'edge_length_y': 400.0,
+        'edge_length_x': 4000.0,
+        'edge_length_y': 800.0,
         'patches_per_edge_x': 100}
 
     boot_config.update(lattice_config)
