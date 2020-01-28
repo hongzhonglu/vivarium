@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from vivarium.actor.process import load_compartment, simulate_compartment
 
 # composites
-from vivarium.composites.kinetic_FBA import compose_kinetic_FBA
+from vivarium.composites.master import compose_master
 
 
 null_emitter = {'emitter': 'null'}
@@ -68,8 +68,8 @@ def parameter_scan(composite, scan_params, output_values):
     results = []
     for params in param_sets:
         params.update(null_emitter)
-        new_compartment = load_compartment(compose_kinetic_FBA, params)
-        sim_out = simulate_compartment(new_compartment, settings)  # TODO -- supress emitter. null emitter?
+        new_compartment = load_compartment(composite, params)
+        sim_out = simulate_compartment(new_compartment, settings)
         last_state = sim_out[total_time]
 
         output = []
@@ -78,35 +78,28 @@ def parameter_scan(composite, scan_params, output_values):
         results.append(output)
 
 
-
-    # organize results
+    # organize the results
     param_combo_ids = [dict(zip(param_keys, combo)) for combo in param_combinations]
     results_dict = {output_id: [result[out_idx] for result in results]
         for out_idx, output_id in enumerate(output_values)}
-
-    # results_dict = [dict(zip(output_values, result)) for result in results]
-    # # scan_results = dict(zip(param_combo_ids, results_dict))
-    # # scan_results = dict(zip(param_combinations, results_dict))
 
     return {
         'parameter combination': param_combo_ids,
         'output': results_dict}
 
-def scan_kinetic_FBA():
-    composite = compose_kinetic_FBA
-    # compartment = load_compartment(composite, null_emitter)
-    # default_params = compartment.current_parameters()
-    # print('default parameters: {}'.format(default_params))
+def scan_master():
+    composite = compose_master
 
     # define scanned parameters, to replace defaults
     scan_params = {
         ('metabolism', 'model_path'): ['models/e_coli_core.json'],
-        ('transport', 'kinetic_parameters', 'EX_glc__D_e', 'PTSG_internal', 'kcat_f'): [-1e5, -3e4, -6e3, -3e3, -3e2, -3e1]
+        ('transport', 'kinetic_parameters', 'EX_glc__D_e', ('internal','PTSG'), 'kcat_f'): [-1e5, -3e4, -6e3, -3e3, -3e2, -3e1]
     }
 
     output_values = [
         ('reactions', 'EX_glc__D_e'),
-        ('reactions', 'GLCpts')
+        ('reactions', 'GLCpts'),
+        ('cell', 'growth_rate')
     ]
 
     results = parameter_scan(composite, scan_params, output_values)
@@ -171,10 +164,9 @@ def plot_scan_results(results, out_dir='out'):
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'parameters', 'scan_kinetic_FBA')
+    out_dir = os.path.join('out', 'parameters', 'scan_master')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-
-    results = scan_kinetic_FBA()
+    results = scan_master()
     plot_scan_results(results, out_dir)

@@ -291,7 +291,7 @@ class KineticFluxModel(object):
 
         for reaction_id, enzymes in self.rate_laws.items():
             for enzyme, rate_law in enzymes.items():
-                flux = self.rate_laws[reaction_id][enzyme](concentrations_dict)
+                flux = rate_law(concentrations_dict)
                 reaction_fluxes[reaction_id] += flux
 
         return reaction_fluxes

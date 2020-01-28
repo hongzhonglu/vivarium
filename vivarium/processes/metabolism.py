@@ -7,10 +7,9 @@ from scipy import constants
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import Process, deep_merge
+from vivarium.actor.process import Process, deep_merge, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
-from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import tuplify_role_dicts
 
 # concentrations are lower than threshold are considered depleted
