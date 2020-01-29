@@ -4,6 +4,7 @@ import numpy as np
 
 from vivarium.data.chromosome import test_chromosome_config
 from vivarium.utils.datum import Datum
+from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Template, Elongation, polymerize_to, add_merge
 
 INFINITY = float('inf')
 
@@ -85,123 +86,36 @@ class Domain(Datum):
     def descendants(self, tree):
         return [self] + [tree[child].descendants(tree) for child in self.children]
 
-class BindingSite(Datum):
-    defaults = {
-        'position': 0,
-        'length': 0,
-        'thresholds': []} # list of pairs, (TF, threshold)
-
-    def __init__(self, config):
-        super(BindingSite, self).__init__(config, self.defaults)
-
-    def state_when(self, levels):
-        '''
-        Provide the binding state for the given levels of transcription factors. 
-        '''
-
-        state = None
-        for tf, threshold in thresholds:
-            if levels[tf] >= threshold:
-                state = tf
-                break
-        return state
-
-class Terminator(Datum):
-    defaults = {
-        'position': 0,
-        'strength': 0,
-        'operon': ''}
-
-    def __init__(self, config):
-        super(Terminator, self).__init__(config, self.defaults)
-
+class RnapTerminator(Terminator):
     def operon_from(self, genes, promoter):
         return Operon({
-            'id': self.operon,
+            'id': self.product,
             'position': promoter.position,
             'direction': promoter.direction,
             'length': (self.position - promoter.position) * promoter.direction,
-            'genes': genes.get(self.operon, [])})
+            'genes': genes.get(self.product, [])})
 
-    def between(self, before, after):
-        return before < self.position < after or after < self.position < before
-
-class Promoter(Datum):
+class Promoter(Template):
     '''
-    Promoters are the main unit of expression. They define a direction of polymerization, 
-    contain binding sites for transcription factors, and declare some number of terminators,
-    each of which has a strength and corresponds to a particular operon if chosen.
+    Promoters are the main unit of expression. They define a direction of
+    polymerization, contain binding sites for transcription factors, and declare some
+    number of terminators, each of which has a strength and corresponds to a particular
+    operon if chosen.
     '''
 
     schema = {
         'sites': BindingSite,
-        'terminators': Terminator}
-
-    defaults = {
-        'id': 0,
-        'position': 0,
-        'direction': 1,
-        'sites': [],
-        'terminators': []}
-
-    def __init__(self, config):
-        super(Promoter, self).__init__(config, self.defaults)
-
-        self.terminator_strength = 0
-        for terminator in self.terminators:
-            self.terminator_strength += terminator.strength
-
-    def binding_state(self, levels):
-        state = [
-            site.state_when(levels)
-            for site in self.sites]
-
-        return tuple([self.id] + state)
-
-    def strength_from(self, terminator_index):
-        total = 0
-        for index in range(terminator_index, len(self.terminators)):
-            total += self.terminators[index].strength
-        return total
-
-    def next_terminator(self, position):
-        for index, terminator in enumerate(self.terminators):
-            if terminator.position * self.direction > position * self.direction:
-                break
-        return index
-
-    def terminates_at(self, index=0):
-        if len(self.terminators[index:]) > 1:
-            choice = random.random() * self.strength_from(index)
-            return choice <= self.terminators[index].strength
-        else:
-            return True
-
-    def choose_terminator(self, index=0):
-        if len(self.terminators[index:]) > 1:
-            choice = random.random() * self.strength_from(index)
-            for terminator in self.terminators[index:]:
-                if choice <= terminator.strength:
-                    break
-                else:
-                    choice -= terminator.strength
-            return terminator
-        else:
-            return self.terminators[index]
-
-    def choose_operon(self, genes):
-        terminator = self.choose_terminator()
-        return terminator.operon_from(genes, self)
+        'terminators': RnapTerminator}
 
     def operons(self, genes):
         return [
             terminator.operon_from(genes, self)
             for terminator in self.terminators]
 
-class Rnap(Datum):
+class Rnap(Polymerase):
     defaults = {
         'id': 0,
-        'promoter': '',
+        'template': '',
         'terminator': 0,
         'domain': 0,
         'state': None, # other states: ['bound', 'transcribing', 'complete']
@@ -209,25 +123,6 @@ class Rnap(Datum):
 
     def __init__(self, config):
         super(Rnap, self).__init__(config, self.defaults)
-
-    def bind(self):
-        self.state = 'bound'
-
-    def start_transcribing(self):
-        self.state = 'transcribing'
-
-    def complete(self):
-        self.state = 'complete'
-        print('RNAP completing transcription: {}'.format(self.to_dict()))
-
-    def is_bound(self):
-        return self.state == 'bound'
-
-    def is_transcribing(self):
-        return self.state == 'transcribing'
-
-    def is_complete(self):
-        return self.state == 'complete'
 
 class Chromosome(Datum):
     schema = {
@@ -275,7 +170,7 @@ class Chromosome(Datum):
 
         for rnap in self.rnaps:
             if rnap.is_bound():
-                by_promoter[rnap.promoter][rnap.domain] = rnap
+                by_promoter[rnap.template][rnap.domain] = rnap
 
         return by_promoter
 
@@ -299,7 +194,7 @@ class Chromosome(Datum):
         self.rnap_id += 1
         new_rnap = Rnap({
             'id': self.rnap_id,
-            'promoter': promoter_key,
+            'template': promoter_key,
             'domain': domain,
             'position': self.promoters[promoter_key].position})
         new_rnap.bind()
@@ -310,7 +205,7 @@ class Chromosome(Datum):
         distance = INFINITY
         for rnap in self.rnaps:
             if rnap.is_transcribing():
-                promoter = self.promoters[rnap.promoter]
+                promoter = self.promoters[rnap.template]
                 terminator_index = promoter.next_terminator(rnap.position)
                 rnap.terminator = terminator_index
                 terminator = promoter.terminators[terminator_index]
@@ -331,51 +226,31 @@ class Chromosome(Datum):
         distance = self.terminator_distance()
         elongate_to = min(elongation_limit, distance)
 
-        complete_transcripts = []
-        monomers = ''
+        monomers, monomer_limits, complete_transcripts, self.rnaps = polymerize_to(
+            self.sequence,
+            self.rnaps,
+            self.promoters,
+            elongate_to,
+            monomer_limits)
 
-        for step in range(elongate_to):
-            for rnap in self.rnaps:
-                if rnap.is_transcribing():
-                    promoter = self.promoters[rnap.promoter]
-                    extent = promoter.direction
-                    projection = rnap.position + extent
-
-                    monomer = self.sequence[projection]
-                    if monomer_limits[monomer] > 0:
-                        monomer_limits[monomer] -= 1
-                        monomers += monomer
-                        rnap.position = projection
-
-                        terminator = promoter.terminators[rnap.terminator]
-                        if terminator.position == rnap.position:
-                            if promoter.terminates_at(rnap.terminator):
-                                rnap.complete()
-                                complete_transcripts.append(terminator.operon)
-
-        self.rnaps = [
-            rnap
-            for rnap in self.rnaps
-            if not rnap.is_complete()]
-
-        return elongate_to, monomers, complete_transcripts, monomer_limits
+        return elongate_to, monomers, monomer_limits, complete_transcripts
 
     def polymerize(self, elongation, monomer_limits):
         iterations = 0
         attained = 0
-        all_monomers = ''
-        complete_transcripts = []
+        all_monomers = {}
+        complete_transcripts = {}
 
         while attained < elongation:
-            elongated, monomers, complete, monomer_limits = self.next_polymerize(
+            elongated, monomers, monomer_limits, complete = self.next_polymerize(
                 elongation_limit=elongation - attained,
                 monomer_limits=monomer_limits)
             attained += elongated
-            all_monomers += monomers
-            complete_transcripts += complete
+            all_monomers = add_merge([all_monomers, monomers])
+            complete_transcripts = add_merge([complete_transcripts, complete])
             iterations += 1
 
-        return iterations, frequencies(all_monomers), complete_transcripts, monomer_limits
+        return iterations, all_monomers, complete_transcripts, monomer_limits
 
     def initiate_replication(self):
         leaves = [leaf for leaf in self.domains.values() if not leaf.children]
@@ -398,7 +273,7 @@ class Chromosome(Datum):
 
             for rnap in self.rnaps:
                 if rnap.domain == domain_key:
-                    promoter = self.promoters[rnap.promoter]
+                    promoter = self.promoters[rnap.template]
                     position = promoter.position
                     position += rnap.position * promoter.direction
                     if domain.surpassed(position, lead, -lag):
@@ -454,7 +329,7 @@ class Chromosome(Datum):
 
 def test_chromosome():
     chromosome = Chromosome(test_chromosome_config)
-    print(chromosome.promoters['pA'].terminators[0].operon)
+    print(chromosome.promoters['pA'].terminators[0].product)
     print(chromosome)
 
     print('operons:')
@@ -475,10 +350,6 @@ def test_chromosome():
     # chromosome.advance_replisomes({0: (7, 5), 1: (3, 4), 2: (8, 9)})
     # print('replisomes:')
     # print(chromosome)
-
-    operon = chromosome.promoters['pA'].choose_operon(chromosome.genes)
-    print('operon')
-    print(operon)
 
     print('copy numbers 1 4 7 -9 11')
     print(chromosome.copy_number(1))
