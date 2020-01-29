@@ -112,9 +112,6 @@ class Transcription(Process):
         self.promoter_affinities = parameters['promoter_affinities']
         self.promoter_order = parameters['promoter_order']
         self.promoter_count = len(self.promoter_order)
-        self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key]
-            for promoter_key in self.promoter_order], dtype=np.float64)
 
         self.molecule_ids = parameters['molecule_ids']
         self.monomer_ids = parameters['monomer_ids']
@@ -122,6 +119,10 @@ class Transcription(Process):
         self.elongation = 0
         self.elongation_rate = parameters['elongation_rate']
         self.advancement_rate = parameters['advancement_rate']
+
+        self.affinity_vector = np.array([
+            self.promoter_affinities[promoter_key]
+            for promoter_key in self.promoter_order], dtype=np.float64)
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.rates = build_rates(
