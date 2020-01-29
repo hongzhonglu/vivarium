@@ -1,5 +1,7 @@
 import random
 
+import numpy as np
+
 from vivarium.utils.datum import Datum
 
 INFINITY = float('inf')
@@ -232,4 +234,31 @@ class Elongation(object):
 
     def complete(self):
         return len(self.complete_polymers)
+
+
+def build_stoichiometry(promoter_count):
+    '''
+    Builds a stoichiometry for the given promoters. There are two states per promoter,
+    open and bound, and two reactions per promoter, binding and unbinding. In addition
+    there is a single substrate for available RNAP in the final index.
+
+    Here we are assuming
+    '''
+    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2 + 1), dtype=np.int64)
+    for index in range(promoter_count):
+        # forward reaction
+        stoichiometry[index][index] = -1
+        stoichiometry[index][index + promoter_count] = 1
+        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
+
+        # reverse reaction
+        stoichiometry[index + promoter_count][index] = 1
+        stoichiometry[index + promoter_count][index + promoter_count] = -1
+
+    return stoichiometry
+
+def build_rates(affinities, advancement):
+    return np.concatenate([
+        affinities,
+        np.repeat(advancement, len(affinities))])
 

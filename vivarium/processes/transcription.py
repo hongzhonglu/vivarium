@@ -5,39 +5,12 @@ from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
 from vivarium.states.chromosome import Chromosome, Rnap, frequencies, add_merge, test_chromosome_config
-from vivarium.utils.polymerize import Elongation
-
-def build_stoichiometry(promoter_count):
-    '''
-    Builds a stoichiometry for the given promoters. There are two states per promoter,
-    open and bound, and two reactions per promoter, binding and unbinding. In addition
-    there is a single substrate for available RNAP in the final index.
-
-    Here we are assuming
-    '''
-    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2 + 1), dtype=np.int64)
-    for index in range(promoter_count):
-        # forward reaction
-        stoichiometry[index][index] = -1
-        stoichiometry[index][index + promoter_count] = 1
-        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
-
-        # reverse reaction
-        stoichiometry[index + promoter_count][index] = 1
-        stoichiometry[index + promoter_count][index + promoter_count] = -1
-
-    return stoichiometry
-
-def build_rates(affinities, advancement):
-    return np.concatenate([
-        affinities,
-        np.repeat(advancement, len(affinities))])
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates
 
 def choose_element(elements):
     if elements:
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
-
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):

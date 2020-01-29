@@ -1,9 +1,11 @@
 import copy
+import numpy as np
+from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
 from vivarium.data.amino_acids import amino_acid_records
 from vivarium.utils.datum import Datum
-from vivarium.utils.polymerize import Polymerase, Template
+from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, build_rates
 
 class Ribosome(Polymerase):
     pass
@@ -36,14 +38,13 @@ class Translation(Process):
         self.unbound_ribosomes_key = 'unbound_ribosomes'
         self.molecule_ids = parameters['molecule_ids']
         self.monomer_ids = parameters['monomer_ids']
-        self.transcript_ids = parameters['transcript_ids']
         self.elongation = 0
         self.elongation_rate = parameters['elongation_rate']
         self.advancement_rate = parameters['advancement_rate']
 
         self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key]
-            for promoter_key in self.promoter_order], dtype=np.float64)
+            self.transcript_affinities[transcript_key]
+            for transcript_key in self.transcript_order], dtype=np.float64)
 
         self.stoichiometry = build_stoichiometry(self.transcript_count)
         self.rates = build_rates(
@@ -59,9 +60,9 @@ class Translation(Process):
         self.roles = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
-            'transcripts': self.transcript_ids}
+            'transcripts': self.transcript_order}
 
-        super(Transcription, self).__init__(self.roles, parameters)
+        super(Translation, self).__init__(self.roles, parameters)
 
     def default_settings(self):
         default_state = {
@@ -107,7 +108,7 @@ class Translation(Process):
 
         # Find out how many transcripts are currently blocked by a
         # newly initiated ribosome
-        bound_transcripts = np.zeros(len(transcript_order))
+        bound_transcripts = np.zeros(len(self.transcript_order))
         ribosomes_by_transcript = {}
         for ribosome in ribosomes:
             if not ribosome.template in ribosomes_by_transcript:
@@ -143,8 +144,8 @@ class Translation(Process):
         time = 0
         now = 0
         elongation = Elongation(
-            sequences,
-            templates,
+            self.sequences,
+            self.templates,
             monomer_limits,
             self.elongation)
 
@@ -263,6 +264,7 @@ def test_translation():
                 'oAZ': 1.0,
                 'oB': 1.0,
                 'oBY': 1.0},
+        'molecule_ids': [record['symbol'] for record in amino_acid_records] + ['unbound_ribosomes'],
         'elongation_rate': 10.0,
         'advancement_rate': 10.0}
 
@@ -270,12 +272,17 @@ def test_translation():
 
     states = {
         'ribosomes': [],
-        'molecules': {translation.unbound_ribosomes_key: 10}}
+        'molecules': {translation.unbound_ribosomes_key: 10},
+        'transcripts': {
+            'oA': 10,
+            'oAZ': 10,
+            'oB': 10,
+            'oBY': 10}}
     states['molecules'].update({
         molecule_id: 100
         for molecule_id in translation.molecule_ids})
 
-    update = transcription.next_update(1.0, states)
+    update = translation.next_update(1.0, states)
     
     print(update)
     print('complete!')
