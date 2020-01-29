@@ -8,17 +8,6 @@ from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Templ
 
 INFINITY = float('inf')
 
-def flatten(l):
-    '''
-    Flatten a list by one level:
-        [[1, 2, 3], [[4, 5], 6], [7]] --> [1, 2, 3, [4, 5], 6, 7]
-    '''
-
-    return [
-        item
-        for sublist in l
-        for item in sublist]
-
 def frequencies(l):
     '''
     Return number of times each item appears in the list.
@@ -89,11 +78,11 @@ class Domain(Datum):
 class RnapTerminator(Terminator):
     def operon_from(self, genes, promoter):
         return Operon({
-            'id': self.product,
+            'id': self.product[0], # assume there is only one operon product
             'position': promoter.position,
             'direction': promoter.direction,
             'length': (self.position - promoter.position) * promoter.direction,
-            'genes': genes.get(self.product, [])})
+            'genes': genes.get(self.product[0], [])})
 
 class Promoter(Template):
     '''

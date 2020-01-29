@@ -151,7 +151,7 @@ class Transcription(Process):
         time = 0
         now = 0
         elongation = Elongation(
-            chromosome.sequence,
+            chromosome.sequences(),
             chromosome.promoters,
             monomer_limits,
             self.elongation)

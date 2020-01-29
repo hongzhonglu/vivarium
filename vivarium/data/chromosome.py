@@ -18,11 +18,11 @@ test_chromosome_config = {
                 {
                     'position': 6,
                     'strength': 0.5,
-                    'product': 'oA'},
+                    'product': ['oA']},
                 {
                     'position': 11,
                     'strength': 1.0,
-                    'product': 'oAZ'}]},
+                    'product': ['oAZ']}]},
         'pB': {
             'id': 'pB',
             'position': -3,
@@ -36,11 +36,11 @@ test_chromosome_config = {
                 {
                     'position': -8,
                     'strength': 0.5,
-                    'product': 'oB'},
+                    'product': ['oB']},
                 {
                     'position': -11,
                     'strength': 1.0,
-                    'product': 'oBY'}]}},
+                    'product': ['oBY']}]}},
     'domains': {
         0: {
             'id': 0,
@@ -79,7 +79,7 @@ gfp_plasmid_config = {
                 {
                     'position': 736,
                     'strength': 1.0,
-                    'product': 'GFP'}]},
+                    'product': ['GFP']}]},
         },
     'domains': {
         0: {

@@ -6,6 +6,17 @@ from vivarium.utils.datum import Datum
 
 INFINITY = float('inf')
 
+def flatten(l):
+    '''
+    Flatten a list by one level:
+        [[1, 2, 3], [[4, 5], 6], [7]] --> [1, 2, 3, [4, 5], 6, 7]
+    '''
+
+    return [
+        item
+        for sublist in l
+        for item in sublist]
+
 def add_merge(ds):
     '''
     Given a list of dicts, sum the values of each key.
@@ -148,6 +159,12 @@ class Template(Datum):
             terminator.product
             for terminator in self.terminators]
 
+def all_products(templates):
+    return list(set(flatten([
+        product
+        for template in templates.values()
+        for product in template.products()])))
+    
 
 def polymerize_to(
         sequences,
@@ -156,7 +173,9 @@ def polymerize_to(
         additions,
         monomer_limits={}):
 
-    complete_polymers = {}
+    complete_polymers = {
+        product: 0
+        for product in all_products(templates)}
     monomers = {
         monomer: 0
         for monomer in monomer_limits.keys()}
@@ -168,7 +187,8 @@ def polymerize_to(
                 extent = template.direction
                 projection = polymerase.position + extent
 
-                monomer = sequences[template.id][projection]
+                monomer = sequences[template.id][polymerase.position]
+                # monomer = sequences[template.id][projection]
                 if monomer_limits[monomer] > 0:
                     monomer_limits[monomer] -= 1
                     monomers[monomer] += 1
@@ -179,9 +199,12 @@ def polymerize_to(
                         if template.terminates_at(polymerase.terminator):
                             polymerase.complete()
 
-                            if not terminator.product in complete_polymers:
-                                complete_polymers[terminator.product] = 0
-                            complete_polymers[terminator.product] += 1
+                            products = terminator.product
+                            if not isinstance(products, list):
+                                products = [products]
+
+                            for product in products:
+                                complete_polymers[product] += 1
 
     polymerases = [
         polymerase
