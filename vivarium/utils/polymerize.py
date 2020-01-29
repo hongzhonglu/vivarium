@@ -22,7 +22,7 @@ class Polymerase(Datum):
         'id': 0,
         'state': None, # other states: ['bound', 'transcribing', 'complete']
         'position': 0,
-        'template': '',
+        'template': None,
         'terminator': 0}
 
     def __init__(self, config, defaults=defaults):
@@ -86,7 +86,7 @@ class Template(Datum):
         'terminators': Terminator}
 
     defaults = {
-        'id': 0,
+        'id': None,
         'position': 0,
         'direction': 1,
         'sites': [],
@@ -148,7 +148,7 @@ class Template(Datum):
 
 
 def polymerize_to(
-        sequence,
+        sequences,
         polymerases,
         templates,
         additions,
@@ -166,7 +166,7 @@ def polymerize_to(
                 extent = template.direction
                 projection = polymerase.position + extent
 
-                monomer = sequence[projection]
+                monomer = sequences[template.id][projection]
                 if monomer_limits[monomer] > 0:
                     monomer_limits[monomer] -= 1
                     monomers[monomer] += 1
@@ -190,7 +190,7 @@ def polymerize_to(
 
 
 class Elongation(object):
-    def __init__(self, sequence, templates, elongation=0, limits={}):
+    def __init__(self, sequence, templates, limits, elongation=0):
         self.sequence = sequence
         self.templates = templates
         self.time = 0

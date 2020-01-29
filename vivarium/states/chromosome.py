@@ -115,7 +115,7 @@ class Promoter(Template):
 class Rnap(Polymerase):
     defaults = {
         'id': 0,
-        'template': '',
+        'template': None,
         'terminator': 0,
         'domain': 0,
         'state': None, # other states: ['bound', 'transcribing', 'complete']
@@ -222,12 +222,19 @@ class Chromosome(Datum):
         else:
             return self.sequence[end:begin]
 
+    def sequences(self):
+        return {
+            self.promoters[promoter].id: self.sequence
+            for promoter in self.promoters.keys()}
+
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
         elongate_to = min(elongation_limit, distance)
 
+        sequences = self.sequences()
+
         monomers, monomer_limits, complete_transcripts, self.rnaps = polymerize_to(
-            self.sequence,
+            sequences,
             self.rnaps,
             self.promoters,
             elongate_to,

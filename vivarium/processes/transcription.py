@@ -180,8 +180,8 @@ class Transcription(Process):
         elongation = Elongation(
             chromosome.sequence,
             chromosome.promoters,
-            self.elongation,
-            monomer_limits)
+            monomer_limits,
+            self.elongation)
 
         while time < timestep:
             print('time: {} --------------------------------------------------------'.format(time))
