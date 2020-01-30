@@ -4,78 +4,13 @@ import numpy as np
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
-from vivarium.states.chromosome import Chromosome, Rnap, frequencies, test_chromosome_config
-
-def build_stoichiometry(promoter_count):
-    '''
-    Builds a stoichiometry for the given promoters. There are two states per promoter,
-    open and bound, and two reactions per promoter, binding and unbinding. In addition
-    there is a single substrate for available RNAP in the final index.
-
-    Here we are assuming
-    '''
-    stoichiometry = np.zeros((promoter_count * 2, promoter_count * 2 + 1), dtype=np.int64)
-    for index in range(promoter_count):
-        # forward reaction
-        stoichiometry[index][index] = -1
-        stoichiometry[index][index + promoter_count] = 1
-        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
-
-        # reverse reaction
-        stoichiometry[index + promoter_count][index] = 1
-        stoichiometry[index + promoter_count][index + promoter_count] = -1
-
-    return stoichiometry
-
-def build_rates(affinities, advancement):
-    return np.concatenate([
-        affinities,
-        np.repeat(advancement, len(affinities))])
+from vivarium.states.chromosome import Chromosome, Rnap, frequencies, add_merge, test_chromosome_config
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates
 
 def choose_element(elements):
     if elements:
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
-
-class Elongation(object):
-    def __init__(self, elongation=0, limits={}):
-        self.time = 0
-        self.monomers = ''
-        self.complete_transcripts = []
-        self.previous_elongations = int(elongation)
-        self.elongation = elongation
-        self.limits = limits
-
-    def elongate(self, chromosome, now, rate, limits):
-        '''
-        Track increments of time and accumulate partial elongations, emitting the full elongation
-        once a unit is attained.
-
-        Returns number of RNAP that terminated transcription this step.
-        '''
-
-        progress = rate * (now - self.time)
-        self.elongation += progress
-        elongations = int(self.elongation) - self.previous_elongations
-        self.time = now
-        terminated = 0
-
-        if elongations:
-            iterations, monomers, complete, limits = chromosome.next_polymerize(
-                elongations, limits)
-            self.monomers += monomers
-            self.complete_transcripts.extend(complete)
-            self.previous_elongations = int(self.elongation)
-            terminated += len(complete)
-
-            print('iterations: {}, monomers: {}, complete: {}'.format(
-                iterations, monomers, complete))
-            print('terminated: {}'.format(terminated))
-
-        return terminated, limits
-
-    def complete(self):
-        return len(self.complete_transcripts)
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
@@ -112,9 +47,6 @@ class Transcription(Process):
         self.promoter_affinities = parameters['promoter_affinities']
         self.promoter_order = parameters['promoter_order']
         self.promoter_count = len(self.promoter_order)
-        self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key]
-            for promoter_key in self.promoter_order], dtype=np.float64)
 
         self.molecule_ids = parameters['molecule_ids']
         self.monomer_ids = parameters['monomer_ids']
@@ -122,6 +54,10 @@ class Transcription(Process):
         self.elongation = 0
         self.elongation_rate = parameters['elongation_rate']
         self.advancement_rate = parameters['advancement_rate']
+
+        self.affinity_vector = np.array([
+            self.promoter_affinities[promoter_key]
+            for promoter_key in self.promoter_order], dtype=np.float64)
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.rates = build_rates(
@@ -165,6 +101,8 @@ class Transcription(Process):
                 'promoters': 'set',
                 'domains': 'set',
                 'root_domain': 'set',
+                'promoter_order': 'set',
+                'rnap_id': 'set',
                 'rnaps': 'set'},
             'molecules': {},
             'transcripts': {}}
@@ -211,7 +149,12 @@ class Transcription(Process):
         unbound_rnaps = original_unbound_rnaps
 
         time = 0
-        elongation = Elongation(self.elongation, monomer_limits)
+        now = 0
+        elongation = Elongation(
+            chromosome.sequences(),
+            chromosome.promoters,
+            monomer_limits,
+            self.elongation)
 
         while time < timestep:
             print('time: {} --------------------------------------------------------'.format(time))
@@ -234,6 +177,7 @@ class Transcription(Process):
             interval = distance / self.elongation_rate
 
             print('interval: {}'.format(interval))
+            print('substrates: {}'.format(substrate))
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(interval, substrate)
@@ -245,11 +189,11 @@ class Transcription(Process):
                 print('event {}: {}'.format(now, event))
 
                 # perform the elongation until the next event
-                terminations, monomer_limits = elongation.elongate(
-                    chromosome,
+                terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
                     time + now,
                     self.elongation_rate,
-                    monomer_limits)
+                    monomer_limits,
+                    chromosome.rnaps)
                 unbound_rnaps += terminations
 
                 # RNAP has bound the promoter
@@ -292,15 +236,15 @@ class Transcription(Process):
 
             # now that all events have been accounted for, elongate
             # until the end of this interval.
-            terminations, monomer_limits = elongation.elongate(
-                chromosome,
-                time + now,
+            terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
+                time + interval,
                 self.elongation_rate,
-                monomer_limits)
+                monomer_limits,
+                chromosome.rnaps)
             unbound_rnaps += terminations
 
             print('bound rnaps: {}'.format(chromosome.rnaps))
-            print('complete_transcripts: {}'.format(elongation.complete_transcripts))
+            print('complete transcripts: {}'.format(elongation.complete_polymers))
             print('monomer limits: {}'.format(monomer_limits))
 
             time += interval
@@ -313,14 +257,12 @@ class Transcription(Process):
 
         molecules.update({
             key: count * -1
-            for key, count in frequencies(elongation.monomers).items()})
-
-        transcripts = frequencies(elongation.complete_transcripts)
+            for key, count in elongation.monomers.items()})
 
         update = {
             'chromosome': chromosome.to_dict(),
             'molecules': molecules,
-            'transcripts': transcripts}
+            'transcripts': elongation.complete_polymers}
 
         print('molecules update: {}'.format(molecules))
 
