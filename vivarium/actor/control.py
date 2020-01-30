@@ -270,22 +270,22 @@ class AgentCommand(object):
             if args.get(name) is None:
                 raise ValueError('--{} needed'.format(name))
 
-    def kafka_config(self):
+    def get_kafka_config(self):
         return self.actor_config['kafka_config']
 
     def run(self, args):
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         control.trigger_execution(args['id'])
         control.shutdown()
 
     def pause(self, args):
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         control.pause_execution(args['id'])
         control.shutdown()
 
     def add(self, args):
         self.require(args, 'id', 'type')
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         config = self.actor_config
         control.add_agent(
             str(uuid.uuid1()),
@@ -294,7 +294,7 @@ class AgentCommand(object):
         control.shutdown()
 
     def remove(self, args):
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         if args['id']:
             control.remove_agent({'agent_id': args['id']})
         elif args['prefix']:
@@ -305,18 +305,18 @@ class AgentCommand(object):
 
     def divide(self, args):
         self.require(args, 'id')
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         control.divide_cell(args['id'])
         control.shutdown()
 
     def experiment(self, args):
         self.require(args, 'number')
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         control.stub_experiment(args['number'])
         control.shutdown()
 
     def shutdown(self, args):
-        control = ActorControl('control', {'kafka_config': self.kafka_config()})
+        control = ActorControl('control', {'kafka_config': self.get_kafka_config()})
         control.shutdown_agent(args['id'])
         control.shutdown()
 
