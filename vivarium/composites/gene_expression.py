@@ -17,8 +17,8 @@ from vivarium.processes.division import Division, divide_condition, divide_state
 def compose_gene_expression(config):
 
     # declare the processes
-    transcription = Transcription(config)
-    translation = Translation(config)
+    transcription = Transcription(config.get('transcription', {}))
+    translation = Translation(config.get('translation', {}))
     deriver = Deriver(config)
     division = Division(config)
 

@@ -27,11 +27,16 @@ class Transcription(Process):
 
         print('inital_parameters: {}'.format(initial_parameters))
 
+        # TODO: add monomer_mapping parameter for monomer names
+
         monomer_ids = ['A', 'T', 'G', 'C']
         self.default_parameters = {
             'promoter_affinities': {
                 'pA': 1.0,
                 'pB': 1.0},
+            'sequence': test_chromosome_config['sequence'],
+            'templates': test_chromosome_config['promoters'],
+            'genes': test_chromosome_config['genes'],
             'elongation_rate': 1.0,
             'advancement_rate': 1.0,
             'monomer_ids': monomer_ids,
@@ -43,6 +48,10 @@ class Transcription(Process):
 
         parameters = copy.deepcopy(self.default_parameters)
         parameters.update(initial_parameters)
+
+        self.sequence = parameters['sequence']
+        self.templates = parameters['templates']
+        self.genes = parameters['genes']
 
         self.promoter_affinities = parameters['promoter_affinities']
         self.promoter_order = parameters['promoter_order']
@@ -77,7 +86,17 @@ class Transcription(Process):
 
     def default_settings(self):
         default_state = {
-            'chromosome': test_chromosome_config,
+            'chromosome': {
+                'sequence': self.sequence,
+                'promoters': self.templates,
+                'genes': self.genes,
+                'rnaps': [],
+                'domains': {
+                    0: {
+                        'id': 0,
+                        'lead': 0,
+                        'lag': 0,
+                        'children': []}}},
             'molecules': {
                 'A': 100,
                 'T': 100,

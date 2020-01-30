@@ -124,7 +124,12 @@ class Chromosome(Datum):
         'genes': {},
         'promoters': {},
         'promoter_order': [],
-        'domains': {},
+        'domains': {
+            0: {
+                'id': 0,
+                'lead': 0,
+                'lag': 0,
+                'children': []}},
         'root_domain': 0,
         'rnap_id': 0,
         'rnaps': []}
