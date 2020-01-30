@@ -8,6 +8,7 @@ from vivarium.actor.process import initialize_state
 
 # processes
 from vivarium.processes.transcription import Transcription
+from vivarium.processes.translation import Translation
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 
@@ -17,12 +18,14 @@ def compose_gene_expression(config):
 
     # declare the processes
     transcription = Transcription(config)
+    translation = Translation(config)
     deriver = Deriver(config)
     division = Division(config)
 
     # place processes in layers
     processes = [
-        {'transcription': transcription},
+        {'transcription': transcription,
+         'translation': translation},
         {'deriver': deriver,
          'division': division}]
 
@@ -32,13 +35,17 @@ def compose_gene_expression(config):
             'chromosome': 'chromosome',
             'molecules': 'molecules',
             'transcripts': 'transcripts'},
+        'translation': {
+            'ribosomes': 'ribosomes',
+            'molecules': 'molecules',
+            'transcripts': 'transcripts',
+            'proteins': 'proteins'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
             'prior_state': 'prior_state'},
         'division': {
-            'internal': 'cell'},
-        }
+            'internal': 'cell'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -63,6 +70,7 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
 
     molecules = timeseries['molecules']
     transcripts = timeseries['transcripts']
+    proteins = timeseries['proteins']
     time = timeseries['time']
 
     # make figure and plot
@@ -88,8 +96,10 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
     ax2.title.set_text('transcripts')
 
     # plot proteins
-    # TODO
-
+    for protein_id, series in proteins.items():
+        ax3.plot(time, series, label=protein_id)
+    ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax3.title.set_text('proteins')
 
     # adjust axes
     for axis in [ax1, ax2, ax3]:
@@ -98,7 +108,7 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
 
     ax1.set_xticklabels([])
     # ax2.set_xticklabels([])
-    ax2.set_xlabel('time (s)', fontsize=12)
+    ax3.set_xlabel('time (s)', fontsize=12)
 
     # save figure
     fig_path = os.path.join(out_dir, 'gene_expression')

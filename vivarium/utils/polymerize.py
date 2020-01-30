@@ -164,7 +164,6 @@ def all_products(templates):
         product
         for template in templates.values()
         for product in template.products()])))
-    
 
 def polymerize_to(
         sequences,
@@ -179,6 +178,7 @@ def polymerize_to(
     monomers = {
         monomer: 0
         for monomer in monomer_limits.keys()}
+    terminated = 0
 
     for step in range(additions):
         for polymerase in polymerases:
@@ -198,6 +198,7 @@ def polymerize_to(
                     if terminator.position == polymerase.position:
                         if template.terminates_at(polymerase.terminator):
                             polymerase.complete()
+                            terminated += 1
 
                             products = terminator.product
                             if not isinstance(products, list):
@@ -211,7 +212,7 @@ def polymerize_to(
         for polymerase in polymerases
         if not polymerase.is_complete()]
 
-    return monomers, monomer_limits, complete_polymers, polymerases
+    return monomers, monomer_limits, terminated, complete_polymers, polymerases
 
 
 class Elongation(object):
@@ -241,7 +242,7 @@ class Elongation(object):
         terminated = 0
 
         if elongations:
-            monomers, limits, complete, polymerases = polymerize_to(
+            monomers, limits, terminated, complete, polymerases = polymerize_to(
                 self.sequence,
                 polymerases,
                 self.templates,
@@ -251,7 +252,6 @@ class Elongation(object):
             self.complete_polymers = add_merge([
                 self.complete_polymers, complete])
             self.previous_elongations = int(self.elongation)
-            terminated += len(complete)
 
         return terminated, limits, polymerases
 
