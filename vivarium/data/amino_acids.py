@@ -21,6 +21,5 @@ amino_acid_records = [
     {'name': 'Valine', 'abbreviation': 'Val', 'symbol': 'V'}]
 
 amino_acids = {
-    record['symbol']: record
+    record['symbol']: record['name']
     for record in amino_acid_records}
-

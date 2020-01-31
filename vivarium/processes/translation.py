@@ -1,9 +1,10 @@
 import copy
 import numpy as np
+import random
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
-from vivarium.data.amino_acids import amino_acid_records
+from vivarium.data.amino_acids import amino_acids
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, build_rates, all_products
 
@@ -29,22 +30,29 @@ def shuffle(l):
     np.random.shuffle(l)
     return l
 
+def random_string(alphabet, length):
+    string = ''
+    for step in range(length):
+        string += random.choice(alphabet)
+    return string
+
 class Translation(Process):
     def __init__(self, initial_parameters={}):
-        self.monomer_ids = [record['abbreviation'] for record in amino_acid_records]
-        self.unbound_ribosomes_key = 'unbound_ribosomes'
+        self.monomer_symbols = list(amino_acids.keys())
+        self.monomer_ids = list(amino_acids.values())
+        self.unbound_ribosomes_key = 'Ribosome'
 
         self.default_parameters = {
             'sequences': {
-                'oA': shuffle(self.monomer_ids),
-                'oAZ': shuffle(self.monomer_ids),
-                'oB': shuffle(self.monomer_ids),
-                'oBY': shuffle(self.monomer_ids)},
+                'oA': random_string(self.monomer_symbols, 20),
+                'oAZ': random_string(self.monomer_symbols, 50),
+                'oB': random_string(self.monomer_symbols, 30),
+                'oBY': random_string(self.monomer_symbols, 70)},
             'templates': {
                 'oA': generate_template('oA', 20, ['eA']),
-                'oAZ': generate_template('oAZ', 20, ['eA', 'eZ']),
-                'oB': generate_template('oB', 20, ['eB']),
-                'oBY': generate_template('oBY', 20, ['eB', 'eY'])},
+                'oAZ': generate_template('oAZ', 50, ['eA', 'eZ']),
+                'oB': generate_template('oB', 30, ['eB']),
+                'oBY': generate_template('oBY', 70, ['eB', 'eY'])},
             'transcript_affinities': {
                 'oA': 1.0,
                 'oAZ': 1.0,
@@ -52,6 +60,7 @@ class Translation(Process):
                 'oBY': 1.0},
             'elongation_rate': 5.0,
             'advancement_rate': 1.0,
+            'symbol_to_monomer': amino_acids,
             'monomer_ids': self.monomer_ids}
 
         self.default_parameters['protein_ids'] = all_products(
@@ -73,6 +82,7 @@ class Translation(Process):
         self.monomer_ids = parameters['monomer_ids']
         self.molecule_ids = parameters['molecule_ids']
         self.protein_ids = parameters['protein_ids']
+        self.symbol_to_monomer = parameters['symbol_to_monomer']
         self.elongation = 0
         self.elongation_rate = parameters['elongation_rate']
         self.advancement_rate = parameters['advancement_rate']
@@ -110,16 +120,14 @@ class Translation(Process):
             'molecules': dict({
                 self.unbound_ribosomes_key: 10}),
             'transcripts': {
-                'oA': 1,
-                'oAZ': 1,
-                'oB': 1,
-                'oBY': 1},
+                transcript_id: 1
+                for transcript_id in self.transcript_order},
             'proteins': {
                 protein_id: 0
                 for protein_id in self.protein_ids}}
 
         default_state['molecules'].update({
-            monomer_id: 50
+            monomer_id: 100
             for monomer_id in self.monomer_ids})
 
         operons = list(default_state['transcripts'].keys())
@@ -182,6 +190,7 @@ class Translation(Process):
             self.sequences,
             self.templates,
             monomer_limits,
+            self.symbol_to_monomer,
             self.elongation)
 
         while time < timestep:

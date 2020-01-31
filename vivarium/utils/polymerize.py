@@ -176,7 +176,8 @@ def polymerize_to(
         polymerases,
         templates,
         additions,
-        monomer_limits={}):
+        symbol_to_monomer,
+        monomer_limits):
 
     complete_polymers = {
         product: 0
@@ -190,10 +191,9 @@ def polymerize_to(
         for polymerase in polymerases:
             if polymerase.is_transcribing():
                 template = templates[polymerase.template]
-                # extent = template.direction
-                # projection = polymerase.position + extent
                 projection = polymerase.position + 1
-                monomer = sequences[template.id][polymerase.position]
+                monomer_symbol = sequences[template.id][polymerase.position]
+                monomer = symbol_to_monomer[monomer_symbol]
 
                 if monomer_limits[monomer] > 0:
                     monomer_limits[monomer] -= 1
@@ -224,11 +224,18 @@ def polymerize_to(
 
 
 class Elongation(object):
-    def __init__(self, sequence, templates, limits, elongation=0):
+    def __init__(
+            self,
+            sequence,
+            templates,
+            limits,
+            symbol_to_monomer,
+            elongation=0):
         self.sequence = sequence
         self.templates = templates
         self.time = 0
         self.monomers = {}
+        self.symbol_to_monomer = symbol_to_monomer
         self.complete_polymers = {}
         self.previous_elongations = int(elongation)
         self.elongation = elongation
@@ -255,6 +262,7 @@ class Elongation(object):
                 polymerases,
                 self.templates,
                 elongations,
+                self.symbol_to_monomer,
                 limits)
             self.monomers = add_merge([self.monomers, monomers])
             self.complete_polymers = add_merge([

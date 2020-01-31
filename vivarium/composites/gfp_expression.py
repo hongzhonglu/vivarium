@@ -3,7 +3,6 @@ from vivarium.utils.units import units
 
 from scipy import constants
 
-from vivarium.data.amino_acids import amino_acid_records
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosome import gfp_plasmid_config
 from vivarium.processes.translation import generate_template
@@ -41,10 +40,7 @@ def generate_gfp_compartment(config):
                 'T7': 1.0},
 
             'advancement_rate': 1.0,
-            'elongation_rate': 50, # TODO: find real elongation rate
-            'monomer_ids': ['A', 'T', 'G', 'C'],
-            'transcript_ids': ['GFP_RNA'],
-            'promoter_order': ['T7']},
+            'elongation_rate': 50}
 
         'translation': {
 
@@ -57,11 +53,7 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': 1.0},
 
             'elongation_rate': 22,
-            'advancement_rate': 1.0,
-            'monomer_ids': [
-                record['abbreviation'] for record in amino_acid_records],
-            'protein_ids': ['GFP'],
-            'transcript_order': ['GFP_RNA']}}
+            'advancement_rate': 1.0}}
 
     return compose_gene_expression(gfp_config)
 

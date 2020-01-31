@@ -6,6 +6,7 @@ from arrow import StochasticSystem
 from vivarium.actor.process import Process
 from vivarium.states.chromosome import Chromosome, Rnap, frequencies, add_merge, test_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates
+from vivarium.data.nucleotides import nucleotides
 
 def choose_element(elements):
     if elements:
@@ -29,7 +30,8 @@ class Transcription(Process):
 
         # TODO: add monomer_mapping parameter for monomer names
 
-        monomer_ids = ['A', 'U', 'G', 'C']
+        monomer_ids = list(nucleotides.values())
+        self.unbound_rnap_key = 'RNA Polymerase'
         self.default_parameters = {
             'promoter_affinities': {
                 'pA': 1.0,
@@ -39,11 +41,11 @@ class Transcription(Process):
             'genes': test_chromosome_config['genes'],
             'elongation_rate': 1.0,
             'advancement_rate': 1.0,
+            'symbol_to_monomer': nucleotides,
             'monomer_ids': monomer_ids,
-            'molecule_ids': monomer_ids + ['unbound_rnaps'],
+            'molecule_ids': monomer_ids + [self.unbound_rnap_key],
             'transcript_ids': [
                 'oA', 'oAZ', 'oB', 'oBY']}
-
 
         self.default_parameters['promoter_order'] = list(
             initial_parameters.get(
@@ -57,6 +59,7 @@ class Transcription(Process):
         self.sequences = None # set when the chromosome first appears
         self.templates = parameters['templates']
         self.genes = parameters['genes']
+        self.symbol_to_monomer = parameters['symbol_to_monomer']
 
         print('chromosome sequence: {}'.format(self.sequence))
 
@@ -104,20 +107,22 @@ class Transcription(Process):
                         'lead': 0,
                         'lag': 0,
                         'children': []}}},
-            'molecules': {
-                'A': 100,
-                'U': 100,
-                'G': 100,
-                'C': 100,
-                'unbound_rnaps': 10},
-            'transcripts': {}}
+            'molecules': {self.unbound_rnap_key: 10}}
+
+        default_state['molecules'].update({
+            nucleotide: 100
+            for nucleotide in self.monomer_ids})
 
         chromosome = Chromosome(default_state['chromosome'])
         operons = [operon.id for operon in chromosome.operons()]
 
+        default_state['transcripts'] = {
+            operon: 0
+            for operon in operons}
+
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': ['A', 'U', 'G', 'C', 'unbound_rnaps'],
+            'molecules': list(default_state['molecules'].keys()),
             'transcripts': operons}
 
         default_updaters = {
@@ -172,7 +177,7 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = states['molecules']['unbound_rnaps']
+        original_unbound_rnaps = states['molecules'][self.unbound_rnap_key]
         monomer_limits = {
             monomer: states['molecules'][monomer]
             for monomer in self.monomer_ids}
@@ -184,10 +189,11 @@ class Transcription(Process):
             self.sequences,
             chromosome.promoters,
             monomer_limits,
+            self.symbol_to_monomer,
             self.elongation)
 
         while time < timestep:
-            print('time: {} --------------------------------------------------------'.format(time))
+            print('time: {} -------------------------------------------'.format(time))
 
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
@@ -283,7 +289,7 @@ class Transcription(Process):
         self.elongation = elongation.elongation - int(elongation.elongation)
 
         molecules = {
-            'unbound_rnaps': unbound_rnaps - original_unbound_rnaps}
+            self.unbound_rnap_key: unbound_rnaps - original_unbound_rnaps}
 
         molecules.update({
             key: count * -1
@@ -312,12 +318,11 @@ def test_transcription():
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {
-            'unbound_rnaps': 10,
-            'A': 10,
-            'U': 10,
-            'G': 10,
-            'C': 10}}
+        'molecules': {transcription.unbound_rnap_key: 10}}
+
+    states['molecules'].update({
+        nucleotide: 10
+        for nucleotide in transcription.monomer_ids})
 
     update = transcription.next_update(1.0, states)
     
