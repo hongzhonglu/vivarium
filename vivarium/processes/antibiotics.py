@@ -59,8 +59,8 @@ class Antibiotics(ConvenienceKinetics):
                 },
                 'antibiotic_export': {
                     'stoichiometry': {
-                        ('internal', 'antibiotic'): 0,
-                        ('external', 'antibiotic'): 0,
+                        ('internal', 'antibiotic'): -1,
+                        ('external', 'antibiotic'): 1,
                     },
                     'is_reversible': False,
                     'catalyzed by': [
@@ -76,8 +76,8 @@ class Antibiotics(ConvenienceKinetics):
                 },
                 'antibiotic_export': {
                     ('internal', 'antibiotic_exporter'): {
-                        'kcat_f': 0.0,  # from 0.6
-                        ('internal', 'antibiotic'): 0.0,
+                        'kcat_f': 0.6,
+                        ('internal', 'antibiotic'): 0.6,
                     },
                 },
             },
