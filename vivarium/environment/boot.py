@@ -44,7 +44,7 @@ from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.antibiotic_import import AntibioticImport
+from vivarium.processes.antibiotics import Antibiotics
 
 # composites
 from vivarium.composites.growth_division import compose_growth_division
@@ -465,9 +465,8 @@ class BootEnvironment(BootAgent):
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
-            'antibiotic': wrap_boot(wrap_init_basic(AntibioticImport),
-                {'volume': 1.0}
-            ),
+            'antibiotic': wrap_boot(
+                wrap_init_basic(Antibiotics), {'volume': 1.0}),
 
             # composite compartments
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
