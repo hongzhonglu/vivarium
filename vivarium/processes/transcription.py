@@ -4,8 +4,8 @@ import numpy as np
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process
-from vivarium.states.chromosome import Chromosome, Rnap, frequencies, add_merge, test_chromosome_config
-from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates
+from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates, all_products
 from vivarium.data.nucleotides import nucleotides
 
 def choose_element(elements):
@@ -43,14 +43,16 @@ class Transcription(Process):
             'advancement_rate': 1.0,
             'symbol_to_monomer': nucleotides,
             'monomer_ids': monomer_ids,
-            'molecule_ids': monomer_ids + [self.unbound_rnap_key],
-            'transcript_ids': [
-                'oA', 'oAZ', 'oB', 'oBY']}
+            'molecule_ids': monomer_ids + [self.unbound_rnap_key]}
 
         self.default_parameters['promoter_order'] = list(
             initial_parameters.get(
                 'promoter_affinities',
                 self.default_parameters['promoter_affinities']).keys())
+        self.default_parameters['transcript_ids'] = all_products(
+            initial_parameters.get(
+                'templates',
+                self.default_parameters['templates']))
 
         parameters = copy.deepcopy(self.default_parameters)
         parameters.update(initial_parameters)
@@ -58,6 +60,10 @@ class Transcription(Process):
         self.sequence = parameters['sequence']
         self.sequences = None # set when the chromosome first appears
         self.templates = parameters['templates']
+        # {
+        #     key: Promoter(config)
+        #     for key, config in parameters['templates'].items()}
+
         self.genes = parameters['genes']
         self.symbol_to_monomer = parameters['symbol_to_monomer']
 
@@ -89,6 +95,8 @@ class Transcription(Process):
             'chromosome': Chromosome({}).fields(),
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_ids}
+
+        print('transcription parameters: {}'.format(parameters))
 
         super(Transcription, self).__init__(self.roles, parameters)
 

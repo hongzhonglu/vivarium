@@ -15,7 +15,7 @@ class Transcript(Template):
     pass
 
 def generate_template(id, length, product):
-    return Template({
+    return {
         'id': id,
         'position': 0,
         'direction': 1,
@@ -23,7 +23,7 @@ def generate_template(id, length, product):
         'terminators': [
             {'position': length,
              'strength': 1.0,
-             'product': product}]})
+             'product': product}]}
 
 def shuffle(l):
     l = [item for item in l]
@@ -64,7 +64,10 @@ class Translation(Process):
             'monomer_ids': self.monomer_ids}
 
         self.default_parameters['protein_ids'] = all_products(
-            initial_parameters.get('templates', self.default_parameters['templates']))
+            initial_parameters.get(
+                'templates',
+                self.default_parameters['templates']))
+
         self.default_parameters['transcript_order'] = list(
             initial_parameters.get(
                 'transcript_affinities',
@@ -77,6 +80,9 @@ class Translation(Process):
 
         self.sequences = parameters['sequences']
         self.templates = parameters['templates']
+        # {
+        #     key: Template(config)
+        #     for key, config in parameters['templates'].items()}
 
         self.transcript_affinities = parameters['transcript_affinities']
         self.transcript_order = parameters['transcript_order']
@@ -108,6 +114,8 @@ class Translation(Process):
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
             'proteins': self.protein_ids}
+
+        print('translation parameters: {}'.format(parameters))
 
         super(Translation, self).__init__(self.roles, parameters)
 
@@ -182,11 +190,15 @@ class Translation(Process):
             for monomer in self.monomer_ids}
         unbound_ribosomes = original_unbound_ribosomes
 
+        templates = {
+            key: Template(template)
+            for key, template in self.templates.items()}
+
         time = 0
         now = 0
         elongation = Elongation(
             self.sequences,
-            self.templates,
+            templates,
             monomer_limits,
             self.symbol_to_monomer,
             self.elongation)
@@ -223,7 +235,7 @@ class Translation(Process):
                 # ribosome has bound the transcript
                 if event < self.transcript_count:
                     transcript_key = self.transcript_order[event]
-                    transcript = self.templates[transcript_key]
+                    # transcript = self.templates[transcript_key]
                     bound_transcripts[event] += 1
 
                     self.ribosome_id += 1
