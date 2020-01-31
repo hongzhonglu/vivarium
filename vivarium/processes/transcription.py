@@ -49,10 +49,13 @@ class Transcription(Process):
             initial_parameters.get(
                 'promoter_affinities',
                 self.default_parameters['promoter_affinities']).keys())
-        self.default_parameters['transcript_ids'] = all_products(
-            initial_parameters.get(
-                'templates',
-                self.default_parameters['templates']))
+        templates = initial_parameters.get(
+            'templates',
+            self.default_parameters['templates'])
+
+        self.default_parameters['transcript_ids'] = all_products({
+            key: Promoter(config)
+            for key, config in templates.items()})
 
         parameters = copy.deepcopy(self.default_parameters)
         parameters.update(initial_parameters)
@@ -60,10 +63,6 @@ class Transcription(Process):
         self.sequence = parameters['sequence']
         self.sequences = None # set when the chromosome first appears
         self.templates = parameters['templates']
-        # {
-        #     key: Promoter(config)
-        #     for key, config in parameters['templates'].items()}
-
         self.genes = parameters['genes']
         self.symbol_to_monomer = parameters['symbol_to_monomer']
 

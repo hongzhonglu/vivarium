@@ -169,7 +169,7 @@ def all_products(templates):
     return list(set(flatten([
         product
         for template in templates.values()
-        for product in Template(template).products()])))
+        for product in template.products()])))
 
 def polymerize_to(
         sequences,

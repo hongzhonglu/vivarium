@@ -63,10 +63,13 @@ class Translation(Process):
             'symbol_to_monomer': amino_acids,
             'monomer_ids': self.monomer_ids}
 
-        self.default_parameters['protein_ids'] = all_products(
-            initial_parameters.get(
-                'templates',
-                self.default_parameters['templates']))
+        templates = initial_parameters.get(
+            'templates',
+            self.default_parameters['templates'])
+
+        self.default_parameters['protein_ids'] = all_products({
+            key: Template(config)
+            for key, config in templates.items()})
 
         self.default_parameters['transcript_order'] = list(
             initial_parameters.get(
