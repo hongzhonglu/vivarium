@@ -31,23 +31,28 @@ def generate_gfp_compartment(config):
     print(PURE_counts)
 
     gfp_config = {
+
         'transcription': {
+
             'sequence': gfp_plasmid_config['sequence'],
             'templates': gfp_plasmid_config['promoters'],
             'genes': gfp_plasmid_config['genes'],
             'promoter_affinities': {
                 'T7': 1.0},
+
             'advancement_rate': 1.0,
             'elongation_rate': 50, # TODO: find real elongation rate
             'monomer_ids': ['A', 'T', 'G', 'C'],
             'transcript_ids': ['GFP_RNA'],
             'promoter_order': ['T7']},
+
         'translation': {
+
             'sequences': {
                 'GFP_RNA': GFP.protein_sequence},
             'templates': {
                 'GFP_RNA': generate_template(
-                    'GFP_RNA', len(GFP.protein_sequence), 'GFP')},
+                    'GFP_RNA', len(GFP.sequence), 'GFP')},
             'transcript_affinities': {
                 'GFP_RNA': 1.0},
 

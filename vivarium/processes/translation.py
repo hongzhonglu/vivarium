@@ -55,9 +55,11 @@ class Translation(Process):
             'monomer_ids': self.monomer_ids}
 
         self.default_parameters['protein_ids'] = all_products(
-            self.default_parameters['templates'])
+            initial_parameters.get('templates', self.default_parameters['templates']))
         self.default_parameters['transcript_order'] = list(
-            self.default_parameters['transcript_affinities'].keys())
+            initial_parameters.get(
+                'transcript_affinities',
+                self.default_parameters['transcript_affinities']).keys())
         self.default_parameters['molecule_ids'] = self.monomer_ids + [
             self.unbound_ribosomes_key]
 

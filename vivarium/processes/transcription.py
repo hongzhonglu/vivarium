@@ -29,7 +29,7 @@ class Transcription(Process):
 
         # TODO: add monomer_mapping parameter for monomer names
 
-        monomer_ids = ['A', 'T', 'G', 'C']
+        monomer_ids = ['A', 'U', 'G', 'C']
         self.default_parameters = {
             'promoter_affinities': {
                 'pA': 1.0,
@@ -43,15 +43,22 @@ class Transcription(Process):
             'molecule_ids': monomer_ids + ['unbound_rnaps'],
             'transcript_ids': [
                 'oA', 'oAZ', 'oB', 'oBY']}
+
+
         self.default_parameters['promoter_order'] = list(
-            self.default_parameters['promoter_affinities'].keys())
+            initial_parameters.get(
+                'promoter_affinities',
+                self.default_parameters['promoter_affinities']).keys())
 
         parameters = copy.deepcopy(self.default_parameters)
         parameters.update(initial_parameters)
 
         self.sequence = parameters['sequence']
+        self.sequences = None # set when the chromosome first appears
         self.templates = parameters['templates']
         self.genes = parameters['genes']
+
+        print('chromosome sequence: {}'.format(self.sequence))
 
         self.promoter_affinities = parameters['promoter_affinities']
         self.promoter_order = parameters['promoter_order']
@@ -99,7 +106,7 @@ class Transcription(Process):
                         'children': []}}},
             'molecules': {
                 'A': 100,
-                'T': 100,
+                'U': 100,
                 'G': 100,
                 'C': 100,
                 'unbound_rnaps': 10},
@@ -110,7 +117,7 @@ class Transcription(Process):
 
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': ['A', 'T', 'G', 'C', 'unbound_rnaps'],
+            'molecules': ['A', 'U', 'G', 'C', 'unbound_rnaps'],
             'transcripts': operons}
 
         default_updaters = {
@@ -135,6 +142,10 @@ class Transcription(Process):
     def next_update(self, timestep, states):
         chromosome = Chromosome(states['chromosome'])
         molecules = states['molecules']
+
+        if self.sequences is None:
+            self.sequences = chromosome.sequences()
+            print('sequences: {}'.format(self.sequences))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
@@ -170,7 +181,7 @@ class Transcription(Process):
         time = 0
         now = 0
         elongation = Elongation(
-            chromosome.sequences(),
+            self.sequences,
             chromosome.promoters,
             monomer_limits,
             self.elongation)
@@ -304,7 +315,7 @@ def test_transcription():
         'molecules': {
             'unbound_rnaps': 10,
             'A': 10,
-            'T': 10,
+            'U': 10,
             'G': 10,
             'C': 10}}
 

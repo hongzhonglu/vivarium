@@ -112,6 +112,9 @@ class Template(Datum):
         for terminator in self.terminators:
             self.terminator_strength += terminator.strength
 
+    def absolute_position(self, relative_position):
+        return self.position + (relative_position * self.direction)
+
     def binding_state(self, levels):
         state = [
             site.state_when(levels)
@@ -130,6 +133,9 @@ class Template(Datum):
             if terminator.position * self.direction > position * self.direction:
                 break
         return index
+
+    def last_terminator(self):
+        return self.terminators[-1]
 
     def terminates_at(self, index=0):
         if len(self.terminators[index:]) > 1:
@@ -184,18 +190,20 @@ def polymerize_to(
         for polymerase in polymerases:
             if polymerase.is_transcribing():
                 template = templates[polymerase.template]
-                extent = template.direction
-                projection = polymerase.position + extent
-
+                # extent = template.direction
+                # projection = polymerase.position + extent
+                projection = polymerase.position + 1
                 monomer = sequences[template.id][polymerase.position]
-                # monomer = sequences[template.id][projection]
+
                 if monomer_limits[monomer] > 0:
                     monomer_limits[monomer] -= 1
                     monomers[monomer] += 1
                     polymerase.position = projection
+                    absolute_position = template.absolute_position(
+                        polymerase.position)
 
                     terminator = template.terminators[polymerase.terminator]
-                    if terminator.position == polymerase.position:
+                    if terminator.position == absolute_position:
                         if template.terminates_at(polymerase.terminator):
                             polymerase.complete()
                             terminated += 1

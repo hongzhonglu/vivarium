@@ -20,6 +20,16 @@ def frequencies(l):
         result[item] += 1
     return result
 
+def rna_bases(sequence):
+    return sequence.replace('T', 'U')
+
+def sequence_monomers(sequence, begin, end):
+    if begin < end:
+        subsequence = sequence[begin:end]
+    else:
+        subsequence = sequence[begin:end:-1]
+    return subsequence
+
 def traverse(tree, key, f, combine):
     '''
     Traverse the given tree starting using the `key` node as the root and calling `f` on each leaf,
@@ -190,7 +200,7 @@ class Chromosome(Datum):
             'id': self.rnap_id,
             'template': promoter_key,
             'domain': domain,
-            'position': self.promoters[promoter_key].position})
+            'position': 0})
         new_rnap.bind()
         self.rnaps.append(new_rnap)
         return new_rnap
@@ -200,26 +210,30 @@ class Chromosome(Datum):
         for rnap in self.rnaps:
             if rnap.is_transcribing():
                 promoter = self.promoters[rnap.template]
-                terminator_index = promoter.next_terminator(rnap.position)
+
+                # rnap position is relative to the promoter it is bound to
+                rnap_position = promoter.absolute_position(rnap.position)
+                terminator_index = promoter.next_terminator(rnap_position)
                 rnap.terminator = terminator_index
                 terminator = promoter.terminators[terminator_index]
-                span = abs(terminator.position - rnap.position)
+                span = abs(terminator.position - rnap_position)
                 if span < distance:
                     distance = span
+
+                print('distance: {} from position {} the rnap {} to terminator {}'.format(distance, rnap_position, rnap, terminator))
+
+
         if distance == INFINITY:
             distance = 1
         return distance
 
-    def sequence_monomers(self, begin, end):
-        if begin < end:
-            return self.sequence[begin:end]
-        else:
-            return self.sequence[end:begin]
-
     def sequences(self):
         return {
-            self.promoters[promoter].id: self.sequence
-            for promoter in self.promoters.keys()}
+            promoter_key: rna_bases(sequence_monomers(
+                self.sequence,
+                promoter.position,
+                promoter.last_terminator().position))
+            for promoter_key, promoter in self.promoters.items()}
 
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
