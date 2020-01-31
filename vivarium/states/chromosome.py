@@ -220,9 +220,6 @@ class Chromosome(Datum):
                 if span < distance:
                     distance = span
 
-                print('distance: {} from position {} the rnap {} to terminator {}'.format(distance, rnap_position, rnap, terminator))
-
-
         if distance == INFINITY:
             distance = 1
         return distance

@@ -59,7 +59,7 @@ class Translation(Process):
                 'oB': 1.0,
                 'oBY': 1.0},
             'elongation_rate': 5.0,
-            'advancement_rate': 1.0,
+            'advancement_rate': 10.0,
             'symbol_to_monomer': amino_acids,
             'monomer_ids': self.monomer_ids}
 
@@ -75,6 +75,9 @@ class Translation(Process):
         parameters = copy.deepcopy(self.default_parameters)
         parameters.update(initial_parameters)
 
+        self.sequences = parameters['sequences']
+        self.templates = parameters['templates']
+
         self.transcript_affinities = parameters['transcript_affinities']
         self.transcript_order = parameters['transcript_order']
         self.transcript_count = len(self.transcript_order)
@@ -87,9 +90,6 @@ class Translation(Process):
         self.elongation_rate = parameters['elongation_rate']
         self.advancement_rate = parameters['advancement_rate']
 
-        self.sequences = parameters['sequences']
-        self.templates = parameters['templates']
-
         self.affinity_vector = np.array([
             self.transcript_affinities[transcript_key]
             for transcript_key in self.transcript_order], dtype=np.float64)
@@ -99,8 +99,6 @@ class Translation(Process):
             self.affinity_vector,
             self.advancement_rate)
 
-        print('stoichiometry: {}'.format(self.stoichiometry))
-        print('rates: {}'.format(self.rates))
         self.initiation = StochasticSystem(self.stoichiometry, self.rates)
 
         self.ribosome_id = 0
@@ -194,31 +192,18 @@ class Translation(Process):
             self.elongation)
 
         while time < timestep:
-            print('time: {} -----------======--------------------------'.format(time))
-
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
                 transcript_counts - bound_transcripts,
                 bound_transcripts,
                 [unbound_ribosomes]])
 
-            print('state: {}'.format(substrate))
-            print('unbound ribosomes: {}'.format(unbound_ribosomes))
-            print('bound transcripts: {}'.format(
-                bound_transcripts))
-            print('monomer limits: {}'.format(monomer_limits))
-
             # find number of monomers until next terminator
             # distance = chromosome.terminator_distance()
             distance = 1
 
-            print('distance: {}'.format(distance))
-
             # find interval of time that elongates to the point of the next terminator
             interval = distance / self.elongation_rate
-
-            print('interval: {}'.format(interval))
-            print('substrates: {}'.format(substrate))
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(interval, substrate)
@@ -226,8 +211,6 @@ class Translation(Process):
             # go through each event in the simulation and update the state
             ribosome_bindings = 0
             for now, event in zip(result['time'], result['events']):
-
-                print('event {}: {}'.format(now, event))
 
                 # perform the elongation until the next event
                 terminations, monomer_limits, ribosomes = elongation.elongate(
@@ -242,7 +225,6 @@ class Translation(Process):
                     transcript_key = self.transcript_order[event]
                     transcript = self.templates[transcript_key]
                     bound_transcripts[event] += 1
-                    print('bound transcripts for {}: {}'.format(event, bound_transcripts[event]))
 
                     self.ribosome_id += 1
                     new_ribosome = Ribosome({
@@ -253,8 +235,6 @@ class Translation(Process):
                     ribosomes.append(new_ribosome)
                     ribosomes_by_transcript[transcript_key].append(new_ribosome)
 
-                    print('{}: ribosome binding {}'.format(time, new_ribosome))
-
                     ribosome_bindings += 1
                     unbound_ribosomes -= 1
                 # ribosome has begun polymerizing its protein
@@ -263,15 +243,9 @@ class Translation(Process):
                     transcript_key = self.transcript_order[transcript_index]
 
                     bound_transcripts[transcript_index] -= 1
-                    print('bound transcripts for {}: {}'.format(transcript_index, bound_transcripts[transcript_index]))
 
                     ribosome = ribosomes_by_transcript[transcript_key].pop()
                     ribosome.start_transcribing()
-
-                    print('{}: ribosome commencing {}'.format(time, ribosome))
-
-            print('bound transcripts: {}'.format(
-                bound_transcripts))
 
             # now that all events have been accounted for, elongate
             # until the end of this interval.
@@ -281,10 +255,6 @@ class Translation(Process):
                 monomer_limits,
                 ribosomes)
             unbound_ribosomes += terminations
-
-            print('bound ribosomes: {}'.format(ribosomes))
-            print('complete transcripts: {}'.format(elongation.complete_polymers))
-            print('monomer limits: {}'.format(monomer_limits))
 
             time += interval
 

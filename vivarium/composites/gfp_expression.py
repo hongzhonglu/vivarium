@@ -39,21 +39,24 @@ def generate_gfp_compartment(config):
             'promoter_affinities': {
                 'T7': 1.0},
 
-            'advancement_rate': 1.0,
-            'elongation_rate': 50}
+            'advancement_rate': 10.0,
+            'elongation_rate': 50},
 
         'translation': {
 
             'sequences': {
-                'GFP_RNA': GFP.protein_sequence},
+                'GFP_RNA': GFP.sequence},
             'templates': {
                 'GFP_RNA': generate_template(
-                    'GFP_RNA', len(GFP.sequence), 'GFP')},
+                    'GFP_RNA', len(GFP.sequence), ['GFP'])},
             'transcript_affinities': {
                 'GFP_RNA': 1.0},
 
             'elongation_rate': 22,
-            'advancement_rate': 1.0}}
+            'advancement_rate': 10.0},
+
+        'initial_state': {
+            'molecules': PURE_counts}}
 
     return compose_gene_expression(gfp_config)
 
@@ -69,7 +72,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 1}
+        'total_time': 10}
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)

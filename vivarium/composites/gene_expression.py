@@ -86,7 +86,7 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
     # plot molecules
     for mol_id, series in molecules.items():
         ax1.plot(time, series, label=mol_id)
-    # ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.legend(loc='center left', bbox_to_anchor=(2.0, 0.5))
     ax1.title.set_text('metabolites')
 
     # plot transcripts
