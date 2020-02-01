@@ -6,8 +6,6 @@ from __future__ import absolute_import, division, print_function
 import copy
 import os
 
-import numpy as np
-
 from vivarium.actor.process import (
     convert_to_timeseries,
     plot_simulation_output,
