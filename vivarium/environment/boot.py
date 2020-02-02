@@ -258,24 +258,23 @@ def initialize_glc_lct_shift(boot_config):
     return boot_config
 
 def initialize_ecoli_core_glc(boot_config):
-    # timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, ' \
-    #                '1800 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L - glc__D_e Infinity, ' \
-    #                '3600 end'
-
     timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
 
     lattice_config = {
-        'name': 'ecoli_core_glc',
-        'diffusion': 1e-4,
-        'depth': 1e-4,
+        'name': 'ecoli_core',
         'timeline_str': timeline_str,
+        'edge_length_x': 15.0,
+        'patches_per_edge_x': 15,
+        'run_for': 2.0,
+        'diffusion': 1e-3,
+        'depth': 1e-2,
+        'translation_jitter': 1.0,
         'emit_fields': [
             'glc__D_e',
-            'lac__D_e']
-    }
+            'lac__D_e']}
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_measp(boot_config):
     media_id = 'MeAsp_media'
@@ -421,10 +420,10 @@ class BootEnvironment(BootAgent):
         self.agent_types = {
             # environments
             'lattice': wrap_boot_environment(initialize_lattice),
-            'sugar1': wrap_boot_environment(initialize_glc_g6p),
-            'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
-            'sugar2': wrap_boot_environment(initialize_glc_lct),
-            'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
+            'glc_g6p': wrap_boot_environment(initialize_glc_g6p),
+            'glc_g6p_small': wrap_boot_environment(initialize_glc_g6p_small),
+            'glc_lct': wrap_boot_environment(initialize_glc_lct),
+            'glc_lct_shift': wrap_boot_environment(initialize_glc_lct_shift),
             'ecoli_core_glc': wrap_boot_environment(initialize_ecoli_core_glc),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
@@ -445,7 +444,7 @@ class BootEnvironment(BootAgent):
 
             # composite compartments
             'master': wrap_boot(wrap_init_composite(compose_master), {'volume': 1.0}),
-            'glc_lct': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
+            'shifter': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),

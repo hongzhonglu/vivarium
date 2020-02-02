@@ -22,6 +22,32 @@ class ShepherdControl(ActorControl):
             agent_type,
             actor_config)
 
+    def init_experiment(self, args, exp_config):
+        default_experiment_id = exp_config.get('default_experiment_id')
+        lattice_config = exp_config.get('lattice_config')
+        environment_type = exp_config.get('environment_type')
+        actor_config = exp_config.get('actor_config')
+        agent_type = exp_config.get('agent_type')
+
+        experiment_id = args['experiment_id']
+        if not experiment_id:
+            experiment_id = self.get_experiment_id(default_experiment_id)
+        num_cells = args['number']
+        print('Creating lattice agent_id {} and {} cell agents\n'.format(
+            experiment_id, num_cells))
+
+        actor_config['boot_config'].update(lattice_config)
+        self.add_agent(experiment_id, environment_type, actor_config)
+
+        time.sleep(10)
+
+        for index in range(num_cells):
+            self.add_cell(args['type'] or agent_type, dict(actor_config, **{
+                'boot': 'vivarium.environment.boot',
+                'outer_id': experiment_id,
+                'working_dir': args['working_dir'],
+                'seed': index}))
+
     def lattice_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
         if not experiment_id:
@@ -219,41 +245,25 @@ class ShepherdControl(ActorControl):
                 'seed': index}))
 
     def ecoli_core_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('glc-g6p')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
 
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 2.0 mmol 0.1 L, 21600 end'
+        experiment_id = 'glc-g6p'
+        environment_type = 'ecoli_core_glc'
+        agent_type = 'shifter'
 
+        # overwrite default environment
         lattice_config = {
             'name': 'ecoli_core_experiment',
-            'timeline_str': timeline_str,
-            'edge_length_x': 15.0,
-            'patches_per_edge_x': 15,
-            'run_for': 2.0,
-            'diffusion': 1e-3,
-            'depth': 1e-2,
-            'translation_jitter': 1.0,
-            'emit_fields': [
-                'glc__D_e',
-                'lac__D_e']}
+            'description': 'ecoli_core_experiment',
+        }
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type}
 
-        time.sleep(10)
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'kinetic_FBA', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
+        self.init_experiment(args, exp_config)
 
     def chemotaxis_experiment(self, args, actor_config):
         experiment_id = args['experiment_id']
