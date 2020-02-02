@@ -216,8 +216,6 @@ def test_mem_potential():
     return saved_state
 
 def plot_mem_potential(saved_state, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']

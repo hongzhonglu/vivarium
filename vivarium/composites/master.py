@@ -3,19 +3,23 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state
+from vivarium.environment.make_media import Media
+from vivarium.utils.units import units
 
 # processes
-from vivarium.processes.derive_volume import DeriveVolume
+from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.BiGG_metabolism import BiGGMetabolism
+from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
+from vivarium.processes.minimal_expression import MinimalExpression
+from vivarium.processes.minimal_degradation import MinimalDegradation
+
 
 
 # the composite function
-def compose_kinetic_FBA(config):
+def compose_master(config):
     """
-    A composite with kinetic transport, metabolism, and regulation
-    TODO (eran) -- fit glc/lct uptake rates to growth rates
+    A composite with kinetic transport, metabolism, and gene expression
     """
 
     ## Declare the processes.
@@ -30,7 +34,14 @@ def compose_kinetic_FBA(config):
     # load regulation function
     metabolism_config = config.get('metabolism', default_metabolism_config())
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
-    metabolism = BiGGMetabolism(metabolism_config)
+    metabolism = Metabolism(metabolism_config)
+
+    # expression/degradation
+    expression_config = config.get('expression', {})
+    expression = MinimalExpression(expression_config)
+
+    degradation_config = config.get('degradation', {})
+    degradation = MinimalDegradation(degradation_config)
 
     # Division
     # get initial volume from metabolism
@@ -39,12 +50,14 @@ def compose_kinetic_FBA(config):
     division = Division(division_config)
 
     # Other processes
-    deriver_config = config.get('volume', {})
-    deriver = DeriveVolume(deriver_config)
+    deriver_config = config.get('deriver', {})
+    deriver = Deriver(deriver_config)
 
     # Place processes in layers
     processes = [
-        {'transport': transport},
+        {'transport': transport,
+         'expression': expression,
+         'degradation': degradation},
         {'metabolism': metabolism},
         {'deriver': deriver,
          'division': division}
@@ -64,17 +77,23 @@ def compose_kinetic_FBA(config):
             'reactions': 'reactions',
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
+        'expression' : {
+            'internal': 'cell_counts'},  # updates counts, which the deriver converts to concentrations
+        'degradation': {
+            'internal': 'cell_counts'},
         'division': {
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
     }
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
-        'name': 'kinetic_FBA_composite',
+        'name': config.get('name', 'master_composite'),
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
@@ -89,6 +108,7 @@ def compose_kinetic_FBA(config):
 
 
 
+# toy functions/ defaults
 def default_metabolism_config():
     def regulation(state):
         regulation_logic = {
@@ -98,26 +118,37 @@ def default_metabolism_config():
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
+    # initial state
+    # internal
+    mass = 1339 * units.fg
+    density = 1100 * units.g/units.L
+    volume = mass.to('g') / density
+    internal = {
+            'mass': mass.magnitude,  # fg
+            'volume': volume.to('fL').magnitude}
+
+    # external
+    # TODO -- generalize external to whatever BiGG model is loaded
+    make_media = Media()
+    external = make_media.get_saved_media('ecoli_core_GLC')
+    initial_state = {
+        'internal': internal,
+        'external': external}
+
     return {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation': regulation}
+        'regulation': regulation,
+        'initial_state': initial_state}
 
 def default_transport_config():
-    """
-    Convenience kinetics configuration for simplified glucose transport.
-    This abstracts the PTS/GalP system to a single uptake kinetic
-    with glc__D_e_external as the only cofactor.
-    """
     transport_reactions = {
         'EX_glc__D_e': {
             'stoichiometry': {
                 ('internal', 'g6p_c'): 1.0,
                 ('external', 'glc__D_e'): -1.0,
-                # ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
-                # ('internal', 'pyr_c'): 1.0
             },
             'is reversible': False,
             'catalyzed by': [('internal', 'PTSG')]}}
@@ -156,24 +187,17 @@ if __name__ == '__main__':
     from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
         simulate_with_environment
 
-    out_dir = os.path.join('out', 'tests', 'kinetic_FBA_composite')
+    out_dir = os.path.join('out', 'tests', 'master_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_kinetic_FBA)
+    compartment = load_compartment(compose_master)
 
     # settings for simulation and plot
-    options = compose_kinetic_FBA({})['options']
+    options = compose_master({})['options']
 
     # define timeline
-    timeline = [
-        (0, {'environment': {
-            'lac__D_e': 12.0}
-        }),
-        (1000, {'environment': {
-            'glc__D_e': 0.0}
-        }),
-        (3500, {})]
+    timeline = [(1000, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -185,17 +209,8 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'show_state': [
-            ('environment', 'glc__D_e'),
-            ('environment', 'lac__D_e'),
-            ('reactions', 'GLCpts'),
-            ('reactions', 'EX_glc__D_e'),
-            ('reactions', 'EX_lac__D_e'),
-            ('cell', 'g6p_c'),
-            ('cell', 'pep_c'),
-            ('cell', 'pyr_c'),
-            ('cell', 'PTSG'),
-        ]}
+        'skip_roles': ['prior_state', 'null']
+        }
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

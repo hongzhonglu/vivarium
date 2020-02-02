@@ -10,7 +10,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.derive_volume import DeriveVolume
+from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -39,7 +39,7 @@ def compose_variable_flagella(config):
     division_config = copy.deepcopy(config)
     # division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
-    deriver = DeriveVolume(config)
+    deriver = Deriver(config)
 
     # Place processes in layers
     processes = [
@@ -68,7 +68,9 @@ def compose_variable_flagella(config):
         'division': {
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
     }
 
     ## Initialize the states
@@ -113,7 +115,7 @@ if __name__ == '__main__':
 
     plot_settings = {
         'max_rows': 20,
-    }
+        'skip_roles': ['prior_state']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
