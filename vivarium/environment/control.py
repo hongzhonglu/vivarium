@@ -33,7 +33,9 @@ class ShepherdControl(ActorControl):
 
         # get from args
         experiment_id = args['experiment_id']
-        number = args.get('number', num_cells)
+        number = args.get('number')
+        if number == 0:
+            number = num_cells
         if not experiment_id:
             experiment_id = self.get_experiment_id(default_experiment_id)
 
@@ -75,7 +77,7 @@ class ShepherdControl(ActorControl):
 
     def growth_division_experiment(self, args, actor_config):
 
-        # define experiment: environment type and agent type
+        # define experimental environment and agents
         experiment_id = 'growth_division'
         environment_type = 'lattice'
         agent_type = 'growth_division'
