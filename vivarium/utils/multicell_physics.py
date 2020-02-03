@@ -27,13 +27,12 @@ PHYSICS_TS = 0.005
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter, debug=False):
+    def __init__(self, bounds, jitter_force, debug=False):
         self.pygame_scale = 700 / bounds[0]
         self.pygame_viz = debug
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.translation_jitter = translation_jitter
-        self.rotation_jitter = rotation_jitter
+        self.jitter_force = jitter_force
 
         # Space
         self.space = pymunk.Space()
@@ -82,18 +81,18 @@ class MultiCellPhysics(object):
             # force along ends
             if random.randint(0, 1) == 0:
                 # force on the left end
-                location = (0, random.uniform(0, width))
+                location = (random.uniform(0, width), 0)
             else:
                 # force on the right end
-                location = (length, random.uniform(0, width))
+                location = (random.uniform(0, width), length)
         else:
             # force along length
             if random.randint(0, 1) == 0:
                 # force on the bottom end
-                location = (random.uniform(0, length), 0)
+                location = (0, random.uniform(0, length))
             else:
                 # force on the top end
-                location = (random.uniform(0, length), width)
+                location = (width, random.uniform(0, length))
 
         return location
 
@@ -108,23 +107,22 @@ class MultiCellPhysics(object):
         for body in self.space.bodies:
             width, length = body.dimensions
 
-            # random jitter
-            jitter_torque = random.normalvariate(0, self.rotation_jitter)
+            # jitter forces
+            jitter_location = self.random_body_position(body)
             jitter_force = [
-                random.normalvariate(0, self.translation_jitter),
-                random.normalvariate(0, self.translation_jitter)]
-            location = (width / 2, 0)  # self.random_body_position(body)
+                random.normalvariate(0, self.jitter_force),
+                random.normalvariate(0, self.jitter_force)]
+            body.apply_force_at_local_point(jitter_force, jitter_location)
 
             # motile forces
+            motile_location = (width / 2, 0)  # apply force at back end of body
             motile_torque = 0.0
             motile_force = [0.0, 0.0]
             if hasattr(body, 'motile_force'):
                 force, motile_torque = body.motile_force
                 motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-
-            body.angular_velocity = (jitter_torque + motile_torque)
-            total_force = [a + b for a, b in zip(jitter_force, motile_force)]
-            body.apply_force_at_local_point(total_force, location)
+            body.angular_velocity = motile_torque
+            body.apply_force_at_local_point(motile_force, motile_location)
 
         # run physics
         time = 0
@@ -319,8 +317,7 @@ if __name__ == '__main__':
     length = 2.0
     cell_density = 1100
     mass = volume * cell_density
-    translation_jitter = 0.5
-    rotation_jitter = 0.005
+    jitter_force = 0.5
 
     position = (2.0, 2.0)
     angle = PI/2
@@ -328,8 +325,7 @@ if __name__ == '__main__':
     # make physics instance
     physics = MultiCellPhysics(
         bounds,
-        translation_jitter,
-        rotation_jitter,
+        jitter_force,
         True)
 
     # add cell

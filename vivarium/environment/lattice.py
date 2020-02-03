@@ -39,8 +39,7 @@ CELL_DENSITY = 1100
 # Lattice parameters
 DIFFUSION_CONSTANT = 1e3
 DEFAULT_DEPTH = 3000.0  # um
-TRANSLATION_JITTER = 10
-ROTATION_JITTER = 0.5
+JITTER_FORCE = 10
 
 DEFAULT_TIMESTEP = 1.0
 
@@ -67,8 +66,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ## Cell Parameters
         self.cell_density = CELL_DENSITY  # TODO -- get density from cell sim, or just get mass
         self.cell_radius = config.get('cell_radius', 0.5)  # TODO -- this should be a property of cells.
-        translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
-        rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
+        jitter_force = config.get('jitter_force', JITTER_FORCE)
         self.cell_placement = config.get('cell_placement')
 
         ## Lattice Parameters
@@ -144,8 +142,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         bounds = [self.edge_length_x, self.edge_length_y]
         self.multicell_physics = MultiCellPhysics(
             bounds,
-            translation_jitter,
-            rotation_jitter)
+            jitter_force)
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
@@ -662,17 +659,15 @@ def test_lattice(config):
     timestep = config.get('timestep', 0.1)
     edge_length = config.get('edge_length', 100.0)
     patches_per_edge_x = config.get('patches_per_edge', int(edge_length/2))
-    translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
-    rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
+    jitter_force = config.get('jitter_force', JITTER_FORCE)
     depth = config.get('depth', 0.01)  # 3000 um is default
-    motile_cells = config.get('motile_cells', False)  # 3000 um is default
+    motile_cells = config.get('motile_cells', False)  # if True, run/tumble applied to bodies
 
     # get emitter
     emitter = get_emitter({'type': 'null'})  # TODO -- is an emitter really necessary?
 
     boot_config = {
-        'translation_jitter': translation_jitter,
-        'rotation_jitter': rotation_jitter,
+        'jitter_force': jitter_force,
         'run_for': timestep,
         'depth': depth,
         'static_concentrations': True,
@@ -931,8 +926,9 @@ if __name__ == '__main__':
     # test jitter
     jitter_config = {
         'total_time': 100,
-        'timestep': 1,
-        'edge_length': 2,
+        'timestep': 0.1,
+        'edge_length': 3,
+        'jitter_force': 1e4,
         'patches_per_edge': 1,
         'motile_cells': False}
 
@@ -947,8 +943,8 @@ if __name__ == '__main__':
     motile_config = {
         'total_time': 100,
         'timestep': 0.1,
-        'translation_jitter': 0.0,
-        'rotation_jitter': 0.0,
+        'edge_length': 50,
+        'jitter_force': 1e4,
         'motile_cells': True}
 
     motile_output = test_lattice(motile_config)

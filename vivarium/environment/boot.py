@@ -301,7 +301,6 @@ def initialize_measp(boot_config):
                     'deviation': 30.0}
             }},
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
         'edge_length_x': 50.0,
         'patches_per_edge_x': 40}
 
@@ -335,8 +334,7 @@ def initialize_measp_long(boot_config):
                     'center': [1.0, 0.5],
                     'slope': -2e0}
             }},
-        'translation_jitter': 2.0,
-        # 'rotation_jitter': 0.05,
+        'jitter_force': 2.0,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
         'patches_per_edge_x': 100}
@@ -388,7 +386,6 @@ def initialize_measp_large(boot_config):
                     'slope': -1.0 / 250.0}
             }},
         # 'diffusion': 0.001,
-        'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
         'patches_per_edge_x': 50}
 
@@ -410,7 +407,6 @@ def initialize_measp_timeline(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
         'edge_length_x': 100.0,
         'patches_per_edge_x': 50,
     }
