@@ -50,7 +50,7 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': generate_template(
                     'GFP_RNA', len(GFP.sequence), ['GFP'])},
             'transcript_affinities': {
-                'GFP_RNA': 0.5},
+                'GFP_RNA': 0.1},
 
             'elongation_rate': 22,
             'advancement_rate': 10.0},

@@ -49,7 +49,7 @@ class Polymerase(Datum):
 
     def complete(self):
         self.state = 'complete'
-        print('completing polymerization: {}'.format(self.to_dict()))
+        # print('completing polymerization: {}'.format(self.to_dict()))
 
     def is_bound(self):
         return self.state == 'bound'
