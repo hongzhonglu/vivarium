@@ -208,7 +208,7 @@ class Transcription(Process):
             distance = chromosome.terminator_distance()
 
             # find interval of time that elongates to the point of the next terminator
-            interval = distance / self.elongation_rate
+            interval = min(distance / self.elongation_rate, timestep - time)
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(interval, substrate)
@@ -284,6 +284,8 @@ class Transcription(Process):
             'chromosome': chromosome.to_dict(),
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
+
+        print('transcription update: {}'.format(update))
 
         return update
 

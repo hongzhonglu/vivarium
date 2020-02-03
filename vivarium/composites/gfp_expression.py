@@ -39,7 +39,7 @@ def generate_gfp_compartment(config):
             'promoter_affinities': {
                 'T7': 1.0},
 
-            'advancement_rate': 10.0,
+            'advancement_rate': 50.0,
             'elongation_rate': 50},
 
         'translation': {
@@ -53,10 +53,11 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': 1.0},
 
             'elongation_rate': 22,
-            'advancement_rate': 10.0},
+            'advancement_rate': 50.0},
 
         'initial_state': {
-            'molecules': PURE_counts}}
+            'molecules': PURE_counts,
+            'transcripts': {'GFP_RNA': 1}}}
 
     return compose_gene_expression(gfp_config)
 

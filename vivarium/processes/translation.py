@@ -218,7 +218,7 @@ class Translation(Process):
             distance = 1
 
             # find interval of time that elongates to the point of the next terminator
-            interval = distance / self.elongation_rate
+            interval = min(distance / self.elongation_rate, timestep - time)
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(interval, substrate)
@@ -289,7 +289,7 @@ class Translation(Process):
             'molecules': molecules,
             'proteins': elongation.complete_polymers}
 
-        print('molecules update: {}'.format(molecules))
+        print('translation update: {}'.format(update))
 
         return update
 
