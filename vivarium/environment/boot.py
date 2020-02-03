@@ -334,7 +334,7 @@ def initialize_measp_long(boot_config):
                     'center': [1.0, 0.5],
                     'slope': -2e0}
             }},
-        'jitter_force': 2.0,
+        'jitter_force': 2e-5,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
         'patches_per_edge_x': 100}

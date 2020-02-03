@@ -23,6 +23,7 @@ PI = math.pi
 ELASTICITY = 0.95
 FRICTION = 0.9
 PHYSICS_TS = 0.005
+FORCE_SCALING = 83000  # scales from pN
 
 
 class MultiCellPhysics(object):
@@ -32,6 +33,7 @@ class MultiCellPhysics(object):
         self.pygame_viz = debug
         self.elasticity = ELASTICITY
         self.friction = FRICTION
+        self.force_scaling = FORCE_SCALING
         self.jitter_force = jitter_force
 
         # Space
@@ -112,7 +114,8 @@ class MultiCellPhysics(object):
             jitter_force = [
                 random.normalvariate(0, self.jitter_force),
                 random.normalvariate(0, self.jitter_force)]
-            body.apply_force_at_local_point(jitter_force, jitter_location)
+            scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
+            body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
 
             # motile forces
             motile_location = (width / 2, 0)  # apply force at back end of body
@@ -122,7 +125,8 @@ class MultiCellPhysics(object):
                 force, motile_torque = body.motile_force
                 motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
             body.angular_velocity = motile_torque
-            body.apply_force_at_local_point(motile_force, motile_location)
+            scaled_motile_force = [force * self.force_scaling for force in motile_force]
+            body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
         # run physics
         time = 0

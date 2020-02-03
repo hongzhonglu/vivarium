@@ -47,7 +47,7 @@ class ShepherdControl(ActorControl):
             'diffusion': 1000,
             'edge_length_x': 20,
             'patches_per_edge_x': 10,
-            'jitter_force': 0.1})
+            'jitter_force': 1e-6})
 
         self.add_agent(experiment_id, 'lattice', lattice_config)
 
@@ -89,7 +89,7 @@ class ShepherdControl(ActorControl):
             'edge_length_x': 80.0,
             'edge_length_y': 20.0,
             'patches_per_edge_x': 8,
-            'jitter_force': 0.1}
+            'jitter_force': 1e-6}
 
         actor_config['boot_config'].update(lattice_config)
         self.add_agent(experiment_id, 'lattice', actor_config)
@@ -236,7 +236,7 @@ class ShepherdControl(ActorControl):
             'run_for': 2.0,
             'diffusion': 1e-3,
             'depth': 1e-2,
-            'jitter_force': 1.0,
+            'jitter_force': 1e-5,
             'emit_fields': [
                 'glc__D_e',
                 'lac__D_e']}
@@ -293,7 +293,7 @@ class ShepherdControl(ActorControl):
                 }},
             'edge_length_x': 2000.0,
             'edge_length_y': 400.0,
-            'jitter_force': 1.0,
+            'jitter_force': 1e-5,
             'patches_per_edge_x': 100}
 
         actor_config['boot_config'].update(lattice_config)

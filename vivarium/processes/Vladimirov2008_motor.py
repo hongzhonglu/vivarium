@@ -177,13 +177,13 @@ class MotorActivity(Process):
         return update
 
 def tumble():
-    force = 400
+    force = 5e-3
     tumble_jitter = 100
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 2000
+    force = 2.5e-2
     torque = 0.0
     return [force, torque]
 

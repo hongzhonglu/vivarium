@@ -39,7 +39,7 @@ CELL_DENSITY = 1100
 # Lattice parameters
 DIFFUSION_CONSTANT = 1e3
 DEFAULT_DEPTH = 3000.0  # um
-JITTER_FORCE = 10
+JITTER_FORCE = 1e-4  # pN
 
 DEFAULT_TIMESTEP = 1.0
 
@@ -566,13 +566,13 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    force = 10000
+    force = 0.1  # pN
     tumble_jitter = 30
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 25000
+    force = 0.3  # pN
     torque = 0.0
     return [force, torque]
 
@@ -928,7 +928,7 @@ if __name__ == '__main__':
         'total_time': 100,
         'timestep': 0.1,
         'edge_length': 3,
-        'jitter_force': 1e4,
+        'jitter_force': 1e-1,
         'patches_per_edge': 1,
         'motile_cells': False}
 
@@ -944,7 +944,7 @@ if __name__ == '__main__':
         'total_time': 100,
         'timestep': 0.1,
         'edge_length': 50,
-        'jitter_force': 1e4,
+        'jitter_force': 1e-1,
         'motile_cells': True}
 
     motile_output = test_lattice(motile_config)
