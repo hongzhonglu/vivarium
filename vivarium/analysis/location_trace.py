@@ -26,12 +26,12 @@ class LatticeTrace(Analysis):
         edge_y = experiment_config['edge_length_y']
         min_edge = min(edge_x, edge_y)
         scaling = 8 / min_edge
-        markersize = 20
-        n_ticks = 5
+        markersize = 30
+        n_ticks = 4
 
         # plot trajectories
         fig = plt.figure(figsize=(scaling*edge_x, scaling*edge_y))
-        plt.rcParams.update({'font.size': 28, "font.family": "Times New Roman"})
+        plt.rcParams.update({'font.size': 32, "font.family": "Times New Roman"})
         for agent_id in agent_ids:
             # get locations and convert to 2D array
             locations = history_data[agent_id]['location']
@@ -39,7 +39,7 @@ class LatticeTrace(Analysis):
             x_coord = locations_array[:, 0]
             y_coord = locations_array[:, 1]
 
-            plt.plot(x_coord, y_coord, label=agent_id)  # trajectory
+            plt.plot(x_coord, y_coord, linewidth=2, label=agent_id)  # trajectory
             plt.plot(x_coord[0], y_coord[0], color='g', marker='.', markersize=markersize)  # starting point
             plt.plot(x_coord[-1], y_coord[-1], color='r', marker='.', markersize=markersize)  #  ending point
 

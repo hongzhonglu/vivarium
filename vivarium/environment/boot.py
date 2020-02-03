@@ -301,7 +301,6 @@ def initialize_measp(boot_config):
                     'deviation': 30.0}
             }},
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
         'edge_length_x': 50.0,
         'patches_per_edge_x': 40}
 
@@ -311,31 +310,34 @@ def initialize_measp(boot_config):
 def initialize_measp_long(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
+             'MeAsp': 8000.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 1800 end'.format(media_id)
     lattice_config = {
         'name': 'measp_long',
+        'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+                       'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+                       'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
-        'run_for': 1.0,
+        'run_for': 0.05,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
+        'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
         'gradient': {
             'type': 'linear',
             'molecules': {
                 'GLC': {
-                    'center': [0.0, 0.0],
-                    'slope': -1.0/150.0},
+                    'center': [1.0, 0.5],
+                    'slope': -1e-2},
                 'MeAsp': {
-                    'center': [1.0, 1.0],
-                    'slope': -1.0/150.0}
+                    'center': [1.0, 0.5],
+                    'slope': -2e0}
             }},
-        'diffusion': 0.0,
-        'rotation_jitter': 0.005,
-        'edge_length_x': 200.0,
-        'edge_length_y': 50.0,
-        'patches_per_edge_x': 40}
+        'jitter_force': 2e-5,
+        'edge_length_x': 4000.0,
+        'edge_length_y': 800.0,
+        'patches_per_edge_x': 100}
 
     boot_config.update(lattice_config)
     return boot_config
@@ -384,7 +386,6 @@ def initialize_measp_large(boot_config):
                     'slope': -1.0 / 250.0}
             }},
         # 'diffusion': 0.001,
-        'rotation_jitter': 0.005,
         'edge_length_x': 200.0,
         'patches_per_edge_x': 50}
 
@@ -406,7 +407,6 @@ def initialize_measp_timeline(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
         'edge_length_x': 100.0,
         'patches_per_edge_x': 50,
     }

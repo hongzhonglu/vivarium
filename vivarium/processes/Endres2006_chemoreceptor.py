@@ -33,7 +33,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 2,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 1,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 
@@ -52,6 +52,8 @@ class ReceptorCluster(Process):
 
     def default_settings(self):
 
+        set_keys = ['chemoreceptor_activity', 'n_methyl']
+
         # default state
         internal = INITIAL_STATE
         internal.update({'volume': 1})
@@ -62,12 +64,12 @@ class ReceptorCluster(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': ['chemoreceptor_activity', 'n_methyl'],
+            'internal': set_keys,
             'external': [self.ligand_id]}
 
         # default updaters
         default_updaters = {
-            'internal': {state_id: 'set' for state_id in ['chemoreceptor_activity', 'n_methyl']},
+            'internal': {state_id: 'set' for state_id in set_keys},
             'external': {}}
 
         default_settings = {
