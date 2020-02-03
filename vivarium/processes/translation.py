@@ -83,9 +83,6 @@ class Translation(Process):
 
         self.sequences = parameters['sequences']
         self.templates = parameters['templates']
-        # {
-        #     key: Template(config)
-        #     for key, config in parameters['templates'].items()}
 
         self.transcript_affinities = parameters['transcript_affinities']
         self.transcript_order = parameters['transcript_order']
@@ -289,7 +286,7 @@ class Translation(Process):
             'molecules': molecules,
             'proteins': elongation.complete_polymers}
 
-        print('translation update: {}'.format(update))
+        # print('translation update: {}'.format(update))
 
         return update
 

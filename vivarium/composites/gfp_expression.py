@@ -37,9 +37,9 @@ def generate_gfp_compartment(config):
             'templates': gfp_plasmid_config['promoters'],
             'genes': gfp_plasmid_config['genes'],
             'promoter_affinities': {
-                'T7': 1.0},
+                'T7': 0.5},
 
-            'advancement_rate': 50.0,
+            'advancement_rate': 10.0,
             'elongation_rate': 50},
 
         'translation': {
@@ -50,10 +50,10 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': generate_template(
                     'GFP_RNA', len(GFP.sequence), ['GFP'])},
             'transcript_affinities': {
-                'GFP_RNA': 1.0},
+                'GFP_RNA': 0.5},
 
             'elongation_rate': 22,
-            'advancement_rate': 50.0},
+            'advancement_rate': 10.0},
 
         'initial_state': {
             'molecules': PURE_counts,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 10}
+        'total_time': 40}
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)

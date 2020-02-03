@@ -127,7 +127,7 @@ class Transcription(Process):
 
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': list(default_state['molecules'].keys()),
+            'molecules': self.monomer_ids + [self.unbound_rnap_key],
             'transcripts': operons}
 
         default_updaters = {
@@ -285,7 +285,7 @@ class Transcription(Process):
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
-        print('transcription update: {}'.format(update))
+        # print('transcription update: {}'.format(update))
 
         return update
 

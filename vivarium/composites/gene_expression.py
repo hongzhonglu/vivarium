@@ -11,7 +11,8 @@ from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
-
+from vivarium.data.amino_acids import amino_acids
+from vivarium.data.nucleotides import nucleotides
 
 
 def compose_gene_expression(config):
@@ -75,31 +76,43 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
 
     # make figure and plot
     n_cols = 1
-    n_rows = 3
+    n_rows = 4
     plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
 
     # define subplots
     ax1 = plt.subplot(n_rows, n_cols, 1)
     ax2 = plt.subplot(n_rows, n_cols, 2)
     ax3 = plt.subplot(n_rows, n_cols, 3)
+    ax4 = plt.subplot(n_rows, n_cols, 4)
+
+    polymerase_ids = [
+        Transcription().unbound_rnap_key,
+        Translation().unbound_ribosomes_key]
+    molecule_ids = list(amino_acids.values()) + list(nucleotides.values())
 
     # plot molecules
-    for mol_id, series in molecules.items():
-        ax1.plot(time, series, label=mol_id)
-    ax1.legend(loc='center left', bbox_to_anchor=(2.0, 0.5))
-    ax1.title.set_text('metabolites')
+    for poly_id in polymerase_ids:
+        ax1.plot(time, molecules[poly_id], label=poly_id)
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.title.set_text('polymerases')
+
+    # plot molecules
+    for mol_id in molecule_ids:
+        ax2.plot(time, molecules[mol_id], label=mol_id)
+    ax2.legend(loc='center left', bbox_to_anchor=(2.0, 0.5))
+    ax2.title.set_text('metabolites')
 
     # plot transcripts
     for transcript_id, series in transcripts.items():
-        ax2.plot(time, series, label=transcript_id)
-    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax2.title.set_text('transcripts')
+        ax3.plot(time, series, label=transcript_id)
+    ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax3.title.set_text('transcripts')
 
     # plot proteins
     for protein_id, series in proteins.items():
-        ax3.plot(time, series, label=protein_id)
-    ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax3.title.set_text('proteins')
+        ax4.plot(time, series, label=protein_id)
+    ax4.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax4.title.set_text('proteins')
 
     # adjust axes
     for axis in [ax1, ax2, ax3]:
@@ -108,7 +121,8 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
 
     ax1.set_xticklabels([])
     ax2.set_xticklabels([])
-    ax3.set_xlabel('time (s)', fontsize=12)
+    ax3.set_xticklabels([])
+    ax4.set_xlabel('time (s)', fontsize=12)
 
     # save figure
     fig_path = os.path.join(out_dir, 'gene_expression')
