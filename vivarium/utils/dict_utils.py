@@ -35,12 +35,12 @@ def tuplify_role_dicts(dicts):
             merge.update({(role, state): value})
     return merge
 
-def tuple_key_to_string(dictionary):
+def tuple_to_str_dict(dictionary):
 
     # get down to the leaves first
     for k, v in dictionary.items():
         if isinstance(v, dict):
-            tuple_key_to_string(v)
+            tuple_to_str_dict(v)
 
         # convert tuples in lists
         if isinstance(v, list):
@@ -48,7 +48,7 @@ def tuple_key_to_string(dictionary):
                 if isinstance(var, tuple):
                     v[idx] = tuple_separator.join(var)
                 if isinstance(var, dict):
-                    tuple_key_to_string(var)
+                    tuple_to_str_dict(var)
 
     # which keys are tuples?
     tuple_ks = [k for k in dictionary.keys() if isinstance(k, tuple)]
@@ -56,5 +56,30 @@ def tuple_key_to_string(dictionary):
         str_k = tuple_separator.join(tuple_k)
         dictionary[str_k] = dictionary[tuple_k]
         del dictionary[tuple_k]
+
+    return dictionary
+
+def str_to_tuple_dict(dictionary):
+    # take a dict with keys that have tuple_separator, and convert them to tuples
+
+    # get down to the leaves first
+    for k, v in dictionary.items():
+        if isinstance(v, dict):
+            str_to_tuple_dict(v)
+
+        # convert strings in lists
+        if isinstance(v, list):
+            for idx, var in enumerate(v):
+                if isinstance(var, str) and tuple_separator in var:
+                    v[idx] = tuple(var.split(tuple_separator))
+                if isinstance(var, dict):
+                    str_to_tuple_dict(var)
+
+    # which keys are tuples?
+    str_ks = [k for k in dictionary.keys() if isinstance(k, str) and tuple_separator in k]
+    for str_k in str_ks:
+        tuple_k = tuple(str_k.split(tuple_separator))
+        dictionary[tuple_k] = dictionary[str_k]
+        del dictionary[str_k]
 
     return dictionary
