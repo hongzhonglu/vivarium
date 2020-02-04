@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from vivarium.data.chromosome import test_chromosome_config
+from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Template, Elongation, polymerize_to, add_merge
 
@@ -238,11 +239,12 @@ class Chromosome(Datum):
 
         sequences = self.sequences()
 
-        monomers, monomer_limits, complete_transcripts, self.rnaps = polymerize_to(
+        monomers, monomer_limits, terminated, complete_transcripts, self.rnaps = polymerize_to(
             sequences,
             self.rnaps,
             self.promoters,
             elongate_to,
+            nucleotides,
             monomer_limits)
 
         return elongate_to, monomers, monomer_limits, complete_transcripts
@@ -384,7 +386,7 @@ def test_chromosome():
 
     print('completed after advancing 5')
     print(chromosome.polymerize(5, {
-        'A': 100, 'T': 100, 'G': 100, 'C': 100}))
+        'rATP': 100, 'rUTP': 100, 'rGTP': 100, 'rCTP': 100}))
 
     print('rnaps after polymerizing')
     print(chromosome.rnaps)
