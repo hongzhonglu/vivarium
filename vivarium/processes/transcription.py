@@ -28,8 +28,6 @@ class Transcription(Process):
 
         print('inital_parameters: {}'.format(initial_parameters))
 
-        # TODO: add monomer_mapping parameter for monomer names
-
         monomer_ids = list(nucleotides.values())
         self.unbound_rnap_key = 'RNA Polymerase'
         self.default_parameters = {
