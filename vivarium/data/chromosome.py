@@ -96,8 +96,6 @@ gfp_plasmid_config = {
 flagella_genes = knowledge_base.wcEcoli_genes
 flagella_sequence = ''
 
-import ipdb; ipdb.set_trace()
-
 flagella_config = {
     'sequence': flagella_sequence,
     'genes': {},
