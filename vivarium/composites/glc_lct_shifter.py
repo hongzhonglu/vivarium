@@ -4,7 +4,6 @@ import os
 
 from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
-from vivarium.utils.dict_utils import tuple_to_str_dict
 from vivarium.composites.master import compose_master
 
 
@@ -131,8 +130,6 @@ def compose_glc_lct_shifter(config):
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
         'deriver': get_expression_config()}
-
-    tuple_to_str_dict(shifter_config)
     config.update(shifter_config)
 
     return compose_master(config)

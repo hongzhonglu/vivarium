@@ -9,7 +9,6 @@ from vivarium.actor.process import Process, convert_to_timeseries, plot_simulati
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.units import units
-from vivarium.utils.dict_utils import str_to_tuple_dict
 
 EMPTY_ROLES = {
     'internal': [],
@@ -26,17 +25,13 @@ class ConvenienceKinetics(Process):
         self.nAvogadro = constants.N_A * 1 / units.mol
 
         # retrieve initial parameters
-        reactions = initial_parameters.get('reactions')
+        self.reactions = initial_parameters.get('reactions')
         self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
         kinetic_parameters = initial_parameters.get('kinetic_parameters')
         roles = initial_parameters.get('roles', EMPTY_ROLES)
 
         # make the kinetic model
-        kinetic_params = copy.deepcopy(kinetic_parameters)
-        str_to_tuple_dict(kinetic_params)
-        self.reactions = copy.deepcopy(reactions)
-        str_to_tuple_dict(self.reactions)
-        self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_params)
+        self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
         # roles
         # add volume to internal role
