@@ -67,7 +67,7 @@ def compose_gene_expression(config):
 
 
 # analysis
-def plot_gene_expression_output(timeseries, out_dir='out'):
+def plot_gene_expression_output(timeseries, name, out_dir='out'):
 
     molecules = timeseries['molecules']
     transcripts = timeseries['transcripts']
@@ -134,7 +134,7 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
     ax5.set_xlabel('time (s)', fontsize=12)
 
     # save figure
-    fig_path = os.path.join(out_dir, 'gene_expression')
+    fig_path = os.path.join(out_dir, name)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
@@ -155,4 +155,4 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gene_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, out_dir)
+    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)

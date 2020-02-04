@@ -6,6 +6,7 @@ from vivarium.data.spreadsheets import load_tsv
 FLAT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "flat")
 
 LIST_OF_FLAT_FILENAMES = (
+    os.path.join("wcEcoli_genes.tsv"),
     os.path.join("wcEcoli_environment_molecules.tsv"),
     os.path.join("timelines_def.tsv"),
     os.path.join("media_recipes.tsv"),

@@ -57,7 +57,7 @@ def generate_gfp_compartment(config):
 
         'initial_state': {
             'molecules': PURE_counts,
-            'transcripts': {'GFP_RNA': 1}}}
+            'transcripts': {'GFP_RNA': 0}}}
 
     return compose_gene_expression(gfp_config)
 
@@ -77,5 +77,5 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, out_dir)
+    plot_gene_expression_output(timeseries, 'gfp_expression', out_dir)
     
