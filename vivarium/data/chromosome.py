@@ -1,3 +1,7 @@
+from vivarium.data.knowledge_base import KnowledgeBase
+
+knowledge_base = KnowledgeBase()
+
 test_chromosome_config = {
     'sequence': 'ATACGGCACGTGACCGTCAACTTA',
     'genes': {
@@ -68,7 +72,7 @@ test_chromosome_config = {
 gfp_plasmid_config = {
     'sequence': 'TAATACGACTCACTATAGGATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAG',
     'genes': {
-        'GFP': ['GFP']},
+        'GFP_RNA': ['GFP_RNA']},
     'promoters': {
         'T7': {
             'id': 'T7',
@@ -79,8 +83,23 @@ gfp_plasmid_config = {
                 {
                     'position': 736,
                     'strength': 1.0,
-                    'product': ['GFP']}]},
-        },
+                    'product': ['GFP_RNA']}]}},
+    'domains': {
+        0: {
+            'id': 0,
+            'lead': 0,
+            'lag': 0,
+            'children': []}},
+    'rnaps': []}
+
+
+flagella_genes = knowledge_base.wcEcoli_genes
+flagella_sequence = ''
+
+flagella_config = {
+    'sequence': flagella_sequence,
+    'genes': {},
+    'promoters': {},
     'domains': {
         0: {
             'id': 0,

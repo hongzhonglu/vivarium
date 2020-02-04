@@ -11,14 +11,15 @@ from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
-
+from vivarium.data.amino_acids import amino_acids
+from vivarium.data.nucleotides import nucleotides
 
 
 def compose_gene_expression(config):
 
     # declare the processes
-    transcription = Transcription(config)
-    translation = Translation(config)
+    transcription = Transcription(config.get('transcription', {}))
+    translation = Translation(config.get('translation', {}))
     deriver = Deriver(config)
     division = Division(config)
 
@@ -66,7 +67,7 @@ def compose_gene_expression(config):
 
 
 # analysis
-def plot_gene_expression_output(timeseries, out_dir='out'):
+def plot_gene_expression_output(timeseries, name, out_dir='out'):
 
     molecules = timeseries['molecules']
     transcripts = timeseries['transcripts']
@@ -75,43 +76,65 @@ def plot_gene_expression_output(timeseries, out_dir='out'):
 
     # make figure and plot
     n_cols = 1
-    n_rows = 3
+    n_rows = 5
     plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
 
     # define subplots
     ax1 = plt.subplot(n_rows, n_cols, 1)
     ax2 = plt.subplot(n_rows, n_cols, 2)
     ax3 = plt.subplot(n_rows, n_cols, 3)
+    ax4 = plt.subplot(n_rows, n_cols, 4)
+    ax5 = plt.subplot(n_rows, n_cols, 5)
+
+    polymerase_ids = [
+        Transcription().unbound_rnap_key,
+        Translation().unbound_ribosomes_key]
+    amino_acid_ids = list(amino_acids.values())
+    nucleotide_ids = list(nucleotides.values())
+
+    # plot polymerases
+    for poly_id in polymerase_ids:
+        ax1.plot(time, molecules[poly_id], label=poly_id)
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.title.set_text('polymerases')
+
+    # plot nucleotides
+    for nuc_id in nucleotide_ids:
+        ax2.plot(time, molecules[nuc_id], label=nuc_id)
+    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax2.title.set_text('nucleotides')
 
     # plot molecules
-    for mol_id, series in molecules.items():
-        ax1.plot(time, series, label=mol_id)
-    # ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax1.title.set_text('metabolites')
+    for aa_id in amino_acid_ids:
+        ax3.plot(time, molecules[aa_id], label=aa_id)
+    ax3.legend(loc='center left', bbox_to_anchor=(2.0, 0.5))
+    ax3.title.set_text('amino acids')
 
     # plot transcripts
     for transcript_id, series in transcripts.items():
-        ax2.plot(time, series, label=transcript_id)
-    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax2.title.set_text('transcripts')
+        ax4.plot(time, series, label=transcript_id)
+    ax4.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax4.title.set_text('transcripts')
 
     # plot proteins
     for protein_id, series in proteins.items():
-        ax3.plot(time, series, label=protein_id)
-    ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax3.title.set_text('proteins')
+        ax5.plot(time, series, label=protein_id)
+    ax5.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax5.title.set_text('proteins')
 
     # adjust axes
-    for axis in [ax1, ax2, ax3]:
+    for axis in [ax1, ax2, ax3, ax4, ax5]:
         axis.spines['right'].set_visible(False)
         axis.spines['top'].set_visible(False)
 
     ax1.set_xticklabels([])
     ax2.set_xticklabels([])
-    ax3.set_xlabel('time (s)', fontsize=12)
+    ax3.set_xticklabels([])
+    ax4.set_xticklabels([])
+    ax5.set_xlabel('time (s)', fontsize=12)
 
     # save figure
-    fig_path = os.path.join(out_dir, 'gene_expression')
+    fig_path = os.path.join(out_dir, name)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
@@ -132,4 +155,4 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gene_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, out_dir)
+    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
