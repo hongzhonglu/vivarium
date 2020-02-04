@@ -36,6 +36,7 @@ def tuplify_role_dicts(dicts):
     return merge
 
 def tuple_to_str_dict(dictionary):
+    # take a dict with tuple keys, and convert them to strings with tuple_separator as a delimiter
 
     # get down to the leaves first
     for k, v in dictionary.items():
