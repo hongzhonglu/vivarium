@@ -79,7 +79,11 @@ def extract_model(model):
 
     # TODO -- get flux_scaling from optimization?
     # TODO -- save flux_scaling for each model?
-    flux_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
+    # flux_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
+    flux_scaling = 4e-07
+    # import ipdb; ipdb.set_trace()
+    # TODO -- get flux scaling
+
 
     reactions = model.reactions
     metabolites = model.metabolites

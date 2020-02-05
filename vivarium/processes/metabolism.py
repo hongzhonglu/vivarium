@@ -72,7 +72,8 @@ class Metabolism(Process):
 
         # default state
         internal = {state_id: 0.0 for state_id in self.internal_state_ids}
-        external = {state_id: 0.0 for state_id in self.fba.external_molecules}
+        external = {state_id: 10.0 for state_id in self.fba.external_molecules}
+        # get optimal media from fba
         external.update(self.fba.minimal_external)
         external.update(self.initial_state.get('external', {}))
 
@@ -460,10 +461,7 @@ def make_random_rate(mu=0, sigma=1):
 
 
 
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'metabolism')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+def test_toy_metabolism():
 
     # toy functions
     def toy_transport():
@@ -473,11 +471,13 @@ if __name__ == '__main__':
         }
         return transport_kinetics
 
+
     def toy_regulation(state):
         regulation_logic = {
             'R4': bool(state[('external', 'O2')] > 0.1 and not state[('external', 'F')] > 0.1),
         }
         return regulation_logic
+
 
     # configure toy model
     toy_config = get_toy_configuration()
@@ -510,14 +510,26 @@ if __name__ == '__main__':
             'reactions': 'flux_bounds'}}
 
     saved_data = simulate_metabolism(simulation_config)
-    del saved_data[0] # remove first state
+    del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
     plot_exchanges(timeseries, simulation_config, out_dir)
 
+
+def make_network():
     # make flux network from toy model
     network_config = {
         'process': toy_metabolism,
         'total_time': 10,
         'environment_volume': 5e-13}
     save_network(network_config, out_dir)
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'metabolism')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    test_toy_metabolism()
+    make_network()
+
