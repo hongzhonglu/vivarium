@@ -129,7 +129,12 @@ class Analyze(object):
         experiment_config = get_experiment(config_client, self.experiment_id)
         if not experiment_config:
             raise AnalysisError('database has no experiment id: {}'.format(self.experiment_id))
-        active_processes = experiment_config.get('topology', {}).keys()
+
+        # get all processes active in the agents.
+        active_processes = set()
+        for agent, specs in experiment_config['agents'].items():
+            processes = list(specs['topology'].keys())
+            active_processes.update(processes)
 
         # get the phylogenetic tree in experiment config
         experiment_config['phylogeny'] = get_phylogeny(phylogeny_client, self.experiment_id)
@@ -201,20 +206,26 @@ class Analyze(object):
                     # Output is saved to each compartment's directory.
 
                     for sim_id in simulation_ids:
-                        env_query = query.copy()
-                        env_query.update({'agent_id': sim_id})
-                        options = {'type': 'environment'}
-                        environment_data = environment_query(env_query, analysis, history_client, options)
-                        data = {'environment': environment_data}
+                        sim_processes = list(experiment_config['agents'][sim_id]['topology'].keys())
+                        required = analysis.requirements()
 
-                        options = {
-                            'type': 'compartment',
-                            'tags': self.tags}
-                        compartment_data = compartment_query(query, analysis, history_client, sim_id, options)
-                        data['compartment'] = compartment_data
+                        # if THIS sim has the required processes
+                        if all(processes in sim_processes for processes in required):
+                            env_query = query.copy()
+                            env_query.update({'agent_id': sim_id})
+                            options = {'type': 'environment'}
+                            environment_data = environment_query(env_query, analysis, history_client, options)
+                            data = {'environment': environment_data}
 
-                        sim_out_dir = os.path.join(output_dir, sim_id)
-                        analysis.analyze(experiment_config, data, sim_out_dir)
+                            options = {
+                                'type': 'compartment',
+                                'tags': self.tags}
+                            compartment_data = compartment_query(query, analysis, history_client, sim_id, options)
+                            data['compartment'] = compartment_data
+
+                            sim_out_dir = os.path.join(output_dir, sim_id)
+
+                            analysis.analyze(experiment_config, data, sim_out_dir)
 
                 print('completed analysis: {}'.format(analysis_class.__name__))
 

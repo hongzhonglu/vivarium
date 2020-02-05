@@ -64,7 +64,7 @@ class ConvenienceKinetics(Process):
         default_updaters = {}
 
         default_settings = {
-            'process_id': 'template',
+            'process_id': 'convenience_kinetics',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,

@@ -7,7 +7,7 @@ from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.Kremling2007_transport import Transport
-from vivarium.processes.derive_volume import DeriveVolume
+from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state  # TODO -- division process can house all condition, state functions
 
 
@@ -20,7 +20,7 @@ def compose_pmf_chemotaxis(config):
     motor = MotorActivity(config)
     PMF = MembranePotential(config)
     transport = Transport(config)
-    deriver = DeriveVolume(config)
+    deriver = Deriver(config)
     division = Division(config)
 
     # place processes in layers
@@ -52,7 +52,9 @@ def compose_pmf_chemotaxis(config):
             'membrane': 'membrane',
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
         'division': {
             'internal': 'cell'},
         }

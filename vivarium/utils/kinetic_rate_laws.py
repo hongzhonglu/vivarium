@@ -1,12 +1,22 @@
 '''
 Kinetic rate law generation using the Convenience Kinetics formulation of Michaelis-Menten kinetics
 
+Formulation provided in:
+    Liebermeister, Wolfram, and Edda Klipp. "Bringing metabolic networks to life:
+    convenience rate law and thermodynamic constraints."
+    Theoretical Biology and Medical Modelling 3.1 (2006): 41.
+
 # TODO -- make a vmax options if enzyme kcats not available
 '''
 
 from __future__ import absolute_import, division, print_function
 
+import os
+
 import numpy as np
+
+from vivarium.utils.dict_utils import tuplify_role_dicts
+
 
 
 def get_molecules(reactions):
@@ -281,7 +291,88 @@ class KineticFluxModel(object):
 
         for reaction_id, enzymes in self.rate_laws.items():
             for enzyme, rate_law in enzymes.items():
-                flux = self.rate_laws[reaction_id][enzyme](concentrations_dict)
+                flux = rate_law(concentrations_dict)
                 reaction_fluxes[reaction_id] += flux
 
         return reaction_fluxes
+
+
+
+toy_reactions = {
+    'ABC-13-RXN': {
+        'stoichiometry': {
+            ('cytoplasm', 'PI'): 1,
+            ('cytoplasm', 'ADP'): 1,
+            ('cytoplasm', 'GLT'): 1,
+            ('cytoplasm', 'PROTON'): 1,
+            ('cytoplasm', 'ATP'): -1,
+            ('cytoplasm', 'WATER'): -1,
+            ('periplasm', 'GLT'): -1},
+        'is reversible': False,
+        'catalyzed by': [
+            ('membrane', 'ABC-13-CPLX')]},
+    'TRANS-RXN-122': {
+        'stoichiometry': {
+            ('cytoplasm', 'GLT'): 1, 
+            ('periplasm', 'GLT'): -1, 
+            ('periplasm', 'NA+'): -2, 
+            ('cytoplasm', 'NA+'): 2},
+        'is reversible': False,
+        'catalyzed by': [
+            ('membrane', 'GLTP-MONOMER'),
+            ('membrane', 'DCTA-MONOMER')]},
+    }
+
+
+toy_kinetics = {
+    'ABC-13-RXN': {
+        ('membrane', 'ABC-13-CPLX'): {
+            ('cytoplasm', 'ATP'): None,
+            ('periplasm', 'GLT'): 1e-3,
+            ('cytoplasm', 'WATER'): None,
+            'kcat_f': 1.0
+        }},
+    'TRANS-RXN-122': {
+        ('membrane', 'DCTA-MONOMER'): {
+            ('periplasm', 'GLT'): 1e-3,
+            ('periplasm', 'NA+'): 1e-5,
+            'kcat_f': 1.0
+        },
+        ('membrane', 'GLTP-MONOMER'): {
+            ('periplasm', 'GLT'): 1e-3,
+            ('periplasm', 'NA+'): 1e-5,
+            ('periplasm', 'PROTON'): None,
+            'kcat_f': 1.0
+        }}
+    }
+
+toy_initial_state = {
+    'cytoplasm': {
+        'PI': 1.0,
+        'ADP': 1.0,
+        'GLT': 1.0,
+        'PROTON': 1.0,
+        'ATP': 1.0,
+        'WATER': 1.0,
+        'NA+': 1.0},
+    'periplasm': {
+        'GLT': 1.0,
+        'NA+': 1.0
+    },
+    'membrane': {
+        'ABC-13-CPLX': 1.0,
+        'GLTP-MONOMER': 1.0,
+        'DCTA-MONOMER': 1.0}
+}
+
+
+def test_kinetics():
+    kinetic_rate_laws = KineticFluxModel(toy_reactions, toy_kinetics)
+    flattened_toy_states = tuplify_role_dicts(toy_initial_state)
+    flux = kinetic_rate_laws.get_fluxes(flattened_toy_states)
+
+    print(flux)
+
+
+if __name__ == '__main__':
+    test_kinetics()

@@ -24,13 +24,14 @@ class LatticeTrace(Analysis):
         time_vec = [t / 3600 for t in history_data['time']]  # convert to hours
         edge_x = experiment_config['edge_length_x']
         edge_y = experiment_config['edge_length_y']
-        scaling = 8 / min(edge_x, edge_y)
-
-        markersize = 15
+        min_edge = min(edge_x, edge_y)
+        scaling = 8 / min_edge
+        markersize = 30
+        n_ticks = 4
 
         # plot trajectories
         fig = plt.figure(figsize=(scaling*edge_x, scaling*edge_y))
-        plt.rcParams.update({'font.size': 12, "font.family":"Times New Roman"})
+        plt.rcParams.update({'font.size': 32, "font.family": "Times New Roman"})
         for agent_id in agent_ids:
             # get locations and convert to 2D array
             locations = history_data[agent_id]['location']
@@ -38,9 +39,9 @@ class LatticeTrace(Analysis):
             x_coord = locations_array[:, 0]
             y_coord = locations_array[:, 1]
 
-            plt.plot(x_coord, y_coord, label=agent_id)  # trajectory
-            plt.plot(x_coord[0], y_coord[0], color=(0.0,0.8,0.0), marker='*', markersize=markersize)  # starting point
-            plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*', markersize=markersize)  #  ending point
+            plt.plot(x_coord, y_coord, linewidth=2, label=agent_id)  # trajectory
+            plt.plot(x_coord[0], y_coord[0], color='g', marker='.', markersize=markersize)  # starting point
+            plt.plot(x_coord[-1], y_coord[-1], color='r', marker='.', markersize=markersize)  #  ending point
 
         # set limits
         plt.xlim((0, edge_x))
@@ -48,19 +49,22 @@ class LatticeTrace(Analysis):
         plt.xlabel(u'\u03bcm')
         plt.ylabel(u'\u03bcm')
         # specify the number of ticks
-        plt.locator_params(axis='y', nbins=int(edge_y/10))
-        plt.locator_params(axis='x', nbins=int(edge_x/10))
+        [x_bins, y_bins] = [int(n_ticks*edge/min_edge) for edge in [edge_x, edge_y]]
+        plt.locator_params(axis='y', nbins=y_bins)
+        plt.locator_params(axis='x', nbins=x_bins)
 
         # create legend for agent ids
-        first_legend = plt.legend(title='agent ids', loc='center left', bbox_to_anchor=(1.01, 0.5), prop={'size': 12})
+        first_legend = plt.legend(title='agent ids', loc='center left', bbox_to_anchor=(1.01, 0.5))
         ax = plt.gca().add_artist(first_legend)
 
         # create a legend for start/end markers
-        start = mlines.Line2D([], [], color=(0.0,0.8,0.0), marker='*', linestyle='None',
-                                  markersize=markersize, label='start')
-        end = mlines.Line2D([], [], color='r', marker='*', linestyle='None',
-                                  markersize=markersize, label='end')
-        plt.legend(handles=[start, end], loc='upper left')
+        start = mlines.Line2D([], [],
+            color='g', marker='.', linestyle='None',
+            markersize=markersize, label='start')
+        end = mlines.Line2D([], [],
+            color='r', marker='.', linestyle='None',
+            markersize=markersize, label='end')
+        plt.legend(handles=[start, end], loc='upper right')
 
 
         plt.savefig(output_dir + '/location_trace', bbox_inches='tight')

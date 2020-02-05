@@ -5,7 +5,7 @@ import os
 from vivarium.actor.process import initialize_state
 
 # processes
-from vivarium.processes.derive_volume import DeriveVolume
+from vivarium.processes.deriver import Deriver
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.minimal_expression import MinimalExpression
@@ -60,7 +60,7 @@ def compose_growth_division(config):
     growth = Growth(config)
     division = Division(config)
     expression = MinimalExpression(config)
-    deriver = DeriveVolume(config)
+    deriver = Deriver(config)
 
     # place processes in layers
     processes = [
@@ -85,7 +85,9 @@ def compose_growth_division(config):
         'expression': {
             'internal': 'cell'},
         'deriver': {
-            'internal': 'cell'},
+            'counts': 'cell_counts',
+            'state': 'cell',
+            'prior_state': 'prior_state'},
         }
 
     # initialize the states
@@ -125,9 +127,11 @@ if __name__ == '__main__':
         'total_time': 20}
 
     plot_settings = {
-        'max_rows': 25}
+        'max_rows': 25,
+        'skip_roles': ['prior_state']}
 
     # saved_state = simulate_compartment(compartment, settings)
-    saved_state = simulate_with_environment(compartment, settings)
-    timeseries = convert_to_timeseries(saved_state)
+    saved_data = simulate_with_environment(compartment, settings)
+    del saved_data[0]  # remove the first state
+    timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

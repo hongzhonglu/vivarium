@@ -46,7 +46,6 @@ updater_library = {
 
 KEY_TYPE = 'U31'
 
-
 class State(object):
     ''' Represents a set of named values. '''
 
@@ -303,17 +302,18 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        if configuration.get('emitter') == 'null':
-            emitter = emit.get_emitter({'type': 'null'})
-            self.emitter_keys = emitter.get('keys')
-            self.emitter = emitter.get('object')
-        elif configuration.get('emitter'):
-            self.emitter_keys = configuration['emitter'].get('keys')
-            self.emitter = configuration['emitter'].get('object')
-        else:
+        emitter_type = configuration.get('emitter')
+        if emitter_type is None:
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
+        elif emitter_type == 'null':
+            emitter = emit.get_emitter({'type': 'null'})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
+        else:
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
 
         connect_topology(processes, self.states, self.topology)
 
