@@ -7,27 +7,47 @@ from arpeggio import Optional, ZeroOrMore, OneOrMore, EOF, ParserPython, Kwd, Re
 
 pp = pprint.PrettyPrinter(indent=4)
 
-ignored_statements = ['action is complex', '']
+def convert_number(s):
+    try:
+        return float(s)
+    except:
+        return None
 
-def symbol(): return Optional(Kwd("surplus")), RegExMatch(r'[a-zA-Z0-9\[\]\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
+
+# each function returns a tuple
+def symbol(): return RegExMatch(r'[a-zA-Z0-9.\[\]\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
+def operator(): return [Kwd('>'), Kwd('<')]
+def compare(): return symbol, Optional(operator, symbol)
 def group(): return Kwd("("), logic, Kwd(")")
-def term(): return Optional(Kwd("not")), [symbol, group]
+def term(): return Optional(Kwd("not")), [compare, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
-def rule(): return Optional(Kwd("active")), Kwd("IF"), logic, EOF
+def rule(): return Kwd("if"), logic, EOF
 
-def evaluate_symbol(tree, env):
-    symbol = tree[0]
-    if symbol == 'surplus':
-        symbol = tree[1]
-    value = env.get(symbol.value)
+def evaluate_symbol(tree, state):
+    symbol = tree
+    value = state.get(symbol.value)
+    if value is None:
+        value = convert_number(symbol.value)
 
     return value
 
-def evaluate_group(tree, env):
-    logic = tree[1]
-    return evaluate_logic(logic, env)
+def evaluate_compare(tree, state):
+    first = evaluate_symbol(tree[0], state)
+    if len(tree) == 1:
+        return first
+    else:
+        operator = tree[1]
+        last = evaluate_symbol(tree[2], state)
+        if operator.value == '<':
+            return first < last
+        else:
+            return first > last
 
-def evaluate_term(tree, env):
+def evaluate_group(tree, state):
+    logic = tree[1]
+    return evaluate_logic(logic, state)
+
+def evaluate_term(tree, state):
     invert = False
     value = False
 
@@ -36,20 +56,20 @@ def evaluate_term(tree, env):
         tree = tree[1:]
 
     if tree[0].rule_name == 'group':
-        value = evaluate_group(tree[0], env)
-    elif tree[0].rule_name == 'symbol':
-        value = evaluate_symbol(tree[0], env)
+        value = evaluate_group(tree[0], state)
+    elif tree[0].rule_name == 'compare':
+        value = evaluate_compare(tree[0], state)
 
     if invert:
         value = not value
 
     return value
 
-def evaluate_logic(tree, env):
-    head = evaluate_term(tree[0], env)
+def evaluate_logic(tree, state):
+    head = evaluate_term(tree[0], state)
 
     if len(tree) > 1:
-        tail = evaluate_logic(tree[2:], env)
+        tail = evaluate_logic(tree[2:], state)
         operation = tree[1].value
 
         if operation == 'and':
@@ -59,16 +79,12 @@ def evaluate_logic(tree, env):
 
     return head
 
-def evaluate_rule(tree, env):
-    if tree[0].value == 'active':
-        tree = tree[1:]
-    return evaluate_logic(tree[1], env)
+def evaluate_rule(tree, state):
+    return evaluate_logic(tree[1], state)
 
 
+# make parser based on "rule", defined in grammar above
 rule_parser = ParserPython(rule)
-
-def null_fun(env):
-    return None
 
 def build_rule(expression):
     # type: (str) -> Callable[Dict[str, bool], bool]
@@ -78,17 +94,14 @@ def build_rule(expression):
     various molecular entities relevant to regulation, and returns a function that
     evaluates that logic with respect to actual values for the various symbols. 
     '''
-    if expression in ignored_statements:
-        return null_fun
-    else:
-        tree = rule_parser.parse(expression)
-        def logic(env):
-            return evaluate_rule(tree, env)
+    tree = rule_parser.parse(expression)
+    def logic(state):
+        return evaluate_rule(tree, state)
 
-        return logic
+    return logic
 
 def test_arpeggio():
-    test = "IF not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
+    test = "if not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
     state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
     run_rule = build_rule(test)
@@ -96,16 +109,22 @@ def test_arpeggio():
     assert run_rule(state_true) == True
 
     # test surplus in statement
-    test = "active IF not (surplus FDP or F6P)"
-    state_false = {'FDP': True, 'F6P': False}
-    state_true = {'FDP': False, 'F6P': False}
+    test = "if not (FDP > 10 or F6P)"
+    state_false = {'FDP': 20, 'F6P': False}
+    state_true = {'FDP': 5, 'F6P': False}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
 
-    test = 'action is complex'
+    # regulation with thresholds
+    test = "if not external_glc > 0.1"
+    state_false = {'external_glc': 0.2}
+    state_true = {'external_glc': 0.01}
     run_rule = build_rule(test)
-    assert run_rule(state_false) == None
+    assert run_rule(state_false) == False
+    assert run_rule(state_true) == True
+
+    print('test passed!')
 
     return run_rule
 
