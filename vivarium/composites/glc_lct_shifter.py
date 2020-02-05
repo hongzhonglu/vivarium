@@ -77,12 +77,9 @@ def get_transport_config():
 
 def get_metabolism_config():
 
-    # # regulation functions
-    # def regulation(state):
-    #     regulation_logic = {
-    #         'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
-    #     }
-    #     return regulation_logic
+    # regulation definitions
+    regulation = {
+        'EX_lac__D_e': 'if not (external, glc__D_e) > 0.1'}
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
@@ -109,7 +106,7 @@ def get_metabolism_config():
             'EX_glc__D_e': [1.05, 1.0],
             'EX_lac__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        # 'regulation': regulation,
+        'regulation': regulation,
         'initial_state': initial_state}
 
 def get_expression_config():
