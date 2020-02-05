@@ -16,8 +16,9 @@ def convert_number(s):
 
 # each function returns a tuple
 def symbol(): return RegExMatch(r'[a-zA-Z0-9.\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
+def tuple_key(): return Kwd("("), symbol, Kwd(","), symbol, Kwd(")")
 def operator(): return [Kwd('>'), Kwd('<')]
-def compare(): return symbol, Optional(operator, symbol)
+def compare(): return [symbol, tuple_key], Optional(operator, symbol)
 def group(): return Kwd("["), logic, Kwd("]")
 def term(): return Optional(Kwd("not")), [compare, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
@@ -31,8 +32,18 @@ def evaluate_symbol(tree, state):
 
     return value
 
+def evaluate_tuple_key(tree, state):
+    tuple_key = (tree[1].value, tree[3].value)
+    value = state.get(tuple_key)
+
+    return value
+
 def evaluate_compare(tree, state):
-    first = evaluate_symbol(tree[0], state)
+    if tree[0].rule_name == 'tuple_key':
+        first = evaluate_tuple_key(tree[0], state)
+    else:
+        first = evaluate_symbol(tree[0], state)
+
     if len(tree) == 1:
         return first
     else:
@@ -95,8 +106,7 @@ def build_rule(expression):
     evaluates that logic with respect to actual values for the various symbols. 
     '''
     tree = rule_parser.parse(expression)
-
-    print("{}: {}".format(expression, tree))
+    # print("{}: {}".format(expression, tree))
 
     def logic(state):
         return evaluate_rule(tree, state)
@@ -104,6 +114,8 @@ def build_rule(expression):
     return logic
 
 def test_arpeggio():
+
+    # test logic with sets
     test = "if not [GLCxt or LCTSxt or RUBxt] and FNR and not GlpR"
     state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
@@ -111,7 +123,7 @@ def test_arpeggio():
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
 
-    # test surplus in statement
+    # test regulation logic in set
     test = "if not [FDP > 10 or F6P]"
     state_false = {'FDP': 20, 'F6P': False}
     state_true = {'FDP': 5, 'F6P': False}
@@ -123,6 +135,14 @@ def test_arpeggio():
     test = "if not external_glc > 0.1"
     state_false = {'external_glc': 0.2}
     state_true = {'external_glc': 0.01}
+    run_rule = build_rule(test)
+    assert run_rule(state_false) == False
+    assert run_rule(state_true) == True
+
+    # test tuple keys
+    test = "if not (external, glc) > 0.1"
+    state_false = {('external', 'glc'): 0.2}
+    state_true = {('external', 'glc'): 0.01}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
