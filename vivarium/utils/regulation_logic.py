@@ -15,10 +15,10 @@ def convert_number(s):
 
 
 # each function returns a tuple
-def symbol(): return RegExMatch(r'[a-zA-Z0-9.\[\]\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
+def symbol(): return RegExMatch(r'[a-zA-Z0-9.\-\_]+')  # TODO -- surplus can be evaluated if there is a threshold, ignored for now
 def operator(): return [Kwd('>'), Kwd('<')]
 def compare(): return symbol, Optional(operator, symbol)
-def group(): return Kwd("("), logic, Kwd(")")
+def group(): return Kwd("["), logic, Kwd("]")
 def term(): return Optional(Kwd("not")), [compare, group]
 def logic(): return term, ZeroOrMore([Kwd("and"), Kwd("or")], term)
 def rule(): return Kwd("if"), logic, EOF
@@ -95,13 +95,16 @@ def build_rule(expression):
     evaluates that logic with respect to actual values for the various symbols. 
     '''
     tree = rule_parser.parse(expression)
+
+    print("{}: {}".format(expression, tree))
+
     def logic(state):
         return evaluate_rule(tree, state)
 
     return logic
 
 def test_arpeggio():
-    test = "if not (GLCxt or LCTSxt or RUBxt) and FNR and not GlpR"
+    test = "if not [GLCxt or LCTSxt or RUBxt] and FNR and not GlpR"
     state_false = {'GLCxt': True, 'LCTSxt': False, 'RUBxt': True, 'FNR': True, 'GlpR': False}
     state_true = {'GLCxt': False, 'LCTSxt': False, 'RUBxt': False, 'FNR': True, 'GlpR': False}
     run_rule = build_rule(test)
@@ -109,7 +112,7 @@ def test_arpeggio():
     assert run_rule(state_true) == True
 
     # test surplus in statement
-    test = "if not (FDP > 10 or F6P)"
+    test = "if not [FDP > 10 or F6P]"
     state_false = {'FDP': 20, 'F6P': False}
     state_true = {'FDP': 5, 'F6P': False}
     run_rule = build_rule(test)
