@@ -78,7 +78,8 @@ def compose_master(config):
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
         'expression' : {
-            'internal': 'cell_counts'},  # updates counts, which the deriver converts to concentrations
+            'internal': 'cell_counts',  # updates counts, which the deriver converts to concentrations
+            'external': 'environment'},
         'degradation': {
             'internal': 'cell_counts'},
         'division': {
@@ -110,11 +111,9 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    def regulation(state):
-        regulation_logic = {
-            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
-        }
-        return regulation_logic
+
+    regulation = {
+        'EX_lac__D_e': 'if not (external, glc__D_e) > 0.1'}
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
@@ -191,7 +190,8 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_master)
+    boot_config = {'emitter': 'null'}
+    compartment = load_compartment(compose_master, boot_config)
 
     # settings for simulation and plot
     options = compose_master({})['options']
