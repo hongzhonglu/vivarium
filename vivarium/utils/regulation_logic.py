@@ -28,6 +28,7 @@ def evaluate_symbol(tree, state):
     symbol = tree
     value = state.get(symbol.value)
     if value is None:
+        # symbol is a value, used by compare
         value = convert_number(symbol.value)
 
     return value
@@ -45,7 +46,11 @@ def evaluate_compare(tree, state):
         first = evaluate_symbol(tree[0], state)
 
     if len(tree) == 1:
-        return first
+        if isinstance(first, int) or isinstance(first, float):
+            # if numeric state, evaluate whether it is present or not
+            return first > 0
+        else:
+            return first
     else:
         operator = tree[1]
         last = evaluate_symbol(tree[2], state)
@@ -106,7 +111,6 @@ def build_rule(expression):
     evaluates that logic with respect to actual values for the various symbols. 
     '''
     tree = rule_parser.parse(expression)
-    # print("{}: {}".format(expression, tree))
 
     def logic(state):
         return evaluate_rule(tree, state)
@@ -123,26 +127,30 @@ def test_arpeggio():
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
 
-    # test regulation logic in set
-    test = "if not [FDP > 10 or F6P]"
-    state_false = {'FDP': 20, 'F6P': False}
-    state_true = {'FDP': 5, 'F6P': False}
+    # test logic with thresholds
+    test = "if not glc > 0.1"
+    state_false = {'glc': 0.2}
+    state_true = {'glc': 0.01}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
 
-    # regulation with thresholds
-    test = "if not external_glc > 0.1"
-    state_false = {'external_glc': 0.2}
-    state_true = {'external_glc': 0.01}
+    # test thresholds in sets with numeric states
+    test = "if not [FDP > 10 and F6P]"  # same as "if not [FDP > 10 and F6P > 0]"
+    state_false = {'FDP': 20, 'F6P': 10}
+    state_true = {'FDP': 5, 'F6P': 0}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
 
     # test tuple keys
-    test = "if not (external, glc) > 0.1"
-    state_false = {('external', 'glc'): 0.2}
-    state_true = {('external', 'glc'): 0.01}
+    test = "if not [(external, glc) > 0.1 and (external, lct) < 0.1]"
+    state_false = {
+        ('external', 'glc'): 0.2,
+        ('external', 'lct'): 0.05}
+    state_true = {
+        ('external', 'glc'): 0.01,
+        ('external', 'lct'): 0.5}
     run_rule = build_rule(test)
     assert run_rule(state_false) == False
     assert run_rule(state_true) == True
