@@ -11,13 +11,10 @@ from vivarium.actor.process import Process, deep_merge, convert_to_timeseries, p
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.utils.regulation_logic import build_rule
 
 # concentrations are lower than threshold are considered depleted
 EXCHANGE_THRESHOLD = 0.1
-
-
-def null_function(state):
-    return {}
 
 
 class Metabolism(Process):
@@ -45,8 +42,9 @@ class Metabolism(Process):
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # get regulation functions
-        # TODO -- pass regulation logic in as data, and construct functions in init
-        self.regulation = initial_parameters.get('regulation', null_function)
+        regulation_logic = initial_parameters.get('regulation', {})
+        self.regulation = {
+            reaction: build_rule(logic) for reaction, logic in regulation_logic.items()}
 
         # get molecules in objective
         self.objective_molecules = []
@@ -131,7 +129,9 @@ class Metabolism(Process):
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
-        regulation_state = self.regulation(flattened_states)
+        regulation_state = {}
+        for reaction_id, reg_logic in self.regulation.items():
+            regulation_state[reaction_id] = reg_logic(flattened_states)
 
         ## apply flux constraints
         # first, add exchange constraints

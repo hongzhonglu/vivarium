@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from vivarium.data.chromosome import test_chromosome_config
+from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Template, Elongation, polymerize_to, add_merge
 
@@ -19,6 +20,16 @@ def frequencies(l):
             result[item] = 0
         result[item] += 1
     return result
+
+def rna_bases(sequence):
+    return sequence.replace('T', 'U')
+
+def sequence_monomers(sequence, begin, end):
+    if begin < end:
+        subsequence = sequence[begin:end]
+    else:
+        subsequence = sequence[begin:end:-1]
+    return subsequence
 
 def traverse(tree, key, f, combine):
     '''
@@ -124,7 +135,12 @@ class Chromosome(Datum):
         'genes': {},
         'promoters': {},
         'promoter_order': [],
-        'domains': {},
+        'domains': {
+            0: {
+                'id': 0,
+                'lead': 0,
+                'lag': 0,
+                'children': []}},
         'root_domain': 0,
         'rnap_id': 0,
         'rnaps': []}
@@ -185,7 +201,7 @@ class Chromosome(Datum):
             'id': self.rnap_id,
             'template': promoter_key,
             'domain': domain,
-            'position': self.promoters[promoter_key].position})
+            'position': 0})
         new_rnap.bind()
         self.rnaps.append(new_rnap)
         return new_rnap
@@ -195,26 +211,27 @@ class Chromosome(Datum):
         for rnap in self.rnaps:
             if rnap.is_transcribing():
                 promoter = self.promoters[rnap.template]
-                terminator_index = promoter.next_terminator(rnap.position)
+
+                # rnap position is relative to the promoter it is bound to
+                rnap_position = promoter.absolute_position(rnap.position)
+                terminator_index = promoter.next_terminator(rnap_position)
                 rnap.terminator = terminator_index
                 terminator = promoter.terminators[terminator_index]
-                span = abs(terminator.position - rnap.position)
+                span = abs(terminator.position - rnap_position)
                 if span < distance:
                     distance = span
+
         if distance == INFINITY:
             distance = 1
         return distance
 
-    def sequence_monomers(self, begin, end):
-        if begin < end:
-            return self.sequence[begin:end]
-        else:
-            return self.sequence[end:begin]
-
     def sequences(self):
         return {
-            self.promoters[promoter].id: self.sequence
-            for promoter in self.promoters.keys()}
+            promoter_key: rna_bases(sequence_monomers(
+                self.sequence,
+                promoter.position,
+                promoter.last_terminator().position))
+            for promoter_key, promoter in self.promoters.items()}
 
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
@@ -222,11 +239,12 @@ class Chromosome(Datum):
 
         sequences = self.sequences()
 
-        monomers, monomer_limits, complete_transcripts, self.rnaps = polymerize_to(
+        monomers, monomer_limits, terminated, complete_transcripts, self.rnaps = polymerize_to(
             sequences,
             self.rnaps,
             self.promoters,
             elongate_to,
+            nucleotides,
             monomer_limits)
 
         return elongate_to, monomers, monomer_limits, complete_transcripts
@@ -368,7 +386,7 @@ def test_chromosome():
 
     print('completed after advancing 5')
     print(chromosome.polymerize(5, {
-        'A': 100, 'T': 100, 'G': 100, 'C': 100}))
+        'rATP': 100, 'rUTP': 100, 'rGTP': 100, 'rCTP': 100}))
 
     print('rnaps after polymerizing')
     print(chromosome.rnaps)

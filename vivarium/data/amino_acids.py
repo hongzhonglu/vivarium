@@ -2,9 +2,9 @@ amino_acid_records = [
     {'name': 'Alanine', 'abbreviation': 'Ala', 'symbol': 'A'},
     {'name': 'Arginine', 'abbreviation': 'Arg', 'symbol': 'R'},
     {'name': 'Asparagine', 'abbreviation': 'Asn', 'symbol': 'N'},
-    {'name': 'Aspartic acid', 'abbreviation': 'Asp', 'symbol': 'D'},
+    {'name': 'Aspartate', 'abbreviation': 'Asp', 'symbol': 'D'},
     {'name': 'Cysteine', 'abbreviation': 'Cys', 'symbol': 'C'},
-    {'name': 'Glutamic acid', 'abbreviation': 'Glu', 'symbol': 'E'},
+    {'name': 'Glutamate', 'abbreviation': 'Glu', 'symbol': 'E'},
     {'name': 'Glutamine', 'abbreviation': 'Gln', 'symbol': 'Q'},
     {'name': 'Glycine', 'abbreviation': 'Gly', 'symbol': 'G'},
     {'name': 'Histidine', 'abbreviation': 'His', 'symbol': 'H'},
@@ -21,6 +21,5 @@ amino_acid_records = [
     {'name': 'Valine', 'abbreviation': 'Val', 'symbol': 'V'}]
 
 amino_acids = {
-    record['symbol']: record
+    record['symbol']: record['name']
     for record in amino_acid_records}
-
