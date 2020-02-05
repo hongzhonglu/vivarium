@@ -47,6 +47,7 @@ class Transcription(Process):
             initial_parameters.get(
                 'promoter_affinities',
                 self.default_parameters['promoter_affinities']).keys())
+
         templates = initial_parameters.get(
             'templates',
             self.default_parameters['templates'])
@@ -55,27 +56,27 @@ class Transcription(Process):
             key: Promoter(config)
             for key, config in templates.items()})
 
-        parameters = copy.deepcopy(self.default_parameters)
-        parameters.update(initial_parameters)
+        self.parameters = copy.deepcopy(self.default_parameters)
+        self.parameters.update(initial_parameters)
 
-        self.sequence = parameters['sequence']
+        self.sequence = self.parameters['sequence']
         self.sequences = None # set when the chromosome first appears
-        self.templates = parameters['templates']
-        self.genes = parameters['genes']
-        self.symbol_to_monomer = parameters['symbol_to_monomer']
+        self.templates = self.parameters['templates']
+        self.genes = self.parameters['genes']
+        self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
         print('chromosome sequence: {}'.format(self.sequence))
 
-        self.promoter_affinities = parameters['promoter_affinities']
-        self.promoter_order = parameters['promoter_order']
+        self.promoter_affinities = self.parameters['promoter_affinities']
+        self.promoter_order = self.parameters['promoter_order']
         self.promoter_count = len(self.promoter_order)
 
-        self.molecule_ids = parameters['molecule_ids']
-        self.monomer_ids = parameters['monomer_ids']
-        self.transcript_ids = parameters['transcript_ids']
+        self.molecule_ids = self.parameters['molecule_ids']
+        self.monomer_ids = self.parameters['monomer_ids']
+        self.transcript_ids = self.parameters['transcript_ids']
         self.elongation = 0
-        self.elongation_rate = parameters['elongation_rate']
-        self.advancement_rate = parameters['advancement_rate']
+        self.elongation_rate = self.parameters['elongation_rate']
+        self.advancement_rate = self.parameters['advancement_rate']
 
         self.affinity_vector = np.array([
             self.promoter_affinities[promoter_key]
@@ -93,9 +94,9 @@ class Transcription(Process):
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_ids}
 
-        print('transcription parameters: {}'.format(parameters))
+        print('transcription parameters: {}'.format(self.parameters))
 
-        super(Transcription, self).__init__(self.roles, parameters)
+        super(Transcription, self).__init__(self.roles, self.parameters)
 
     def default_settings(self):
         default_state = {
@@ -145,7 +146,7 @@ class Transcription(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,
-            'parameters': self.default_parameters}
+            'parameters': self.parameters}
 
     def next_update(self, timestep, states):
         chromosome = Chromosome(states['chromosome'])

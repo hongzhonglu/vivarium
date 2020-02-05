@@ -157,6 +157,16 @@ class Process(object):
 
         return self.next_update(timestep, states)
 
+    def parameters_for(self, parameters, key):
+        ''' Return key in parameters or from self.default_parameters if not present. '''
+
+        return parameters.get(key, self.default_parameters[key])
+
+    def derive_defaults(self, parameters, original_key, derived_key, f):
+        present = self.parameters_for(parameters, original_key)
+        self.default_parameters[derived_key] = f(present)
+        return self.default_parameters[derived_key]
+
     def next_update(self, timestep, states):
         '''
         Find the next update given the current states this process cares about.

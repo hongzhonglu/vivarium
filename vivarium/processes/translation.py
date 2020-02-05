@@ -78,23 +78,23 @@ class Translation(Process):
         self.default_parameters['molecule_ids'] = self.monomer_ids + [
             self.unbound_ribosomes_key]
 
-        parameters = copy.deepcopy(self.default_parameters)
-        parameters.update(initial_parameters)
+        self.parameters = copy.deepcopy(self.default_parameters)
+        self.parameters.update(initial_parameters)
 
-        self.sequences = parameters['sequences']
-        self.templates = parameters['templates']
+        self.sequences = self.parameters['sequences']
+        self.templates = self.parameters['templates']
 
-        self.transcript_affinities = parameters['transcript_affinities']
-        self.transcript_order = parameters['transcript_order']
+        self.transcript_affinities = self.parameters['transcript_affinities']
+        self.transcript_order = self.parameters['transcript_order']
         self.transcript_count = len(self.transcript_order)
 
-        self.monomer_ids = parameters['monomer_ids']
-        self.molecule_ids = parameters['molecule_ids']
-        self.protein_ids = parameters['protein_ids']
-        self.symbol_to_monomer = parameters['symbol_to_monomer']
+        self.monomer_ids = self.parameters['monomer_ids']
+        self.molecule_ids = self.parameters['molecule_ids']
+        self.protein_ids = self.parameters['protein_ids']
+        self.symbol_to_monomer = self.parameters['symbol_to_monomer']
         self.elongation = 0
-        self.elongation_rate = parameters['elongation_rate']
-        self.advancement_rate = parameters['advancement_rate']
+        self.elongation_rate = self.parameters['elongation_rate']
+        self.advancement_rate = self.parameters['advancement_rate']
 
         self.affinity_vector = np.array([
             self.transcript_affinities[transcript_key]
@@ -115,9 +115,9 @@ class Translation(Process):
             'transcripts': self.transcript_order,
             'proteins': self.protein_ids}
 
-        print('translation parameters: {}'.format(parameters))
+        print('translation parameters: {}'.format(self.parameters))
 
-        super(Translation, self).__init__(self.roles, parameters)
+        super(Translation, self).__init__(self.roles, self.parameters)
 
     def default_settings(self):
         default_state = {
@@ -153,7 +153,7 @@ class Translation(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,
-            'parameters': self.default_parameters}
+            'parameters': self.parameters}
 
     def next_update(self, timestep, states):
         ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
