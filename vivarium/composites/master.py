@@ -78,7 +78,8 @@ def compose_master(config):
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
         'expression' : {
-            'internal': 'cell_counts'},  # updates counts, which the deriver converts to concentrations
+            'internal': 'cell_counts',  # updates counts, which the deriver converts to concentrations
+            'external': 'environment'},
         'degradation': {
             'internal': 'cell_counts'},
         'division': {

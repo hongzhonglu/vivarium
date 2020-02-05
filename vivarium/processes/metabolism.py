@@ -42,7 +42,7 @@ class Metabolism(Process):
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # get regulation functions
-        regulation_logic = initial_parameters.get('regulation')
+        regulation_logic = initial_parameters.get('regulation', {})
         self.regulation = {
             reaction: build_rule(logic) for reaction, logic in regulation_logic.items()}
 

@@ -5,7 +5,8 @@ import random
 import copy
 
 from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
-
+from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.utils.regulation_logic import build_rule
 
 
 default_step_size = 1
@@ -20,14 +21,23 @@ class MinimalExpression(Process):
 
         expression_rates = initial_parameters.get('expression_rates')
         self.internal_states = list(expression_rates.keys()) if expression_rates else []
+        regulation_logic = initial_parameters.get('regulation', {})
+        self.regulation = {
+            gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
+        regulators = initial_parameters.get('regulators', [])
+        internal_regulators = [state_id for role_id, state_id in regulators if role_id == 'internal']
+        external_regulators = [state_id for role_id, state_id in regulators if role_id == 'external']
 
-        roles = {'internal': self.internal_states}
+        roles = {
+            'internal': self.internal_states + internal_regulators,
+            'external': external_regulators}
 
         parameters = {
             'expression_rates': expression_rates,
             'step_size': initial_parameters.get('step_size', default_step_size)
         }
         parameters.update(initial_parameters)
+
 
         super(MinimalExpression, self).__init__(roles, parameters)
 
@@ -56,8 +66,16 @@ class MinimalExpression(Process):
         step_size = self.parameters['step_size']
         n_steps = int(timestep / step_size)
 
+        # get state of regulated reactions (True/False)
+        flattened_states = tuplify_role_dicts(states)
+        regulation_state = {}
+        for gene_id, reg_logic in self.regulation.items():
+            regulation_state[gene_id] = reg_logic(flattened_states)
+
         internal_update = {state_id: 0 for state_id in internal.keys()}
         for state_id in internal.keys():
+            if state_id in regulation_state and not regulation_state[state_id]:
+                break
             rate = self.parameters['expression_rates'][state_id]
             for step in range(n_steps):
                 if random.random() < rate:

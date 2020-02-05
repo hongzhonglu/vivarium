@@ -77,10 +77,6 @@ def get_transport_config():
 
 def get_metabolism_config():
 
-    # regulation definitions
-    regulation = {
-        'EX_lac__D_e': 'if not (external, glc__D_e) > 0.1'}
-
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
     # initial state
@@ -93,9 +89,8 @@ def get_metabolism_config():
         'volume': volume.to('fL').magnitude}
 
     # external
-    # TODO -- generalize external to whatever BiGG model is loaded
     make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')
+    external = make_media.get_saved_media('ecoli_core_GLC')  # TODO -- generalize external to whatever BiGG model is loaded
     initial_state = {
         'internal': internal,
         'external': external}
@@ -106,12 +101,18 @@ def get_metabolism_config():
             'EX_glc__D_e': [1.05, 1.0],
             'EX_lac__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
-        'regulation': regulation,
         'initial_state': initial_state}
 
 def get_expression_config():
+    # define regulation
+    regulators = [('external', 'glc__D_e')]
+    regulation = {
+        'LacY': 'if not (external, glc__D_e) > 0.1'}
+
     expression_rates = {'LacY': 0.005}
     return {
+        'regulators': regulators,
+        'regulation': regulation,
         'counted_molecules': list(expression_rates.keys()),
         'expression_rates': expression_rates}
 
