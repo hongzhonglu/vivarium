@@ -1,35 +1,47 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import random
-import copy
+from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
-from vivarium.utils.dict_utils import tuplify_role_dicts
-from vivarium.utils.regulation_logic import build_rule
-
+from vivarium.actor.process import Process, convert_to_timeseries, \
+    plot_simulation_output, simulate_process_with_environment
+from vivarium.utils.dict_utils import deep_merge
+from vivarium.utils.units import units
 
 default_step_size = 1
+
+
 
 class ODE_expression(Process):
     '''
     a ode-based mRNA and protein expression process
+
+    TODO -- add regulation
     '''
     def __init__(self, initial_parameters={}):
 
+        self.nAvogadro = constants.N_A * 1 / units.mol
 
+        self.transcription = initial_parameters.get('transcription_rates', {})
+        self.translation = initial_parameters.get('translation_rates', {})
+        self.degradation = initial_parameters.get('degradation_rates', {})
+        self.protein_map = initial_parameters.get('protein_map', {})
 
+        # get initial state
+        states = list(self.transcription.keys()) + list(self.translation.keys())
+        null_states = {'internal': {
+            state_id: 0 for state_id in states}}
+        initialized_states = initial_parameters.get('initial_state', {})
+        self.initial_state = deep_merge(null_states, initialized_states)
 
-
-
+        # TODO -- get initial counts....
 
         roles = {
-            'internal': [],
-            'external': []}
+            'counts': states,
+            'internal': list(self.initial_state.get('internal', {}).keys()) + ['volume'],
+            'external': list(self.initial_state.get('external', {}).keys())}
 
-        parameters = {
-            'expression_rates': [],
-        }
+        parameters = {}
         parameters.update(initial_parameters)
 
 
@@ -38,11 +50,10 @@ class ODE_expression(Process):
     def default_settings(self):
 
         # default state
-        internal = {state_id: 0 for state_id in self.internal_states}
-        default_state = {'internal': internal}
+        default_state = self.initial_state
 
         # default emitter keys
-        default_emitter_keys = {'internal': self.internal_states}
+        default_emitter_keys = {}
 
         # default updaters
         default_updaters = {}
@@ -56,65 +67,81 @@ class ODE_expression(Process):
 
     def next_update(self, timestep, states):
         internal = states['internal']
+        volume = internal['volume'] * units.fL
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         internal_update = {}
-        # transcription
+        ## transcription
+        # transcription rate abstracts over a number of factors, including gene copy number,
+        # RNA polymerase abundance, strength of gene protomoters, and availability of nucleotides
+        for transcript, rate in self.transcription.items():
+            internal_update[transcript] = \
+                rate - self.degradation.get(transcript, 0) * internal[transcript]
 
+        ## translation
+        # translation rate abstracts over a number of factors, including ribosome availability,
+        # strength of mRNA's ribosome binding, availability of tRNAs and free amino acids
+        for protein, rate in self.translation.items():
+            transcript = self.protein_map[protein]
+            transcript_state = internal[transcript]
+            internal_update[protein] = \
+                rate * transcript_state - self.degradation.get(protein, 0) * internal[protein]
 
-        # translation
-
-
-        # convert to counts
-
-
-
-
+        # convert concentrations to counts
+        counts_update = {}
+        for mol_id, delta_conc in internal_update.items():
+            delta_counts = int((delta_conc * mmol_to_count).magnitude)
+            counts_update[mol_id] = delta_counts
 
         return {
-            'internal': internal_update}
+            'internal': internal_update,
+            'counts': counts_update}
 
 
 
 # test functions
-def test_expression(end_time=10):
-    toy_expression_rates = {
-        'protein1': 1e-3,
-        'protein2': 1e-2,
-        'protein3': 1e-1}
+# toy config
+toy_transcription_rates = {
+    'transcript1': 1.0}
 
+toy_translation_rates = {
+    'protein1': 1.0}
+
+toy_protein_map = {
+    'protein1': 'transcript1'}
+
+toy_degradation_rates = {
+    'transcript1': 0.1,
+    'protein1': 0.01}
+
+initial_state = {
+    'internal': {
+        'volume': 1.2,
+        'transcript1': 1.0,
+        # 'protein1': 1.0
+    }}
+
+def test_expression():
     expression_config = {
-        'expression_rates': toy_expression_rates}
+        'transcription_rates': toy_transcription_rates,
+        'translation_rates': toy_translation_rates,
+        'degradation_rates': toy_degradation_rates,
+        'protein_map': toy_protein_map,
+        'initial_state': initial_state
+    }
 
     # load process
     expression = ODE_expression(expression_config)
 
-    # get initial state and parameters
-    settings = expression.default_settings()
-    state = settings['state']
-    skip_roles = ['exchange']
+    settings = {
+        'total_time': 20,
+        # 'exchange_role': 'exchange',
+        'environment_role': 'external',
+        'environment_volume': 1e-12}
 
-    # initialize saved data
-    saved_state = {}
+    saved_data = simulate_process_with_environment(expression, settings)
 
-    # run the simulation
-    time = 0
-    timestep = 5
-
-    saved_state[0] = state
-    while time < end_time:
-        time += timestep
-        # get update
-        update = expression.next_update(timestep, state)
-
-        # apply update
-        for role_id, states_update in update.items():
-            if role_id not in skip_roles:
-                for state_id, change in states_update.items():
-                    state[role_id][state_id] += change
-
-        saved_state[time] = copy.deepcopy(state)
-
-    return saved_state
+    return saved_data
 
 
 
@@ -123,7 +150,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression(1000)
+    saved_data = test_expression()
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
