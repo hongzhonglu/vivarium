@@ -5,9 +5,18 @@ from scipy import constants
 
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosome import gfp_plasmid_config
+from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
 from vivarium.processes.translation import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 from vivarium.environment.make_media import Media
+
+def degradation_sequences(sequence, promoters):
+    return {
+        promoter.last_terminator().product[0]: rna_bases(sequence_monomers(
+            sequence,
+            promoter.position,
+            promoter.last_terminator().position))
+        for promoter_key, promoter in promoters.items()}
 
 def generate_gfp_compartment(config):
     media = Media()
@@ -28,6 +37,16 @@ def generate_gfp_compartment(config):
 
     print(PURE)
     print(PURE_counts)
+
+    promoters = {
+        promoter['id']: Promoter(promoter)
+        for promoter in gfp_plasmid_config['promoters'].values()}
+
+    sequences = degradation_sequences(
+        gfp_plasmid_config['sequence'],
+        promoters)
+
+    print(sequences)
 
     gfp_config = {
 
@@ -55,9 +74,20 @@ def generate_gfp_compartment(config):
             'elongation_rate': 22,
             'advancement_rate': 10.0},
 
+        'degradation': {
+            
+            'sequences': sequences,
+            'catalysis_rates': {
+                'endoRNAse': 8.0},
+            'degradation_rates': {
+                'transcripts': {
+                    'endoRNAse': {
+                        'GFP_RNA': 1e-23}}}},
+
         'initial_state': {
             'molecules': PURE_counts,
-            'transcripts': {'GFP_RNA': 0}}}
+            'transcripts': {'GFP_RNA': 0},
+            'proteins': {'GFP': 0, 'endoRNAse': 1}}}
 
     return compose_gene_expression(gfp_config)
 

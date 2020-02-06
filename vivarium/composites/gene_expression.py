@@ -9,6 +9,7 @@ from vivarium.actor.process import initialize_state
 # processes
 from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
+from vivarium.processes.degradation import RnaDegradation
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.data.amino_acids import amino_acids
@@ -20,13 +21,15 @@ def compose_gene_expression(config):
     # declare the processes
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
+    degradation = RnaDegradation(config.get('degradation', {}))
     deriver = Deriver(config)
     division = Division(config)
 
     # place processes in layers
     processes = [
         {'transcription': transcription,
-         'translation': translation},
+         'translation': translation,
+         'degradation': degradation},
         {'deriver': deriver,
          'division': division}]
 
@@ -41,6 +44,11 @@ def compose_gene_expression(config):
             'molecules': 'molecules',
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
+        'degradation': {
+            'transcripts': 'transcripts',
+            'proteins': 'proteins',
+            'molecules': 'molecules',
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
@@ -151,7 +159,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 40}
+        'total_time': 60}
     saved_state = simulate_compartment(gene_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)

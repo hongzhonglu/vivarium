@@ -133,7 +133,7 @@ class Translation(Process):
                 for protein_id in self.protein_ids}}
 
         default_state['molecules'].update({
-            monomer_id: 100
+            monomer_id: 200
             for monomer_id in self.monomer_ids})
 
         operons = list(default_state['transcripts'].keys())

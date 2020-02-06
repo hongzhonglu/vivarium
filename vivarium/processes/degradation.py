@@ -29,7 +29,7 @@ class RnaDegradation(Process):
                 'oBY': 'AGUUGACGG'},
 
             'catalysis_rates': {
-                'endoRNAse': 10.0},
+                'endoRNAse': 2.0},
 
             'degradation_rates': {
                 'transcripts': {
@@ -124,7 +124,7 @@ class RnaDegradation(Process):
         for transcript, count in delta_transcripts.items():
             sequence = self.sequences[transcript]
             for base in sequence:
-                delta_molecules[nucleotides[base]] += count
+                delta_molecules[nucleotides[base]] -= count
 
         return {
             'transcripts': delta_transcripts,
