@@ -26,7 +26,7 @@ DEFAULT_INITIAL_STATE = {
         'antibiotic': 1.0,
     },
     'exchange': {
-        'antibiotic': 1.0,
+        'antibiotic': 0.0,
     },
 }
 
@@ -74,7 +74,7 @@ class Antibiotics(ConvenienceKinetics):
                 },
                 'antibiotic_export': {
                     ('internal', 'antibiotic_exporter'): {
-                        'kcat_f': 0.6,
+                        'kcat_f': 1e5,
                         ('internal', 'antibiotic'): 0.6,
                     },
                 },
