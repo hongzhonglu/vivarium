@@ -469,8 +469,8 @@ def toy_transport():
 
 # tests
 def test_BiGG_metabolism(out_dir):
-    metabolism_file = os.path.join('models', 'iAF1260b.json')
-    # metabolism_file = os.path.join('models', 'e_coli_core.json')
+    # metabolism_file = os.path.join('models', 'iAF1260b.json')
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
 
     # initial state
     mass = 1339 * units.fg

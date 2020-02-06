@@ -230,20 +230,12 @@ class CobraFBA(object):
             if external_mol in bounds:
                 level = bounds[external_mol] / self.flux_scaling
 
-            # before = copy.deepcopy(reaction.bounds)
-
             if type(level) is list:
                 reaction.upper_bound = level[1]
                 reaction.lower_bound = level[0]
             elif isinstance(level, int) or isinstance(level, float):
+                # reaction.upper_bound = level
                 reaction.lower_bound = level
-
-            # after = reaction.bounds
-            # if (before == after):
-            #     print('SAME {}: before {} after {}'.format(reaction.id, before, after))
-            # else:
-            #     print('DIFF {}: before {} after {}'.format(reaction.id, before, after))
-
 
     def constrain_flux(self, bounds={}):
         '''add externally imposed constraints'''
