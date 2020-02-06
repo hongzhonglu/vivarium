@@ -124,17 +124,13 @@ class Rnap(Polymerase):
     def __init__(self, config):
         super(Rnap, self).__init__(config, self.defaults)
 
-class Chromosome(Datum):
+class Plasmid(Datum):
     schema = {
-        'promoters': Promoter,
         'domains': Domain,
         'rnaps': Rnap}
 
     defaults = {
-        'sequence': '',
-        'genes': {},
-        'promoters': {},
-        'promoter_order': [],
+        'id': '',
         'domains': {
             0: {
                 'id': 0,
@@ -145,11 +141,31 @@ class Chromosome(Datum):
         'rnap_id': 0,
         'rnaps': []}
 
+class Chromosome(Datum):
+    schema = {
+        'promoters': Promoter,
+        'plasmids': Plasmid}
+
+    defaults = {
+        'sequence': '',
+        'genes': {},
+        'promoters': {},
+        'promoter_order': [],
+        'plasmids': {}}
+
     def operons(self):
         return [
             operon
             for promoter in self.promoters.values()
             for operon in promoter.operons(self.genes)]
+
+    def sequences(self):
+        return {
+            promoter_key: rna_bases(sequence_monomers(
+                self.sequence,
+                promoter.position,
+                promoter.last_terminator().position))
+            for promoter_key, promoter in self.promoters.items()}
 
     def copy_number(self, position, domain_key=None):
         if not domain_key:
@@ -179,13 +195,6 @@ class Chromosome(Datum):
 
         return by_promoter
 
-    def promoter_domains(self):
-        return {
-            promoter_key: self.position_domains(
-                self.root_domain,
-                self.promoters[promoter_key].position)
-            for promoter_key in self.promoter_order}
-
     def position_domains(self, domain_index, position):
         domain = self.domains[domain_index]
         if len(domain.children) == 0 or (position < 0 and domain.lag >= position) or (position >= 0 and domain.lead <= position):
@@ -194,6 +203,13 @@ class Chromosome(Datum):
             return set.union(*[
                 self.position_domains(child, position)
                 for child in domain.children])
+
+    def promoter_domains(self):
+        return {
+            promoter_key: self.position_domains(
+                self.root_domain,
+                self.promoters[promoter_key].position)
+            for promoter_key in self.promoter_order}
 
     def bind_rnap(self, promoter_key, domain):
         self.rnap_id += 1
@@ -224,14 +240,6 @@ class Chromosome(Datum):
         if distance == INFINITY:
             distance = 1
         return distance
-
-    def sequences(self):
-        return {
-            promoter_key: rna_bases(sequence_monomers(
-                self.sequence,
-                promoter.position,
-                promoter.last_terminator().position))
-            for promoter_key, promoter in self.promoters.items()}
 
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
