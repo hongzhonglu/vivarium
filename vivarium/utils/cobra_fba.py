@@ -77,13 +77,12 @@ def extract_model(model):
     boundary_reactions = [reaction.id for reaction in boundary]
     """
 
-    # TODO -- get flux_scaling from optimization?
-    # TODO -- save flux_scaling for each model?
-    # flux_scaling = 2e-3  # iAF1260b used 4e-07  # scale bounds, to adjust standard FBA for single-cell rates
-    flux_scaling = 4e-07
-    # import ipdb; ipdb.set_trace()
-    # TODO -- get flux scaling
-
+    # get flux scaling factor
+    # this adjusts the BiGG FBA bounds for single-cell rates
+    target_objective_value = 4e-2  # this value was fit to hit a doubling time of 2520 sec (42 min) in e_coli_core
+    solution = model.optimize()
+    objective = solution.objective_value
+    flux_scaling = target_objective_value / objective
 
     reactions = model.reactions
     metabolites = model.metabolites
@@ -100,7 +99,7 @@ def extract_model(model):
         bounds = list(reaction.bounds)
         stoichiometry[reaction.id] = {
             metabolite.id: coeff for metabolite, coeff in reaction_metabolites.items()}
-        flux_bounds[reaction_id] = [bound * flux_scaling for bound in bounds]
+        flux_bounds[reaction_id] = bounds
         if not any(b == 0.0 for b in bounds):
             reversible.append(reaction_id)
 
@@ -112,9 +111,8 @@ def extract_model(model):
         assert len(reaction_metabolites) == 1  # only 1 molecule in the exchange reaction
         metabolite_id = reaction_metabolites[0].id
         external_molecules.append(metabolite_id)
-
         bounds = list(reaction.bounds)
-        exchange_bounds[metabolite_id] = [bound * flux_scaling for bound in bounds]
+        exchange_bounds[metabolite_id] = bounds
 
     # get molecular weights
     molecular_weights = {}
@@ -177,8 +175,8 @@ class CobraFBA(object):
             self.flux_bounds = extract['flux_bounds']
             self.molecular_weights = extract['molecular_weights']
             self.exchange_bounds = extract['exchange_bounds']
-            self.flux_scaling = extract['flux_scaling']
             self.default_upper_bound = DEFAULT_UPPER_BOUND  # TODO -- can this be extracted from model?
+            self.flux_scaling = extract['flux_scaling']
 
         else:
             # create an FBA model from config
@@ -199,11 +197,12 @@ class CobraFBA(object):
                 self.external_molecules,
                 self.default_upper_bound)
 
-        # apply constraints
-        self.constrain_reaction_bounds(self.flux_bounds)
-        self.set_exchange_bounds()
+            # apply constraints
+            self.constrain_reaction_bounds(self.flux_bounds)
+            self.set_exchange_bounds()
 
-        # get recommended initial state
+        # get minimal external state
+        # TODO -- make sure that scaling is accounted for
         max_growth = self.model.slim_optimize()
         max_exchange = minimal_medium(self.model, max_growth)
         self.minimal_external = {ex[len(EXTERNAL_PREFIX):len(ex)]: value
@@ -212,52 +211,58 @@ class CobraFBA(object):
         # initialize solution
         self.solution = self.model.optimize()
 
-    def set_exchange_bounds(self, new_bounds={}):
+    def set_exchange_bounds(self, bounds={}):
         '''
-        apply new_bounds to included molecules.
+        apply new_bounds for the defined molecules.
         reset unincluded molecules to their exchange_bounds.
         '''
         for external_mol, level in self.exchange_bounds.items():
             reaction = self.model.reactions.get_by_id(EXTERNAL_PREFIX + external_mol)
 
-            if external_mol in new_bounds:
-                level = new_bounds[external_mol]
+            if external_mol in bounds:
+                level = bounds[external_mol] / self.flux_scaling
+
+            # before = copy.deepcopy(reaction.bounds)
 
             if type(level) is list:
-                scaled_level = [b / self.flux_scaling for b in level]
-                reaction.upper_bound = -scaled_level[0]
-                reaction.lower_bound = -scaled_level[1]
+                reaction.upper_bound = level[1]
+                reaction.lower_bound = level[0]
             elif isinstance(level, int) or isinstance(level, float):
-                scaled_level = level / self.flux_scaling
-                reaction.lower_bound = -scaled_level
+                reaction.lower_bound = level
 
-    def constrain_flux(self, levels):
+            # after = reaction.bounds
+            # if (before == after):
+            #     print('SAME {}: before {} after {}'.format(reaction.id, before, after))
+            # else:
+            #     print('DIFF {}: before {} after {}'.format(reaction.id, before, after))
+
+
+    def constrain_flux(self, bounds={}):
         '''add externally imposed constraints'''
-        for reaction_id, level in levels.items():
+        for reaction_id, bound in bounds.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
-
-            # scaled_level = [b / self.flux_scaling for b in level]
-            scaled_level = level / self.flux_scaling
+            scaled_level = bound / self.flux_scaling
 
             if reaction_id in self.tolerance:
+                # use configured tolerance
                 lower_tolerance, upper_tolerance = self.tolerance[reaction_id]
                 reaction.upper_bound = upper_tolerance * scaled_level
                 reaction.lower_bound = lower_tolerance * scaled_level
             else:
-                # use default
-                if level >= 0:
+                # use default tolerance
+                if bound >= 0:
                     reaction.upper_bound = self.default_tolerance[1] * scaled_level
                     reaction.lower_bound = self.default_tolerance[0] * scaled_level
                 else:
                     reaction.upper_bound = self.default_tolerance[0] * scaled_level
                     reaction.lower_bound = self.default_tolerance[1] * scaled_level
 
-    def constrain_reaction_bounds(self, reaction_bounds):
-        reactions = self.get_reactions(list(reaction_bounds.keys()))
-        for reaction_id, bounds in reaction_bounds.items():
+    def constrain_reaction_bounds(self, bounds={}):
+        reactions = self.get_reactions(list(bounds.keys()))
+        for reaction_id, bound in bounds.items():
             reaction = reactions[reaction_id]
-            scaled_bounds = [b / self.flux_scaling for b in bounds]
-            reaction.lower_bound, reaction.upper_bound = scaled_bounds
+            scaled_bound = [b / self.flux_scaling for b in bound]
+            reaction.lower_bound, reaction.upper_bound = scaled_bound
 
     def regulate_flux(self, reactions):
         '''regulate flux based on True/False activity values for each id in reactions dictionary'''

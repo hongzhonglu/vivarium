@@ -80,21 +80,13 @@ def get_metabolism_config():
     metabolism_file = os.path.join('models', 'iAF1260b.json')
 
     # initial state
-    # internal
     mass = 1339 * units.fg
     density = 1100 * units.g / units.L
     volume = mass.to('g') / density
     internal = {
         'mass': mass.magnitude,  # fg
         'volume': volume.to('fL').magnitude}
-
-    # external
-    # TODO -- generalize external to whatever BiGG model is loaded
-    make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')
-    initial_state = {
-        'internal': internal,
-        'external': external}
+    initial_state = {'internal': internal}
 
     return {
         'moma': False,
