@@ -43,9 +43,9 @@ def get_transport_config():
                 'kcat_f': -3e5}},
         'EX_lac__D_e': {   # TODO -- GLC inhibition?
             ('internal', 'LacY'): {
-                ('external', 'lac__D_e'): 1e-1,
+                ('external', 'lac__D_e'): 1e1,
                 ('external', 'h_e'): None,
-                'kcat_f': -1e5}},
+                'kcat_f': -3e5}},
         }
 
     transport_initial_state = {
@@ -106,15 +106,27 @@ def get_metabolism_config():
 def get_expression_config():
     # define regulation
     regulators = [('external', 'glc__D_e')]
-    regulation = {
-        'LacY': 'if not (external, glc__D_e) > 0.1'}
+    regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
 
-    expression_rates = {'LacY': 0.005}
+    transcription_rates = {'lacy_RNA': 1e-15}
+    translation_rates = {'LacY': 1e5}
+    protein_map = {'LacY': 'lacy_RNA'}
+    degradation_rates = {
+        'lacy_RNA': 1e-2,
+        'LacY': 1e-9}
+    initial_state = {}
+
+    molecules = list(transcription_rates.keys()) + list(translation_rates.keys())
+
     return {
         'regulators': regulators,
         'regulation': regulation,
-        'counted_molecules': list(expression_rates.keys()),
-        'expression_rates': expression_rates}
+        'transcription_rates': transcription_rates,
+        'translation_rates': translation_rates,
+        'degradation_rates': degradation_rates,
+        'protein_map': protein_map,
+        'initial_state': initial_state,
+        'counted_molecules': molecules}
 
 # composite configuration
 def compose_glc_lct_shifter(config):
@@ -127,7 +139,8 @@ def compose_glc_lct_shifter(config):
         'transport': get_transport_config(),
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
-        'deriver': get_expression_config()}
+        # 'deriver': get_expression_config()
+    }
     config.update(shifter_config)
 
     return compose_master(config)
@@ -171,16 +184,13 @@ if __name__ == '__main__':
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lac__D_e'),
-            ('environment', 'h_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lac__D_e'),
             ('cell', 'g6p_c'),
-            ('cell', 'pep_c'),
-            ('cell', 'pyr_c'),
             ('cell', 'PTSG'),
             ('cell', 'lac__D_c'),
-            ('cell', 'h_c'),
+            ('cell', 'lacy_RNA'),
             ('cell', 'LacY')],
         'skip_roles': ['prior_state', 'null']
     }

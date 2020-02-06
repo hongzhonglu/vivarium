@@ -5,27 +5,35 @@ from scipy import constants
 
 from vivarium.actor.process import Process, convert_to_timeseries, \
     plot_simulation_output, simulate_process_with_environment
-from vivarium.utils.dict_utils import deep_merge
+from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
 from vivarium.utils.units import units
-
-default_step_size = 1
+from vivarium.utils.regulation_logic import build_rule
 
 
 
 class ODE_expression(Process):
     '''
-    a ode-based mRNA and protein expression process
+    a ode-based mRNA and protein expression process, with boolean logic for regulation
 
-    TODO -- add regulation
+    TODO -- kinetic regulation, cooperativity, autoinhibition, autactivation
     '''
     def __init__(self, initial_parameters={}):
 
         self.nAvogadro = constants.N_A * 1 / units.mol
 
+        # ode gene expression
         self.transcription = initial_parameters.get('transcription_rates', {})
         self.translation = initial_parameters.get('translation_rates', {})
         self.degradation = initial_parameters.get('degradation_rates', {})
         self.protein_map = initial_parameters.get('protein_map', {})
+
+        # boolean regulation
+        regulation_logic = initial_parameters.get('regulation', {})
+        self.regulation = {
+            gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
+        regulators = initial_parameters.get('regulators', [])
+        internal_regulators = [state_id for role_id, state_id in regulators if role_id == 'internal']
+        external_regulators = [state_id for role_id, state_id in regulators if role_id == 'external']
 
         # get initial state
         states = list(self.transcription.keys()) + list(self.translation.keys())
@@ -38,12 +46,11 @@ class ODE_expression(Process):
 
         roles = {
             'counts': states,
-            'internal': list(self.initial_state.get('internal', {}).keys()) + ['volume'],
-            'external': list(self.initial_state.get('external', {}).keys())}
+            'internal': list(self.initial_state.get('internal', {}).keys()) + internal_regulators + ['volume'],
+            'external': list(self.initial_state.get('external', {}).keys()) + external_regulators}
 
         parameters = {}
         parameters.update(initial_parameters)
-
 
         super(ODE_expression, self).__init__(roles, parameters)
 
@@ -70,15 +77,30 @@ class ODE_expression(Process):
         volume = internal['volume'] * units.fL
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
+        # get state of regulated reactions (True/False)
+        flattened_states = tuplify_role_dicts(states)
+        regulation_state = {}
+        for gene_id, reg_logic in self.regulation.items():
+            regulation_state[gene_id] = reg_logic(flattened_states)
+
         internal_update = {}
         ## transcription
+        # dM/dt = k_M - d_M * M
+        # with M: conc of mRNA, k_M: transcription rate, d_M: degradation rate
         # transcription rate abstracts over a number of factors, including gene copy number,
         # RNA polymerase abundance, strength of gene protomoters, and availability of nucleotides
         for transcript, rate in self.transcription.items():
+
+            # do not transcribe inhibited genes
+            if transcript in regulation_state and not regulation_state[transcript]:
+                rate = 0
+
             internal_update[transcript] = \
-                rate - self.degradation.get(transcript, 0) * internal[transcript]
+                rate - self.degradation.get(transcript, 0) * internal[transcript] * timestep
 
         ## translation
+        # dP/dt = k_P * m_P - d_P * P
+        # with P: conc of protein, m_P: conc of P's transcript, k_P: translation rate, d_P: degradation rate
         # translation rate abstracts over a number of factors, including ribosome availability,
         # strength of mRNA's ribosome binding, availability of tRNAs and free amino acids
         for protein, rate in self.translation.items():
@@ -95,30 +117,31 @@ class ODE_expression(Process):
 
         return {
             'internal': internal_update,
-            'counts': counts_update}
+            'counts': counts_update
+        }
 
 
 
 # test functions
 # toy config
 toy_transcription_rates = {
-    'transcript1': 1.0}
+    'lacy_RNA': 1e-20}
 
 toy_translation_rates = {
-    'protein1': 1.0}
+    'LacY': 1e-2}
 
 toy_protein_map = {
-    'protein1': 'transcript1'}
+    'LacY': 'lacy_RNA'}
 
 toy_degradation_rates = {
-    'transcript1': 0.1,
-    'protein1': 0.01}
+    'lacy_RNA': 0.2,
+    'LacY': 0.001}
 
 initial_state = {
     'internal': {
         'volume': 1.2,
-        'transcript1': 1.0,
-        # 'protein1': 1.0
+        'lacy_RNA': 0,
+        'LacY': 0.0
     }}
 
 def test_expression():
@@ -134,7 +157,7 @@ def test_expression():
     expression = ODE_expression(expression_config)
 
     settings = {
-        'total_time': 20,
+        'total_time': 100,
         # 'exchange_role': 'exchange',
         'environment_role': 'external',
         'environment_volume': 1e-12}
