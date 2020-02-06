@@ -2,6 +2,8 @@ import copy
 
 from vivarium.actor.process import Process
 from vivarium.data.nucleotides import nucleotides
+from vivarium.processes.deriver import AVOGADRO
+from vivarium.utils.units import units
 
 def all_subkeys(d):
     subkeys = set([])
@@ -17,6 +19,7 @@ def keys_list(d):
 
 class RnaDegradation(Process):
     def __init__(self, initial_parameters={}):
+        self.default_km = 1e-23
         self.default_parameters = {
 
             'sequences': {
@@ -31,10 +34,10 @@ class RnaDegradation(Process):
             'degradation_rates': {
                 'transcripts': {
                     'endoRNAse': {
-                        'oA': 1.0,
-                        'oAZ': 1.0,
-                        'oB': 1.0,
-                        'oBY': 1.0}}}}
+                        'oA': self.default_km,
+                        'oAZ': self.default_km,
+                        'oB': self.default_km,
+                        'oBY': self.default_km}}}}
 
         self.derive_defaults(initial_parameters, 'sequences', 'transcript_order', keys_list)
         self.derive_defaults(initial_parameters, 'catalysis_rates', 'protein_order', keys_list)
@@ -99,15 +102,20 @@ class RnaDegradation(Process):
             transcript: 0
             for transcript in self.transcript_order}
 
-        # TODO: do counts --> concencentrations --> counts conversion
+        mmol_to_count = (AVOGADRO * volume * units.fL).to(units.L / units.mmol)
 
         for protein, kcat in self.catalysis_rates.items():
             for transcript, km in self.degradation_rates['transcripts'][protein].items():
-                delta_transcripts[transcript] += int(kinetics(
-                    proteins[protein],
-                    transcripts[transcript],
+                km *= units.mole / units.fL
+                delta_transcripts[transcript] += kinetics(
+                    proteins[protein] / mmol_to_count,
+                    transcripts[transcript] / mmol_to_count,
                     kcat,
-                    km))
+                    km)
+
+        delta_transcripts = {
+            transcript: -int((level * mmol_to_count * timestep).magnitude)
+            for transcript, level in delta_transcripts.items()}
 
         delta_molecules = {
             molecule: 0

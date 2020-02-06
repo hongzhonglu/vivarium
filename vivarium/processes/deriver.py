@@ -10,6 +10,7 @@ from scipy import constants
 from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 
+AVOGADRO = constants.N_A * 1 / units.mol
 
 class Deriver(Process):
     """
