@@ -70,7 +70,7 @@ class Metabolism(Process):
 
         # default state
         internal = {state_id: 0.0 for state_id in self.internal_state_ids}
-        external = {state_id: 10.0 for state_id in self.fba.external_molecules}
+        external = {state_id: 0.0 for state_id in self.fba.external_molecules}
         # get optimal media from fba
         external.update(self.fba.minimal_external)
         external.update(self.initial_state.get('external', {}))
@@ -114,10 +114,10 @@ class Metabolism(Process):
 
         ## get the state
         internal_state = states['internal']
-        external_state = states['external']  # TODO -- constrain metabolism by external state
+        external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
         mass = internal_state['mass'] * units.fg
-        volume = mass.to('g') / self.density
+        volume = mass.to('g') / self.density  # TODO -- this can be handled by the deriver
 
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
@@ -149,17 +149,6 @@ class Metabolism(Process):
         exchange_reactions = self.fba.read_exchange_reactions()
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
         internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
-
-
-
-
-        print('update objective value: {}'.format(self.fba.optimize()))
-        import ipdb; ipdb.set_trace()
-        # what is the objective value?
-        # e_coli_core --> objective_exchange = 0.03903436287166423
-        # iAF1260b --> objective_exchange = 74.21433307897392
-
-
 
         # timestep dependence
         exchange_fluxes.update((mol_id, flux * timestep) for mol_id, flux in exchange_fluxes.items())
@@ -500,7 +489,7 @@ def test_BiGG_metabolism(out_dir):
     metabolism = Metabolism(metabolism_config)
 
     # simulate metabolism
-    timeline = [(2520, {})]  # 2600 seconds is the expected doubling time in minimal media
+    timeline = [(2520, {})]  # 2520 sec (42 min) is the expected doubling time in minimal media
 
     simulation_config = {
         'process': metabolism,
@@ -518,9 +507,9 @@ def test_BiGG_metabolism(out_dir):
     del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
 
+    # get growth
     volume_ts = timeseries['internal']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    import ipdb; ipdb.set_trace()
 
     plot_simulation_output(timeseries, plot_settings, out_dir)
 

@@ -77,12 +77,6 @@ def extract_model(model):
     boundary_reactions = [reaction.id for reaction in boundary]
     """
 
-    # get flux scaling factor
-    # this adjusts the BiGG FBA bounds for single-cell rates
-    target_objective_value = 4e-2  # this value was fit to hit a doubling time of 2520 sec (42 min) in e_coli_core
-    solution = model.optimize()
-    objective = solution.objective_value
-    flux_scaling = target_objective_value / objective
 
     reactions = model.reactions
     metabolites = model.metabolites
@@ -129,6 +123,20 @@ def extract_model(model):
             objective[reaction_id] = float(coeff)
         except:
             pass
+
+    # get flux scaling factor based on the objective's predicted added mass
+    # this adjusts the BiGG FBA bounds for single-cell rates
+    target_added_mass = 301 # fit to hit a doubling time of 2520 sec (42 min) in e_coli_core
+    solution = model.optimize()
+    objective_value = solution.objective_value
+
+    added_mass = 0
+    for reaction_id, coeff1 in objective.items():
+        for mol_id, coeff2 in stoichiometry[reaction_id].items():
+            mol_mw = molecular_weights.get(mol_id, 0.0)
+            mol_mass = mol_mw * objective_value
+            added_mass += mol_mass
+    flux_scaling = target_added_mass / added_mass
 
     return {
         'stoichiometry': stoichiometry,
