@@ -106,15 +106,27 @@ def get_metabolism_config():
 def get_expression_config():
     # define regulation
     regulators = [('external', 'glc__D_e')]
-    regulation = {
-        'LacY': 'if not (external, glc__D_e) > 0.1'}
+    regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
 
-    expression_rates = {'LacY': 0.005}
+    transcription_rates = {'lacy_RNA': 1e-20}
+    translation_rates = {'LacY': 1e-18}
+    protein_map = {'LacY': 'lacy_RNA'}
+    degradation_rates = {
+        'lacy_RNA': 1e-15,
+        'LacY': 1e-30}
+    initial_state = {}
+
+    molecules = list(transcription_rates.keys()) + list(translation_rates.keys())
+
     return {
         'regulators': regulators,
         'regulation': regulation,
-        'counted_molecules': list(expression_rates.keys()),
-        'expression_rates': expression_rates}
+        'transcription_rates': transcription_rates,
+        'translation_rates': translation_rates,
+        'degradation_rates': degradation_rates,
+        'protein_map': protein_map,
+        'initial_state': initial_state,
+        'counted_molecules': molecules}
 
 # composite configuration
 def compose_glc_lct_shifter(config):
@@ -127,7 +139,8 @@ def compose_glc_lct_shifter(config):
         'transport': get_transport_config(),
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
-        'deriver': get_expression_config()}
+        'deriver': get_expression_config()
+    }
     config.update(shifter_config)
 
     return compose_master(config)
@@ -153,15 +166,18 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (500, {'environment': {
+        (200, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (1000, {})]
+        (800, {'environment': {
+            'glc__D_e': 12.0}
+        }),
+        (1200, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 1e-12,  # L
         'timeline': timeline}
 
     plot_settings = {
@@ -171,16 +187,13 @@ if __name__ == '__main__':
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lac__D_e'),
-            ('environment', 'h_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lac__D_e'),
             ('cell', 'g6p_c'),
-            ('cell', 'pep_c'),
-            ('cell', 'pyr_c'),
             ('cell', 'PTSG'),
             ('cell', 'lac__D_c'),
-            ('cell', 'h_c'),
+            ('cell', 'lacy_RNA'),
             ('cell', 'LacY')],
         'skip_roles': ['prior_state', 'null']
     }

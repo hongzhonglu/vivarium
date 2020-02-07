@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.patches import Patch
 
-from vivarium.actor.process import Process, deep_merge
+from vivarium.actor.process import Process
+from vivarium.utils.dict_utils import deep_merge
 
 
 DEFAULT_N_FLAGELLA = 5
