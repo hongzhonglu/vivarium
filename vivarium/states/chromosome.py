@@ -22,7 +22,12 @@ def frequencies(l):
     return result
 
 def rna_bases(sequence):
-    return sequence.replace('T', 'U')
+    sequence = sequence.replace('A', 'U')
+    sequence = sequence.replace('T', 'A')
+    sequence = sequence.replace('C', 'x')
+    sequence = sequence.replace('G', 'C')
+    sequence = sequence.replace('x', 'G')
+    return sequence
 
 def sequence_monomers(sequence, begin, end):
     if begin < end:

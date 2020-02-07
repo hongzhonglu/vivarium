@@ -24,7 +24,7 @@ test_chromosome_config = {
                     'strength': 0.5,
                     'products': ['oA']},
                 {
-                    'position': 11,
+                    'position': 12,
                     'strength': 1.0,
                     'products': ['oAZ']}]},
         'pB': {
@@ -38,11 +38,11 @@ test_chromosome_config = {
                     ('tfX', 0.5)]}],
             'terminators': [
                 {
-                    'position': -8,
+                    'position': -9,
                     'strength': 0.5,
                     'products': ['oB']},
                 {
-                    'position': -11,
+                    'position': -12,
                     'strength': 1.0,
                     'products': ['oBY']}]}},
     'domains': {
