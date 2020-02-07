@@ -11,15 +11,15 @@ from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.processes.transcription import Transcription
-from vivarium.processes.translation import Translation
+from vivarium.processes.ode_expression import ODE_expression
+
 
 
 
 # the composite function
-def compose_master(config):
+def compose_ode_expression(config):
     """
-    A composite with kinetic transport, metabolism, and gene expression
+    A composite with kinetic transport, metabolism, and ode-based gene expression
     """
 
     ## Declare the processes.
@@ -36,11 +36,9 @@ def compose_master(config):
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
-    # expression
-    transcription_config = config.get('transcription', {})
-    translation_config = config.get('translation', {})
-    transcription = Transcription(transcription_config)
-    translation = Translation(translation_config)
+    # expression/degradation
+    expression_config = config.get('expression', {})
+    expression = ODE_expression(expression_config)
 
     # Division
     # get initial volume from metabolism
@@ -55,11 +53,11 @@ def compose_master(config):
     # Place processes in layers
     processes = [
         {'transport': transport,
-         'transcription': transcription,
-         'translation': translation},
+         'expression': expression},
         {'metabolism': metabolism},
         {'deriver': deriver,
-         'division': division}]
+         'division': division}
+    ]
 
     # Make the topology
     # for each process, map process roles to compartment roles
@@ -75,15 +73,10 @@ def compose_master(config):
             'reactions': 'reactions',
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
-        'transcription': {
-            'chromosome': 'chromosome',
-            'molecules': 'cell',  # TODO -- are these hooking up correctly?
-            'transcripts': 'transcripts'},
-        'translation': {
-            'ribosomes': 'ribosomes',
-            'molecules': 'cell',  # TODO -- are these hooking up correctly?
-            'transcripts': 'transcripts',
-            'proteins': 'proteins'},
+        'expression' : {
+            'counts': 'cell_counts',
+            'internal': 'cell',
+            'external': 'environment'},
         'division': {
             'internal': 'cell'},
         'deriver': {
@@ -113,6 +106,10 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
+
+    regulation = {
+        'EX_lac__D_e': 'if not (external, glc__D_e) > 0.1'}
+
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
     # initial state
@@ -137,30 +134,65 @@ def default_metabolism_config():
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0]},
         'model_path': metabolism_file,
+        'regulation': regulation,
         'initial_state': initial_state}
 
 def default_transport_config():
-    return {}
+    transport_reactions = {
+        'EX_glc__D_e': {
+            'stoichiometry': {
+                ('internal', 'g6p_c'): 1.0,
+                ('external', 'glc__D_e'): -1.0,
+            },
+            'is reversible': False,
+            'catalyzed by': [('internal', 'PTSG')]}}
+
+    transport_kinetics = {
+        'EX_glc__D_e': {
+            ('internal', 'PTSG'): {
+                ('external', 'glc__D_e'): 1e-1,
+                ('internal', 'pep_c'): None,
+                'kcat_f': -3e5}}}
+
+    transport_initial_state = {
+        'internal': {
+            'g6p_c': 0.0,
+            'pep_c': 1.8e-1,
+            'pyr_c': 0.0,
+            'PTSG': 1.8e-6},
+        'external': {
+            'glc__D_e': 12.0},
+        'fluxes': {
+            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
+
+    transport_roles = {
+        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
+        'external': ['glc__D_e']}
+
+    return {
+        'reactions': transport_reactions,
+        'kinetic_parameters': transport_kinetics,
+        'initial_state': transport_initial_state,
+        'roles': transport_roles}
 
 
 
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
         simulate_with_environment
-    from vivarium.composites.gene_expression import plot_gene_expression_output
 
-    out_dir = os.path.join('out', 'tests', 'master_composite')
+    out_dir = os.path.join('out', 'tests', 'composite_ode_expression')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     boot_config = {'emitter': 'null'}
-    compartment = load_compartment(compose_master, boot_config)
+    compartment = load_compartment(compose_ode_expression, boot_config)
 
     # settings for simulation and plot
-    options = compose_master({})['options']
+    options = compose_ode_expression({})['options']
 
     # define timeline
-    timeline = [(100, {})]
+    timeline = [(1000, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -179,5 +211,4 @@ if __name__ == '__main__':
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
-    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_simulation_output(timeseries, plot_settings, out_dir)

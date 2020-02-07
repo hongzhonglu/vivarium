@@ -4,7 +4,7 @@ import os
 
 from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
-from vivarium.composites.master import compose_master
+from vivarium.composites.ode_expression import compose_ode_expression
 
 
 # processes configurations
@@ -143,7 +143,7 @@ def compose_glc_lct_shifter(config):
     }
     config.update(shifter_config)
 
-    return compose_master(config)
+    return compose_ode_expression(config)
 
 
 

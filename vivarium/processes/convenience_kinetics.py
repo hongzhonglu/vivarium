@@ -25,9 +25,9 @@ class ConvenienceKinetics(Process):
         self.nAvogadro = constants.N_A * 1 / units.mol
 
         # retrieve initial parameters
-        self.reactions = initial_parameters.get('reactions')
+        self.reactions = initial_parameters.get('reactions', {})
         self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
-        kinetic_parameters = initial_parameters.get('kinetic_parameters')
+        kinetic_parameters = initial_parameters.get('kinetic_parameters', {})
         roles = initial_parameters.get('roles', EMPTY_ROLES)
 
         # make the kinetic model

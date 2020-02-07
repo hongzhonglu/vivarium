@@ -69,7 +69,7 @@ def compose_gene_expression(config):
 # analysis
 def plot_gene_expression_output(timeseries, name, out_dir='out'):
 
-    molecules = timeseries['molecules']
+    molecules = timeseries['cell']
     transcripts = timeseries['transcripts']
     proteins = timeseries['proteins']
     time = timeseries['time']
