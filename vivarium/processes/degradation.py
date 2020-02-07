@@ -52,6 +52,10 @@ class RnaDegradation(Process):
         self.protein_order = self.parameters['protein_order']
         self.molecule_order = list(nucleotides.values())
 
+        self.partial_transcripts = {
+            transcript: 0
+            for transcript in self.transcript_order}
+
         self.roles = {
             'transcripts': self.transcript_order,
             'proteins': self.protein_order,
@@ -113,21 +117,30 @@ class RnaDegradation(Process):
                     kcat,
                     km)
 
-        delta_transcripts = {
-            transcript: -int((level * mmol_to_count * timestep).magnitude)
+        degradation_levels = {
+            transcript: (
+                level * mmol_to_count * timestep).magnitude + self.partial_transcripts[transcript]
             for transcript, level in delta_transcripts.items()}
+
+        transcript_counts = {
+            transcript: -int(level)
+            for transcript, level in degradation_levels.items()}
+
+        self.partial_transcripts = {
+            transcript: level - int(level)
+            for transcript, level in degradation_levels.items()}
 
         delta_molecules = {
             molecule: 0
             for molecule in self.molecule_order}
 
-        for transcript, count in delta_transcripts.items():
+        for transcript, count in transcript_counts.items():
             sequence = self.sequences[transcript]
             for base in sequence:
                 delta_molecules[nucleotides[base]] -= count
 
         return {
-            'transcripts': delta_transcripts,
+            'transcripts': transcript_counts,
             'molecules': delta_molecules}
 
 
