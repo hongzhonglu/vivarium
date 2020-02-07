@@ -38,13 +38,8 @@ def generate_gfp_compartment(config):
     print(PURE)
     print(PURE_counts)
 
-    promoters = {
-        promoter['id']: Promoter(promoter)
-        for promoter in gfp_plasmid_config['promoters'].values()}
-
-    sequences = degradation_sequences(
-        gfp_plasmid_config['sequence'],
-        promoters)
+    plasmid = Chromosome(gfp_plasmid_config)
+    sequences = plasmid.product_sequences()
 
     print(sequences)
 

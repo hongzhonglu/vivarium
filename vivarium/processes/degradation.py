@@ -139,6 +139,9 @@ class RnaDegradation(Process):
             for base in sequence:
                 delta_molecules[nucleotides[base]] -= count
 
+        print('degradation sequences: {}'.format(self.sequences))
+        print('degradation molecules: {}'.format(delta_molecules))
+
         return {
             'transcripts': transcript_counts,
             'molecules': delta_molecules}

@@ -14,7 +14,7 @@ class Ribosome(Polymerase):
 class Transcript(Template):
     pass
 
-def generate_template(id, length, product):
+def generate_template(id, length, products):
     return {
         'id': id,
         'position': 0,
@@ -23,7 +23,7 @@ def generate_template(id, length, product):
         'terminators': [
             {'position': length,
              'strength': 1.0,
-             'product': product}]}
+             'products': products}]}
 
 def shuffle(l):
     l = [item for item in l]
@@ -286,7 +286,8 @@ class Translation(Process):
             'molecules': molecules,
             'proteins': elongation.complete_polymers}
 
-        # print('translation update: {}'.format(update))
+        print('translation sequences: {}'.format(self.sequences))
+        print('translation molecules: {}'.format(molecules))
 
         return update
 

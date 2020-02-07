@@ -287,9 +287,8 @@ class Transcription(Process):
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
-        print('molecules update: {}'.format(update['molecules']))
-        # print('transcription update: {}'.format(update))
-        # print('transcription update: {}'.format(update))
+        print('transcription sequences: {}'.format(self.sequences))
+        print('transcription molecules: {}'.format(molecules))
 
         return update
 

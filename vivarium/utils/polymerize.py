@@ -85,7 +85,7 @@ class Terminator(Datum):
     defaults = {
         'position': 0,
         'strength': 0,
-        'product': ''}
+        'products': []}
 
     def __init__(self, config, defaults=defaults):
         super(Terminator, self).__init__(config, self.defaults)
@@ -158,18 +158,18 @@ class Template(Datum):
 
     def choose_product(self):
         terminator = self.choose_terminator()
-        return terminator.product
+        return terminator.products
 
     def products(self):
-        return [
-            terminator.product
-            for terminator in self.terminators]
+        return flatten([
+            terminator.products
+            for terminator in self.terminators])
 
 def all_products(templates):
-    return list(set(flatten([
+    return list(set([
         product
         for template in templates.values()
-        for product in template.products()])))
+        for product in template.products()]))
 
 def polymerize_to(
         sequences,
@@ -182,6 +182,7 @@ def polymerize_to(
     complete_polymers = {
         product: 0
         for product in all_products(templates)}
+
     monomers = {
         monomer: 0
         for monomer in monomer_limits.keys()}
@@ -208,11 +209,7 @@ def polymerize_to(
                             polymerase.complete()
                             terminated += 1
 
-                            products = terminator.product
-                            if not isinstance(products, list):
-                                products = [products]
-
-                            for product in products:
+                            for product in terminator.products:
                                 complete_polymers[product] += 1
 
     polymerases = [
