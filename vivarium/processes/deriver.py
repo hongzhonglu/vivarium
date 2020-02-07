@@ -96,6 +96,9 @@ class Deriver(Process):
         concentration_update = {mol_id: (count / mmol_to_count).magnitude
             for mol_id, count in counts.items()}
 
+        for mol_id, conc in concentration_update.items():
+            assert conc >= 0, 'derived {} concentration < 0'.format(mol_id)
+
         # combine updates
         update['state'].update(deriver_update)
         update['state'].update(concentration_update)

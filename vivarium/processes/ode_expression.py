@@ -41,13 +41,18 @@ class ODE_expression(Process):
             state_id: 0 for state_id in states}}
         initialized_states = initial_parameters.get('initial_state', {})
         self.initial_state = deep_merge(null_states, initialized_states)
+        internal = list(self.initial_state.get('internal', {}).keys())
+        external = list(self.initial_state.get('external', {}).keys())
 
-        # TODO -- get initial counts....
+        self.partial_expression = {
+            mol_id: 0 for mol_id in internal}
+
+        # TODO -- get initial counts.
 
         roles = {
             'counts': states,
-            'internal': list(self.initial_state.get('internal', {}).keys()) + internal_regulators + ['volume'],
-            'external': list(self.initial_state.get('external', {}).keys()) + external_regulators}
+            'internal': internal + internal_regulators + ['volume'],
+            'external': external + external_regulators}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -73,8 +78,8 @@ class ODE_expression(Process):
         return default_settings
 
     def next_update(self, timestep, states):
-        internal = states['internal']
-        volume = internal['volume'] * units.fL
+        internal_state = states['internal']
+        volume = internal_state['volume'] * units.fL
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # get state of regulated reactions (True/False)
@@ -84,41 +89,47 @@ class ODE_expression(Process):
             regulation_state[gene_id] = reg_logic(flattened_states)
 
         internal_update = {}
-        ## transcription
-        # dM/dt = k_M - d_M * M
-        # with M: conc of mRNA, k_M: transcription rate, d_M: degradation rate
+        # transcription: dM/dt = k_M - d_M * M
+        # M: conc of mRNA, k_M: transcription rate, d_M: degradation rate
         # transcription rate abstracts over a number of factors, including gene copy number,
-        # RNA polymerase abundance, strength of gene protomoters, and availability of nucleotides
+        # RNA polymerase abundance, strength of gene promoters, and availability of nucleotides
         for transcript, rate in self.transcription.items():
-
+            transcript_state = internal_state[transcript]
             # do not transcribe inhibited genes
             if transcript in regulation_state and not regulation_state[transcript]:
                 rate = 0
 
             internal_update[transcript] = \
-                rate - self.degradation.get(transcript, 0) * internal[transcript] * timestep
+                (rate - self.degradation.get(transcript, 0) * transcript_state) * timestep
 
-        ## translation
-        # dP/dt = k_P * m_P - d_P * P
-        # with P: conc of protein, m_P: conc of P's transcript, k_P: translation rate, d_P: degradation rate
+        # translation: dP/dt = k_P * m_P - d_P * P
+        # P: conc of protein, m_P: conc of P's transcript, k_P: translation rate, d_P: degradation rate
         # translation rate abstracts over a number of factors, including ribosome availability,
         # strength of mRNA's ribosome binding, availability of tRNAs and free amino acids
         for protein, rate in self.translation.items():
             transcript = self.protein_map[protein]
-            transcript_state = internal[transcript]
-            internal_update[protein] = \
-                rate * transcript_state - self.degradation.get(protein, 0) * internal[protein]
+            transcript_state = internal_state[transcript]
+            protein_state = internal_state[protein]
 
-        # convert concentrations to counts
-        counts_update = {}
-        for mol_id, delta_conc in internal_update.items():
-            delta_counts = int((delta_conc * mmol_to_count).magnitude)
-            counts_update[mol_id] = delta_counts
+            internal_update[protein] = \
+                (rate * transcript_state - self.degradation.get(protein, 0) * protein_state) * timestep
+
+        # convert concentrations to counts.
+        # keep partially expressed molecules for the next iteration
+        expression_levels = {
+            mol_id: (delta_conc * mmol_to_count).magnitude + self.partial_expression[mol_id] for
+            mol_id, delta_conc in internal_update.items()}
+
+        counts_update = {
+            mol_id: int(level) for mol_id, level in expression_levels.items()}
+
+        self.partial_expression = {
+             mol_id: level - int(level)
+             for mol_id, level in expression_levels.items()}
 
         return {
             'internal': internal_update,
-            'counts': counts_update
-        }
+            'counts': counts_update}
 
 
 

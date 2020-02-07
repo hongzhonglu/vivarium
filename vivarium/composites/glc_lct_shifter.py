@@ -43,9 +43,9 @@ def get_transport_config():
                 'kcat_f': -3e5}},
         'EX_lac__D_e': {   # TODO -- GLC inhibition?
             ('internal', 'LacY'): {
-                ('external', 'lac__D_e'): 1e1,
+                ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': -3e5}},
+                'kcat_f': -1e5}},
         }
 
     transport_initial_state = {
@@ -108,12 +108,12 @@ def get_expression_config():
     regulators = [('external', 'glc__D_e')]
     regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
 
-    transcription_rates = {'lacy_RNA': 1e-15}
-    translation_rates = {'LacY': 1e5}
+    transcription_rates = {'lacy_RNA': 1e-20}
+    translation_rates = {'LacY': 1e-18}
     protein_map = {'LacY': 'lacy_RNA'}
     degradation_rates = {
-        'lacy_RNA': 1e-2,
-        'LacY': 1e-9}
+        'lacy_RNA': 1e-15,
+        'LacY': 1e-30}
     initial_state = {}
 
     molecules = list(transcription_rates.keys()) + list(translation_rates.keys())
@@ -139,7 +139,7 @@ def compose_glc_lct_shifter(config):
         'transport': get_transport_config(),
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
-        # 'deriver': get_expression_config()
+        'deriver': get_expression_config()
     }
     config.update(shifter_config)
 
@@ -166,15 +166,18 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (500, {'environment': {
+        (200, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (1000, {})]
+        (800, {'environment': {
+            'glc__D_e': 12.0}
+        }),
+        (1200, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 1e-12,  # L
         'timeline': timeline}
 
     plot_settings = {

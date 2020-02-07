@@ -74,7 +74,7 @@ def compose_master(config):
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
         'expression' : {
-            'counts': 'null',
+            'counts': 'cell_counts',
             'internal': 'cell',
             'external': 'environment'},
         'division': {
