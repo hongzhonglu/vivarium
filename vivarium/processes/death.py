@@ -18,6 +18,9 @@ class CheckerInterface(object):
     Each subclass should check for a condition that might kill the cell.
     '''
 
+    def __init__(self):
+        self.needed_state_keys = {}
+
     def check_can_survive(self, states):
         '''Check whether the current state is survivable by the cell
 
@@ -37,8 +40,11 @@ class AntibioticChecker(CheckerInterface):
     def __init__(
         self, antibiotic_threshold=0.9, antibiotic_key='antibiotic'
     ):
+        super(AntibioticChecker, self).__init__()
         self.threshold = antibiotic_threshold
         self.key = antibiotic_key
+        self.needed_state_keys.setdefault(
+            'internal', set()).add('antibiotic')
 
     def check_can_survive(self, states):
         concentration = states['internal'][self.key]
@@ -60,7 +66,14 @@ class DeathFreezeState(Process):
             for name, config_dict in initial_parameters.get(
                 'checkers', []).items()
         ]
-        roles = {'internal': ['death_freeze_state']}
+        roles = {'internal': set(['death_freeze_state'])}
+        for checker in self.checkers:
+            needed_keys = checker.needed_state_keys
+            for role in needed_keys:
+                keys = roles.setdefault(role, set())
+                keys |= needed_keys[role]
+        for role, keys in roles.items():
+            roles[role] = list(keys)
         super(DeathFreezeState, self).__init__(roles, initial_parameters)
 
     def default_settings(self):
