@@ -17,27 +17,29 @@ def kinetics(E, S, kcat, km):
 def keys_list(d):
     return list(d.keys())
 
+DEFAULT_TRANSCRIPT_DEGRADATION_KM = 1e-23
+
+default_degradation_parameters = {
+    'sequences': {
+        'oA': 'GCC',
+        'oAZ': 'GCCGUGCAC',
+        'oB': 'AGUUGA',
+        'oBY': 'AGUUGACGG'},
+
+    'catalysis_rates': {
+        'endoRNAse': 2.0},
+
+    'degradation_rates': {
+        'transcripts': {
+            'endoRNAse': {
+                'oA': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                'oAZ': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                'oB': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                'oBY': DEFAULT_TRANSCRIPT_DEGRADATION_KM}}}}
+
 class RnaDegradation(Process):
     def __init__(self, initial_parameters={}):
-        self.default_km = 1e-23
-        self.default_parameters = {
-
-            'sequences': {
-                'oA': 'GCC',
-                'oAZ': 'GCCGUGCAC',
-                'oB': 'AGUUGA',
-                'oBY': 'AGUUGACGG'},
-
-            'catalysis_rates': {
-                'endoRNAse': 2.0},
-
-            'degradation_rates': {
-                'transcripts': {
-                    'endoRNAse': {
-                        'oA': self.default_km,
-                        'oAZ': self.default_km,
-                        'oB': self.default_km,
-                        'oBY': self.default_km}}}}
+        self.default_parameters = default_degradation_parameters
 
         self.derive_defaults(initial_parameters, 'sequences', 'transcript_order', keys_list)
         self.derive_defaults(initial_parameters, 'catalysis_rates', 'protein_order', keys_list)
@@ -138,9 +140,6 @@ class RnaDegradation(Process):
             sequence = self.sequences[transcript]
             for base in sequence:
                 delta_molecules[nucleotides[base]] -= count
-
-        print('degradation sequences: {}'.format(self.sequences))
-        print('degradation molecules: {}'.format(delta_molecules))
 
         return {
             'transcripts': transcript_counts,

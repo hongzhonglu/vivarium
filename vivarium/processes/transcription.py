@@ -13,6 +13,23 @@ def choose_element(elements):
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
+UNBOUND_RNAP_KEY = 'RNA Polymerase'
+
+monomer_ids = list(nucleotides.values())
+
+default_transcription_parameters = {
+    'promoter_affinities': {
+        'pA': 1.0,
+        'pB': 1.0},
+    'sequence': test_chromosome_config['sequence'],
+    'templates': test_chromosome_config['promoters'],
+    'genes': test_chromosome_config['genes'],
+    'elongation_rate': 1.0,
+    'advancement_rate': 1.0,
+    'symbol_to_monomer': nucleotides,
+    'monomer_ids': monomer_ids,
+    'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
+
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
         '''
@@ -28,20 +45,7 @@ class Transcription(Process):
 
         print('inital_parameters: {}'.format(initial_parameters))
 
-        monomer_ids = list(nucleotides.values())
-        self.unbound_rnap_key = 'RNA Polymerase'
-        self.default_parameters = {
-            'promoter_affinities': {
-                'pA': 1.0,
-                'pB': 1.0},
-            'sequence': test_chromosome_config['sequence'],
-            'templates': test_chromosome_config['promoters'],
-            'genes': test_chromosome_config['genes'],
-            'elongation_rate': 1.0,
-            'advancement_rate': 1.0,
-            'symbol_to_monomer': nucleotides,
-            'monomer_ids': monomer_ids,
-            'molecule_ids': monomer_ids + [self.unbound_rnap_key]}
+        self.default_parameters = default_transcription_parameters
 
         self.default_parameters['promoter_order'] = list(
             initial_parameters.get(
@@ -111,7 +115,7 @@ class Transcription(Process):
                         'lead': 0,
                         'lag': 0,
                         'children': []}}},
-            'molecules': {self.unbound_rnap_key: 10}}
+            'molecules': {UNBOUND_RNAP_KEY: 10}}
 
         default_state['molecules'].update({
             nucleotide: 100
@@ -126,7 +130,7 @@ class Transcription(Process):
 
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': self.monomer_ids + [self.unbound_rnap_key],
+            'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
         default_updaters = {
@@ -181,7 +185,7 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = states['molecules'][self.unbound_rnap_key]
+        original_unbound_rnaps = states['molecules'][UNBOUND_RNAP_KEY]
         monomer_limits = {
             monomer: states['molecules'][monomer]
             for monomer in self.monomer_ids}
@@ -276,7 +280,7 @@ class Transcription(Process):
         self.elongation = elongation.elongation - int(elongation.elongation)
 
         molecules = {
-            self.unbound_rnap_key: unbound_rnaps - original_unbound_rnaps}
+            UNBOUND_RNAP_KEY: unbound_rnaps - original_unbound_rnaps}
 
         molecules.update({
             key: count * -1
@@ -286,9 +290,6 @@ class Transcription(Process):
             'chromosome': chromosome.to_dict(),
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
-
-        print('transcription sequences: {}'.format(self.sequences))
-        print('transcription molecules: {}'.format(molecules))
 
         return update
 

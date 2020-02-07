@@ -36,32 +36,42 @@ def random_string(alphabet, length):
         string += random.choice(alphabet)
     return string
 
+UNBOUND_RIBOSOME_KEY = 'Ribosome'
+
+monomer_symbols = []
+monomer_ids = []
+
+for symbol, id in amino_acids.items():
+    monomer_symbols.append(symbol)
+    monomer_ids.append(id)
+
+default_translation_parameters = {
+    'sequences': {
+        'oA': random_string(monomer_symbols, 20),
+        'oAZ': random_string(monomer_symbols, 50),
+        'oB': random_string(monomer_symbols, 30),
+        'oBY': random_string(monomer_symbols, 70)},
+    'templates': {
+        'oA': generate_template('oA', 20, ['eA']),
+        'oAZ': generate_template('oAZ', 50, ['eA', 'eZ']),
+        'oB': generate_template('oB', 30, ['eB']),
+        'oBY': generate_template('oBY', 70, ['eB', 'eY'])},
+    'transcript_affinities': {
+        'oA': 1.0,
+        'oAZ': 1.0,
+        'oB': 1.0,
+        'oBY': 1.0},
+    'elongation_rate': 5.0,
+    'advancement_rate': 10.0,
+    'symbol_to_monomer': amino_acids,
+    'monomer_ids': monomer_ids}
+
 class Translation(Process):
     def __init__(self, initial_parameters={}):
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
-        self.unbound_ribosomes_key = 'Ribosome'
 
-        self.default_parameters = {
-            'sequences': {
-                'oA': random_string(self.monomer_symbols, 20),
-                'oAZ': random_string(self.monomer_symbols, 50),
-                'oB': random_string(self.monomer_symbols, 30),
-                'oBY': random_string(self.monomer_symbols, 70)},
-            'templates': {
-                'oA': generate_template('oA', 20, ['eA']),
-                'oAZ': generate_template('oAZ', 50, ['eA', 'eZ']),
-                'oB': generate_template('oB', 30, ['eB']),
-                'oBY': generate_template('oBY', 70, ['eB', 'eY'])},
-            'transcript_affinities': {
-                'oA': 1.0,
-                'oAZ': 1.0,
-                'oB': 1.0,
-                'oBY': 1.0},
-            'elongation_rate': 5.0,
-            'advancement_rate': 10.0,
-            'symbol_to_monomer': amino_acids,
-            'monomer_ids': self.monomer_ids}
+        self.default_parameters = default_translation_parameters
 
         templates = initial_parameters.get(
             'templates',
@@ -76,7 +86,7 @@ class Translation(Process):
                 'transcript_affinities',
                 self.default_parameters['transcript_affinities']).keys())
         self.default_parameters['molecule_ids'] = self.monomer_ids + [
-            self.unbound_ribosomes_key]
+            UNBOUND_RIBOSOME_KEY]
 
         self.parameters = copy.deepcopy(self.default_parameters)
         self.parameters.update(initial_parameters)
@@ -124,7 +134,7 @@ class Translation(Process):
             'ribosomes': {
                 'ribosomes': []},
             'molecules': dict({
-                self.unbound_ribosomes_key: 10}),
+                UNBOUND_RIBOSOME_KEY: 10}),
             'transcripts': {
                 transcript_id: 1
                 for transcript_id in self.transcript_order},
@@ -139,7 +149,7 @@ class Translation(Process):
         operons = list(default_state['transcripts'].keys())
         default_emitter_keys = {
             'ribosomes': ['ribosomes'],
-            'molecules': self.monomer_ids + [self.unbound_ribosomes_key],
+            'molecules': self.monomer_ids + [UNBOUND_RIBOSOME_KEY],
             'transcripts': operons,
             'proteins': self.protein_ids}
 
@@ -184,7 +194,7 @@ class Translation(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
 
-        original_unbound_ribosomes = states['molecules'][self.unbound_ribosomes_key]
+        original_unbound_ribosomes = states['molecules'][UNBOUND_RIBOSOME_KEY]
         monomer_limits = {
             monomer: states['molecules'][monomer]
             for monomer in self.monomer_ids}
@@ -274,7 +284,7 @@ class Translation(Process):
         self.elongation = elongation.elongation - int(elongation.elongation)
 
         molecules = {
-            self.unbound_ribosomes_key: unbound_ribosomes - original_unbound_ribosomes}
+            UNBOUND_RIBOSOME_KEY: unbound_ribosomes - original_unbound_ribosomes}
 
         molecules.update({
             key: count * -1
@@ -285,9 +295,6 @@ class Translation(Process):
                 'ribosomes': [ribosome.to_dict() for ribosome in ribosomes]},
             'molecules': molecules,
             'proteins': elongation.complete_polymers}
-
-        print('translation sequences: {}'.format(self.sequences))
-        print('translation molecules: {}'.format(molecules))
 
         return update
 

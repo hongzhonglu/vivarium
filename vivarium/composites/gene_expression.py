@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from vivarium.actor.process import initialize_state
 
 # processes
-from vivarium.processes.transcription import Transcription
-from vivarium.processes.translation import Translation
+from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
+from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
@@ -95,8 +95,8 @@ def plot_gene_expression_output(timeseries, name, out_dir='out'):
     ax5 = plt.subplot(n_rows, n_cols, 5)
 
     polymerase_ids = [
-        Transcription().unbound_rnap_key,
-        Translation().unbound_ribosomes_key]
+        UNBOUND_RNAP_KEY,
+        UNBOUND_RIBOSOME_KEY]
     amino_acid_ids = list(amino_acids.values())
     nucleotide_ids = list(nucleotides.values())
 
