@@ -184,7 +184,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_ode_expression, boot_config)
 
     # settings for simulation and plot
-    options = compose_ode_expression({})['options']
+    options = compartment.configuration
     timeline = [(1000, {})]
 
     settings = {

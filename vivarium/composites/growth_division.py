@@ -118,7 +118,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_growth_division)
 
     # settings for simulation and plot
-    options = compose_growth_division({})['options']
+    options = compartment.configuration
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],

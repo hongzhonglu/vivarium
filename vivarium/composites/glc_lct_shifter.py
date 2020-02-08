@@ -93,7 +93,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_glc_lct_shifter, boot_config)
 
     # settings for simulation and plot
-    options = compose_glc_lct_shifter({})['options']
+    options = compartment.configuration
 
     # define timeline
     timeline = [

@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
+from vivarium.actor.process import initialize_state, load_compartment, convert_to_timeseries, plot_simulation_output, \
+    simulate_with_environment
 
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
@@ -50,7 +51,7 @@ def compose_pmf_chemotaxis(config):
             'fluxes': 'fluxes'},
         'expression' : {
             'counts': 'cell_counts',
-            'internal': 'internal',  # todo -- hook this up with flagella
+            'internal': 'cytoplasm',  # todo -- hook this up with flagella
             'external': 'environment'},
         'flagella': {
             'internal': 'cytoplasm',
@@ -78,8 +79,7 @@ def compose_pmf_chemotaxis(config):
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'divide_condition': divide_condition,
-        'divide_state': divide_state
-    }
+        'divide_state': divide_state}
 
     return {
         'processes': processes,
@@ -89,8 +89,6 @@ def compose_pmf_chemotaxis(config):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
 
     out_dir = os.path.join('out', 'tests', 'PMF_chemotaxis')
     if not os.path.exists(out_dir):
@@ -100,13 +98,13 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_pmf_chemotaxis, boot_config)
 
     # settings for simulation and plot
-    options = compose_pmf_chemotaxis({})['options']
+    options = compartment.configuration
     timeline = [(10, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 1e-13,
         'timeline': timeline}
 
     plot_settings = {

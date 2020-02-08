@@ -161,7 +161,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_master, boot_config)
 
     # settings for simulation and plot
-    options = compose_master({})['options']
+    options = compartment.configuration
 
     # define timeline
     timeline = [(600, {})]

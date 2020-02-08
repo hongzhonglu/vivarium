@@ -191,25 +191,12 @@ def get_flagella_expression():
         'flagella': 5,
         'flag_RNA': 1}
 
-    expression_config = {
+    return  {
         'transcription_rates': transcription,
         'translation_rates': translation,
         'degradation_rates': degradation,
         'protein_map': protein_map,
         'initial_state': initial_state}
-
-    # load process
-    expression = ODE_expression(expression_config)
-
-    settings = {
-        'total_time': 100,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
-        'environment_volume': 1e-12}
-
-    saved_data = simulate_process_with_environment(expression, settings)
-
-    return saved_data
 
 
 

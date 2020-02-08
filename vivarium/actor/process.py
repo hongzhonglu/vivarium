@@ -292,6 +292,7 @@ class Compartment(object):
 
         self.processes = processes
         self.states = states
+        self.configuration = configuration
         self.topology = configuration['topology']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
