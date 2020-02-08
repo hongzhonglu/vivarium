@@ -200,6 +200,6 @@ if __name__ == '__main__':
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

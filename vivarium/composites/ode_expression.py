@@ -15,8 +15,6 @@ from vivarium.processes.ode_expression import ODE_expression
 
 
 
-
-# the composite function
 def compose_ode_expression(config):
     """
     A composite with kinetic transport, metabolism, and ode-based gene expression
@@ -65,14 +63,14 @@ def compose_ode_expression(config):
         'transport': {
             'internal': 'cell',
             'external': 'environment',
-            'exchange': 'null',  # metabolism's exchange is used
-            'fluxes': 'flux_bounds'},
+            'exchange': 'null',
+            'fluxes': 'flux'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds'},
+            'flux_bounds': 'flux'},
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cell',
@@ -82,8 +80,7 @@ def compose_ode_expression(config):
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'prior_state': 'prior_state'}}
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -108,7 +105,8 @@ def compose_ode_expression(config):
 def default_metabolism_config():
 
     regulation = {
-        'EX_lac__D_e': 'if not (external, glc__D_e) > 0.1'}
+        'EX_lac__D_e':
+            'if not (external, glc__D_e) > 0.1'}
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
 
@@ -118,11 +116,10 @@ def default_metabolism_config():
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
     internal = {
-            'mass': mass.magnitude,  # fg
+            'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude}
 
     # external
-    # TODO -- generalize external to whatever BiGG model is loaded
     make_media = Media()
     external = make_media.get_saved_media('ecoli_core_GLC')
     initial_state = {
@@ -142,8 +139,7 @@ def default_transport_config():
         'EX_glc__D_e': {
             'stoichiometry': {
                 ('internal', 'g6p_c'): 1.0,
-                ('external', 'glc__D_e'): -1.0,
-            },
+                ('external', 'glc__D_e'): -1.0},
             'is reversible': False,
             'catalyzed by': [('internal', 'PTSG')]}}
 
@@ -190,8 +186,6 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compose_ode_expression({})['options']
-
-    # define timeline
     timeline = [(1000, {})]
 
     settings = {
@@ -203,12 +197,12 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']
-        }
+        'overlay': {
+            'reactions': 'flux_bounds'},
+        'skip_roles': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

@@ -37,17 +37,17 @@ def compose_gene_expression(config):
     topology = {
         'transcription': {
             'chromosome': 'chromosome',
-            'molecules': 'cell',
+            'molecules': 'molecules',
             'transcripts': 'transcripts'},
         'translation': {
             'ribosomes': 'ribosomes',
-            'molecules': 'cell',
+            'molecules': 'molecules',
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'molecules': 'cell',
+            'molecules': 'molecules',
             'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
@@ -75,12 +75,13 @@ def compose_gene_expression(config):
 
 
 # analysis
-def plot_gene_expression_output(timeseries, name, out_dir='out'):
+def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
-    # TODO -- generalize these, so that any state id can be loaded in
-    molecules = timeseries['cell']
-    transcripts = timeseries['transcripts']
-    proteins = timeseries['proteins']
+    name = config.get('name', 'gene expression')
+    roles = config.get('roles', {})
+    molecules = timeseries[roles['molecules']]
+    transcripts = timeseries[roles['transcripts']]
+    proteins = timeseries[roles['proteins']]
     time = timeseries['time']
 
     # make figure and plot
@@ -164,4 +165,13 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gene_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
+
+    settings = {}
+    settings = {
+        'name': 'gene_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(timeseries, settings, out_dir)
