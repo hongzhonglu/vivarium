@@ -184,9 +184,9 @@ class Translation(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
 
-        original_unbound_ribosomes = states['molecules'][self.unbound_ribosomes_key]
+        original_unbound_ribosomes = molecules[self.unbound_ribosomes_key]
         monomer_limits = {
-            monomer: states['molecules'][monomer]
+            monomer: molecules[monomer]
             for monomer in self.monomer_ids}
         unbound_ribosomes = original_unbound_ribosomes
 

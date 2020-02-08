@@ -113,7 +113,7 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
+    metabolism_file = os.path.join('models', 'iAF1260b.json')
 
     # initial state
     # internal
@@ -125,12 +125,7 @@ def default_metabolism_config():
             'volume': volume.to('fL').magnitude}
 
     # external
-    # TODO -- generalize external to whatever BiGG model is loaded
-    make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')
-    initial_state = {
-        'internal': internal,
-        'external': external}
+    initial_state = {'internal': internal}
 
     return {
         'moma': False,

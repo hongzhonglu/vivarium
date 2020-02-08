@@ -180,9 +180,9 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = states['molecules'][self.unbound_rnap_key]
+        original_unbound_rnaps = molecules[self.unbound_rnap_key]
         monomer_limits = {
-            monomer: states['molecules'][monomer]
+            monomer: molecules[monomer]
             for monomer in self.monomer_ids}
         unbound_rnaps = original_unbound_rnaps
 
@@ -202,8 +202,8 @@ class Transcription(Process):
                 bound_rnap,
                 [unbound_rnaps]])
 
-            if time == 0:
-                print('transcription substrate: {}'.format(substrate))
+            # if time == 0:
+            #     print('transcription substrate: {}'.format(substrate))
             
             # find number of monomers until next terminator
             distance = chromosome.terminator_distance()
@@ -286,8 +286,7 @@ class Transcription(Process):
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
-        print('molecules update: {}'.format(update['molecules']))
-        # print('transcription update: {}'.format(update))
+        # print('molecules update: {}'.format(update['molecules']))
         # print('transcription update: {}'.format(update))
 
         return update
