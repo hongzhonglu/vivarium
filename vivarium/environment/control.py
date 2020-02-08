@@ -100,7 +100,7 @@ class ShepherdControl(ActorControl):
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
-        experiment_id = 'glc-g6p'
+        experiment_id = 'glc-lct'
         environment_type = 'ecoli_core_glc'
         agent_type = 'shifter'
 
