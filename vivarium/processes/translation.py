@@ -36,6 +36,7 @@ def random_string(alphabet, length):
         string += random.choice(alphabet)
     return string
 
+VERBOSE = False
 UNBOUND_RIBOSOME_KEY = 'Ribosome'
 
 monomer_symbols = []
@@ -125,7 +126,8 @@ class Translation(Process):
             'transcripts': self.transcript_order,
             'proteins': self.protein_ids}
 
-        print('translation parameters: {}'.format(self.parameters))
+        if VERBOSE:
+            print('translation parameters: {}'.format(self.parameters))
 
         super(Translation, self).__init__(self.roles, self.parameters)
 

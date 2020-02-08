@@ -13,6 +13,7 @@ from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
+from vivarium.processes.degradation import RnaDegradation
 
 
 
@@ -39,8 +40,10 @@ def compose_master(config):
     # expression
     transcription_config = config.get('transcription', {})
     translation_config = config.get('translation', {})
+    degradation_config = config.get('degradation', {})
     transcription = Transcription(transcription_config)
     translation = Translation(translation_config)
+    degradation = RnaDegradation(degradation_config)
 
     # Division
     # get initial volume from metabolism
@@ -56,7 +59,8 @@ def compose_master(config):
     processes = [
         {'transport': transport,
          'transcription': transcription,
-         'translation': translation},
+         'translation': translation,
+         'degradation': degradation},
         {'metabolism': metabolism},
         {'deriver': deriver,
          'division': division}]
@@ -84,6 +88,11 @@ def compose_master(config):
             'molecules': 'cell',  # TODO -- are these hooking up correctly?
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
+        'degradation': {
+            'transcripts': 'transcripts',
+            'proteins': 'proteins',
+            'molecules': 'cell',
+            'global': 'global'},
         'division': {
             'internal': 'cell'},
         'deriver': {
@@ -155,7 +164,7 @@ if __name__ == '__main__':
     options = compose_master({})['options']
 
     # define timeline
-    timeline = [(100, {})]
+    timeline = [(600, {})]
 
     settings = {
         'environment_role': options['environment_role'],

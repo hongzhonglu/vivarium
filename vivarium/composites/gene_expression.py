@@ -37,17 +37,17 @@ def compose_gene_expression(config):
     topology = {
         'transcription': {
             'chromosome': 'chromosome',
-            'molecules': 'molecules',
+            'molecules': 'cell',
             'transcripts': 'transcripts'},
         'translation': {
             'ribosomes': 'ribosomes',
-            'molecules': 'molecules',
+            'molecules': 'cell',
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'molecules': 'molecules',
+            'molecules': 'cell',
             'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
@@ -60,7 +60,7 @@ def compose_gene_expression(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
-        'name': 'growth_division_composite',
+        'name': 'gene_expression_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
@@ -77,6 +77,7 @@ def compose_gene_expression(config):
 # analysis
 def plot_gene_expression_output(timeseries, name, out_dir='out'):
 
+    # TODO -- generalize these, so that any state id can be loaded in
     molecules = timeseries['cell']
     transcripts = timeseries['transcripts']
     proteins = timeseries['proteins']
