@@ -3,78 +3,12 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.environment.make_media import Media
+from vivarium.processes.convenience_kinetics import get_glc_lct_config
 from vivarium.utils.units import units
 from vivarium.composites.ode_expression import compose_ode_expression
 
 
 # processes configurations
-def get_transport_config():
-    """
-    Convenience kinetics configuration for simplified glucose/lactose transport.
-    This abstracts the PTS/GalP system to a single uptake kinetic
-    with glc__D_e_external as the only cofactor.
-    """
-    transport_reactions = {
-        'EX_glc__D_e': {
-            'stoichiometry': {
-                ('internal', 'g6p_c'): 1.0,
-                ('external', 'glc__D_e'): -1.0,
-                ('internal', 'pep_c'): -1.0,  # TODO -- PEP needs mechanism for homeostasis to avoid depletion
-                ('internal', 'pyr_c'): 1.0
-            },
-            'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]},
-        'EX_lac__D_e': {
-            'stoichiometry': {
-                ('external', 'lac__D_e'): -1.0,
-                ('external', 'h_e'): -1.0,
-                ('internal', 'lac__D_c'): 1.0,
-                ('internal', 'h_c'): 1.0,
-            },
-            'is reversible': False,
-            'catalyzed by': [('internal', 'LacY')]},
-        }
-
-    transport_kinetics = {
-        'EX_glc__D_e': {
-            ('internal', 'PTSG'): {
-                ('external', 'glc__D_e'): 1e-1,
-                ('internal', 'pep_c'): None,
-                'kcat_f': -3e5}},
-        'EX_lac__D_e': {   # TODO -- GLC inhibition?
-            ('internal', 'LacY'): {
-                ('external', 'lac__D_e'): 1e-1,
-                ('external', 'h_e'): None,
-                'kcat_f': -1e5}},
-        }
-
-    transport_initial_state = {
-        'internal': {
-            'PTSG': 1.8e-6,  # concentration (mmol/L)
-            'g6p_c': 0.0,
-            'pep_c': 1.8e-1,
-            'pyr_c': 0.0,
-            'LacY': 0.0,
-            'lac__D_c': 0.0,
-            'h_c': 100.0},
-        'external': {
-            'glc__D_e': 12.0,
-            'lac__D_e': 0.0,
-            'h_e': 100.0},
-        'fluxes': {
-            'EX_glc__D_e': 0.0,
-            'EX_lac__D_e': 0.0}}  # TODO -- is this needed?
-
-    transport_roles = {
-        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'h_c', 'PTSG', 'LacY'],
-        'external': ['glc__D_e', 'lac__D_e', 'h_e']}
-
-    return {
-        'reactions': transport_reactions,
-        'kinetic_parameters': transport_kinetics,
-        'initial_state': transport_initial_state,
-        'roles': transport_roles}
-
 def get_metabolism_config():
 
     metabolism_file = os.path.join('models', 'e_coli_core.json')
@@ -136,7 +70,7 @@ def compose_glc_lct_shifter(config):
     """
     shifter_config = {
         'name': 'glc_lct_shifter',
-        'transport': get_transport_config(),
+        'transport': get_glc_lct_config(),
         'metabolism': get_metabolism_config(),
         'expression': get_expression_config(),
         'deriver': get_expression_config()
@@ -183,7 +117,7 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux_bounds'},
+        'overlay': {'reactions': 'flux'},
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lac__D_e'),
