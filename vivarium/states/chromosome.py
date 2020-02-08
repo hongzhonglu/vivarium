@@ -22,7 +22,12 @@ def frequencies(l):
     return result
 
 def rna_bases(sequence):
-    return sequence.replace('T', 'U')
+    sequence = sequence.replace('A', 'U')
+    sequence = sequence.replace('T', 'A')
+    sequence = sequence.replace('C', 'x')
+    sequence = sequence.replace('G', 'C')
+    sequence = sequence.replace('x', 'G')
+    return sequence
 
 def sequence_monomers(sequence, begin, end):
     if begin < end:
@@ -89,11 +94,11 @@ class Domain(Datum):
 class RnapTerminator(Terminator):
     def operon_from(self, genes, promoter):
         return Operon({
-            'id': self.product[0], # assume there is only one operon product
+            'id': self.products[0], # assume there is only one operon product
             'position': promoter.position,
             'direction': promoter.direction,
             'length': (self.position - promoter.position) * promoter.direction,
-            'genes': genes.get(self.product[0], [])})
+            'genes': genes.get(self.products[0], [])})
 
 class Promoter(Template):
     '''
@@ -232,6 +237,18 @@ class Chromosome(Datum):
                 promoter.position,
                 promoter.last_terminator().position))
             for promoter_key, promoter in self.promoters.items()}
+
+    def product_sequences(self):
+        sequences = {}
+        for promoter_key, promoter in self.promoters.items():
+            for terminator in promoter.terminators:
+                for product in terminator.products:
+                    sequences[product] = rna_bases(sequence_monomers(
+                        self.sequence,
+                        promoter.position,
+                        terminator.position))
+
+        return sequences
 
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
