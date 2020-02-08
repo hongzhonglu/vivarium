@@ -9,7 +9,7 @@ from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from vivarium.analysis.analysis import Analysis, get_compartment
-from vivarium.actor.process import deep_merge
+from vivarium.utils.dict_utils import deep_merge
 
 
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV

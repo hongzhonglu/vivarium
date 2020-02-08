@@ -4,7 +4,8 @@ import os
 import numpy as np
 import scipy.constants as constants
 
-from vivarium.actor.process import Process, deep_merge
+from vivarium.actor.process import Process
+from vivarium.utils.dict_utils import deep_merge
 from vivarium.utils.units import units
 
 # PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)

@@ -11,8 +11,8 @@ from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.processes.minimal_expression import MinimalExpression
-from vivarium.processes.minimal_degradation import MinimalDegradation
+from vivarium.processes.ode_expression import ODE_expression
+
 
 
 
@@ -38,10 +38,7 @@ def compose_master(config):
 
     # expression/degradation
     expression_config = config.get('expression', {})
-    expression = MinimalExpression(expression_config)
-
-    degradation_config = config.get('degradation', {})
-    degradation = MinimalDegradation(degradation_config)
+    expression = ODE_expression(expression_config)
 
     # Division
     # get initial volume from metabolism
@@ -56,8 +53,7 @@ def compose_master(config):
     # Place processes in layers
     processes = [
         {'transport': transport,
-         'expression': expression,
-         'degradation': degradation},
+         'expression': expression},
         {'metabolism': metabolism},
         {'deriver': deriver,
          'division': division}
@@ -78,10 +74,9 @@ def compose_master(config):
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds'},
         'expression' : {
-            'internal': 'cell_counts',  # updates counts, which the deriver converts to concentrations
+            'counts': 'cell_counts',
+            'internal': 'cell',
             'external': 'environment'},
-        'degradation': {
-            'internal': 'cell_counts'},
         'division': {
             'internal': 'cell'},
         'deriver': {

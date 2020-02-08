@@ -13,7 +13,9 @@ default_step_size = 1
 
 class MinimalExpression(Process):
     '''
-    a minimal protein expression process
+    a minimal protein expression process.
+    TO BE USED ONLY AS TRAINING WHEELS
+
     parameters:
         expression_rates (dict) with {'mol_id': probability_of_expression (1/sec)}
     '''
