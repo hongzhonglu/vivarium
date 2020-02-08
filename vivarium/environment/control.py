@@ -43,7 +43,7 @@ class ShepherdControl(ActorControl):
             experiment_id, number, agent_type, environment_type))
 
         # boot environment
-        self.add_agent(experiment_id, environment_type, lattice_config)
+        self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
         # boot agents
