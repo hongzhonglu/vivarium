@@ -160,18 +160,17 @@ if __name__ == '__main__':
     gene_expression_compartment = load_compartment(compose_gene_expression)
 
     # run simulation
-    settings = {
+    sim_settings = {
         'total_time': 60}
-    saved_state = simulate_compartment(gene_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
+    saved_state = simulate_compartment(gene_expression_compartment, sim_settings)
+    del saved_state[0]
     timeseries = convert_to_timeseries(saved_state)
 
-    settings = {}
-    settings = {
+    plot_settings = {
         'name': 'gene_expression',
         'roles': {
             'transcripts': 'transcripts',
             'molecules': 'molecules',
             'proteins': 'proteins'}}
 
-    plot_gene_expression_output(timeseries, settings, out_dir)
+    plot_gene_expression_output(timeseries, plot_settings, out_dir)

@@ -117,7 +117,7 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux_bounds'},
+        'overlay': {'reactions': 'flux'},
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lac__D_e'),

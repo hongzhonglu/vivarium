@@ -43,7 +43,7 @@ class ShepherdControl(ActorControl):
             experiment_id, number, agent_type, environment_type))
 
         # boot environment
-        self.add_agent(experiment_id, environment_type, lattice_config)
+        self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
         # boot agents
@@ -100,7 +100,7 @@ class ShepherdControl(ActorControl):
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
-        experiment_id = 'glc-g6p'
+        experiment_id = 'glc-lct'
         environment_type = 'ecoli_core_glc'
         agent_type = 'shifter'
 

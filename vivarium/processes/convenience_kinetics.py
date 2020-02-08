@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import copy
 
 from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output, \
+    simulate_process_with_environment
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.units import units
@@ -60,7 +60,8 @@ class ConvenienceKinetics(Process):
         default_emitter_keys = {}
 
         # default updaters
-        default_updaters = {}
+        default_updaters = {
+            'fluxes': {flux_id: 'set' for flux_id in self.kinetic_rate_laws.reaction_ids}}
 
         default_settings = {
             'process_id': 'convenience_kinetics',
@@ -190,7 +191,7 @@ def test_convenience_kinetics(end_time=10):
         'reaction1': {
             ('internal', 'enzyme1'): {
                 ('external', 'B'): 0.1,
-                'kcat_f': 0.1}}}
+                'kcat_f': 1e-2}}}
 
     toy_roles = {
         'internal': ['A', 'enzyme1'],
@@ -199,7 +200,7 @@ def test_convenience_kinetics(end_time=10):
     toy_initial_state = {
         'internal': {
             'A': 1.0,
-            'enzyme1': 1.0},
+            'enzyme1': 1e-6},
         'external': {
             'B': 1.0},
         'fluxes': {
@@ -213,33 +214,14 @@ def test_convenience_kinetics(end_time=10):
 
     kinetic_process = ConvenienceKinetics(toy_config)
 
+    settings = {
+        'environment_role': 'external',
+        'exchange_role': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timestep': 1,
+        'total_time': 100}
 
-    # TODO -- run sim in run_process_in...()
-
-    # get initial state and parameters
-    settings = kinetic_process.default_settings()
-    state = settings['state']
-    skip_roles = ['exchange']
-
-    # initialize saved data
-    saved_state = {}
-
-    # run the simulation
-    time = 0
-    timestep = 1
-    saved_state[time] = state
-    while time < end_time:
-        time += timestep
-        # get update
-        update = kinetic_process.next_update(timestep, state)
-
-        # apply update
-        for role_id, states_update in update.items():
-            if role_id not in skip_roles:
-                for state_id, change in states_update.items():
-                    state[role_id][state_id] += change
-        saved_state[time] = copy.deepcopy(state)
-
+    saved_state = simulate_process_with_environment(kinetic_process, settings)
     return saved_state
 
 
