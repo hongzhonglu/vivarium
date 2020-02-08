@@ -7,7 +7,7 @@ from vivarium.actor.process import initialize_state
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
-from vivarium.processes.Vladimirov2008_motor import MotorActivity
+from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.deriver import Deriver
@@ -22,18 +22,18 @@ def compose_pmf_chemotaxis(config):
     transport = ConvenienceKinetics(config.get('transport', get_glc_lct_config()))
     expression = ODE_expression(config.get('expression', get_flagella_expression()))
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
-    motor = MotorActivity(config.get('motor', {}))
+    flagella = FlagellaActivity(config.get('flagella', {}))
     PMF = MembranePotential(config.get('PMF', {}))
     deriver = Deriver(config.get('deriver', {}))
     division = Division(config.get('division', {}))
 
     # place processes in layers
     processes = [
-        {'PMF': PMF,
-         'receptor': receptor,
+        {'PMF': PMF},
+        {'receptor': receptor,
          'transport': transport,
          'expression': expression},
-        {'motor': motor},
+        {'flagella': flagella},
         {'deriver': deriver,
          'division': division}]
 
@@ -42,29 +42,31 @@ def compose_pmf_chemotaxis(config):
     topology = {
         'receptor': {
             'external': 'environment',
-            'internal': 'cell'},
+            'internal': 'cytoplasm'},
         'transport': {
             'exchange': 'exchange',
             'external': 'environment',
-            'internal': 'cell',
-            'fluxes': 'null'},
-        'motor': {
-            'external': 'environment',
-            'internal': 'cell'},
+            'internal': 'cytoplasm',
+            'fluxes': 'fluxes'},
         'expression' : {
             'counts': 'cell_counts',
-            'internal': 'internal',  # todo -- hook thhis up with flagella
+            'internal': 'internal',  # todo -- hook this up with flagella
+            'external': 'environment'},
+        'flagella': {
+            'internal': 'cytoplasm',
+            'membrane': 'membrane',
+            'flagella': 'flagella',
             'external': 'environment'},
         'PMF': {
             'external': 'environment',
             'membrane': 'membrane',
-            'internal': 'cell'},
+            'internal': 'cytoplasm'},
         'deriver': {
             'counts': 'cell_counts',
-            'state': 'cell',
+            'state': 'cytoplasm',
             'prior_state': 'prior_state'},
         'division': {
-            'internal': 'cell'}}
+            'internal': 'cytoplasm'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
