@@ -81,11 +81,11 @@ def compose_master(config):
             'flux_bounds': 'flux_bounds'},
         'transcription': {
             'chromosome': 'chromosome',
-            'molecules': 'cell',  # TODO -- are these hooking up correctly?
+            'molecules': 'cell',
             'transcripts': 'transcripts'},
         'translation': {
             'ribosomes': 'ribosomes',
-            'molecules': 'cell',  # TODO -- are these hooking up correctly?
+            'molecules': 'cell',
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
         'degradation': {
