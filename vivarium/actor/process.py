@@ -331,16 +331,17 @@ class Compartment(State):
         self.emitter.emit(emit_config)
 
     def prepare(self):
-        ''' Prepares for state updates by creating new copy of existing state '''
-
+        ''' Avoid creating a copy of the process objects. '''
         self.new_state = self.state
 
     def to_dict(self):
+        ''' overriding from State '''
         return self.current_state()
 
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
+        # use processes from state
         for processes in self.state['processes']:
             updates = {}
             for name, process in processes.items():
