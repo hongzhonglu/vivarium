@@ -9,8 +9,11 @@ from vivarium.processes.Vladimirov2008_motor import MotorActivity
 
 def compose_simple_chemotaxis(config):
 
+    receptor_parameters = {'ligand': 'MeAsp'}
+    receptor_parameters.update(config)
+
     # declare the processes
-    receptor = ReceptorCluster(config)
+    receptor = ReceptorCluster(receptor_parameters)
     motor = MotorActivity(config)
 
     # place processes in layers

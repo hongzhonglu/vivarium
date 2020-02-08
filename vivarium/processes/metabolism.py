@@ -1,21 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from scipy import constants
-import numpy as np
 import copy
 
-from vivarium.actor.process import Process, deep_merge, convert_to_timeseries, plot_simulation_output
+from scipy import constants
+import numpy as np
+import matplotlib.pyplot as plt
+
+from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
-from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.utils.dict_utils import tuplify_role_dicts, deep_merge
+from vivarium.utils.regulation_logic import build_rule
 
-# concentrations are lower than threshold are considered depleted
-EXCHANGE_THRESHOLD = 0.1
-
-
-def null_function(state):
-    return {}
+# external concentrations lower than exchange threshold are considered depleted
+EXCHANGE_THRESHOLD = 1e-6
 
 
 class Metabolism(Process):
@@ -43,8 +42,9 @@ class Metabolism(Process):
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # get regulation functions
-        # TODO -- pass regulation logic in as data, and construct functions in init
-        self.regulation = initial_parameters.get('regulation', null_function)
+        regulation_logic = initial_parameters.get('regulation', {})
+        self.regulation = {
+            reaction: build_rule(logic) for reaction, logic in regulation_logic.items()}
 
         # get molecules in objective
         self.objective_molecules = []
@@ -71,6 +71,7 @@ class Metabolism(Process):
         # default state
         internal = {state_id: 0.0 for state_id in self.internal_state_ids}
         external = {state_id: 0.0 for state_id in self.fba.external_molecules}
+        # get optimal media from fba
         external.update(self.fba.minimal_external)
         external.update(self.initial_state.get('external', {}))
 
@@ -113,10 +114,10 @@ class Metabolism(Process):
 
         ## get the state
         internal_state = states['internal']
-        external_state = states['external']  # TODO -- constrain metabolism by external state
+        external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
         mass = internal_state['mass'] * units.fg
-        volume = mass.to('g') / self.density
+        volume = mass.to('g') / self.density  # TODO -- this can be handled by the deriver
 
         # conversion factors
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
@@ -128,7 +129,9 @@ class Metabolism(Process):
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
-        regulation_state = self.regulation(flattened_states)
+        regulation_state = {}
+        for reaction_id, reg_logic in self.regulation.items():
+            regulation_state[reaction_id] = reg_logic(flattened_states)
 
         ## apply flux constraints
         # first, add exchange constraints
@@ -255,6 +258,67 @@ def simulate_metabolism(config):
 
     return saved_state
 
+def plot_exchanges(timeseries, sim_config, out_dir):
+    # plot focused on exchanges
+
+    nAvogadro = constants.N_A * 1/units.mol
+    env_volume = sim_config['environment_volume']
+    timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
+    external_ts = timeseries['external']
+    internal_ts = timeseries['internal']
+
+    # pull volume and mass out from internal
+    volume = internal_ts.pop('volume') * units.fL
+    mass = internal_ts.pop('mass')
+
+    # conversion factor
+    mmol_to_count = [nAvogadro.to('1/mmol') * vol.to('L') for vol in volume]
+
+    # plot results
+    cols = 1
+    rows = 3
+    plt.figure(figsize=(cols * 6, rows * 1.5))
+
+    # define subplots
+    ax1 = plt.subplot(rows, cols, 1)
+    ax2 = plt.subplot(rows, cols, 2)
+    ax3 = plt.subplot(rows, cols, 3)
+
+    # plot external state
+    for mol_id, series in external_ts.items():
+        ax1.plot(series, label=mol_id)
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.title.set_text('environment: {} (fL)'.format(env_volume))
+    ax1.set_ylabel('concentrations')
+
+    # plot internal concentrations
+    for mol_id, counts_series in internal_ts.items():
+        conc_series = [(count / conversion).to('mmol/L').magnitude
+           for count, conversion in zip(counts_series, mmol_to_count)]
+        ax2.plot(conc_series, label=mol_id)
+
+    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax2.title.set_text('internal metabolites')
+    ax2.set_ylabel('conc (mM)')
+
+    # plot mass
+    ax3.plot(mass, label='mass')
+    ax3.set_ylabel('mass (fg)')
+
+    # adjust axes
+    for axis in [ax1, ax2, ax3]:
+        axis.spines['right'].set_visible(False)
+        axis.spines['top'].set_visible(False)
+
+    ax1.set_xticklabels([])
+    ax2.set_xticklabels([])
+    ax3.set_xlabel('time (s)', fontsize=12)
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'exchanges')
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
+    plt.savefig(fig_path, bbox_inches='tight')
+
 def save_network(config, out_dir='out'):
     # TODO -- make this function into an analysis
     import math
@@ -288,6 +352,7 @@ def save_network(config, out_dir='out'):
     nodes, edges = make_network(stoichiometry, info)
     save_network(nodes, edges, out_dir)
 
+# toy configs
 def get_toy_configuration():
     stoichiometry = {
         'R1': {'A': -1, 'ATP': -1, 'B': 1},
@@ -383,6 +448,7 @@ def test_config(get_config=get_toy_configuration):
     print(metabolism.fba.get_reaction_bounds())
     print(metabolism.fba.read_exchange_fluxes())
 
+# toy functions
 def make_kinetic_rate(mol_id, vmax, km=0.0):
     def rate(state):
         flux = (vmax * state[mol_id]) / (km + state[mol_id])
@@ -394,33 +460,70 @@ def make_random_rate(mu=0, sigma=1):
         return np.random.normal(loc=mu, scale=sigma)
     return rate
 
+def toy_transport():
+    # process-like function for transport kinetics, used by simulate_metabolism
+    transport_kinetics = {
+        "EX_A": make_kinetic_rate("A", -1e-1, 5),  # A import
+    }
+    return transport_kinetics
 
+# tests
+def test_BiGG_metabolism(out_dir):
+    # metabolism_file = os.path.join('models', 'iAF1260b.json')
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
 
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'metabolism')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+    # initial state
+    mass = 1339 * units.fg
+    density = 1100 * units.g / units.L
+    volume = mass.to('g') / density
+    internal = {
+        'mass': mass.magnitude,  # fg
+        'volume': volume.to('fL').magnitude}
+    initial_state = {'internal': internal}
 
-    # toy functions
-    def toy_transport():
-        # process-like function for transport kinetics, used by simulate_metabolism
-        transport_kinetics = {
-            "EX_A": make_kinetic_rate("A", -1e-1, 5),  # A import
-        }
-        return transport_kinetics
+    # make process
+    metabolism_config = {
+        'model_path': metabolism_file,
+        'initial_state': initial_state}
 
-    def toy_regulation(state):
-        regulation_logic = {
-            'R4': bool(state[('external', 'O2')] > 0.1 and not state[('external', 'F')] > 0.1),
-        }
-        return regulation_logic
+    metabolism = Metabolism(metabolism_config)
+
+    # simulate metabolism
+    timeline = [(2520, {})]  # 2520 sec (42 min) is the expected doubling time in minimal media
+
+    simulation_config = {
+        'process': metabolism,
+        'timeline': timeline,
+        'environment_volume': 1e-2}
+
+    plot_settings = {
+        'max_rows': 40,
+        'remove_zeros': True,
+        'skip_roles': ['exchange', 'flux_bounds', 'reactions'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    saved_data = simulate_metabolism(simulation_config)
+    del saved_data[0]  # remove first state
+    timeseries = convert_to_timeseries(saved_data)
+
+    # get growth
+    volume_ts = timeseries['internal']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
+    plot_simulation_output(timeseries, plot_settings, out_dir)
+
+def test_toy_metabolism(out_dir):
+
+    regulation_logic = {
+        'R4': 'if (external, O2) > 0.1 and not (external, F) < 0.1'}
 
     # configure toy model
     toy_config = get_toy_configuration()
     transport = toy_transport()
 
     toy_config['constrained_reaction_ids'] = list(transport.keys())
-    toy_config['regulation'] = toy_regulation
+    toy_config['regulation'] = regulation_logic
     toy_metabolism = Metabolism(toy_config)
 
     # simulate toy model
@@ -437,7 +540,7 @@ if __name__ == '__main__':
         'process': toy_metabolism,
         'timeline': timeline,
         'transport_kinetics': transport,
-        'environment_volume': 5e-13}
+        'environment_volume': 1e-14}
 
     plot_settings = {
         'skip_roles': ['exchange'],
@@ -445,9 +548,15 @@ if __name__ == '__main__':
             'reactions': 'flux_bounds'}}
 
     saved_data = simulate_metabolism(simulation_config)
-    del saved_data[0] # remove first state
+    del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_exchanges(timeseries, simulation_config, out_dir)
+
+def make_network():
+    # configure toy model
+    toy_config = get_toy_configuration()
+    toy_metabolism = Metabolism(toy_config)
 
     # make flux network from toy model
     network_config = {
@@ -455,3 +564,17 @@ if __name__ == '__main__':
         'total_time': 10,
         'environment_volume': 5e-13}
     save_network(network_config, out_dir)
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'metabolism')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    out_dir_BiGG = os.path.join('out', 'tests', 'metabolism_BiGG')
+    if not os.path.exists(out_dir_BiGG):
+        os.makedirs(out_dir_BiGG)
+
+    test_BiGG_metabolism(out_dir_BiGG)
+    # test_toy_metabolism(out_dir)
+    # make_network()

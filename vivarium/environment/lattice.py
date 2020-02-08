@@ -18,13 +18,17 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 import random
+
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
 from vivarium.environment.make_media import Media
+from vivarium.actor.emitter import get_emitter
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -35,8 +39,7 @@ CELL_DENSITY = 1100
 # Lattice parameters
 DIFFUSION_CONSTANT = 1e3
 DEFAULT_DEPTH = 3000.0  # um
-TRANSLATION_JITTER = 0.1
-ROTATION_JITTER = 0.05
+JITTER_FORCE = 1e-3  # pN
 
 DEFAULT_TIMESTEP = 1.0
 
@@ -46,6 +49,7 @@ LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
+
 
 class EnvironmentSpatialLattice(EnvironmentSimulation):
     def __init__(self, config):
@@ -62,8 +66,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ## Cell Parameters
         self.cell_density = CELL_DENSITY  # TODO -- get density from cell sim, or just get mass
         self.cell_radius = config.get('cell_radius', 0.5)  # TODO -- this should be a property of cells.
-        self.translation_jitter = config.get('translation_jitter', TRANSLATION_JITTER)
-        self.rotation_jitter = config.get('rotation_jitter', ROTATION_JITTER)
+        jitter_force = config.get('jitter_force', JITTER_FORCE)
         self.cell_placement = config.get('cell_placement')
 
         ## Lattice Parameters
@@ -114,7 +117,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         ## Concentration and Gradient Parameters
         self.static_concentrations = config.get('static_concentrations', False)
         self.diffusion = config.get('diffusion', DIFFUSION_CONSTANT)
-        self.gradient = config.get('gradient', {'type': False})
 
         # upper limit on the time scale. (using 50% of the theoretical upper limit)
         if self.diffusion:
@@ -126,73 +128,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.diffusion_dt = self.run_for
 
         # add a gradient
-        if self.gradient.get('type') == 'gaussian':
-            '''
-            gaussian gradient multiplies the basal concentration of the given molecule
-            by a gaussian function of distance from center and deviation
+        gradient = config.get('gradient', {'type': False})
+        self.add_gradient(gradient)
 
-            'gradient': {
-                'type': 'gradient',
-                'molecules': {
-                    'mol_id1':{
-                        'center': [0.25, 0.5],
-                        'deviation': 30},
-                    'mol_id2': {
-                        'center': [0.75, 0.5],
-                        'deviation': 30}
-                }},
-            '''
-
-            for molecule_id, specs in self.gradient['molecules'].items():
-                mol_index = self._molecule_ids.index(molecule_id)
-                center = [specs['center'][0] * self.edge_length_x,
-                          specs['center'][1] * self.edge_length_y]
-                deviation = specs['deviation']
-
-                for x_patch in range(self.patches_per_edge_x):
-                    for y_patch in range(self.patches_per_edge_y):
-                        # distance from middle of patch to center coordinates
-                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
-                        distance = np.sqrt(dx ** 2 + dy ** 2)
-                        scale = gaussian(deviation, distance)
-                        # multiply gradient by scale
-                        self.lattice[mol_index][x_patch][y_patch] *= scale
-
-        elif self.gradient.get('type') == 'linear':
-            '''
-            linear gradient adds to the basal concentration of the given molecule
-            as a function of distance from center and slope.
-
-            'gradient': {
-                'type': 'linear',
-                'molecules': {
-                    'mol_id1':{
-                        'center': [0.0, 0.0],
-                        'slope': -10},
-                    'mol_id2': {
-                        'center': [1.0, 1.0],
-                        'slope': -5}
-                }},
-            '''
-
-            for molecule_id, specs in self.gradient['molecules'].items():
-                mol_index = self._molecule_ids.index(molecule_id)
-                center = [specs['center'][0] * self.edge_length_x,
-                          specs['center'][1] * self.edge_length_y]
-                slope = specs['slope']
-
-                for x_patch in range(self.patches_per_edge_x):
-                    for y_patch in range(self.patches_per_edge_y):
-                        # distance from middle of patch to center coordinates
-                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
-                        distance = np.sqrt(dx ** 2 + dy ** 2)
-                        added = distance * slope
-                        # add gradient to basal concentration
-                        self.lattice[mol_index][x_patch][y_patch] += added
-
-                self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
 
         ## Initialize dictionaries
         self.simulations = {}       # map of agent_id to simulation state
@@ -204,8 +142,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         bounds = [self.edge_length_x, self.edge_length_y]
         self.multicell_physics = MultiCellPhysics(
             bounds,
-            self.translation_jitter,
-            self.rotation_jitter)
+            jitter_force)
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
@@ -313,12 +250,82 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         for index, molecule_id in enumerate(self._molecule_ids):
             self.lattice[index].fill(media[molecule_id])
 
+    def add_gradient(self, gradient):
+        if gradient.get('type') == 'gaussian':
+            """
+            gaussian gradient multiplies the basal concentration of the given molecule
+            by a gaussian function of distance from center and deviation
+
+            'gradient': {
+                'type': 'gradient',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.25, 0.5],
+                        'deviation': 30},
+                    'mol_id2': {
+                        'center': [0.75, 0.5],
+                        'deviation': 30}
+                }},
+            """
+
+            for molecule_id, specs in gradient['molecules'].items():
+                mol_index = self._molecule_ids.index(molecule_id)
+                center = [specs['center'][0] * self.edge_length_x,
+                          specs['center'][1] * self.edge_length_y]
+                deviation = specs['deviation']
+
+                for x_patch in range(self.patches_per_edge_x):
+                    for y_patch in range(self.patches_per_edge_y):
+                        # distance from middle of patch to center coordinates
+                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
+                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
+                        distance = np.sqrt(dx ** 2 + dy ** 2)
+                        scale = gaussian(deviation, distance)
+                        # multiply gradient by scale
+                        self.lattice[mol_index][x_patch][y_patch] *= scale
+
+        elif gradient.get('type') == 'linear':
+            """
+            linear gradient adds to the basal concentration of the given molecule
+            as a function of distance from center and slope.
+
+            'gradient': {
+                'type': 'linear',
+                'molecules': {
+                    'mol_id1':{
+                        'center': [0.0, 0.0],
+                        'slope': -10},
+                    'mol_id2': {
+                        'center': [1.0, 1.0],
+                        'slope': -5}
+                }},
+            """
+
+            for molecule_id, specs in gradient['molecules'].items():
+                mol_index = self._molecule_ids.index(molecule_id)
+                center = [specs['center'][0] * self.edge_length_x,
+                          specs['center'][1] * self.edge_length_y]
+                slope = specs['slope']
+
+                for x_patch in range(self.patches_per_edge_x):
+                    for y_patch in range(self.patches_per_edge_y):
+                        # distance from middle of patch to center coordinates
+                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
+                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
+                        distance = np.sqrt(dx ** 2 + dy ** 2)
+                        added = distance * slope
+                        # add gradient to basal concentration
+                        self.lattice[mol_index][x_patch][y_patch] += added
+
+                self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+
+
     def run_diffusion(self, timestep):
         for index in range(len(self.lattice)):
             molecule = self.lattice[index]
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
-                t=0.0
+                t = 0.0
                 while t<timestep:
                     molecule += self.diffusion_timestep(molecule, self.diffusion_dt)
                     t += self.diffusion_dt
@@ -382,7 +389,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         return self._max_time
 
 
-    # Agent interface
+
+    ## Actor interface
     def run_incremental(self, run_until):
         ''' Simulate until run_until '''
         while self._time < run_until:
@@ -558,23 +566,24 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    tumble_jitter = 0.4  # (radians)
-    force = 1.0
+    force = 0.1  # pN
+    tumble_jitter = 30
     torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 2.1
+    force = 0.3  # pN
     torque = 0.0
     return [force, torque]
 
-
-def test_diffusion(total_time=1):
-    from vivarium.actor.emitter import get_emitter
-
-    timestep = 0.01  # sec
+def test_diffusion(config):
     test_diffusion = 'GLC'
-    edge_length = 100.0
+
+    total_time = config.get('total_time', 10)
+    timestep = config.get('timestep', 0.01)
+    edge_length = config.get('edge_length', 100.0)
+    depth = config.get('depth', 0.01)  # 3000 um is default
+    diffusion = config.get('diffusion', 1e2)
 
     # get media
     media_id = 'GLC_G6P'
@@ -582,15 +591,15 @@ def test_diffusion(total_time=1):
     media = make_media.get_saved_media(media_id)
 
     # get emitter
-    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
+    emitter = get_emitter({'type': 'null'})
 
     boot_config = {
         'concentrations': media,
         'run_for': timestep,
-        'depth': 0.01,  # 3000 um is default
+        'depth': depth,  # 3000 um is default
         'edge_length_x': edge_length,
         'patches_per_edge_x': int(edge_length/2),
-        'diffusion': 1e3,
+        'diffusion': diffusion,
         'gradient': {
             'type': 'linear',
             'molecules': {
@@ -606,8 +615,9 @@ def test_diffusion(total_time=1):
 
     # get test_diffusion field index
     test_diffusion_idx = lattice._molecule_ids.index(test_diffusion)
-    center_patch = [int(boot_config['gradient']['molecules'][test_diffusion]['center'][0] * boot_config['patches_per_edge_x']),
-              int(boot_config['gradient']['molecules'][test_diffusion]['center'][1] * boot_config['patches_per_edge_x'])]
+    center_patch = [
+        int(boot_config['gradient']['molecules'][test_diffusion]['center'][0] * boot_config['patches_per_edge_x']),
+        int(boot_config['gradient']['molecules'][test_diffusion]['center'][1] * boot_config['patches_per_edge_x'])]
 
     # run simulation
     time = 0
@@ -617,19 +627,15 @@ def test_diffusion(total_time=1):
         'time': [time]}
     while time < total_time:
         time += timestep
-
-        # run lattice and get new locations
         lattice.run_incremental(time)
-
-        # get field
         field = lattice.lattice[test_diffusion_idx].copy()
 
         # center should go down
-        assert field[center_patch[0]][center_patch[1]] < previous_field[center_patch[0]][center_patch[1]]
+        assert field[center_patch[0]][center_patch[1]] <= previous_field[center_patch[0]][center_patch[1]]
         # corner should go up
-        assert field[0][0] > previous_field[0][0]
+        assert field[0][0] >= previous_field[0][0]
 
-        # save current field for comparison
+        # save current field for next comparison
         previous_field = field
 
         # save state for plotting
@@ -644,28 +650,29 @@ def test_diffusion(total_time=1):
     }
     return data
 
-
-def test_lattice(total_time=10):
-    from vivarium.actor.emitter import get_emitter
-
-    timestep = 0.01  # sec
-    edge_length = 100.0
-
+def test_lattice(config):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
     tumble_time = 0.14  # s (Berg)
 
+    total_time = config.get('total_time', 10)
+    timestep = config.get('timestep', 0.1)
+    edge_length = config.get('edge_length', 100.0)
+    patches_per_edge_x = config.get('patches_per_edge', int(edge_length/2))
+    jitter_force = config.get('jitter_force', JITTER_FORCE)
+    depth = config.get('depth', 0.01)  # 3000 um is default
+    motile_cells = config.get('motile_cells', False)  # if True, run/tumble applied to bodies
+
     # get emitter
-    emitter = get_emitter({})  # TODO -- is an emitter really necessary?
+    emitter = get_emitter({'type': 'null'})  # TODO -- is an emitter really necessary?
 
     boot_config = {
-        'translation_jitter': 0.0,
-        'rotation_jitter': 0.0,
+        'jitter_force': jitter_force,
         'run_for': timestep,
-        'depth': 0.01,  # 3000 um is default
+        'depth': depth,
         'static_concentrations': True,
         'edge_length_x': edge_length,
-        'patches_per_edge_x': int(edge_length/2),
+        'patches_per_edge_x': patches_per_edge_x,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'emitter': emitter
     }
@@ -703,29 +710,30 @@ def test_lattice(total_time=10):
     time_in_motor_state = 0
     while time < total_time:
 
-        # get forces
-        if motor_state == 1: # tumble
-            if time_in_motor_state < tumble_time:
-                motile_force = tumble()
-                time_in_motor_state += timestep
-            else:
-                # switch
-                motile_force = run()
-                motor_state = 0
-                time_in_motor_state = 0
+        if motile_cells:
+            # get forces
+            if motor_state == 1: # tumble
+                if time_in_motor_state < tumble_time:
+                    motile_force = tumble()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = run()
+                    motor_state = 0
+                    time_in_motor_state = 0
 
-        elif motor_state == 0:  # run
-            if time_in_motor_state < run_time:
-                motile_force = run()
-                time_in_motor_state += timestep
-            else:
-                # switch
-                motile_force = tumble()
-                motor_state = 1
-                time_in_motor_state = 0
+            elif motor_state == 0:  # run
+                if time_in_motor_state < run_time:
+                    motile_force = run()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = tumble()
+                    motor_state = 1
+                    time_in_motor_state = 0
 
-        # apply forces
-        lattice.motile_forces[agent_id] = motile_force
+            # apply forces
+            lattice.motile_forces[agent_id] = motile_force
 
         # run lattice and get new locations
         lattice.run_incremental(time)
@@ -750,10 +758,7 @@ def test_lattice(total_time=10):
     }
     return data
 
-
-def plot_motility(data, out_dir='out'):
-    import matplotlib.pyplot as plt
-
+def plot_motility(data, filename='motility', out_dir='out'):
     expected_speed = 14.2  # um/s (Berg)
     expected_angle_between_runs = 68 # degrees (Berg)
 
@@ -824,15 +829,11 @@ def plot_motility(data, out_dir='out'):
     ax3.set_yticklabels(["run", "tumble"])
 
     # save figure
-    fig_path = os.path.join(out_dir, 'motility')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.9)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
 
-
-def plot_trajectory(data, out_dir='out'):
-    import matplotlib.pyplot as plt
-    from matplotlib.collections import LineCollection
-
+def plot_trajectory(data, filename='trajectory', out_dir='out'):
     x_length = data['x_length']
     y_length = data['y_length']
     y_ratio = y_length/x_length
@@ -869,15 +870,12 @@ def plot_trajectory(data, out_dir='out'):
     plt.xlim((0, x_length))
     plt.ylim((0, y_length))
 
-    fig_path = os.path.join(out_dir, 'trajectory')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
-
-def plot_field(data, out_dir='out'):
-    import matplotlib.pyplot as plt
-
+def plot_field(data, filename='field', out_dir='out'):
     x_length = data['x_length']
     y_length = data['y_length']
     saved_state = data['saved_state']
@@ -914,9 +912,9 @@ def plot_field(data, out_dir='out'):
                    cmap='YlGn')
 
     plt.colorbar()
-    fig_path = os.path.join(out_dir, 'field')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
-    plt.savefig(fig_path + '.png', bbox_inches='tight')
+    plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -925,9 +923,45 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output1 = test_lattice(20)
-    plot_motility(output1, out_dir)
-    plot_trajectory(output1, out_dir)
+    # test jitter
+    jitter_config = {
+        'total_time': 100,
+        'timestep': 0.1,
+        'edge_length': 3,
+        'jitter_force': 1e-1,
+        'patches_per_edge': 1,
+        'motile_cells': False}
 
-    output2 = test_diffusion(2)
-    plot_field(output2, out_dir)
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
+
+    jitter_config.update({'timestep': 0.1})
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
+
+    # test motility
+    motile_config = {
+        'total_time': 100,
+        'timestep': 0.1,
+        'edge_length': 50,
+        'jitter_force': 1e-1,
+        'motile_cells': True}
+
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+
+    # test motility short ts
+    motile_config.update({'timestep': 0.01})
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state_short_ts', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
+
+    # test diffusion
+    diffusion_config = {
+        'total_time': 2,
+        'timestep': 0.05,
+        'diffusion': 1e2}
+
+    diffusion_out = test_diffusion(diffusion_config)
+    plot_field(diffusion_out, 'diffusion', out_dir)

@@ -10,6 +10,7 @@ from scipy import constants
 from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 
+AVOGADRO = constants.N_A * 1 / units.mol
 
 class Deriver(Process):
     """
@@ -95,6 +96,9 @@ class Deriver(Process):
         mmol_to_count = nAvogadro.to('1/mmol') * volume.to('L')
         concentration_update = {mol_id: (count / mmol_to_count).magnitude
             for mol_id, count in counts.items()}
+
+        for mol_id, conc in concentration_update.items():
+            assert conc >= 0, 'derived {} concentration < 0'.format(mol_id)
 
         # combine updates
         update['state'].update(deriver_update)

@@ -1,11 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import numpy as np
 import random
 
-from vivarium.actor.process import Process, deep_merge
+import numpy as np
+from numpy import linspace
+import matplotlib.pyplot as plt
 
+from vivarium.actor.process import Process
+from vivarium.utils.dict_utils import deep_merge
 
 # parameters
 DEFAULT_PARAMETERS = {
@@ -101,7 +104,7 @@ class MotorActivity(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'updaters': default_updaters,
-            'time_step': 0.01}
+            'time_step': 0.1}
 
         return default_settings
 
@@ -147,18 +150,18 @@ class MotorActivity(Process):
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
-                force, torque = self.tumble()
+                force, torque = tumble()
             else:
-                force, torque = self.run()
+                force, torque = run()
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
-                [force, torque] = self.run()
+                [force, torque] = run()
             else:
-                [force, torque] = self.tumble()
+                [force, torque] = tumble()
 
         # TODO -- should force/torque accumulate over exchange timestep?
         update = {
@@ -173,16 +176,16 @@ class MotorActivity(Process):
         }
         return update
 
-    def tumble(self):
-        tumble_jitter = 0.4  # (radians)  # TODO -- put in parameters
-        force = 1.0  # 22.5
-        torque = random.normalvariate(0, tumble_jitter)
-        return [force, torque]
+def tumble():
+    force = 5e-3
+    tumble_jitter = 100
+    torque = random.normalvariate(0, tumble_jitter)
+    return [force, torque]
 
-    def run(self):
-        force = 2.1
-        torque = 0.0
-        return [force, torque]
+def run():
+    force = 2.5e-2
+    torque = 0.0
+    return [force, torque]
 
 
 def test_motor_control(total_time=10):
@@ -240,8 +243,6 @@ def test_motor_control(total_time=10):
         'time_vec': time_vec}
 
 def test_variable_receptor():
-    from numpy import linspace
-
     motor = MotorActivity()
     settings = motor.default_settings()
     state = settings['state']
@@ -276,11 +277,6 @@ def test_variable_receptor():
 
 def plot_motor_control(output, out_dir='out'):
     # TODO -- make this into an analysis figure
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-
     expected_run = 0.42  # s (Berg) expected run length without chemotaxis
     expected_tumble = 0.14  # s (Berg)
 
@@ -359,11 +355,6 @@ def plot_motor_control(output, out_dir='out'):
 
 
 def plot_variable_receptor(output, out_dir='out'):
-    import os
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-
     receptor_activities = output['receptor_activities']
     CheY_P_vec = output['CheY_P_vec']
     ccw_motor_bias_vec = output['ccw_motor_bias_vec']
@@ -371,25 +362,21 @@ def plot_variable_receptor(output, out_dir='out'):
 
     # plot results
     cols = 1
-    rows = 3
+    rows = 2
     plt.figure(figsize=(6 * cols, 1 * rows))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
-    ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(receptor_activities, 'b')
-    ax2.plot(CheY_P_vec, 'b')
-    ax3.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
-    ax3.plot(ccw_to_cw_vec, 'g', label='ccw_to_cw')
+    ax1.plot(receptor_activities, CheY_P_vec, 'b')
+    ax2.plot(receptor_activities, ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
+    ax2.plot(receptor_activities, ccw_to_cw_vec, 'g', label='ccw_to_cw')
 
     ax1.set_xticklabels([])
-    ax1.set_ylabel("receptor activity \n P(on) ", fontsize=10)
-    ax2.set_xticklabels([])
-    ax2.set_ylabel("CheY_P", fontsize=10)
-    ax3.set_xticklabels([])
-    ax3.set_ylabel("motor bias", fontsize=10)
-    ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax1.set_ylabel("CheY_P", fontsize=10)
+    ax2.set_xlabel("receptor activity \n P(on) ", fontsize=10)
+    ax2.set_ylabel("motor bias", fontsize=10)
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     fig_path = os.path.join(out_dir, 'motor_variable_receptor')
     plt.subplots_adjust(wspace=0.7, hspace=0.1)

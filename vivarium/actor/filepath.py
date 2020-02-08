@@ -37,11 +37,9 @@ def timestamp(dt=None):
     if not dt:
         dt = datetime.datetime.now()
 
-    # TODO: Simplify to `format(datetime_value, '%Y%m%d.%H%M%S.%f')`?
-    return "%04d%02d%02d.%02d%02d%02d.%06d" % (
+    return "%04d%02d%02d.%02d%02d%02d" % (
         dt.year, dt.month, dt.day,
-        dt.hour, dt.minute, dt.second,
-        dt.microsecond)
+        dt.hour, dt.minute, dt.second)
 
 def run_cmd(tokens, trim=True):
     """Run a shell command-line (in token list form) and return its output.

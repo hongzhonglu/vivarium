@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
-import collections
 import random
 import os
 
@@ -11,7 +10,7 @@ import matplotlib.pyplot as plt
 
 import vivarium.actor.emitter as emit
 from vivarium.utils.units import units
-from vivarium.utils.dict_utils import merge_dicts
+from vivarium.utils.dict_utils import merge_dicts, deep_merge
 
 
 
@@ -45,7 +44,6 @@ updater_library = {
 
 
 KEY_TYPE = 'U31'
-
 
 class State(object):
     ''' Represents a set of named values. '''
@@ -158,6 +156,16 @@ class Process(object):
 
         return self.next_update(timestep, states)
 
+    def parameters_for(self, parameters, key):
+        ''' Return key in parameters or from self.default_parameters if not present. '''
+
+        return parameters.get(key, self.default_parameters[key])
+
+    def derive_defaults(self, parameters, original_key, derived_key, f):
+        present = self.parameters_for(parameters, original_key)
+        self.default_parameters[derived_key] = f(present)
+        return self.default_parameters[derived_key]
+
     def next_update(self, timestep, states):
         '''
         Find the next update given the current states this process cares about.
@@ -197,19 +205,6 @@ def merge_default_updaters(processes):
         default_updaters = settings['updaters']
         updaters = deep_merge(dict(updaters), default_updaters)
     return updaters
-
-def deep_merge(dct, merge_dct):
-    '''
-    Recursive dict merge
-    This mutates dct - the contents of merge_dct are added to dct (which is also returned).
-    If you want to keep dct you could call it like deep_merge(dict(dct), merge_dct)'''
-    for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
-            deep_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-    return dct
 
 def default_divide_condition(compartment):
     return False
@@ -303,17 +298,18 @@ class Compartment(object):
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
-        if configuration.get('emitter') == 'null':
-            emitter = emit.get_emitter({'type': 'null'})
-            self.emitter_keys = emitter.get('keys')
-            self.emitter = emitter.get('object')
-        elif configuration.get('emitter'):
-            self.emitter_keys = configuration['emitter'].get('keys')
-            self.emitter = configuration['emitter'].get('object')
-        else:
+        emitter_type = configuration.get('emitter')
+        if emitter_type is None:
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
+        elif emitter_type == 'null':
+            emitter = emit.get_emitter({'type': 'null'})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
+        else:
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
 
         connect_topology(processes, self.states, self.topology)
 
@@ -562,6 +558,33 @@ def simulate_compartment(compartment, settings={}):
         saved_state[time] = compartment.current_state()
 
     return saved_state
+
+def simulate_process_with_environment(process, settings={}):
+    '''
+    Simulate running a process in an environment. In settings,
+    exchange_role and environment_role must be specified.
+    '''
+    process_settings = process.default_settings()
+    state_dict = process_settings['state']
+    states = initialize_state(
+        [{"process": process}],
+        {"process": {role: role for role in process.roles}},
+        state_dict,
+    )
+
+    # hook up the roles in each process to compartment states
+    topology = {
+        'process': {key: key for key in states},
+    }
+
+    options = {
+        'topology': topology,
+    }
+    processes = [{
+        'process': process,
+    }]
+    compartment = Compartment(processes, states, options)
+    return simulate_with_environment(compartment, settings)
 
 def simulate_with_environment(compartment, settings={}):
     '''

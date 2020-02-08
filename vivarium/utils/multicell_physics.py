@@ -22,25 +22,25 @@ PI = math.pi
 
 ELASTICITY = 0.95
 FRICTION = 0.9
+PHYSICS_TS = 0.005
+FORCE_SCALING = 83000  # scales from pN
 
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter, debug=False):
+    def __init__(self, bounds, jitter_force, debug=False):
         self.pygame_scale = 700 / bounds[0]
         self.pygame_viz = debug
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.translation_jitter = translation_jitter
-        self.rotation_jitter = rotation_jitter
+        self.force_scaling = FORCE_SCALING
+        self.jitter_force = jitter_force
 
         # Space
         self.space = pymunk.Space()
 
         # Physics
-        self.timestep = 1
-        self.physics_steps_per_frame = 10
-        self.physics_dt = self.timestep / self.physics_steps_per_frame
+        self.physics_dt = PHYSICS_TS
 
         if self.pygame_viz:
             pygame.init()
@@ -83,18 +83,18 @@ class MultiCellPhysics(object):
             # force along ends
             if random.randint(0, 1) == 0:
                 # force on the left end
-                location = (0, random.uniform(0, width))
+                location = (random.uniform(0, width), 0)
             else:
                 # force on the right end
-                location = (length, random.uniform(0, width))
+                location = (random.uniform(0, width), length)
         else:
             # force along length
             if random.randint(0, 1) == 0:
                 # force on the bottom end
-                location = (random.uniform(0, length), 0)
+                location = (0, random.uniform(0, length))
             else:
                 # force on the top end
-                location = (random.uniform(0, length), width)
+                location = (width, random.uniform(0, length))
 
         return location
 
@@ -103,39 +103,42 @@ class MultiCellPhysics(object):
         body.motile_force = (force, torque)
 
     def run_incremental(self, run_for):
+        assert self.physics_dt < run_for
+
+        # apply forces
+        for body in self.space.bodies:
+            width, length = body.dimensions
+
+            # jitter forces
+            jitter_location = self.random_body_position(body)
+            jitter_force = [
+                random.normalvariate(0, self.jitter_force),
+                random.normalvariate(0, self.jitter_force)]
+            scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
+            body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+
+            # motile forces
+            motile_location = (width / 2, 0)  # apply force at back end of body
+            motile_torque = 0.0
+            motile_force = [0.0, 0.0]
+            if hasattr(body, 'motile_force'):
+                force, motile_torque = body.motile_force
+                motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
+            body.angular_velocity = motile_torque
+            scaled_motile_force = [force * self.force_scaling for force in motile_force]
+            body.apply_force_at_local_point(scaled_motile_force, motile_location)
+
+        # run physics
         time = 0
         while time < run_for:
-            time += self.timestep
+            time += self.physics_dt
+            self.space.step(self.physics_dt)
 
-            # Progress time forward
-            for x in range(self.physics_steps_per_frame * self.timestep):
-                for body in self.space.bodies:
-                    width, length = body.dimensions
-
-                    # random jitter
-                    jitter_torque = random.normalvariate(0, self.rotation_jitter)
-                    jitter_force = [
-                        random.normalvariate(0, self.translation_jitter),
-                        random.normalvariate(0, self.translation_jitter)]
-                    location = (length/2, width/2)  #self.random_body_position(body)
-
-                    # motile forces
-                    motile_torque = 0.0
-                    motile_force = [0.0, 0.0]
-                    if hasattr(body, 'motile_force'):
-                        force, motile_torque = body.motile_force
-                        motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-
-                    body.angular_velocity = (jitter_torque + motile_torque)  # TODO (eran) add to angular velocity rather than replace it. Needs better damping first
-                    total_force = [a + b for a, b in zip(jitter_force, motile_force)]
-                    body.apply_force_at_local_point(total_force, location)
-
-                self.space.step(self.physics_dt)
-
-            # Disable momentum at low Reynolds number (the ratio of inertial and viscous forces)
+            # reduce velocity at low Reynolds number (the ratio of inertial and viscous forces)
+            # TODO (Eran) this should be function of viscosity
             for body in self.space.bodies:
-                body.velocity -= (0.5 * body.velocity * self.timestep)
-                body.angular_velocity -= (0.5 * body.angular_velocity * self.timestep)  # TODO (Eran) this should be function of viscosity
+                body.velocity -= (0.5 * body.velocity * self.physics_dt)
+                body.angular_velocity -= (0.5 * body.angular_velocity * self.physics_dt)
 
             if self.pygame_viz:
                 self._update_screen()
@@ -318,8 +321,7 @@ if __name__ == '__main__':
     length = 2.0
     cell_density = 1100
     mass = volume * cell_density
-    translation_jitter = 0.5
-    rotation_jitter = 0.005
+    jitter_force = 0.5
 
     position = (2.0, 2.0)
     angle = PI/2
@@ -327,8 +329,7 @@ if __name__ == '__main__':
     # make physics instance
     physics = MultiCellPhysics(
         bounds,
-        translation_jitter,
-        rotation_jitter,
+        jitter_force,
         True)
 
     # add cell

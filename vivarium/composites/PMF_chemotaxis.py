@@ -26,12 +26,11 @@ def compose_pmf_chemotaxis(config):
     # place processes in layers
     processes = [
         {'PMF': PMF},
-        {'receptor': receptor, 'transport': transport},
+        {'receptor': receptor,
+         'transport': transport},
         {'motor': motor},
         {'deriver': deriver,
-         'division': division
-         },
-    ]
+         'division': division}]
 
     # make the topology.
     # for each process, map process roles to compartment roles
@@ -56,8 +55,7 @@ def compose_pmf_chemotaxis(config):
             'state': 'cell',
             'prior_state': 'prior_state'},
         'division': {
-            'internal': 'cell'},
-        }
+            'internal': 'cell'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
