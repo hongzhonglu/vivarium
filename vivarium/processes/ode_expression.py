@@ -63,11 +63,7 @@ class ODE_expression(Process):
 
         # default state
         default_state = self.initial_state
-
-        # default emitter keys
-        default_emitter_keys = {}
-
-        # default updaters
+        default_emitter_keys = self.roles
         default_updaters = {}
 
         default_settings = {
@@ -133,29 +129,29 @@ class ODE_expression(Process):
 
 
 
-# test functions
-# toy config
-toy_transcription_rates = {
-    'lacy_RNA': 1e-20}
-
-toy_translation_rates = {
-    'LacY': 1e-2}
-
-toy_protein_map = {
-    'LacY': 'lacy_RNA'}
-
-toy_degradation_rates = {
-    'lacy_RNA': 0.2,
-    'LacY': 0.001}
-
-initial_state = {
-    'internal': {
-        'volume': 1.2,
-        'lacy_RNA': 0,
-        'LacY': 0.0
-    }}
-
+# functions
 def test_expression():
+    # toy config
+    toy_transcription_rates = {
+        'lacy_RNA': 1e-20}
+
+    toy_translation_rates = {
+        'LacY': 1e-2}
+
+    toy_protein_map = {
+        'LacY': 'lacy_RNA'}
+
+    toy_degradation_rates = {
+        'lacy_RNA': 0.2,
+        'LacY': 0.001}
+
+    initial_state = {
+        'internal': {
+            'volume': 1.2,
+            'lacy_RNA': 0,
+            'LacY': 0.0
+        }}
+
     expression_config = {
         'transcription_rates': toy_transcription_rates,
         'translation_rates': toy_translation_rates,
@@ -163,6 +159,44 @@ def test_expression():
         'protein_map': toy_protein_map,
         'initial_state': initial_state
     }
+
+    # load process
+    expression = ODE_expression(expression_config)
+
+    settings = {
+        'total_time': 100,
+        # 'exchange_role': 'exchange',
+        'environment_role': 'external',
+        'environment_volume': 1e-12}
+
+    saved_data = simulate_process_with_environment(expression, settings)
+
+    return saved_data
+
+
+def get_flagella_expression():
+    transcription = {
+        'flag_RNA': 1e-20}
+
+    translation = {
+        'flagella': 1e-2}
+
+    degradation = {
+        'flag_RNA': 1e-21}
+
+    protein_map = {
+        'flagella': 'flag_RNA'}
+
+    initial_state = {
+        'flagella': 5,
+        'flag_RNA': 1}
+
+    expression_config = {
+        'transcription_rates': transcription,
+        'translation_rates': translation,
+        'degradation_rates': degradation,
+        'protein_map': protein_map,
+        'initial_state': initial_state}
 
     # load process
     expression = ODE_expression(expression_config)

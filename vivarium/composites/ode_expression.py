@@ -35,8 +35,7 @@ def compose_ode_expression(config):
     metabolism = Metabolism(metabolism_config)
 
     # expression/degradation
-    expression_config = config.get('expression', {})
-    expression = ODE_expression(expression_config)
+    expression = ODE_expression(config.get('expression', {}))
 
     # Division
     # get initial volume from metabolism

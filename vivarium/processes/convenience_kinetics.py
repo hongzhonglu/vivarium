@@ -42,8 +42,7 @@ class ConvenienceKinetics(Process):
         # exchange is equivalent to external, for lattice_compartment
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
-            'exchange': roles['external']
-        })
+            'exchange': roles['external']})
 
         # parameters
         parameters = {}
@@ -111,41 +110,101 @@ class ConvenienceKinetics(Process):
 
 
 
-# testing functions
-toy_reactions = {
-    'reaction1': {
-        'stoichiometry': {
-            ('internal', 'A'): 1,
-            ('external', 'B'): -1},
-        'is reversible': False,
-        'catalyzed by': [('internal', 'enzyme1')]}
-    }
+# functions
+def get_glc_lct_config():
+    """
+    Convenience kinetics configuration for simplified glucose/lactose transport.
+    This abstracts the PTS/GalP system to a single uptake kinetic
+    with glc__D_e_external as the only cofactor.
+    """
+    transport_reactions = {
+        'EX_glc__D_e': {
+            'stoichiometry': {
+                ('internal', 'g6p_c'): 1.0,
+                ('external', 'glc__D_e'): -1.0,
+                ('internal', 'pep_c'): -1.0,  # TODO -- PEP requires homeostasis mechanism to avoid depletion
+                ('internal', 'pyr_c'): 1.0},
+            'is reversible': False,
+            'catalyzed by': [('internal', 'PTSG')]},
+        'EX_lac__D_e': {
+            'stoichiometry': {
+                ('external', 'lac__D_e'): -1.0,
+                ('external', 'h_e'): -1.0,
+                ('internal', 'lac__D_c'): 1.0,
+                ('internal', 'h_c'): 1.0},
+            'is reversible': False,
+            'catalyzed by': [('internal', 'LacY')]}}
 
-toy_kinetics = {
-    'reaction1': {
-        ('internal', 'enzyme1'): {
-            ('external', 'B'): 0.1,
-            'kcat_f': 0.1}
-        }
-    }
+    transport_kinetics = {
+        'EX_glc__D_e': {
+            ('internal', 'PTSG'): {
+                ('external', 'glc__D_e'): 1e-1,
+                ('internal', 'pep_c'): None,
+                'kcat_f': -3e5}},
+        'EX_lac__D_e': {
+            ('internal', 'LacY'): {
+                ('external', 'lac__D_e'): 1e-1,
+                ('external', 'h_e'): None,
+                'kcat_f': -1e5}}}
 
-toy_roles = {
-    'internal': ['A', 'enzyme1'],
-    'external': ['B'],
-    }
+    transport_initial_state = {
+        'internal': {
+            'PTSG': 1.8e-6,  # concentration (mmol/L)
+            'g6p_c': 0.0,
+            'pep_c': 1.8e-1,
+            'pyr_c': 0.0,
+            'LacY': 0.0,
+            'lac__D_c': 0.0,
+            'h_c': 100.0},
+        'external': {
+            'glc__D_e': 12.0,
+            'lac__D_e': 0.0,
+            'h_e': 100.0},
+        'fluxes': {  # TODO -- is this needed?
+            'EX_glc__D_e': 0.0,
+            'EX_lac__D_e': 0.0}}
 
-toy_initial_state = {
-    'internal': {
-        'A': 1.0,
-        'enzyme1': 1.0},
-    'external': {
-        'B': 1.0},
-    'fluxes': {
-        'reaction1': 0.0}
-    }
+    transport_roles = {
+        'internal': [
+            'g6p_c', 'pep_c', 'pyr_c', 'h_c', 'PTSG', 'LacY'],
+        'external': [
+            'glc__D_e', 'lac__D_e', 'h_e']}
+
+    return {
+        'reactions': transport_reactions,
+        'kinetic_parameters': transport_kinetics,
+        'initial_state': transport_initial_state,
+        'roles': transport_roles}
 
 # test
 def test_convenience_kinetics(end_time=10):
+    toy_reactions = {
+        'reaction1': {
+            'stoichiometry': {
+                ('internal', 'A'): 1,
+                ('external', 'B'): -1},
+            'is reversible': False,
+            'catalyzed by': [('internal', 'enzyme1')]}}
+
+    toy_kinetics = {
+        'reaction1': {
+            ('internal', 'enzyme1'): {
+                ('external', 'B'): 0.1,
+                'kcat_f': 0.1}}}
+
+    toy_roles = {
+        'internal': ['A', 'enzyme1'],
+        'external': ['B']}
+
+    toy_initial_state = {
+        'internal': {
+            'A': 1.0,
+            'enzyme1': 1.0},
+        'external': {
+            'B': 1.0},
+        'fluxes': {
+            'reaction1': 0.0}}
+
     toy_config = {
         'reactions': toy_reactions,
         'kinetic_parameters': toy_kinetics,
@@ -153,6 +212,9 @@ def test_convenience_kinetics(end_time=10):
         'roles': toy_roles}
 
     kinetic_process = ConvenienceKinetics(toy_config)
+
+
+    # TODO -- run sim in run_process_in...()
 
     # get initial state and parameters
     settings = kinetic_process.default_settings()
@@ -189,6 +251,6 @@ if __name__ == '__main__':
     plot_settings = {}
 
     saved_data = test_convenience_kinetics()
-    del saved_data[0] # remove first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
