@@ -314,7 +314,7 @@ def test_translation():
 
     states = {
         'ribosomes': {'ribosomes': []},
-        'molecules': {translation.unbound_ribosomes_key: 10},
+        'molecules': {UNBOUND_RIBOSOME_KEY: 10},
         'transcripts': {
             'oA': 10,
             'oAZ': 10,

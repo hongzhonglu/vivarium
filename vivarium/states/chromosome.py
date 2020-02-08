@@ -360,7 +360,7 @@ class Chromosome(Datum):
 
 def test_chromosome():
     chromosome = Chromosome(test_chromosome_config)
-    print(chromosome.promoters['pA'].terminators[0].product)
+    print(chromosome.promoters['pA'].terminators[0].products)
     print(chromosome)
 
     print('operons:')

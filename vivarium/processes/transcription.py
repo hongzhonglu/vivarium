@@ -307,7 +307,7 @@ def test_transcription():
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {transcription.unbound_rnap_key: 10}}
+        'molecules': {UNBOUND_RNAP_KEY: 10}}
 
     states['molecules'].update({
         nucleotide: 10
