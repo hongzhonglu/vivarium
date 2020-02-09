@@ -93,11 +93,11 @@ class FlagellaActivity(Process):
                 'motile_state',
                 'motile_force',
                 'motile_torque',
-                'n_flagella'],
+                'flagella'],
             'membrane': ['PMF', 'protons_flux_accumulated'],
             'flagella': self.flagella_ids,
-            'external': []
-        }
+            'external': []}
+
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
@@ -113,12 +113,12 @@ class FlagellaActivity(Process):
             'external': {},
             'membrane': {'PMF': DEFAULT_PMF, 'PROTONS': 0},
             'flagella': {flagella_id: random.choice([-1, 1]) for flagella_id in self.flagella_ids},
-            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': self.n_flagella})}
+            'internal': deep_merge(internal, {'volume': 1, 'flagella': self.n_flagella})}
 
         # default emitter keys
         default_emitter_keys = {
             'internal': [
-                'n_flagella',
+                'flagella',
                 'motile_force',
                 'motile_torque',
                 'motile_state'],
@@ -138,7 +138,7 @@ class FlagellaActivity(Process):
         default_updaters = {
             'internal': {state_id: 'set' for state_id in internal_set_states},
             'membrane': {'PROTONS': 'accumulate'},
-            'flagella': {flagella_id: 'set' for flagella_id in self.flagella_ids},
+            'flagella': {flagella_id: 'set' for flagella_id in self.flagella_ids},  # TODO -- need update that can add/remove flagella
             'external': {}}
 
         default_settings = {
@@ -153,9 +153,31 @@ class FlagellaActivity(Process):
     def next_update(self, timestep, states):
 
         internal = states['internal']
-        n_flagella = states['internal']['n_flagella']
+        n_flagella = states['internal']['flagella']
         flagella = states['flagella']
         PMF = states['membrane']['PMF']
+
+        # adjust number of flaggella
+        new_flagella = n_flagella - len(flagella)
+        if new_flagella > len(flagella):
+            new_flagella_ids = [str(uuid.uuid1())
+                for flagella in range(new_flagella)]
+            self.flagella_ids.append(new_flagella_ids)
+
+            # TODO -- need to change state, this require a new updater for flagella role, removing flagella not included
+
+            new_flagella = {flg: random.choice([-1, 1])
+                for flg in new_flagella}
+            flagella.update(new_flagella)
+
+            import ipdb; ipdb.set_trace()
+
+        elif  n_flagella < len(flagella):
+            # remove flagella
+            import ipdb; ipdb.set_trace()
+            # todo -- remove some from self.flagella_ids, flagella state
+
+
 
         # states
         # TODO -- chemoreceptor?
@@ -253,7 +275,7 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_activity(parameters={'n_flagella': 5}, total_time=10):
+def test_activity(parameters={'flagella': 5}, total_time=10):
     # TODO -- add asserts for test
 
     initial_params = {}
@@ -475,11 +497,11 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    zero_flagella = {'n_flagella': 0}
+    zero_flagella = {'flagella': 0}
     output1 = test_activity(zero_flagella, 5)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
-    five_flagella = {'n_flagella': 5}
+    five_flagella = {'flagella': 5}
     output2 = test_activity(five_flagella, 5)
     plot_activity(output2, out_dir, 'motor_control')
 

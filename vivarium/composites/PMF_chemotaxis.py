@@ -11,6 +11,7 @@ from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
+from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 
@@ -21,6 +22,7 @@ def compose_pmf_chemotaxis(config):
 
     # declare the processes
     transport = ConvenienceKinetics(config.get('transport', get_glc_lct_config()))
+    metabolism = Metabolism(config.get('metabolism', get_e_coli_core_config()))
     expression = ODE_expression(config.get('expression', get_flagella_expression()))
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
     flagella = FlagellaActivity(config.get('flagella', {}))
@@ -32,7 +34,10 @@ def compose_pmf_chemotaxis(config):
     processes = [
         {'PMF': PMF},
         {'receptor': receptor,
-         'transport': transport,
+         'transport': transport
+         },
+        {
+         # 'metabolism': metabolism,
          'expression': expression},
         {'flagella': flagella},
         {'deriver': deriver,
@@ -49,6 +54,12 @@ def compose_pmf_chemotaxis(config):
             'external': 'environment',
             'internal': 'cytoplasm',
             'fluxes': 'fluxes'},
+        # 'metabolism': {
+        #     'internal': 'cytoplasm',
+        #     'external': 'environment',
+        #     'reactions': 'reactions',
+        #     'exchange': 'exchange',
+        #     'flux_bounds': 'fluxes'},
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cytoplasm',  # todo -- hook this up with flagella
