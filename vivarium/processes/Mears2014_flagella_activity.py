@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.patches import Patch
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, simulate_process_with_environment, convert_to_timeseries
 from vivarium.utils.dict_utils import deep_merge
 
 
@@ -275,42 +275,16 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_activity(parameters={'flagella': 5}, total_time=10):
-    # TODO -- add asserts for test
+def test_activity(parameters={'flagella': 5}, time=10):
+    motor = FlagellaActivity(parameters)
 
-    initial_params = {}
-    initial_params.update(parameters)
+    timeline = [(time, {})]
 
-    motor = FlagellaActivity(initial_params)
-    settings = motor.default_settings()
-    state = settings['state']
+    settings = {
+        'timeline': timeline,
+        'environment_role': 'external'}
 
-    receptor_activity = 1./3.
-    state['internal']['chemoreceptor_activity'] = receptor_activity
-
-    saved_data = {
-        'internal': {state_id: [value] for state_id, value in state['internal'].items()},
-        'flagella': {state_id: [value] for state_id, value in state['flagella'].items()},
-        'time': [0]}
-
-    # run simulation
-    time = 0
-    timestep = 0.001  # sec
-    while time < total_time:
-        time += timestep
-
-        update = motor.next_update(timestep, state)
-
-        # state is set
-        state['flagella'].update(update['flagella'])
-        state['internal'].update(update['internal'])
-
-        saved_data['time'].append(time)
-        for role in ['internal', 'flagella',]:
-            for state_id, value in state[role].items():
-                saved_data[role][state_id].append(value)
-
-    return saved_data
+    return simulate_process_with_environment(motor, settings)
 
 def test_motor_PMF():
 
@@ -497,12 +471,14 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    zero_flagella = {'flagella': 0}
-    output1 = test_activity(zero_flagella, 5)
+    zero_flagella = {'n_flagella': 0}
+    data1 = test_activity(zero_flagella, 5)
+    output1 = convert_to_timeseries(data1)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
-    five_flagella = {'flagella': 5}
-    output2 = test_activity(five_flagella, 5)
+    five_flagella = {'n_flagella': 5}
+    data2 = test_activity(five_flagella, 5)
+    output2 = convert_to_timeseries(data2)
     plot_activity(output2, out_dir, 'motor_control')
 
     output3 = test_motor_PMF()
