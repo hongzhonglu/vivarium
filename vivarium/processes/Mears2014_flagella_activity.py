@@ -81,7 +81,7 @@ class FlagellaActivity(Process):
 
     def __init__(self, initial_parameters={}):
 
-        self.n_flagella = initial_parameters.get('n_flagella', DEFAULT_N_FLAGELLA)
+        self.n_flagella = initial_parameters.get('flagella', DEFAULT_N_FLAGELLA)
         self.flagella_ids = [str(uuid.uuid1()) for flagella in range(self.n_flagella)]
 
         roles = {
@@ -158,26 +158,21 @@ class FlagellaActivity(Process):
         PMF = states['membrane']['PMF']
 
         # adjust number of flaggella
+        # TODO -- need to change state, requires a new updater for flagella role, removing flagella not included
         new_flagella = n_flagella - len(flagella)
-        if new_flagella > len(flagella):
-            new_flagella_ids = [str(uuid.uuid1())
-                for flagella in range(new_flagella)]
+        if new_flagella > 0:
+            # add flagella
+            new_flagella_ids = [str(uuid.uuid1()) for flagella in range(new_flagella)]
             self.flagella_ids.append(new_flagella_ids)
-
-            # TODO -- need to change state, this require a new updater for flagella role, removing flagella not included
-
-            new_flagella = {flg: random.choice([-1, 1])
-                for flg in new_flagella}
+            new_flagella = {flg_id: random.choice([-1, 1]) for flg_id in new_flagella_ids}
             flagella.update(new_flagella)
 
-            import ipdb; ipdb.set_trace()
-
-        elif  n_flagella < len(flagella):
+        elif  new_flagella < 0:
             # remove flagella
-            import ipdb; ipdb.set_trace()
-            # todo -- remove some from self.flagella_ids, flagella state
-
-
+            remove = random.sample(self.flagella_ids, abs(new_flagella))
+            for flg_id in remove:
+                self.flagella_ids.remove(flg_id)
+                del flagella[flg_id]
 
         # states
         # TODO -- chemoreceptor?
@@ -275,10 +270,10 @@ class FlagellaActivity(Process):
 
 
 # testing functions
-def test_activity(parameters={'flagella': 5}, time=10):
+default_params = {'flagella': 5}
+default_timeline = [(10, {})]
+def test_activity(parameters=default_params, timeline=default_timeline):
     motor = FlagellaActivity(parameters)
-
-    timeline = [(time, {})]
 
     settings = {
         'timeline': timeline,
@@ -471,15 +466,33 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    zero_flagella = {'n_flagella': 0}
-    data1 = test_activity(zero_flagella, 5)
-    output1 = convert_to_timeseries(data1)
-    plot_activity(output1, out_dir, 'motor_control_zero_flagella')
+    # zero_flagella = {'flagella': 0}
+    # timeline = [(10, {})]
+    # data1 = test_activity(zero_flagella, timeline)
+    # output1 = convert_to_timeseries(data1)
+    # plot_activity(output1, out_dir, 'motor_control_zero_flagella')
+    #
+    # five_flagella = {'flagella': 5}
+    # timeline = [(10, {})]
+    # data2 = test_activity(five_flagella, timeline)
+    # output2 = convert_to_timeseries(data2)
+    # plot_activity(output2, out_dir, 'motor_control')
+    #
 
-    five_flagella = {'n_flagella': 5}
-    data2 = test_activity(five_flagella, 5)
-    output2 = convert_to_timeseries(data2)
-    plot_activity(output2, out_dir, 'motor_control')
+    # variable flagella
+    init_params = {'flagella': 5}
+    timeline = [
+        (0, {}),
+        (2, {
+            'internal': {
+                'flagella': 4}}),
+        (4, {
+            'internal': {
+                'flagella': 6}}),
+        (10, {})]
+    data3 = test_activity(init_params, timeline)
+    output3 = convert_to_timeseries(data3)
+    plot_activity(output3, out_dir, 'motor_control')
 
     output3 = test_motor_PMF()
     plot_motor_PMF(output3, out_dir)
