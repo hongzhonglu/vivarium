@@ -290,14 +290,14 @@ def initialize_measp(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'type': 'gaussian',
+            'type': 'linear',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],
-                    'deviation': -1e-2},
+                    'slope': -1e-2},
                 'MeAsp': {
                     'center': [0.5, 0.5],
-                    'deviation': -1e-2}
+                    'slope': -1e-2}
             }},
         'diffusion': 0.0,
         'edge_length_x': 50.0,
