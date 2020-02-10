@@ -214,7 +214,7 @@ class Chromosome(Datum):
     def terminator_distance(self):
         distance = INFINITY
         for rnap in self.rnaps:
-            if rnap.is_transcribing():
+            if rnap.is_polymerizing():
                 promoter = self.promoters[rnap.template]
 
                 # rnap position is relative to the promoter it is bound to
