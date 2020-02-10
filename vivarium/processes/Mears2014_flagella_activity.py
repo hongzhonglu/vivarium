@@ -12,7 +12,6 @@ from matplotlib import colors
 from matplotlib.patches import Patch
 
 from vivarium.actor.process import Process, simulate_process_with_environment, convert_to_timeseries
-from vivarium.utils.dict_utils import deep_merge
 
 
 DEFAULT_N_FLAGELLA = 5
@@ -92,10 +91,14 @@ class FlagellaActivity(Process):
                 'cw_bias',
                 'motile_state',
                 'motile_force',
-                'motile_torque',
+                'motile_torque'],
+            'counts': [
                 'flagella'],
-            'membrane': ['PMF', 'protons_flux_accumulated'],
-            'flagella': ['flagella_activity'],
+            'membrane': [
+                'PMF',
+                'protons_flux_accumulated'],
+            'flagella': [
+                'flagella_activity'],
             'external': []}
 
         parameters = DEFAULT_PARAMETERS
@@ -114,20 +117,20 @@ class FlagellaActivity(Process):
             'membrane': {
                 'PMF': DEFAULT_PMF,
                 'PROTONS': 0},
+            'counts': {'flagella': self.n_flagella},
             'flagella': {
                 'flagella_activity': {
                     flagella_id: random.choice([-1, 1]) for flagella_id in self.flagella_ids}},
-            'internal': deep_merge(internal, {'volume': 1, 'flagella': self.n_flagella})}
+            'internal': internal}
 
         # default emitter keys
         default_emitter_keys = {
             'internal': [
-                'flagella',
                 'motile_force',
                 'motile_torque',
                 'motile_state'],
-            'flagella': [],
-            'external': [],
+            # 'flagella': [],
+            # 'external': [],
         }
 
         # default updaters
@@ -157,7 +160,7 @@ class FlagellaActivity(Process):
     def next_update(self, timestep, states):
 
         internal = states['internal']
-        n_flagella = states['internal']['flagella']
+        n_flagella = states['counts']['flagella']
         flagella = states['flagella']['flagella_activity']
         PMF = states['membrane']['PMF']
 
@@ -482,13 +485,13 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     zero_flagella = {'flagella': 0}
-    timeline = [(6, {})]
+    timeline = [(2, {})]
     data1 = test_activity(zero_flagella, timeline)
     output1 = convert_to_timeseries(data1)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
     five_flagella = {'flagella': 5}
-    timeline = [(6, {})]
+    timeline = [(2, {})]
     data2 = test_activity(five_flagella, timeline)
     output2 = convert_to_timeseries(data2)
     plot_activity(output2, out_dir, 'motor_control')
@@ -498,12 +501,12 @@ if __name__ == '__main__':
     timeline = [
         (0, {}),
         (2, {
-            'internal': {
+            'counts': {
                 'flagella': 6}}),
         (4, {
-            'internal': {
+            'counts': {
                 'flagella': 4}}),
-        (8, {})]
+        (6, {})]
     data3 = test_activity(init_params, timeline)
     output3 = convert_to_timeseries(data3)
     plot_activity(output3, out_dir, 'motor_control_variable')

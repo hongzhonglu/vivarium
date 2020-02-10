@@ -782,7 +782,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
             # check if series is a list of ints or floats
             # TODO -- plot non-numeric states as well (in particular dicts)
             if not all(isinstance(state, (int, float)) for state in series):
-                return
+                break
 
             # plot line at zero if series crosses the zero line
             if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):

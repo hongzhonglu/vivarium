@@ -21,7 +21,10 @@ def compose_pmf_chemotaxis(config):
     receptor_parameters.update(config)
 
     # declare the processes
-    transport = ConvenienceKinetics(config.get('transport', get_glc_lct_config()))
+    # TODO -- override transport config's glucose name
+    transport_config = get_glc_lct_config()
+
+    transport = ConvenienceKinetics(config.get('transport', transport_config))
     metabolism = Metabolism(config.get('metabolism', get_e_coli_core_config()))
     expression = ODE_expression(config.get('expression', get_flagella_expression()))
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
@@ -62,9 +65,11 @@ def compose_pmf_chemotaxis(config):
         #     'flux_bounds': 'fluxes'},
         'expression' : {
             'counts': 'cell_counts',
-            'internal': 'cytoplasm',  # todo -- hook this up with flagella
-            'external': 'environment'},
+            'internal': 'cytoplasm',
+            'external': 'environment',
+            'global': 'global'},
         'flagella': {
+            'counts': 'cell_counts',
             'internal': 'cytoplasm',
             'membrane': 'membrane',
             'flagella': 'flagella',
