@@ -36,6 +36,7 @@ def random_string(alphabet, length):
         string += random.choice(alphabet)
     return string
 
+VERBOSE = False
 UNBOUND_RIBOSOME_KEY = 'Ribosome'
 
 monomer_symbols = []
@@ -125,7 +126,8 @@ class Translation(Process):
             'transcripts': self.transcript_order,
             'proteins': self.protein_ids}
 
-        print('translation parameters: {}'.format(self.parameters))
+        if VERBOSE:
+            print('translation parameters: {}'.format(self.parameters))
 
         super(Translation, self).__init__(self.roles, self.parameters)
 
@@ -194,9 +196,9 @@ class Translation(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
 
-        original_unbound_ribosomes = states['molecules'][UNBOUND_RIBOSOME_KEY]
+        original_unbound_ribosomes = molecules[UNBOUND_RIBOSOME_KEY]
         monomer_limits = {
-            monomer: states['molecules'][monomer]
+            monomer: molecules[monomer]
             for monomer in self.monomer_ids}
         unbound_ribosomes = original_unbound_ribosomes
 

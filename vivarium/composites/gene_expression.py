@@ -60,7 +60,7 @@ def compose_gene_expression(config):
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
-        'name': 'growth_division_composite',
+        'name': 'gene_expression_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
@@ -75,11 +75,13 @@ def compose_gene_expression(config):
 
 
 # analysis
-def plot_gene_expression_output(timeseries, name, out_dir='out'):
+def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
-    molecules = timeseries['molecules']
-    transcripts = timeseries['transcripts']
-    proteins = timeseries['proteins']
+    name = config.get('name', 'gene expression')
+    roles = config.get('roles', {})
+    molecules = timeseries[roles['molecules']]
+    transcripts = timeseries[roles['transcripts']]
+    proteins = timeseries[roles['proteins']]
     time = timeseries['time']
 
     # make figure and plot
@@ -158,9 +160,17 @@ if __name__ == '__main__':
     gene_expression_compartment = load_compartment(compose_gene_expression)
 
     # run simulation
-    settings = {
+    sim_settings = {
         'total_time': 60}
-    saved_state = simulate_compartment(gene_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
+    saved_state = simulate_compartment(gene_expression_compartment, sim_settings)
+    del saved_state[0]
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
+
+    plot_settings = {
+        'name': 'gene_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(timeseries, plot_settings, out_dir)
