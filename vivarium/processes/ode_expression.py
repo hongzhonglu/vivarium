@@ -47,12 +47,24 @@ class ODE_expression(Process):
         self.partial_expression = {
             mol_id: 0 for mol_id in internal}
 
-        # TODO -- get initial counts.
+        # convert initial counts to concs.
+        # TODO -- concs to counts (use deriver?)
+        counts = self.initial_state['counts']
+        volume = self.initial_state['global'].get('volume', 1.2)
+        # concentrations = self.initial_state['internal']
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        new_concentrations = {}
+        for state_id, count in counts.items():
+            conc = (count / mmol_to_count).magnitude
+            new_concentrations[state_id] = conc
+        self.initial_state['internal'].update(new_concentrations)
+
 
         roles = {
             'counts': states,
-            'internal': internal + internal_regulators + ['volume'],
-            'external': external + external_regulators}
+            'internal': internal + internal_regulators,
+            'external': external + external_regulators,
+            'global': ['volume']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -75,7 +87,7 @@ class ODE_expression(Process):
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        volume = internal_state['volume'] * units.fL
+        volume = states['global']['volume'] * units.fL
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # get state of regulated reactions (True/False)
@@ -130,66 +142,58 @@ class ODE_expression(Process):
 
 
 # functions
-def test_expression():
+def get_toy_expression():
     # toy config
-    toy_transcription_rates = {
+    transcription = {
         'lacy_RNA': 1e-20}
 
-    toy_translation_rates = {
+    translation = {
         'LacY': 1e-2}
 
-    toy_protein_map = {
+    protein_map = {
         'LacY': 'lacy_RNA'}
 
-    toy_degradation_rates = {
+    degradation = {
         'lacy_RNA': 0.2,
         'LacY': 0.001}
 
     initial_state = {
         'internal': {
-            'volume': 1.2,
             'lacy_RNA': 0,
-            'LacY': 0.0
-        }}
+            'LacY': 0.0},
+        'global': {
+            'volume': 1.2}}
 
-    expression_config = {
-        'transcription_rates': toy_transcription_rates,
-        'translation_rates': toy_translation_rates,
-        'degradation_rates': toy_degradation_rates,
-        'protein_map': toy_protein_map,
-        'initial_state': initial_state
-    }
-
-    # load process
-    expression = ODE_expression(expression_config)
-
-    settings = {
-        'total_time': 100,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
-        'environment_volume': 1e-12}
-
-    saved_data = simulate_process_with_environment(expression, settings)
-
-    return saved_data
+    return {
+        'transcription_rates': transcription,
+        'translation_rates': translation,
+        'degradation_rates': degradation,
+        'protein_map': protein_map,
+        'initial_state': initial_state}
 
 
 def get_flagella_expression():
     transcription = {
-        'flag_RNA': 1e-20}
+        'flag_RNA': 1e-21}
 
     translation = {
-        'flagella': 1e-2}
+        'flagella': 8e-5}
 
     degradation = {
-        'flag_RNA': 1e-21}
+        'flag_RNA': 2e-2}  # 1e-23}
 
     protein_map = {
         'flagella': 'flag_RNA'}
 
     initial_state = {
-        'flagella': 5,
-        'flag_RNA': 1}
+        'counts': {
+            'flagella': 5,
+            'flag_RNA': 30},
+        'internal': {
+            'flagella': 0,
+            'flag_RNA': 0},
+        'global': {
+            'volume': 1.2}}
 
     return  {
         'transcription_rates': transcription,
@@ -198,6 +202,16 @@ def get_flagella_expression():
         'protein_map': protein_map,
         'initial_state': initial_state}
 
+default_settings = {
+    'total_time': 10,
+    # 'exchange_role': 'exchange',
+    'environment_role': 'external',
+    'environment_volume': 1e-12}
+
+def test_expression(expression_config=get_toy_expression(), settings=default_settings):
+    expression = ODE_expression(expression_config)
+    saved_data = simulate_process_with_environment(expression, settings)
+    return saved_data
 
 
 if __name__ == '__main__':
@@ -205,7 +219,14 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression()
+    settings = {
+        'total_time': 2520,
+        # 'exchange_role': 'exchange',
+        'environment_role': 'external',
+        'environment_volume': 1e-12}
+
+    # saved_data = test_expression()
+    saved_data = test_expression(get_flagella_expression(), settings)
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
