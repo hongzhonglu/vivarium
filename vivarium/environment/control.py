@@ -32,12 +32,12 @@ class ShepherdControl(ActorControl):
         actor_config['boot_config'].update(lattice_config)
 
         # get from args
-        experiment_id = args['experiment_id']
+        experiment_id = args.get('experiment_id', default_experiment_id)
         number = args.get('number')
         if number == 0:
             number = num_cells
         if not experiment_id:
-            experiment_id = self.get_experiment_id(default_experiment_id)
+            experiment_id = self.get_experiment_id(experiment_id)
 
         print('Creating experiment id {}: {} {} agents in {} environment\n'.format(
             experiment_id, number, agent_type, environment_type))
@@ -120,6 +120,29 @@ class ShepherdControl(ActorControl):
 
         self.init_experiment(args, exp_config)
 
+    def chemotaxis_square(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp'
+        agent_type = 'minimal_chemotaxis'
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'chemotaxis experiment square',
+            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type,
+            'num_cells': 4}
+
+        self.init_experiment(args, exp_config)
+
     def chemotaxis_experiment(self, args, actor_config):
         # define experiment: environment type and agent type
         experiment_id = 'chemotaxis'
@@ -131,8 +154,7 @@ class ShepherdControl(ActorControl):
             'name': 'chemotaxis_experiment',
             'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
                'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
-        }
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -198,6 +220,7 @@ class EnvironmentCommand(AgentCommand):
         full_choices = [
             'growth-division-experiment',
             'ecoli-core-experiment',
+            'chemotaxis-square',
             'chemotaxis-experiment',
             'swarm-experiment',
             ] + choices
@@ -223,6 +246,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.ecoli_core_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def chemotaxis_square(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.chemotaxis_square(args, self.actor_config)
         control.shutdown()
 
     def chemotaxis_experiment(self, args):

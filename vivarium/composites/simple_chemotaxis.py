@@ -26,10 +26,10 @@ def compose_simple_chemotaxis(config):
     topology = {
         'receptor': {
             'external': 'environment',
-            'internal': 'cell'},
+            'internal': 'cytoplasm'},
         'motor': {
             'external': 'environment',
-            'internal': 'cell'},
+            'internal': 'cytoplasm'},
         }
 
     # initialize the states
