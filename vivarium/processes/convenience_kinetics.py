@@ -177,8 +177,7 @@ def get_glc_lct_config():
         'initial_state': transport_initial_state,
         'roles': transport_roles}
 
-# test
-def test_convenience_kinetics(end_time=10):
+def get_toy_config():
     toy_reactions = {
         'reaction1': {
             'stoichiometry': {
@@ -206,12 +205,15 @@ def test_convenience_kinetics(end_time=10):
         'fluxes': {
             'reaction1': 0.0}}
 
-    toy_config = {
+    return {
         'reactions': toy_reactions,
         'kinetic_parameters': toy_kinetics,
         'initial_state': toy_initial_state,
         'roles': toy_roles}
 
+# test
+def test_convenience_kinetics(end_time=10):
+    toy_config = get_toy_config()
     kinetic_process = ConvenienceKinetics(toy_config)
 
     settings = {
