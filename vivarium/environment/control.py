@@ -23,16 +23,16 @@ class ShepherdControl(ActorControl):
             actor_config)
 
     def init_experiment(self, args, exp_config):
-        default_experiment_id = exp_config.get('default_experiment_id')
+        default_experiment_id = exp_config.get('default_experiment_id', 'experiment')
         lattice_config = exp_config.get('lattice_config')
         environment_type = exp_config.get('environment_type')
         actor_config = exp_config.get('actor_config')
         agent_type = exp_config.get('agent_type')
-        num_cells = exp_config.get('num_cells')
+        num_cells = exp_config.get('num_cells', 1)
         actor_config['boot_config'].update(lattice_config)
 
         # get from args
-        experiment_id = args['experiment_id']
+        experiment_id = args.get('experiment_id')
         number = args.get('number')
         if number == 0:
             number = num_cells
