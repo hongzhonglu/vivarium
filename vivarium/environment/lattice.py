@@ -576,7 +576,21 @@ def run():
     torque = 0.0
     return [force, torque]
 
-def test_diffusion(config):
+# default configs for tests
+diffusion_config = {
+    'total_time': 2,
+    'timestep': 0.05,
+    'diffusion': 1e2}
+
+motile_config = {
+    'total_time': 100,
+    'timestep': 0.1,
+    'edge_length': 50,
+    'jitter_force': 1e-1,
+    'motile_cells': True}
+
+
+def test_diffusion(config=diffusion_config):
     test_diffusion = 'GLC'
 
     total_time = config.get('total_time', 10)
@@ -650,7 +664,7 @@ def test_diffusion(config):
     }
     return data
 
-def test_lattice(config):
+def test_lattice(config=motile_config):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
     tumble_time = 0.14  # s (Berg)
@@ -957,11 +971,6 @@ if __name__ == '__main__':
     plot_motility(motile_output, 'motility_state_short_ts', out_dir)
     plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
-    # test diffusion
-    diffusion_config = {
-        'total_time': 2,
-        'timestep': 0.05,
-        'diffusion': 1e2}
 
-    diffusion_out = test_diffusion(diffusion_config)
+    diffusion_out = test_diffusion()
     plot_field(diffusion_out, 'diffusion', out_dir)
