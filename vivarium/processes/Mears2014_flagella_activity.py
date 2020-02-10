@@ -162,7 +162,7 @@ class FlagellaActivity(Process):
         PMF = states['membrane']['PMF']
 
         # adjust number of flagella
-        new_flagella = n_flagella - len(flagella)
+        new_flagella = int(n_flagella) - len(flagella)
         if new_flagella < 0:
             # remove flagella
             remove = random.sample(self.flagella_ids, abs(new_flagella))
