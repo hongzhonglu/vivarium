@@ -13,6 +13,7 @@ def choose_element(elements):
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
+VERBOSE = False
 UNBOUND_RNAP_KEY = 'RNA Polymerase'
 
 monomer_ids = list(nucleotides.values())
@@ -43,7 +44,8 @@ class Transcription(Process):
             'transcribing' state.
         '''
 
-        print('inital_parameters: {}'.format(initial_parameters))
+        if VERBOSE:
+            print('inital_parameters: {}'.format(initial_parameters))
 
         self.default_parameters = default_transcription_parameters
 
@@ -69,7 +71,8 @@ class Transcription(Process):
         self.genes = self.parameters['genes']
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
-        print('chromosome sequence: {}'.format(self.sequence))
+        if VERBOSE:
+            print('chromosome sequence: {}'.format(self.sequence))
 
         self.promoter_affinities = self.parameters['promoter_affinities']
         self.promoter_order = self.parameters['promoter_order']
@@ -98,7 +101,8 @@ class Transcription(Process):
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_ids}
 
-        print('transcription parameters: {}'.format(self.parameters))
+        if VERBOSE:
+            print('transcription parameters: {}'.format(self.parameters))
 
         super(Transcription, self).__init__(self.roles, self.parameters)
 
@@ -158,7 +162,9 @@ class Transcription(Process):
 
         if self.sequences is None:
             self.sequences = chromosome.sequences()
-            print('sequences: {}'.format(self.sequences))
+
+            if VERBOSE:
+                print('sequences: {}'.format(self.sequences))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
@@ -185,9 +191,9 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = states['molecules'][UNBOUND_RNAP_KEY]
+        original_unbound_rnaps = molecules[UNBOUND_RNAP_KEY]
         monomer_limits = {
-            monomer: states['molecules'][monomer]
+            monomer: molecules[monomer]
             for monomer in self.monomer_ids}
         unbound_rnaps = original_unbound_rnaps
 
@@ -207,7 +213,7 @@ class Transcription(Process):
                 bound_rnap,
                 [unbound_rnaps]])
 
-            if time == 0:
+            if VERBOSE and time == 0:
                 print('transcription substrate: {}'.format(substrate))
             
             # find number of monomers until next terminator
@@ -290,6 +296,10 @@ class Transcription(Process):
             'chromosome': chromosome.to_dict(),
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
+
+        if VERBOSE:
+            print('molecules update: {}'.format(update['molecules']))
+            # print('transcription update: {}'.format(update))
 
         return update
 

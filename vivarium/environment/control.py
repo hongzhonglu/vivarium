@@ -23,16 +23,16 @@ class ShepherdControl(ActorControl):
             actor_config)
 
     def init_experiment(self, args, exp_config):
-        default_experiment_id = exp_config.get('default_experiment_id')
+        default_experiment_id = exp_config.get('default_experiment_id', 'experiment')
         lattice_config = exp_config.get('lattice_config')
         environment_type = exp_config.get('environment_type')
         actor_config = exp_config.get('actor_config')
         agent_type = exp_config.get('agent_type')
-        num_cells = exp_config.get('num_cells')
+        num_cells = exp_config.get('num_cells', 1)
         actor_config['boot_config'].update(lattice_config)
 
         # get from args
-        experiment_id = args['experiment_id']
+        experiment_id = args.get('experiment_id')
         number = args.get('number')
         if number == 0:
             number = num_cells
@@ -43,7 +43,7 @@ class ShepherdControl(ActorControl):
             experiment_id, number, agent_type, environment_type))
 
         # boot environment
-        self.add_agent(experiment_id, environment_type, lattice_config)
+        self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
         # boot agents
@@ -100,7 +100,7 @@ class ShepherdControl(ActorControl):
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
-        experiment_id = 'glc-g6p'
+        experiment_id = 'glc-lct'
         environment_type = 'ecoli_core_glc'
         agent_type = 'shifter'
 
