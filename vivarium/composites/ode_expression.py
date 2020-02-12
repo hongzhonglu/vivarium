@@ -35,8 +35,7 @@ def compose_ode_expression(config):
     metabolism = Metabolism(metabolism_config)
 
     # expression/degradation
-    expression_config = config.get('expression', {})
-    expression = ODE_expression(expression_config)
+    expression = ODE_expression(config.get('expression', {}))
 
     # Division
     # get initial volume from metabolism
@@ -185,7 +184,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_ode_expression, boot_config)
 
     # settings for simulation and plot
-    options = compose_ode_expression({})['options']
+    options = compartment.configuration
     timeline = [(1000, {})]
 
     settings = {
