@@ -431,6 +431,7 @@ def toy_transport():
 # tests
 def test_BiGG_metabolism(time=10, out_dir='out'):
     metabolism_config = get_iAF1260b_config()
+    # metabolism_config = get_e_coli_core_config()
     metabolism = Metabolism(metabolism_config)
 
     # simulate metabolism

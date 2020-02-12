@@ -2,16 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+from vivarium.actor.process import initialize_state, load_compartment
+from vivarium.actor.composition import get_derivers
+from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
 # processes
 from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.metabolism import Metabolism
+from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.ode_expression import ODE_expression
-from vivarium.processes.derive_global import DeriveGlobal
 
 
 
@@ -23,14 +22,14 @@ def compose_ode_expression(config):
     ## Declare the processes.
     # Transport
     # load the kinetic parameters
-    transport_config = config.get('transport', default_transport_config())
+    transport_config = config.get('transport', {})
     transport = ConvenienceKinetics(transport_config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
     # Metabolism
     # get target fluxes from transport
     # load regulation function
-    metabolism_config = config.get('metabolism', default_metabolism_config())
+    metabolism_config = config.get('metabolism', get_metabolism_config())
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
@@ -43,17 +42,12 @@ def compose_ode_expression(config):
     division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
 
-    # Other processes
-    deriver_config = config.get('deriver', {})
-    deriver = DeriveGlobal(deriver_config)
-
     # Place processes in layers
     processes = [
         {'transport': transport,
          'expression': expression},
         {'metabolism': metabolism},
-        {'deriver': deriver,
-         'division': division}]
+        {'division': division}]
 
     # Make the topology
     # for each process, map process roles to compartment roles
@@ -74,14 +68,14 @@ def compose_ode_expression(config):
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cell',
-            'external': 'environment',
-            'global': 'global'},
+            'external': 'environment'},
         'division': {
-            'global': 'global'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
             'global': 'global'}}
+
+    # Derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -103,82 +97,23 @@ def compose_ode_expression(config):
 
 
 # toy functions/ defaults
-def default_metabolism_config():
+def get_metabolism_config():
+    config = get_e_coli_core_config()
 
-    regulation = {
-        'EX_lac__D_e':
-            'if not (external, glc__D_e) > 0.1'}
-
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-
-    # initial state
-    # internal
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
-    internal = {
-            'mass': mass.magnitude,
-            'volume': volume.to('fL').magnitude}
-
-    # external
-    make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')
-    initial_state = {
-        'internal': internal,
-        'external': external}
-
-    return {
+    # set flux bond tolerance for reactions in ode_expression's lacy_config
+    metabolism_config = {
         'moma': False,
         'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0]},
-        'model_path': metabolism_file,
-        'regulation': regulation,
-        'initial_state': initial_state}
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lac__D_e': [1.05, 1.0]}}
 
-def default_transport_config():
-    transport_reactions = {
-        'EX_glc__D_e': {
-            'stoichiometry': {
-                ('internal', 'g6p_c'): 1.0,
-                ('external', 'glc__D_e'): -1.0},
-            'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]}}
+    config.update(metabolism_config)
 
-    transport_kinetics = {
-        'EX_glc__D_e': {
-            ('internal', 'PTSG'): {
-                ('external', 'glc__D_e'): 1e-1,
-                ('internal', 'pep_c'): None,
-                'kcat_f': -3e5}}}
-
-    transport_initial_state = {
-        'internal': {
-            'g6p_c': 0.0,
-            'pep_c': 1.8e-1,
-            'pyr_c': 0.0,
-            'PTSG': 1.8e-6},
-        'external': {
-            'glc__D_e': 12.0},
-        'fluxes': {
-            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
-
-    transport_roles = {
-        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
-        'external': ['glc__D_e']}
-
-    return {
-        'reactions': transport_reactions,
-        'kinetic_parameters': transport_kinetics,
-        'initial_state': transport_initial_state,
-        'roles': transport_roles}
-
+    return config
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
-
-    out_dir = os.path.join('out', 'tests', 'composite_ode_expression')
+    out_dir = os.path.join('out', 'tests', 'ode_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -187,7 +122,7 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compartment.configuration
-    timeline = [(1000, {})]
+    timeline = [(2520, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -206,4 +141,6 @@ if __name__ == '__main__':
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
     plot_simulation_output(timeseries, plot_settings, out_dir)

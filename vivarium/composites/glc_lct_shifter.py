@@ -2,65 +2,44 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.environment.make_media import Media
-from vivarium.processes.convenience_kinetics import get_glc_lct_config
-from vivarium.utils.units import units
+# composite
 from vivarium.composites.ode_expression import compose_ode_expression
+
+# process configurations
+from vivarium.processes.metabolism import get_e_coli_core_config
+from vivarium.processes.convenience_kinetics import get_glc_lct_config
+from vivarium.processes.ode_expression import get_lacy_config
 
 
 # processes configurations
 def get_metabolism_config():
+    config = get_e_coli_core_config()
 
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-
-    # initial state
-    # internal
-    mass = 1339 * units.fg
-    density = 1100 * units.g / units.L
-    volume = mass.to('g') / density
-    internal = {
-        'mass': mass.magnitude,  # fg
-        'volume': volume.to('fL').magnitude}
-
-    # external
-    make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')  # TODO -- generalize external to whatever BiGG model is loaded
-    initial_state = {
-        'internal': internal,
-        'external': external}
-
-    return {
+    # set flux bond tolerance for reactions in ode_expression's lacy_config
+    metabolism_config = {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]},
-        'model_path': metabolism_file,
-        'initial_state': initial_state}
+            'EX_lac__D_e': [1.05, 1.0]}}
+
+    config.update(metabolism_config)
+
+    return config
 
 def get_expression_config():
+    # glc lct config from ode_expression
+    config = get_lacy_config()
+
     # define regulation
     regulators = [('external', 'glc__D_e')]
     regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
-
-    transcription_rates = {'lacy_RNA': 1e-20}
-    translation_rates = {'LacY': 1e-18}
-    protein_map = {'LacY': 'lacy_RNA'}
-    degradation_rates = {
-        'lacy_RNA': 1e-15,
-        'LacY': 1e-30}
-    initial_state = {}
-
-    molecules = list(transcription_rates.keys()) + list(translation_rates.keys())
-
-    return {
+    reg_config = {
         'regulators': regulators,
-        'regulation': regulation,
-        'transcription_rates': transcription_rates,
-        'translation_rates': translation_rates,
-        'degradation_rates': degradation_rates,
-        'protein_map': protein_map,
-        'initial_state': initial_state,
-        'counted_molecules': molecules}
+        'regulation': regulation}
+
+    config.update(reg_config)
+
+    return config
 
 # composite configuration
 def compose_glc_lct_shifter(config):
@@ -72,9 +51,8 @@ def compose_glc_lct_shifter(config):
         'name': 'glc_lct_shifter',
         'transport': get_glc_lct_config(),
         'metabolism': get_metabolism_config(),
-        'expression': get_expression_config(),
-        'deriver': get_expression_config()
-    }
+        'expression': get_expression_config()}
+
     config.update(shifter_config)
 
     return compose_ode_expression(config)
@@ -100,13 +78,13 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (200, {'environment': {
+        (400, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (800, {'environment': {
+        (1200, {'environment': {
             'glc__D_e': 12.0}
         }),
-        (1200, {})]
+        (1800, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -129,8 +107,7 @@ if __name__ == '__main__':
             ('cell', 'lac__D_c'),
             ('cell', 'lacy_RNA'),
             ('cell', 'LacY')],
-        'skip_roles': ['prior_state', 'null']
-    }
+        'skip_roles': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
