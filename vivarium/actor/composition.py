@@ -175,7 +175,7 @@ def simulate_with_environment(compartment, settings={}):
         if exchange:
             delta_counts = exchange.state_for(exchange_ids)
             mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-            delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
+            delta_concs = {mol_id: counts / mmol_to_count for mol_id, counts in delta_counts.items()}
             environment.apply_update(delta_concs)
 
             # reset exchange
@@ -185,33 +185,6 @@ def simulate_with_environment(compartment, settings={}):
         saved_state[time] = compartment.current_state()
 
     return saved_state
-
-
-def simulate_process_with_environment(process, settings={}):
-    '''
-    Simulate running a process in an environment. In settings,
-    exchange_role and environment_role must be specified.
-    '''
-    process_settings = process.default_settings()
-    state_dict = process_settings['state']
-    states = initialize_state(
-        [{"process": process}],
-        {"process": {role: role for role in process.roles}},
-        state_dict)
-
-    # hook up the roles in each process to compartment states
-    topology = {
-        'process': {key: key for key in states}}
-
-    options = {
-        'topology': topology}
-
-    processes = [{
-        'process': process}]
-
-    compartment = Compartment(processes, states, options)
-    return simulate_with_environment(compartment, settings)
-
 
 def convert_to_timeseries(sim_output):
     '''

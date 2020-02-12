@@ -1,18 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import copy
 
-from scipy import constants
 import numpy as np
 import matplotlib.pyplot as plt
 
 from vivarium.actor.process import Process
-from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
+from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, \
+    plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_role_dicts, deep_merge
 from vivarium.utils.regulation_logic import build_rule
+from vivarium.processes.derive_globals import AVOGADRO
 
 # external concentrations lower than exchange threshold are considered depleted
 EXCHANGE_THRESHOLD = 1e-6
@@ -31,7 +31,7 @@ class Metabolism(Process):
         - reversible_reactions (list)
     """
     def __init__(self, initial_parameters={}):
-        self.nAvogadro = constants.N_A * 1/units.mol
+        self.nAvogadro = AVOGADRO
         self.density = 1100 * units.g/units.L
 
         # initialize fba
@@ -97,14 +97,14 @@ class Metabolism(Process):
         set_internal_states = {state_id: 'set'
             for state_id in self.reaction_ids}
         accumulate_internal_states = {state_id: 'accumulate'
-            for state_id in self.objective_molecules + ['mass']}
+            for state_id in self.objective_molecules}
         default_updaters = {
             'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
             'external': {mol_id: 'accumulate' for mol_id in self.fba.external_molecules},
             'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
             'exchange': {rxn_id: 'set' for rxn_id in self.fba.external_molecules},
             'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_reaction_ids},
-            'global': {state_id: 'accumulate' for state_id in GLOBALS}}
+            'global': {'mass': 'accumulate'}}
 
         return {
             'state': default_state,
@@ -188,82 +188,10 @@ class Metabolism(Process):
 
 
 # tests and analyses
-def simulate_metabolism(config):
-
-    # set the simulation
-    metabolism = config['process']
-    total_time = config.get('total_time', 3600)
-    transport_kinetics = config.get('transport_kinetics', {})
-    env_volume = config.get('environment_volume', 1e-12) * units.L
-    timeline = config.get('timeline', [(total_time, {})])
-    end_time = timeline[-1][0]
-
-    # get initial state and parameters
-    settings = metabolism.default_settings()
-    state = settings['state']
-    internal_updaters = settings['updaters']['internal']
-    density = metabolism.density
-    nAvogadro = metabolism.nAvogadro
-
-    # initialize saved data
-    saved_state = {}
-
-    ## run simulation
-    time = 0
-    timestep = 1  # sec
-    saved_state[time] = state
-    while time < end_time:
-        time += timestep
-        for (t, change_dict) in timeline:
-            if time >= t:
-                for key, change in change_dict.items():
-                    state[key].update(change)
-                timeline.pop(0)
-
-        # set flux bounds from transport kinetics
-        flux_bounds = {}
-        for rxn_id, rate_law in transport_kinetics.items():
-            flux = rate_law(state['external'])
-            flux_bounds[rxn_id] = flux
-        state['flux_bounds'].update(flux_bounds)
-
-        # get update
-        update = metabolism.next_update(timestep, state)
-
-        # reactions are set as is
-        state['reactions'].update(update['reactions'])
-
-        # apply internal update
-        for state_id, state_update in update['internal'].items():
-            if internal_updaters.get(state_id, 'set') is 'accumulate':
-                state['internal'][state_id] += state_update
-            else:
-                state['internal'][state_id] = state_update
-
-        # update mass and volume
-        state['global']['mass'] += update['global']['mass']
-        new_mass = state['global']['mass'] * units.fg
-        new_volume = new_mass.to('g') / density
-        state['global']['volume'] = new_volume.to('fL').magnitude
-
-        # apply external update -- use exchange without growth rate
-        mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-        for mol_id, exchange_counts in update['exchange'].items():
-            exchange_conc = exchange_counts / mmol_to_count  # TODO -- per second?
-            state['external'][mol_id] += exchange_conc
-            state['exchange'][mol_id] = 0.0 # reset exchange
-            if state['external'][mol_id] < 0.0:  # this shouldn't be needed
-                state['external'][mol_id] = 0.0
-
-        # save state
-        saved_state[time] = copy.deepcopy(state)
-
-    return saved_state
-
 def plot_exchanges(timeseries, sim_config, out_dir):
     # plot focused on exchanges
 
-    nAvogadro = constants.N_A * 1/units.mol
+    nAvogadro = AVOGADRO
     env_volume = sim_config['environment_volume']
     timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
     external_ts = timeseries['external']
@@ -333,7 +261,14 @@ def save_network(config, out_dir='out'):
     external_mol_ids = metabolism.fba.external_molecules
     objective = metabolism.fba.objective
 
-    data = simulate_metabolism(config)
+    settings = {
+        'environment_role': 'external',
+        'exchange_role': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timestep': 1,
+        'total_time': 10}
+
+    data = simulate_process_with_environment(metabolism, settings)
     timeseries = convert_to_timeseries(data)
     reactions =  timeseries['reactions']
 
@@ -355,9 +290,7 @@ def save_network(config, out_dir='out'):
     save_network(nodes, edges, out_dir)
 
 # configs
-def get_e_coli_core_config():
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-
+def get_initial_state():
     # initial state
     mass = 1339 * units.fg
     density = 1100 * units.g / units.L
@@ -366,33 +299,22 @@ def get_e_coli_core_config():
         'mass': mass.magnitude,  # fg
         'volume': volume.to('fL').magnitude}
 
-    initial_state = {
+    return {
         'global': globals}
 
-    # make process
+def get_e_coli_core_config():
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
+    initial_state = get_initial_state()
     return {
         'model_path': metabolism_file,
         'initial_state': initial_state}
 
 def get_iAF1260b_config():
     metabolism_file = os.path.join('models', 'iAF1260b.json')
-
-    # initial state
-    mass = 1339 * units.fg
-    density = 1100 * units.g / units.L
-    volume = mass.to('g') / density
-    globals = {
-        'mass': mass.magnitude,  # fg
-        'volume': volume.to('fL').magnitude}
-
-    initial_state = {
-        'global': globals}
-
-    # make process
+    initial_state = get_initial_state()
     return {
         'model_path': metabolism_file,
         'initial_state': initial_state}
-
 
 def get_toy_configuration():
     stoichiometry = {
@@ -438,8 +360,7 @@ def get_toy_configuration():
             'D': 12.0,
             'E': 12.0,
             'H': 5.0,
-            'O2': 100.0,
-        }}
+            'O2': 100.0}}
 
     # molecular weight units are (units.g / units.mol)
     molecular_weights = {
@@ -462,8 +383,7 @@ def get_toy_configuration():
         'initial_state': initial_state,
         'exchange_bounds': exchange_bounds,
         'default_upper_bound': default_reaction_bounds,
-        'molecular_weights': molecular_weights,
-        }
+        'molecular_weights': molecular_weights}
 
     return config
 
@@ -514,14 +434,17 @@ def test_BiGG_metabolism(time=10, out_dir='out'):
     metabolism = Metabolism(metabolism_config)
 
     # simulate metabolism
-    timeline = [(time, {})]  # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeline = [(time, {})]
 
-    simulation_config = {
-        'process': metabolism,
-        'timeline': timeline,
-        'environment_volume': 1e-2}
+    settings = {
+        'environment_role': 'external',
+        'exchange_role': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timestep': 1,
+        'timeline': timeline}
 
-    saved_data = simulate_metabolism(simulation_config)
+    saved_data = simulate_process_with_environment(metabolism, settings)
+
     return saved_data
 
 def test_toy_metabolism(out_dir='out'):
@@ -539,20 +462,19 @@ def test_toy_metabolism(out_dir='out'):
     # simulate toy model
     timeline = [
         (10, {'external': {
-            'A': 1}
-        }),
+            'A': 1}}),
         (20, {'external': {
-            'F': 0}
-        }),
+            'F': 0}}),
         (30, {})]
 
-    simulation_config = {
-        'process': toy_metabolism,
-        'timeline': timeline,
-        'transport_kinetics': transport,
-        'environment_volume': 1e-14}
+    settings = {
+        'environment_role': 'external',
+        'exchange_role': 'exchange',
+        'environment_volume': 1e-14,  # L
+        'timestep': 1,
+        'timeline': timeline}
 
-    saved_data = simulate_metabolism(simulation_config)
+    saved_data = simulate_process_with_environment(toy_metabolism, settings)
     return saved_data
 
 
@@ -587,7 +509,7 @@ if __name__ == '__main__':
             'reactions': 'flux_bounds'}}
 
     saved_data = test_BiGG_metabolism(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
-    del saved_data[0]  # remove first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
