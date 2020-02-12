@@ -158,6 +158,9 @@ def get_toy_expression():
         'LacY': 0.001}
 
     initial_state = {
+        'counts': {
+            'lacy_RNA': 0,
+            'LacY': 0.0},
         'internal': {
             'lacy_RNA': 0,
             'LacY': 0.0},
