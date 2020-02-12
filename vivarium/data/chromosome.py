@@ -17,7 +17,7 @@ test_chromosome_config = {
                 'position': 0,
                 'length': 3,
                 'thresholds': [
-                    ('tfX', 0.3)]}],
+                    ('tfA', 0.3)]}],
             'terminators': [
                 {
                     'position': 6,
@@ -35,7 +35,7 @@ test_chromosome_config = {
                 'position': 0,
                 'length': 3,
                 'thresholds': [
-                    ('tfX', 0.5)]}],
+                    ('tfB', 0.5)]}],
             'terminators': [
                 {
                     'position': -9,

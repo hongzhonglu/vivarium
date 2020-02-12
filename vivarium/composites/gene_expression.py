@@ -38,7 +38,8 @@ def compose_gene_expression(config):
         'transcription': {
             'chromosome': 'chromosome',
             'molecules': 'molecules',
-            'transcripts': 'transcripts'},
+            'transcripts': 'transcripts',
+            'factors': 'factors'},
         'translation': {
             'ribosomes': 'ribosomes',
             'molecules': 'molecules',

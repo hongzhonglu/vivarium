@@ -75,7 +75,7 @@ class BindingSite(Datum):
         '''
 
         state = None
-        for factor, threshold in thresholds:
+        for factor, threshold in self.thresholds:
             if levels[factor] >= threshold:
                 state = factor
                 break
@@ -170,6 +170,11 @@ def all_products(templates):
         product
         for template in templates.values()
         for product in template.products()]))
+
+def template_products(config):
+    return all_products({
+        key: Template(config)
+        for key, config in config.items()})
 
 def polymerize_to(
         sequences,
