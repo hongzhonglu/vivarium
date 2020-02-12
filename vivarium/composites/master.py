@@ -179,9 +179,16 @@ if __name__ == '__main__':
         'overlay': {'reactions': 'flux_bounds'},
         'skip_roles': ['prior_state', 'null']}
 
+    expression_plot_settings = {
+        'name': 'gene_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'cell',
+            'proteins': 'proteins'}}
+
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
-    # plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
+    plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

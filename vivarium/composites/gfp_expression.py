@@ -103,5 +103,13 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gfp_expression', out_dir)
+
+    plot_settings = {
+        'name': 'gene_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(timeseries, plot_settings, out_dir)
     
