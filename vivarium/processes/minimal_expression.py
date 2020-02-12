@@ -36,8 +36,8 @@ class MinimalExpression(Process):
 
         parameters = {
             'expression_rates': expression_rates,
-            'step_size': initial_parameters.get('step_size', default_step_size)
-        }
+            'step_size': initial_parameters.get('step_size', default_step_size)}
+
         parameters.update(initial_parameters)
 
 

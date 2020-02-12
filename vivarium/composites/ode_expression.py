@@ -54,8 +54,7 @@ def compose_ode_expression(config):
          'expression': expression},
         {'metabolism': metabolism},
         {'deriver': deriver,
-         'division': division}
-    ]
+         'division': division}]
 
     # Make the topology
     # for each process, map process roles to compartment roles
@@ -64,23 +63,26 @@ def compose_ode_expression(config):
             'internal': 'cell',
             'external': 'environment',
             'exchange': 'null',
-            'fluxes': 'flux'},
+            'fluxes': 'flux',
+            'global': 'global'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux'},
+            'flux_bounds': 'flux',
+            'global': 'global'},
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cell',
-            'external': 'environment'},
+            'external': 'environment',
+            'global': 'global'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'}}
+            'global': 'global'}}
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -198,7 +200,7 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {
-            'reactions': 'flux_bounds'},
+            'reactions': 'flux'},
         'skip_roles': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)

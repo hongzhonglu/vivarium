@@ -51,8 +51,9 @@ class ODE_expression(Process):
 
         roles = {
             'counts': states,
-            'internal': internal + internal_regulators + ['volume'],
-            'external': external + external_regulators}
+            'internal': internal + internal_regulators,
+            'external': external + external_regulators,
+            'global': ['volume']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -79,8 +80,8 @@ class ODE_expression(Process):
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        volume = internal_state['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        volume = states['global']['volume'] * units.fL
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)

@@ -52,9 +52,9 @@ def compose_gene_expression(config):
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
+            'global': 'global'},
         'division': {
-            'internal': 'cell'}}
+            'global': 'global'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -77,7 +77,7 @@ def compose_gene_expression(config):
 # analysis
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
-    name = config.get('name', 'gene expression')
+    name = config.get('name', 'gene_expression')
     roles = config.get('roles', {})
     molecules = timeseries[roles['molecules']]
     transcripts = timeseries[roles['transcripts']]

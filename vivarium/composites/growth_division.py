@@ -77,18 +77,19 @@ def compose_growth_division(config):
             'internal': 'cell',
             'external': 'environment',
             'exchange': 'exchange',
-            'fluxes': 'null'},
+            'fluxes': 'null',
+            'global': 'global'},
         'growth': {
-            'internal': 'cell'},
+            'global': 'global'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'expression': {
-            'internal': 'cell'},
+            'internal': 'cell',
+            'external': 'environment'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-        }
+            'global': 'global'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))

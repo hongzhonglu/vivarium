@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import copy
 
 from scipy import constants
 
@@ -35,15 +34,12 @@ class ConvenienceKinetics(Process):
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
         # roles
-        # add volume to internal role
-        if 'volume' not in roles.get('internal'):
-            roles['internal'].append('volume')
-
         # fluxes role is used to pass constraints
         # exchange is equivalent to external, for lattice_compartment
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
-            'exchange': roles['external']})
+            'exchange': roles['external'],
+            'global': ['volume']})
 
         # parameters
         parameters = {}
@@ -55,7 +51,7 @@ class ConvenienceKinetics(Process):
 
         # default state
         default_state = self.initial_state
-        default_state['internal'].update({'volume': 1.2})  # (fL)
+        default_state['global'] = {'volume': 1.2}  # (fL)
 
         # default emitter keys
         default_emitter_keys = {}
@@ -76,7 +72,7 @@ class ConvenienceKinetics(Process):
     def next_update(self, timestep, states):
 
         # get mmol_to_count for converting flux to exchange counts
-        volume = states['internal']['volume'] * units.fL
+        volume = states['global']['volume'] * units.fL
         mmol_to_count = self.nAvogadro.to('1/mmol') * volume
 
         # kinetic rate law requires a flat dict with ('role', 'state') keys.

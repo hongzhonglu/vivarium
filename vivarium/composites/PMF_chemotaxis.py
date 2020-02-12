@@ -42,7 +42,8 @@ def compose_pmf_chemotaxis(config):
             'exchange': 'exchange',
             'external': 'environment',
             'internal': 'cell',
-            'fluxes': 'null'},
+            'fluxes': 'null',
+            'global': 'global'},
         'motor': {
             'external': 'environment',
             'internal': 'cell'},
@@ -53,9 +54,9 @@ def compose_pmf_chemotaxis(config):
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
+            'global': 'global'},
         'division': {
-            'internal': 'cell'}}
+            'global': 'global'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))

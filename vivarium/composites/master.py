@@ -72,13 +72,15 @@ def compose_master(config):
             'internal': 'cell',
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
-            'fluxes': 'flux_bounds'},
+            'fluxes': 'flux_bounds',
+            'global': 'global'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds'},
+            'flux_bounds': 'flux_bounds',
+            'global': 'global'},
         'transcription': {
             'chromosome': 'chromosome',
             'molecules': 'cell',
@@ -94,12 +96,11 @@ def compose_master(config):
             'molecules': 'cell',
             'global': 'global'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'global': 'global'}}
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -164,7 +165,7 @@ if __name__ == '__main__':
     options = compose_master({})['options']
 
     # define timeline
-    timeline = [(600, {})]
+    timeline = [(10, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -176,12 +177,11 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']
-        }
+        'skip_roles': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
-    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
+    # plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
+    plot_simulation_output(timeseries, plot_settings, out_dir)

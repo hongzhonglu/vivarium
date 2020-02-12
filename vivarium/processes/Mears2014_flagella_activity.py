@@ -113,7 +113,7 @@ class FlagellaActivity(Process):
             'external': {},
             'membrane': {'PMF': DEFAULT_PMF, 'PROTONS': 0},
             'flagella': {flagella_id: random.choice([-1, 1]) for flagella_id in self.flagella_ids},
-            'internal': deep_merge(internal, {'volume': 1, 'n_flagella': self.n_flagella})}
+            'internal': deep_merge(internal, {'n_flagella': self.n_flagella})}
 
         # default emitter keys
         default_emitter_keys = {

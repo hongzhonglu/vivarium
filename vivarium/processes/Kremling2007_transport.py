@@ -97,7 +97,8 @@ class Transport(Process):
             'external': list(external_state.keys()),
             'exchange': list(external_state.keys()),
             'internal': list(internal_state.keys()),
-            'fluxes': self.target_fluxes}
+            'fluxes': self.target_fluxes,
+            'global': ['volume']}
 
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
@@ -141,10 +142,11 @@ class Transport(Process):
         self.environment_ids = list(external.keys())
 
         default_state = {
-            'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
+            'internal': internal,
             'external': external,
             'exchange': {state_id: 0.0 for state_id in self.environment_ids},
-            'fluxes': {}}
+            'fluxes': {},
+            'global': {'volume': 1}}
 
         # default emitter keys
         default_emitter_keys = {
@@ -310,7 +312,7 @@ class Transport(Process):
         t = np.arange(0, timestep_hours, dt_hours)
 
         # get states
-        volume = states['internal']['volume'] * 1e-15  # convert volume fL to L
+        volume = states['global']['volume'] * 1e-15  # convert volume fL to L
         combined_state = {
             'mass': states['internal']['mass'],  # mass
             'UHPT': states['internal']['UHPT'],
@@ -415,7 +417,7 @@ def test_transport(sim_time = 10):
         state['internal'].update(update['internal'])
 
         # use exchange to update external state, reset exchange
-        volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
+        volume = state['global']['volume'] * 1e-15  # convert volume fL to L
         for mol_id, delta_count in update['exchange'].items():
             delta_conc = counts_to_millimolar(delta_count, volume)
             state['external'][mol_id] += delta_conc
@@ -432,10 +434,7 @@ def test_transport(sim_time = 10):
     return saved_state
 
 def kremling_figures(saved_state, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
-    import math
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
@@ -501,8 +500,6 @@ def kremling_figures(saved_state, out_dir='out'):
 
 
 def plot_all_state(saved_state, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
     import math
 

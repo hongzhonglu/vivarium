@@ -66,12 +66,11 @@ def compose_variable_flagella(config):
             'external': 'environment',
             'membrane': 'membrane'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'global': 'global'}}
 
     ## Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -105,7 +104,7 @@ if __name__ == '__main__':
     options = compose_variable_flagella({})['options']
 
     # define timeline
-    timeline = [(10.0, {})]
+    timeline = [(5.0, {})]
 
     settings = {
         'environment_role': options['environment_role'],
