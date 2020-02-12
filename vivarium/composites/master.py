@@ -123,19 +123,19 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    metabolism_file = os.path.join('models', 'iAF1260b.json')
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
 
     # initial state
     # internal
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
-    internal = {
+    globals = {
             'mass': mass.magnitude,  # fg
             'volume': volume.to('fL').magnitude}
 
     # external
-    initial_state = {'internal': internal}
+    initial_state = {'global': globals}
 
     return {
         'moma': False,
@@ -158,14 +158,14 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
+    boot_config = {}  # {'emitter': 'null'}
     compartment = load_compartment(compose_master, boot_config)
 
     # settings for simulation and plot
     options = compose_master({})['options']
 
     # define timeline
-    timeline = [(10, {})]
+    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
         'environment_role': options['environment_role'],
