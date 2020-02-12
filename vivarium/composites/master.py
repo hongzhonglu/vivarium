@@ -3,13 +3,11 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+from vivarium.actor.composition import get_derivers
 
 # processes
-from vivarium.processes.derive_globals import DeriveGlobals
 from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.metabolism import Metabolism
+from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
@@ -51,10 +49,6 @@ def compose_master(config):
     division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
 
-    # Other processes
-    deriver_config = config.get('deriver', {})
-    deriver = DeriveGlobals(deriver_config)
-
     # Place processes in layers
     processes = [
         {'transport': transport,
@@ -62,8 +56,7 @@ def compose_master(config):
          'translation': translation,
          'degradation': degradation},
         {'metabolism': metabolism},
-        {'deriver': deriver,
-         'division': division}]
+        {'division': division}]
 
     # Make the topology
     # for each process, map process roles to compartment roles
@@ -96,13 +89,14 @@ def compose_master(config):
             'molecules': 'cell',
             'global': 'global'},
         'division': {
-            'global': 'global'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
             'global': 'global'}}
 
-    # Initialize the states
+    # add derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
+
+    # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -123,26 +117,18 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
+    config = get_e_coli_core_config()
 
-    # initial state
-    # internal
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
-    globals = {
-            'mass': mass.magnitude,  # fg
-            'volume': volume.to('fL').magnitude}
-
-    # external
-    initial_state = {'global': globals}
-
-    return {
+    # set flux bond tolerance for reactions in ode_expression's lacy_config
+    metabolism_config = {
         'moma': False,
         'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0]},
-        'model_path': metabolism_file,
-        'initial_state': initial_state}
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lac__D_e': [1.05, 1.0]}}
+
+    config.update(metabolism_config)
+
+    return config
 
 def default_transport_config():
     return {}
@@ -190,5 +176,7 @@ if __name__ == '__main__':
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
     plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

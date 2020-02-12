@@ -3,33 +3,30 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state
+from vivarium.actor.composition import get_derivers
 
 # processes
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
-from vivarium.processes.derive_globals import DeriveGlobals
 
 
 
 def compose_growth_division(config):
 
     # declare the processes
-    transport_config = get_glc_lct_config()
-    transport = ConvenienceKinetics(transport_config)
+    transport = ConvenienceKinetics(get_glc_lct_config())
     growth = Growth(config)
     division = Division(config)
     expression = MinimalExpression(config)
-    deriver = DeriveGlobals(config)
 
     # place processes in layers
     processes = [
         {'transport': transport,
          'growth': growth,
          'expression': expression},
-        {'deriver': deriver,
-         'division': division}]
+        {'division': division}]
 
     # make the topology.
     # for each process, map process roles to compartment roles
@@ -46,11 +43,13 @@ def compose_growth_division(config):
             'global': 'global'},
         'expression': {
             'internal': 'cell',
-            'external': 'environment'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
-            'global': 'global'}}
+            'external': 'environment',
+            'concentrations': 'cell_concs'}}
+
+    # add derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -87,14 +86,13 @@ if __name__ == '__main__':
         'exchange_role': options['exchange_role'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'total_time': 20}
+        'total_time': 100}
 
     plot_settings = {
         'max_rows': 25,
         'skip_roles': ['prior_state']}
 
-    # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

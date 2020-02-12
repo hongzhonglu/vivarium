@@ -72,7 +72,7 @@ def compose_ode_expression(config):
         'division': {
             'global': 'global'}}
 
-    # Derivers
+    # add derivers
     derivers = get_derivers(processes, topology)
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology

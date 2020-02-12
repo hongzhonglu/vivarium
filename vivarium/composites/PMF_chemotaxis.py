@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state, load_compartment
+from vivarium.actor.composition import get_derivers
 from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
 # processes
@@ -12,7 +13,6 @@ from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
-from vivarium.processes.derive_globals import DeriveGlobals
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -30,7 +30,6 @@ def compose_pmf_chemotaxis(config):
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
     flagella = FlagellaActivity(config.get('flagella', {}))
     PMF = MembranePotential(config.get('PMF', {}))
-    deriver = DeriveGlobals(config.get('deriver', {}))
     division = Division(config.get('division', {}))
 
     # place processes in layers
@@ -43,8 +42,7 @@ def compose_pmf_chemotaxis(config):
          # 'metabolism': metabolism,
          'expression': expression},
         {'flagella': flagella},
-        {'deriver': deriver,
-         'division': division}]
+        {'division': division}]
 
     # make the topology.
     # for each process, map process roles to compartment roles
@@ -67,8 +65,7 @@ def compose_pmf_chemotaxis(config):
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cytoplasm',
-            'external': 'environment',
-            'global': 'global'},
+            'external': 'environment'},
         'flagella': {
             'counts': 'cell_counts',
             'internal': 'cytoplasm',
@@ -79,12 +76,13 @@ def compose_pmf_chemotaxis(config):
             'external': 'environment',
             'membrane': 'membrane',
             'internal': 'cytoplasm'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
-            'global': 'global'},
         'division': {
             'global': 'global'}}
+
+    # add derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -111,7 +109,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
+    boot_config = {}  #'emitter': 'null'}
     compartment = load_compartment(compose_pmf_chemotaxis, boot_config)
 
     # settings for simulation and plot
