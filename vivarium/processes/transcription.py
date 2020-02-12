@@ -78,14 +78,6 @@ class Transcription(Process):
         self.elongation_rate = self.parameters['elongation_rate']
         self.advancement_rate = self.parameters['advancement_rate']
 
-        # self.affinity_vector = np.array([
-        #     self.promoter_affinities[promoter_key]
-        #     for promoter_key in self.promoter_order], dtype=np.float64)
-
-        # self.rates = build_rates(
-        #     self.affinity_vector,
-        #     self.advancement_rate)
-
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.initiation = StochasticSystem(self.stoichiometry)
 
@@ -313,7 +305,6 @@ class Transcription(Process):
 
         if VERBOSE:
             print('molecules update: {}'.format(update['molecules']))
-            # print('transcription update: {}'.format(update))
 
         return update
 
