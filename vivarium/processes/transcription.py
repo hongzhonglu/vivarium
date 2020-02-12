@@ -59,9 +59,7 @@ class Transcription(Process):
 
         self.sequence = self.parameters['sequence']
         self.sequences = None # set when the chromosome first appears
-        self.templates = {
-            key: Promoter(template)
-            for key, template in self.parameters['templates'].items()}
+        self.templates = self.parameters['templates']
         self.genes = self.parameters['genes']
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
@@ -102,10 +100,10 @@ class Transcription(Process):
 
         super(Transcription, self).__init__(self.roles, self.parameters)
 
-    def build_affinity_vector(self, factors):
+    def build_affinity_vector(self, promoters, factors):
         vector = np.zeros(len(self.promoter_order), dtype=np.float64)
         for index, promoter_key in enumerate(self.promoter_order):
-            promoter = self.templates[promoter_key]
+            promoter = promoters[promoter_key]
             binding = promoter.binding_state(factors)
             affinity = self.promoter_affinities[binding]
             vector[index] = affinity
@@ -127,7 +125,7 @@ class Transcription(Process):
             'molecules': {UNBOUND_RNAP_KEY: 10},
             'factors': {
                 'tfA': 0.1,
-                'tfB': 0.1}}
+                'tfB': 1.0}}
 
         default_state['molecules'].update({
             nucleotide: 100
@@ -216,7 +214,7 @@ class Transcription(Process):
             self.symbol_to_monomer,
             self.elongation)
 
-        initiation_affinity = self.build_affinity_vector(factors)
+        initiation_affinity = self.build_affinity_vector(chromosome.promoters, factors)
         initiation_rates = build_rates(initiation_affinity, self.advancement_rate)
 
         while time < timestep:

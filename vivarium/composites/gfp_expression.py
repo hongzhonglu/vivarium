@@ -51,7 +51,7 @@ def generate_gfp_compartment(config):
             'templates': gfp_plasmid_config['promoters'],
             'genes': gfp_plasmid_config['genes'],
             'promoter_affinities': {
-                'T7': 0.5},
+                ('T7',): 0.5},
 
             'advancement_rate': 10.0,
             'elongation_rate': 50},
@@ -102,5 +102,16 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gfp_expression', out_dir)
+
+    plot_config = {
+        'name': 'gfp_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(
+        timeseries,
+        plot_config,
+        out_dir)
     
