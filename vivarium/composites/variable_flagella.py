@@ -101,7 +101,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_variable_flagella)
 
     # settings for simulation and plot
-    options = compose_variable_flagella({})['options']
+    options = compartment.configuration
 
     # define timeline
     timeline = [(5.0, {})]

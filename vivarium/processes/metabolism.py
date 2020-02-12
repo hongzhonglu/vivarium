@@ -353,7 +353,46 @@ def save_network(config, out_dir='out'):
     nodes, edges = make_network(stoichiometry, info)
     save_network(nodes, edges, out_dir)
 
-# toy configs
+# configs
+def get_e_coli_core_config():
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
+
+    # initial state
+    mass = 1339 * units.fg
+    density = 1100 * units.g / units.L
+    volume = mass.to('g') / density
+    internal = {
+        'mass': mass.magnitude,  # fg
+        'volume': volume.to('fL').magnitude}
+
+    initial_state = {
+        'internal': internal}
+
+    # make process
+    return {
+        'model_path': metabolism_file,
+        'initial_state': initial_state}
+
+def get_iAF1260b_config():
+    metabolism_file = os.path.join('models', 'iAF1260b.json')
+
+    # initial state
+    mass = 1339 * units.fg
+    density = 1100 * units.g / units.L
+    volume = mass.to('g') / density
+    internal = {
+        'mass': mass.magnitude,  # fg
+        'volume': volume.to('fL').magnitude}
+
+    initial_state = {
+        'internal': internal}
+
+    # make process
+    return {
+        'model_path': metabolism_file,
+        'initial_state': initial_state}
+
+
 def get_toy_configuration():
     stoichiometry = {
         'R1': {'A': -1, 'ATP': -1, 'B': 1},
@@ -469,28 +508,12 @@ def toy_transport():
     return transport_kinetics
 
 # tests
-def test_BiGG_metabolism(time=10):
-    # metabolism_file = os.path.join('models', 'iAF1260b.json')
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-
-    # initial state
-    mass = 1339 * units.fg
-    density = 1100 * units.g / units.L
-    volume = mass.to('g') / density
-    global_state = {
-        'mass': mass.magnitude,  # fg
-        'volume': volume.to('fL').magnitude}
-    initial_state = {'global': global_state}
-
-    # make process
-    metabolism_config = {
-        'model_path': metabolism_file,
-        'initial_state': initial_state}
-
+def test_BiGG_metabolism(time=10, out_dir='out'):
+    metabolism_config = get_iAF1260b_config()
     metabolism = Metabolism(metabolism_config)
 
     # simulate metabolism
-    timeline = [(time, {})]
+    timeline = [(time, {})]  # 2520 sec (42 min) is the expected doubling time in minimal media
 
     simulation_config = {
         'process': metabolism,
@@ -500,14 +523,11 @@ def test_BiGG_metabolism(time=10):
     saved_data = simulate_metabolism(simulation_config)
     return saved_data
 
-
-
 def test_toy_metabolism(out_dir='out'):
 
     regulation_logic = {
         'R4': 'if (external, O2) > 0.1 and not (external, F) < 0.1'}
 
-    # configure toy model
     toy_config = get_toy_configuration()
     transport = toy_transport()
 

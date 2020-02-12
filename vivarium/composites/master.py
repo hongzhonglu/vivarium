@@ -162,7 +162,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_master, boot_config)
 
     # settings for simulation and plot
-    options = compose_master({})['options']
+    options = compartment.configuration
 
     # define timeline
     timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media

@@ -292,6 +292,7 @@ class Compartment(object):
 
         self.processes = processes
         self.states = states
+        self.configuration = configuration
         self.topology = configuration['topology']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
@@ -778,14 +779,15 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
         for state_id, series in sorted(timeseries[role].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
+            # check if series is a list of ints or floats
+            # TODO -- plot non-numeric states as well (in particular dicts)
+            if not all(isinstance(state, (int, float)) for state in series):
+                break
+
             # plot line at zero if series crosses the zero line
-            try:
-                if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
-                    zero_line = [0 for t in time_vec]
-                    ax.plot(time_vec, zero_line, 'k--')
-            except:
-                print('{} {} not supported by plot_simulation_output'.format(role, state_id))
-                return
+            if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                zero_line = [0 for t in time_vec]
+                ax.plot(time_vec, zero_line, 'k--')
 
             if (role, state_id) in show_state:
                 ax.plot(time_vec, series, 'indigo', linewidth=2)
