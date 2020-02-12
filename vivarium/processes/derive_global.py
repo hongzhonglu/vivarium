@@ -7,12 +7,14 @@ import copy
 import numpy as np
 from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.process import Process
+from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 
 AVOGADRO = constants.N_A * 1 / units.mol
+GLOBALS = ['mass', 'volume', 'growth_rate', 'prior_mass']
 
-class Deriver(Process):
+class DeriveGlobal(Process):
     """
     Process for deriving volume and molecule concentrations
     from the cell state (mass, molecule counts)
@@ -23,46 +25,45 @@ class Deriver(Process):
         counted_molecules = initial_parameters.get('counted_molecules', [])
 
         roles = {
-            'state': ['mass', 'volume', 'growth_rate'] + counted_molecules,
-            'counts': counted_molecules,
-            'prior_state': ['mass']}
+            'state': counted_molecules,
+            'global': GLOBALS,
+            'counts': counted_molecules}
 
         parameters = {
             'density': 1100 * units.g / units.L,
             'nAvogadro': constants.N_A * 1 / units.mol}
         parameters.update(initial_parameters)
 
-        super(Deriver, self).__init__(roles, parameters)
+        super(DeriveGlobal, self).__init__(roles, parameters)
 
     def default_settings(self):
         # default state
         mass = 1339 * units.fg  # wet mass in fg
         density = self.parameters['density']
         volume = mass/density
-        cell_state = {
+        global_state = {
             'growth_rate': 0.0,
             'mass': mass.magnitude,
+            'prior_mass': mass.magnitude,
             'volume': volume.to('fL').magnitude}
-        prior_state = {'mass': mass.magnitude}
 
         molecule_ids = self.roles['counts']
         counted_molecules = {mol_id: 0 for mol_id in molecule_ids}
-        cell_state.update(counted_molecules)
 
         default_state = {
-            'state': cell_state,
-            'counts': counted_molecules,
-            'prior_state': prior_state}
+            'state': counted_molecules,
+            'global': global_state,
+            'counts': counted_molecules}
 
         # default emitter keys
         default_emitter_keys = {
-            'state': molecule_ids + ['volume', 'growth_rate']}
+            'state': molecule_ids,
+            'global': ['volume', 'growth_rate']}
 
         # default updaters
-        set_states = molecule_ids + ['volume', 'growth_rate']
         default_updaters = {
-            'state': {state_id: 'set' for state_id in set_states},
-            'prior_state': {'mass': 'set'}}
+            'state': {state_id: 'set' for state_id in molecule_ids},
+            'global': {state_id: 'set' for state_id in GLOBALS}}
 
         default_settings = {
             'state': default_state,
@@ -78,19 +79,17 @@ class Deriver(Process):
         nAvogadro = self.parameters['nAvogadro']
 
         # states
-        prior_mass = states['prior_state']['mass'] * units.fg
-        mass = states['state']['mass'] * units.fg
+        prior_mass = states['global']['prior_mass'] * units.fg
+        mass = states['global']['mass'] * units.fg
         counts = states['counts']
-
-        # initialize update
-        update = {'state': {}}
 
         # update volume and growth rate
         volume =  mass / density
         growth_rate = (mass - prior_mass) / timestep / mass
         deriver_update = {
             'volume': volume.to('fL').magnitude,
-            'growth_rate': growth_rate.magnitude}
+            'growth_rate': growth_rate.magnitude,
+            'prior_mass': mass.magnitude}
 
         # concentration update
         mmol_to_count = nAvogadro.to('1/mmol') * volume.to('L')
@@ -100,12 +99,9 @@ class Deriver(Process):
         for mol_id, conc in concentration_update.items():
             assert conc >= 0, 'derived {} concentration < 0'.format(mol_id)
 
-        # combine updates
-        update['state'].update(deriver_update)
-        update['state'].update(concentration_update)
-        update['prior_state'] = {'mass': mass.magnitude}
-
-        return update
+        return {
+            'global': deriver_update,
+            'state': concentration_update}
 
 
 
@@ -117,7 +113,7 @@ def test_deriver(total_time=10):
     # configure process
     initial_parameters = {
         'counted_molecules': list(expression_rates.keys())}
-    deriver = Deriver(initial_parameters)
+    deriver = DeriveGlobal(initial_parameters)
 
     # get initial state and parameters
     settings = deriver.default_settings()
@@ -139,8 +135,8 @@ def test_deriver(total_time=10):
                     state[key].update(change)
 
         # set mass, counts
-        mass = state['state']['mass']
-        state['state']['mass'] = mass * np.exp(growth_rate * timestep)
+        mass = state['global']['mass']
+        state['global']['mass'] = mass * np.exp(growth_rate * timestep)
         for mol_id, rate in expression_rates.items():
             if random.random() < rate:
                 state['counts'][mol_id] += 1
@@ -150,16 +146,16 @@ def test_deriver(total_time=10):
 
         # set derived state
         state['state'].update(update['state'])
-        state['prior_state'].update(update['prior_state'])
 
         # save state
         saved_state[time] = copy.deepcopy(state)
 
+        state['global']['prior_mass'] = update['global']['prior_mass']
 
     return saved_state
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'deriver')
+    out_dir = os.path.join('out', 'tests', 'global_derive')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
