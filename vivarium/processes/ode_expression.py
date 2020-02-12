@@ -145,10 +145,10 @@ class ODE_expression(Process):
 def get_toy_expression():
     # toy config
     transcription = {
-        'lacy_RNA': 1e-20}
+        'lacy_RNA': 1e-6}
 
     translation = {
-        'LacY': 1e-2}
+        'LacY': 1e-3}
 
     protein_map = {
         'LacY': 'lacy_RNA'}
@@ -177,7 +177,7 @@ def get_toy_expression():
 
 def get_flagella_expression():
     transcription = {
-        'flag_RNA': 1e-21}
+        'flag_RNA': 1e-6}
 
     translation = {
         'flagella': 8e-5}

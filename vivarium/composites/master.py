@@ -7,7 +7,7 @@ from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
 
 # processes
-from vivarium.processes.deriver import Deriver
+from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
@@ -53,7 +53,7 @@ def compose_master(config):
 
     # Other processes
     deriver_config = config.get('deriver', {})
-    deriver = Deriver(deriver_config)
+    deriver = DeriveGlobal(deriver_config)
 
     # Place processes in layers
     processes = [

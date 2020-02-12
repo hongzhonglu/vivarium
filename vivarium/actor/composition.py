@@ -1,10 +1,13 @@
 import copy
 import os
 
+from scipy import constants
+import matplotlib.pyplot as plt
+
 from vivarium.actor.process import initialize_state, Compartment
 from vivarium.utils.units import units
 
-from vivarium.processes.derive_global import AVOGADRO
+AVOGADRO = constants.N_A * 1 / units.mol
 
 
 def simulate_with_environment(compartment, settings={}):
