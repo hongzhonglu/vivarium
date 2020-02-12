@@ -42,15 +42,23 @@ def get_derivers(process_list, topology):
         for process_id, process in level.items():
             process_settings = process.default_settings()
             setting = process_settings.get('deriver_setting', [])
-            role_map = topology[process_id]
+            try:
+                role_map = topology[process_id]
+            except:
+                print('{} topology role mismatch'.format(process_id))
+                break
 
             for set in setting:
                 type = set['type']
                 keys = set['keys']
                 source_role = set['source_role']
                 target_role = set['derived_role']
-                source_compartment_role = role_map[source_role]
-                target_compartment_role = role_map[target_role]
+                try:
+                    source_compartment_role = role_map[source_role]
+                    target_compartment_role = role_map[target_role]
+                except:
+                    print('{} source/target role mismatch'.format(process_id))
+                    break
 
                 deriver_topology = {
                     type: {

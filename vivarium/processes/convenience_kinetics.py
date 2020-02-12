@@ -94,7 +94,7 @@ class ConvenienceKinetics(Process):
                     # separate the state_id and role_id
                     if role_id in role_state_id:
                         state_id = role_state_id[1]
-                        state_flux = coeff * flux * timestep
+                        state_flux = -coeff * flux * timestep  # TODO -- why is negative working here?
 
                         if role_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_count
@@ -187,7 +187,7 @@ def get_toy_config():
         'reaction1': {
             ('internal', 'enzyme1'): {
                 ('external', 'B'): 0.1,
-                'kcat_f': 1e-2}}}
+                'kcat_f': -1e-2}}}
 
     toy_roles = {
         'internal': ['A', 'enzyme1'],
@@ -210,13 +210,13 @@ def get_toy_config():
 
 # test
 def test_convenience_kinetics(end_time=10):
-    toy_config = get_toy_config()
+    toy_config = get_glc_lct_config()
     kinetic_process = ConvenienceKinetics(toy_config)
 
     settings = {
         'environment_role': 'external',
         'exchange_role': 'exchange',
-        'environment_volume': 1e-6,  # L
+        'environment_volume': 1e-10,  # L
         'timestep': 1,
         'total_time': 100}
 
