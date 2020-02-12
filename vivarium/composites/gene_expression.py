@@ -10,7 +10,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
-from vivarium.processes.deriver import Deriver
+from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
@@ -22,7 +22,7 @@ def compose_gene_expression(config):
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
     degradation = RnaDegradation(config.get('degradation', {}))
-    deriver = Deriver(config)
+    deriver = DeriveGlobal(config)
     division = Division(config)
 
     # place processes in layers
@@ -150,7 +150,8 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment, convert_to_timeseries
+    from vivarium.actor.process import load_compartment, simulate_compartment
+    from vivarium.actor.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gene_expression_composite')
     if not os.path.exists(out_dir):

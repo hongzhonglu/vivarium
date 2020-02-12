@@ -7,13 +7,14 @@ import copy
 import numpy as np
 from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.process import Process
+from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 
 AVOGADRO = constants.N_A * 1 / units.mol
 GLOBALS = ['mass', 'volume', 'growth_rate', 'prior_mass']
 
-class Deriver(Process):
+class DeriveGlobal(Process):
     """
     Process for deriving volume and molecule concentrations
     from the cell state (mass, molecule counts)
@@ -33,7 +34,7 @@ class Deriver(Process):
             'nAvogadro': constants.N_A * 1 / units.mol}
         parameters.update(initial_parameters)
 
-        super(Deriver, self).__init__(roles, parameters)
+        super(DeriveGlobal, self).__init__(roles, parameters)
 
     def default_settings(self):
         # default state
@@ -112,7 +113,7 @@ def test_deriver(total_time=10):
     # configure process
     initial_parameters = {
         'counted_molecules': list(expression_rates.keys())}
-    deriver = Deriver(initial_parameters)
+    deriver = DeriveGlobal(initial_parameters)
 
     # get initial state and parameters
     settings = deriver.default_settings()

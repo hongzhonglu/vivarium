@@ -7,7 +7,8 @@ from scipy import constants
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.process import Process
+from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_role_dicts, deep_merge

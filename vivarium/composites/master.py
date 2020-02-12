@@ -150,8 +150,8 @@ def default_transport_config():
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
     from vivarium.composites.gene_expression import plot_gene_expression_output
 
     out_dir = os.path.join('out', 'tests', 'master_composite')

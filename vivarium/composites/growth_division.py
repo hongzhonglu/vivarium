@@ -5,11 +5,11 @@ import os
 from vivarium.actor.process import initialize_state
 
 # processes
-from vivarium.processes.deriver import Deriver
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
+from vivarium.processes.derive_global import DeriveGlobal
 
 
 # kinetics for transport
@@ -60,7 +60,7 @@ def compose_growth_division(config):
     growth = Growth(config)
     division = Division(config)
     expression = MinimalExpression(config)
-    deriver = Deriver(config)
+    deriver = DeriveGlobal(config)
 
     # place processes in layers
     processes = [
@@ -110,7 +110,8 @@ def compose_growth_division(config):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'growth_division_composite')
     if not os.path.exists(out_dir):

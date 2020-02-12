@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, \
-    plot_simulation_output, simulate_process_with_environment
+from vivarium.actor.process import Process
+from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
 from vivarium.utils.units import units
 from vivarium.utils.regulation_logic import build_rule
