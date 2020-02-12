@@ -10,7 +10,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.deriver import Deriver
+from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -39,7 +39,7 @@ def compose_variable_flagella(config):
     division_config = copy.deepcopy(config)
     # division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
-    deriver = Deriver(config)
+    deriver = DeriveGlobal(config)
 
     # Place processes in layers
     processes = [
@@ -66,12 +66,11 @@ def compose_variable_flagella(config):
             'external': 'environment',
             'membrane': 'membrane'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'global': 'global'}}
 
     ## Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -91,8 +90,8 @@ def compose_variable_flagella(config):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'variable_flagella_composite')
     if not os.path.exists(out_dir):
@@ -102,10 +101,10 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_variable_flagella)
 
     # settings for simulation and plot
-    options = compose_variable_flagella({})['options']
+    options = compartment.configuration
 
     # define timeline
-    timeline = [(10.0, {})]
+    timeline = [(5.0, {})]
 
     settings = {
         'environment_role': options['environment_role'],

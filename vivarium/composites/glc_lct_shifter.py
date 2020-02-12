@@ -82,8 +82,8 @@ def compose_glc_lct_shifter(config):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'glc_lct_shifter')
     if not os.path.exists(out_dir):
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_glc_lct_shifter, boot_config)
 
     # settings for simulation and plot
-    options = compose_glc_lct_shifter({})['options']
+    options = compartment.configuration
 
     # define timeline
     timeline = [

@@ -4,7 +4,8 @@ import os
 import random
 import copy
 
-from vivarium.actor.process import Process, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.process import Process
+from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.regulation_logic import build_rule
 
@@ -36,8 +37,8 @@ class MinimalExpression(Process):
 
         parameters = {
             'expression_rates': expression_rates,
-            'step_size': initial_parameters.get('step_size', default_step_size)
-        }
+            'step_size': initial_parameters.get('step_size', default_step_size)}
+
         parameters.update(initial_parameters)
 
 
