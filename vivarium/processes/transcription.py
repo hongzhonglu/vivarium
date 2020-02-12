@@ -3,9 +3,9 @@ import math
 import numpy as np
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, keys_list
 from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
-from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates, all_products
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates, template_products
 from vivarium.data.nucleotides import nucleotides
 
 def choose_element(elements):
@@ -20,8 +20,11 @@ monomer_ids = list(nucleotides.values())
 
 default_transcription_parameters = {
     'promoter_affinities': {
-        'pA': 1.0,
-        'pB': 1.0},
+        ('pA', None): 1.0,
+        ('pA', 'tfA'): 10.0,
+        ('pB', None): 1.0,
+        ('pB', 'tfB'): 10.0},
+    'transcription_factors': ['tfA', 'tfB'],
     'sequence': test_chromosome_config['sequence'],
     'templates': test_chromosome_config['promoters'],
     'genes': test_chromosome_config['genes'],
@@ -48,26 +51,17 @@ class Transcription(Process):
             print('inital_parameters: {}'.format(initial_parameters))
 
         self.default_parameters = default_transcription_parameters
-
-        self.default_parameters['promoter_order'] = list(
-            initial_parameters.get(
-                'promoter_affinities',
-                self.default_parameters['promoter_affinities']).keys())
-
-        templates = initial_parameters.get(
-            'templates',
-            self.default_parameters['templates'])
-
-        self.default_parameters['transcript_ids'] = all_products({
-            key: Promoter(config)
-            for key, config in templates.items()})
+        self.derive_defaults(initial_parameters, 'templates', 'promoter_order', keys_list)
+        self.derive_defaults(initial_parameters, 'templates', 'transcript_ids', template_products)
 
         self.parameters = copy.deepcopy(self.default_parameters)
         self.parameters.update(initial_parameters)
 
         self.sequence = self.parameters['sequence']
         self.sequences = None # set when the chromosome first appears
-        self.templates = self.parameters['templates']
+        self.templates = {
+            key: Promoter(template)
+            for key, template in self.parameters['templates'].items()}
         self.genes = self.parameters['genes']
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
@@ -78,6 +72,7 @@ class Transcription(Process):
         self.promoter_order = self.parameters['promoter_order']
         self.promoter_count = len(self.promoter_order)
 
+        self.transcription_factors = self.parameters['transcription_factors']
         self.molecule_ids = self.parameters['molecule_ids']
         self.monomer_ids = self.parameters['monomer_ids']
         self.transcript_ids = self.parameters['transcript_ids']
@@ -85,26 +80,36 @@ class Transcription(Process):
         self.elongation_rate = self.parameters['elongation_rate']
         self.advancement_rate = self.parameters['advancement_rate']
 
-        self.affinity_vector = np.array([
-            self.promoter_affinities[promoter_key]
-            for promoter_key in self.promoter_order], dtype=np.float64)
+        # self.affinity_vector = np.array([
+        #     self.promoter_affinities[promoter_key]
+        #     for promoter_key in self.promoter_order], dtype=np.float64)
+
+        # self.rates = build_rates(
+        #     self.affinity_vector,
+        #     self.advancement_rate)
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
-        self.rates = build_rates(
-            self.affinity_vector,
-            self.advancement_rate)
-
-        self.initiation = StochasticSystem(self.stoichiometry, self.rates)
+        self.initiation = StochasticSystem(self.stoichiometry)
 
         self.roles = {
             'chromosome': Chromosome({}).fields(),
             'molecules': self.molecule_ids,
+            'factors': self.transcription_factors,
             'transcripts': self.transcript_ids}
 
         if VERBOSE:
             print('transcription parameters: {}'.format(self.parameters))
 
         super(Transcription, self).__init__(self.roles, self.parameters)
+
+    def build_affinity_vector(self, factors):
+        vector = np.zeros(len(self.promoter_order), dtype=np.float64)
+        for index, promoter_key in enumerate(self.promoter_order):
+            promoter = self.templates[promoter_key]
+            binding = promoter.binding_state(factors)
+            affinity = self.promoter_affinities[binding]
+            vector[index] = affinity
+        return vector
 
     def default_settings(self):
         default_state = {
@@ -119,7 +124,10 @@ class Transcription(Process):
                         'lead': 0,
                         'lag': 0,
                         'children': []}}},
-            'molecules': {UNBOUND_RNAP_KEY: 10}}
+            'molecules': {UNBOUND_RNAP_KEY: 10},
+            'factors': {
+                'tfA': 0.1,
+                'tfB': 0.1}}
 
         default_state['molecules'].update({
             nucleotide: 100
@@ -148,7 +156,8 @@ class Transcription(Process):
                 'rnap_id': 'set',
                 'rnaps': 'set'},
             'molecules': {},
-            'transcripts': {}}
+            'transcripts': {},
+            'factors': {}}
 
         return {
             'state': default_state,
@@ -159,6 +168,7 @@ class Transcription(Process):
     def next_update(self, timestep, states):
         chromosome = Chromosome(states['chromosome'])
         molecules = states['molecules']
+        factors = states['factors'] # as concentrations
 
         if self.sequences is None:
             self.sequences = chromosome.sequences()
@@ -206,6 +216,9 @@ class Transcription(Process):
             self.symbol_to_monomer,
             self.elongation)
 
+        initiation_affinity = self.build_affinity_vector(factors)
+        initiation_rates = build_rates(initiation_affinity, self.advancement_rate)
+
         while time < timestep:
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
@@ -223,7 +236,10 @@ class Transcription(Process):
             interval = min(distance / self.elongation_rate, timestep - time)
 
             # run simulation for interval of time to next terminator
-            result = self.initiation.evolve(interval, substrate)
+            result = self.initiation.evolve(
+                interval,
+                substrate,
+                initiation_rates)
 
             # go through each event in the simulation and update the state
             rnap_bindings = 0
@@ -306,9 +322,6 @@ class Transcription(Process):
 
 def test_transcription():
     parameters = {
-        'promoter_affinities': {
-            'pA': 1.0,
-            'pB': 1.0},
         'elongation_rate': 10.0,
         'advancement_rate': 10.0}
 
@@ -317,7 +330,8 @@ def test_transcription():
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {UNBOUND_RNAP_KEY: 10}}
+        'molecules': {UNBOUND_RNAP_KEY: 10},
+        'factors': {'tfA': 0.2, 'tfB': 0.7}}
 
     states['molecules'].update({
         nucleotide: 10

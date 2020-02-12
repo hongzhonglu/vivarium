@@ -1,6 +1,6 @@
 import copy
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, keys_list
 from vivarium.data.nucleotides import nucleotides
 from vivarium.processes.deriver import AVOGADRO
 from vivarium.utils.units import units
@@ -13,9 +13,6 @@ def all_subkeys(d):
 
 def kinetics(E, S, kcat, km):
     return kcat * E * S / (S + km)
-
-def keys_list(d):
-    return list(d.keys())
 
 DEFAULT_TRANSCRIPT_DEGRADATION_KM = 1e-23
 

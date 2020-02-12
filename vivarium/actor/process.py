@@ -45,6 +45,9 @@ updater_library = {
 
 KEY_TYPE = 'U31'
 
+def keys_list(d):
+    return list(d.keys())
+
 class State(object):
     ''' Represents a set of named values. '''
 
