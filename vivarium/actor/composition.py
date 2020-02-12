@@ -15,8 +15,8 @@ from vivarium.processes.derive_concentrations import DeriveConcs
 
 deriver_library = {
     'globals': DeriveGlobals,
-    'concs_to_counts': DeriveCounts,
-    'counts_to_concs': DeriveConcs}
+    'mmol_to_counts': DeriveCounts,
+    'counts_to_mmol': DeriveConcs}
 
 
 
@@ -77,7 +77,7 @@ def get_derivers(process_list, topology):
     # add global deriver
     # TODO -- configure global deriver to get mass
     global_deriver = {
-        'global_deriver': DeriveGlobals()}
+        'global_deriver': DeriveGlobals({})}
 
     global_deriver_topology = {
         'global_deriver': {

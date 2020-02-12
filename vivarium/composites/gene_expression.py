@@ -10,7 +10,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
-from vivarium.processes.derive_global import DeriveGlobal
+from vivarium.processes.derive_globals import DeriveGlobals
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
@@ -22,7 +22,7 @@ def compose_gene_expression(config):
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
     degradation = RnaDegradation(config.get('degradation', {}))
-    deriver = DeriveGlobal(config)
+    deriver = DeriveGlobals(config)
     division = Division(config)
 
     # place processes in layers

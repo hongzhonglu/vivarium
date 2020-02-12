@@ -8,59 +8,20 @@ from vivarium.actor.process import initialize_state
 from vivarium.processes.growth import Growth
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.minimal_expression import MinimalExpression
-from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.processes.derive_global import DeriveGlobal
-
-
-# kinetics for transport
-def get_transport_config():
-    # stoichiometry needs to match metabolism -- perhaps this can be extracted?
-    transport_reactions = {
-        'GLC_transport': {
-            'stoichiometry': {
-                ('external', 'GLC'): -1.0,
-                ('internal', 'GLC'): 1.0},
-            'is reversible': False,
-            'catalyzed by': [('internal', 'transporter')]}}
-
-    # very simplified PTS
-    transport_kinetics = {
-        'GLC_transport': {
-            ('internal', 'transporter'): {
-                ('external', 'GLC'): 1.0,  # km for GLC
-                'kcat_f': 1e-9}}}
-
-    transport_initial_state = {
-        'internal': {
-            'GLC': 1.0,
-            'transporter': 1.0},
-        'external': {
-            'GLC': 20.0},
-        'fluxes': {
-            'GLC': 1.0}}
-
-    transport_roles = {
-        'internal': ['GLC', 'transporter'],
-        'external': ['GLC'],
-    }
-
-    return {
-        'reactions': transport_reactions,
-        'kinetic_parameters': transport_kinetics,
-        'initial_state': transport_initial_state,
-        'roles': transport_roles}
+from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
+from vivarium.processes.derive_globals import DeriveGlobals
 
 
 
 def compose_growth_division(config):
 
     # declare the processes
-    transport_config = get_transport_config()
+    transport_config = get_glc_lct_config()
     transport = ConvenienceKinetics(transport_config)
     growth = Growth(config)
     division = Division(config)
     expression = MinimalExpression(config)
-    deriver = DeriveGlobal(config)
+    deriver = DeriveGlobals(config)
 
     # place processes in layers
     processes = [

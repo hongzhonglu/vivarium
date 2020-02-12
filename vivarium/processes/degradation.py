@@ -2,7 +2,7 @@ import copy
 
 from vivarium.actor.process import Process
 from vivarium.data.nucleotides import nucleotides
-from vivarium.processes.derive_global import AVOGADRO
+from vivarium.processes.derive_globals import AVOGADRO
 from vivarium.utils.units import units
 
 def all_subkeys(d):

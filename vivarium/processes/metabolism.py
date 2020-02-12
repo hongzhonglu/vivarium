@@ -362,12 +362,12 @@ def get_e_coli_core_config():
     mass = 1339 * units.fg
     density = 1100 * units.g / units.L
     volume = mass.to('g') / density
-    internal = {
+    globals = {
         'mass': mass.magnitude,  # fg
         'volume': volume.to('fL').magnitude}
 
     initial_state = {
-        'internal': internal}
+        'global': globals}
 
     # make process
     return {

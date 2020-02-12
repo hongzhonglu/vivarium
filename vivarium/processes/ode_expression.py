@@ -62,7 +62,7 @@ class ODE_expression(Process):
 
         # default derivers
         deriver_setting = [{
-            'type': 'concs_to_counts',
+            'type': 'mmol_to_counts',
             'source_role': 'internal',
             'derived_role': 'counts',
             'keys': self.roles['internal']}]
@@ -158,7 +158,7 @@ def test_expression(time=10):
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'ode_expression')
+    out_dir = os.path.join('out', 'tests', 'ode_expression_process')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 

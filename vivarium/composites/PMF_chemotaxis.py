@@ -12,7 +12,7 @@ from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
-from vivarium.processes.derive_global import DeriveGlobal
+from vivarium.processes.derive_globals import DeriveGlobals
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -30,7 +30,7 @@ def compose_pmf_chemotaxis(config):
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
     flagella = FlagellaActivity(config.get('flagella', {}))
     PMF = MembranePotential(config.get('PMF', {}))
-    deriver = DeriveGlobal(config.get('deriver', {}))
+    deriver = DeriveGlobals(config.get('deriver', {}))
     division = Division(config.get('division', {}))
 
     # place processes in layers

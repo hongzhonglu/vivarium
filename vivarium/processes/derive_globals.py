@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import os
-import random
 import copy
 
 from scipy import constants
@@ -11,13 +9,15 @@ from vivarium.actor.process import Process
 from vivarium.utils.units import units
 
 
+
 AVOGADRO = constants.N_A * 1 / units.mol
+
 
 
 class DeriveGlobals(Process):
     """
-    Process for deriving volume and molecule concentrations
-    from the cell state (mass, molecule counts)
+    Process for deriving volume, mmol_to_counts factor, and growth rate
+    from the cell mass
     """
     def __init__(self, initial_parameters={}):
 
@@ -77,11 +77,8 @@ class DeriveGlobals(Process):
             'growth_rate': growth_rate.magnitude,
             'prior_mass': mass.magnitude}
 
-        # combine updates
-        update = {
+        return {
             'global': deriver_update}
-
-        return update
 
 
 
@@ -128,9 +125,5 @@ def test_deriver(total_time=10):
     return saved_state
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'derive_global')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    plot_settings = {}
     saved_data = test_deriver(100)
+    print(saved_data)

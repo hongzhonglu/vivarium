@@ -60,7 +60,7 @@ class MinimalExpression(Process):
         default_updaters = {}
 
         deriver_setting = [{
-            'type': 'counts_to_concs',
+            'type': 'counts_to_mmol',
             'source_role': 'internal',
             'derived_role': 'concentrations',
             'keys': self.internal_states}]
