@@ -29,8 +29,7 @@ def compose_simple_chemotaxis(config):
             'internal': 'cell'},
         'motor': {
             'external': 'environment',
-            'internal': 'cell'},
-        }
+            'internal': 'cell'}}
 
     # initialize the states
     states = initialize_state(processes_layers, topology, config.get('initial_state', {}))

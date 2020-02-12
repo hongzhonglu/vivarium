@@ -7,7 +7,7 @@ from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
 
 # processes
-from vivarium.processes.deriver import Deriver
+from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
@@ -53,7 +53,7 @@ def compose_master(config):
 
     # Other processes
     deriver_config = config.get('deriver', {})
-    deriver = Deriver(deriver_config)
+    deriver = DeriveGlobal(deriver_config)
 
     # Place processes in layers
     processes = [
@@ -72,13 +72,15 @@ def compose_master(config):
             'internal': 'cell',
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
-            'fluxes': 'flux_bounds'},
+            'fluxes': 'flux_bounds',
+            'global': 'global'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds'},
+            'flux_bounds': 'flux_bounds',
+            'global': 'global'},
         'transcription': {
             'chromosome': 'chromosome',
             'molecules': 'cell',
@@ -94,12 +96,11 @@ def compose_master(config):
             'molecules': 'cell',
             'global': 'global'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'global': 'global'}}
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -122,19 +123,19 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    metabolism_file = os.path.join('models', 'iAF1260b.json')
+    metabolism_file = os.path.join('models', 'e_coli_core.json')
 
     # initial state
     # internal
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
     volume = mass.to('g') / density
-    internal = {
+    globals = {
             'mass': mass.magnitude,  # fg
             'volume': volume.to('fL').magnitude}
 
     # external
-    initial_state = {'internal': internal}
+    initial_state = {'global': globals}
 
     return {
         'moma': False,
@@ -149,22 +150,22 @@ def default_transport_config():
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
     from vivarium.composites.gene_expression import plot_gene_expression_output
 
     out_dir = os.path.join('out', 'tests', 'master_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
+    boot_config = {}  # {'emitter': 'null'}
     compartment = load_compartment(compose_master, boot_config)
 
     # settings for simulation and plot
     options = compartment.configuration
 
     # define timeline
-    timeline = [(600, {})]
+    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
         'environment_role': options['environment_role'],
@@ -176,12 +177,18 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']
-        }
+        'skip_roles': ['prior_state', 'null']}
+
+    expression_plot_settings = {
+        'name': 'gene_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'cell',
+            'proteins': 'proteins'}}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_data)
-    plot_gene_expression_output(timeseries, 'gene_expression', out_dir)
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
+    plot_simulation_output(timeseries, plot_settings, out_dir)

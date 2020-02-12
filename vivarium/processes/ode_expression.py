@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, \
-    plot_simulation_output, simulate_process_with_environment
+from vivarium.actor.process import Process
+from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
 from vivarium.utils.units import units
 from vivarium.utils.regulation_logic import build_rule
@@ -88,7 +88,7 @@ class ODE_expression(Process):
     def next_update(self, timestep, states):
         internal_state = states['internal']
         volume = states['global']['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
@@ -145,10 +145,10 @@ class ODE_expression(Process):
 def get_toy_expression():
     # toy config
     transcription = {
-        'lacy_RNA': 1e-20}
+        'lacy_RNA': 1e-6}
 
     translation = {
-        'LacY': 1e-2}
+        'LacY': 1e-3}
 
     protein_map = {
         'LacY': 'lacy_RNA'}
@@ -158,6 +158,9 @@ def get_toy_expression():
         'LacY': 0.001}
 
     initial_state = {
+        'counts': {
+            'lacy_RNA': 0,
+            'LacY': 0.0},
         'internal': {
             'lacy_RNA': 0,
             'LacY': 0.0},
@@ -174,7 +177,7 @@ def get_toy_expression():
 
 def get_flagella_expression():
     transcription = {
-        'flag_RNA': 1e-21}
+        'flag_RNA': 1e-6}
 
     translation = {
         'flagella': 8e-5}

@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.patches import Patch
 
-from vivarium.actor.process import Process, simulate_process_with_environment, convert_to_timeseries
-
+from vivarium.actor.process import Process
+from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries
 
 DEFAULT_N_FLAGELLA = 5
 DEFAULT_PMF = 170  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg)

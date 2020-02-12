@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state, load_compartment, convert_to_timeseries, plot_simulation_output, \
-    simulate_with_environment
+from vivarium.actor.process import initialize_state, load_compartment
+from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
@@ -12,7 +12,7 @@ from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
-from vivarium.processes.deriver import Deriver
+from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -30,7 +30,7 @@ def compose_pmf_chemotaxis(config):
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
     flagella = FlagellaActivity(config.get('flagella', {}))
     PMF = MembranePotential(config.get('PMF', {}))
-    deriver = Deriver(config.get('deriver', {}))
+    deriver = DeriveGlobal(config.get('deriver', {}))
     division = Division(config.get('division', {}))
 
     # place processes in layers
@@ -56,7 +56,8 @@ def compose_pmf_chemotaxis(config):
             'exchange': 'exchange',
             'external': 'environment',
             'internal': 'cytoplasm',
-            'fluxes': 'fluxes'},
+            'fluxes': 'fluxes',
+            'global': 'global'},
         # 'metabolism': {
         #     'internal': 'cytoplasm',
         #     'external': 'environment',
@@ -80,10 +81,10 @@ def compose_pmf_chemotaxis(config):
             'internal': 'cytoplasm'},
         'deriver': {
             'counts': 'cell_counts',
-            'state': 'cytoplasm',
-            'prior_state': 'prior_state'},
+            'state': 'cell',
+            'global': 'global'},
         'division': {
-            'internal': 'cytoplasm'}}
+            'global': 'global'}}
 
     # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))

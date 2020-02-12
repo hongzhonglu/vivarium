@@ -56,7 +56,6 @@ class ReceptorCluster(Process):
 
         # default state
         internal = INITIAL_STATE
-        internal.update({'volume': 1})
         external = {self.ligand_id: 0.1}
         default_state = {
             'external': external,

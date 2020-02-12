@@ -7,11 +7,11 @@ from vivarium.environment.make_media import Media
 from vivarium.utils.units import units
 
 # processes
-from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import Division, divide_condition, divide_state
 from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.ode_expression import ODE_expression
+from vivarium.processes.derive_global import DeriveGlobal
 
 
 
@@ -45,7 +45,7 @@ def compose_ode_expression(config):
 
     # Other processes
     deriver_config = config.get('deriver', {})
-    deriver = Deriver(deriver_config)
+    deriver = DeriveGlobal(deriver_config)
 
     # Place processes in layers
     processes = [
@@ -53,8 +53,7 @@ def compose_ode_expression(config):
          'expression': expression},
         {'metabolism': metabolism},
         {'deriver': deriver,
-         'division': division}
-    ]
+         'division': division}]
 
     # Make the topology
     # for each process, map process roles to compartment roles
@@ -63,23 +62,26 @@ def compose_ode_expression(config):
             'internal': 'cell',
             'external': 'environment',
             'exchange': 'null',
-            'fluxes': 'flux'},
+            'fluxes': 'flux',
+            'global': 'global'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux'},
+            'flux_bounds': 'flux',
+            'global': 'global'},
         'expression' : {
             'counts': 'cell_counts',
             'internal': 'cell',
-            'external': 'environment'},
+            'external': 'environment',
+            'global': 'global'},
         'division': {
-            'internal': 'cell'},
+            'global': 'global'},
         'deriver': {
             'counts': 'cell_counts',
             'state': 'cell',
-            'prior_state': 'prior_state'}}
+            'global': 'global'}}
 
     # Initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
@@ -173,8 +175,8 @@ def default_transport_config():
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
+    from vivarium.actor.process import load_compartment
+    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'composite_ode_expression')
     if not os.path.exists(out_dir):
@@ -197,7 +199,7 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {
-            'reactions': 'flux_bounds'},
+            'reactions': 'flux'},
         'skip_roles': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
