@@ -141,6 +141,36 @@ def get_lacy_config():
         'protein_map': toy_protein_map,
         'initial_state': initial_state}
 
+def get_flagella_expression():
+    transcription = {
+        'flag_RNA': 1e-6}
+
+    translation = {
+        'flagella': 8e-5}
+
+    degradation = {
+        'flag_RNA': 2e-2}  # 1e-23}
+
+    protein_map = {
+        'flagella': 'flag_RNA'}
+
+    initial_state = {
+        'counts': {
+            'flagella': 5,
+            'flag_RNA': 30},
+        'internal': {
+            'flagella': 0,
+            'flag_RNA': 0},
+        'global': {
+            'volume': 1.2}}
+
+    return  {
+        'transcription_rates': transcription,
+        'translation_rates': translation,
+        'degradation_rates': degradation,
+        'protein_map': protein_map,
+        'initial_state': initial_state}
+
 def test_expression(time=10):
     expression_config = get_lacy_config()
 
