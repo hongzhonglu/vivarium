@@ -1,25 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from scipy import constants
 
 from vivarium.actor.process import Process
-from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
-from vivarium.utils.units import units
+from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule
-
 
 
 class ODE_expression(Process):
     '''
     a ode-based mRNA and protein expression process, with boolean logic for regulation
-
     TODO -- kinetic regulation, cooperativity, autoinhibition, autactivation
     '''
-    def __init__(self, initial_parameters={}):
 
-        self.nAvogadro = constants.N_A * 1 / units.mol
+    def __init__(self, initial_parameters={}):
 
         # ode gene expression
         self.transcription = initial_parameters.get('transcription_rates', {})
@@ -44,27 +39,10 @@ class ODE_expression(Process):
         internal = list(self.initial_state.get('internal', {}).keys())
         external = list(self.initial_state.get('external', {}).keys())
 
-        self.partial_expression = {
-            mol_id: 0 for mol_id in internal}
-
-        # convert initial counts to concs.
-        # TODO -- concs to counts (use deriver?)
-        counts = self.initial_state['counts']
-        volume = self.initial_state['global'].get('volume', 1.2)
-        # concentrations = self.initial_state['internal']
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
-        new_concentrations = {}
-        for state_id, count in counts.items():
-            conc = (count / mmol_to_count).magnitude
-            new_concentrations[state_id] = conc
-        self.initial_state['internal'].update(new_concentrations)
-
-
         roles = {
-            'counts': states,
             'internal': internal + internal_regulators,
             'external': external + external_regulators,
-            'global': ['volume']}
+            'counts': []}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -75,20 +53,30 @@ class ODE_expression(Process):
 
         # default state
         default_state = self.initial_state
-        default_emitter_keys = self.roles
+
+        # default emitter keys
+        default_emitter_keys = {}
+
+        # default updaters
         default_updaters = {}
+
+        # default derivers
+        deriver_setting = [{
+            'type': 'concs_to_counts',
+            'source_role': 'internal',
+            'derived_role': 'counts',
+            'keys': self.roles['internal']}]
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'deriver_setting': deriver_setting}
 
         return default_settings
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        volume = states['global']['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
@@ -122,99 +110,51 @@ class ODE_expression(Process):
             internal_update[protein] = \
                 (rate * transcript_state - self.degradation.get(protein, 0) * protein_state) * timestep
 
-        # convert concentrations to counts.
-        # keep partially expressed molecules for the next iteration
-        expression_levels = {
-            mol_id: (delta_conc * mmol_to_count).magnitude + self.partial_expression[mol_id] for
-            mol_id, delta_conc in internal_update.items()}
-
-        counts_update = {
-            mol_id: int(level) for mol_id, level in expression_levels.items()}
-
-        self.partial_expression = {
-             mol_id: level - int(level)
-             for mol_id, level in expression_levels.items()}
-
-        return {
-            'internal': internal_update,
-            'counts': counts_update}
+        return {'internal': internal_update}
 
 
-
-# functions
-def get_toy_expression():
-    # toy config
-    transcription = {
+# test functions
+# toy config
+def get_lacy_config():
+    toy_transcription_rates = {
         'lacy_RNA': 1e-6}
 
-    translation = {
+    toy_translation_rates = {
         'LacY': 1e-3}
 
-    protein_map = {
+    toy_protein_map = {
         'LacY': 'lacy_RNA'}
 
-    degradation = {
+    toy_degradation_rates = {
         'lacy_RNA': 0.2,
         'LacY': 0.001}
 
     initial_state = {
-        'counts': {
-            'lacy_RNA': 0,
-            'LacY': 0.0},
         'internal': {
             'lacy_RNA': 0,
-            'LacY': 0.0},
-        'global': {
-            'volume': 1.2}}
+            'LacY': 0.0}}
 
     return {
-        'transcription_rates': transcription,
-        'translation_rates': translation,
-        'degradation_rates': degradation,
-        'protein_map': protein_map,
+        'transcription_rates': toy_transcription_rates,
+        'translation_rates': toy_translation_rates,
+        'degradation_rates': toy_degradation_rates,
+        'protein_map': toy_protein_map,
         'initial_state': initial_state}
 
+def test_expression(time=10):
+    expression_config = get_lacy_config()
 
-def get_flagella_expression():
-    transcription = {
-        'flag_RNA': 1e-6}
-
-    translation = {
-        'flagella': 8e-5}
-
-    degradation = {
-        'flag_RNA': 2e-2}  # 1e-23}
-
-    protein_map = {
-        'flagella': 'flag_RNA'}
-
-    initial_state = {
-        'counts': {
-            'flagella': 5,
-            'flag_RNA': 30},
-        'internal': {
-            'flagella': 0,
-            'flag_RNA': 0},
-        'global': {
-            'volume': 1.2}}
-
-    return  {
-        'transcription_rates': transcription,
-        'translation_rates': translation,
-        'degradation_rates': degradation,
-        'protein_map': protein_map,
-        'initial_state': initial_state}
-
-default_settings = {
-    'total_time': 10,
-    # 'exchange_role': 'exchange',
-    'environment_role': 'external',
-    'environment_volume': 1e-12}
-
-def test_expression(expression_config=get_toy_expression(), settings=default_settings):
+    # load process
     expression = ODE_expression(expression_config)
-    saved_data = simulate_process_with_environment(expression, settings)
-    return saved_data
+
+    settings = {
+        'total_time': time,
+        # 'exchange_role': 'exchange',
+        'environment_role': 'external',
+        'environment_volume': 1e-12}
+
+    compartment = process_in_compartment(expression)
+    return simulate_with_environment(compartment, settings)
 
 
 if __name__ == '__main__':
@@ -222,15 +162,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    settings = {
-        'total_time': 2520,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
-        'environment_volume': 1e-12}
-
-    # saved_data = test_expression()
-    saved_data = test_expression(get_flagella_expression(), settings)
-    del saved_data[0] # remove first state
+    saved_data = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
-    

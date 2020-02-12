@@ -1,14 +1,130 @@
 import copy
 import os
 
-from scipy import constants
 import matplotlib.pyplot as plt
 
+from vivarium.utils.dict_utils import deep_merge
 from vivarium.actor.process import initialize_state, Compartment
 from vivarium.utils.units import units
 
-AVOGADRO = constants.N_A * 1 / units.mol
+# processes
+from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
+from vivarium.processes.derive_counts import DeriveCounts
+from vivarium.processes.derive_concentrations import DeriveConcs
 
+
+deriver_library = {
+    'globals': DeriveGlobals,
+    'concs_to_counts': DeriveCounts,
+    'counts_to_concs': DeriveConcs}
+
+
+
+def get_derivers(process_list, topology):
+    '''
+    get the derivers for a list of processes
+
+    requires:
+        - process_list -- (list) with configured processes
+        - topology -- (dict) with topology of the processes connected to compartment roles
+
+    returns: (dict) with:
+        {'deriver_processes': processes,
+        'deriver_topology': topology}
+    '''
+
+
+    # get deriver configuration
+    deriver_config = {}
+    full_deriver_topology = {}
+    deriver_topology = {}
+    for level in process_list:
+        for process_id, process in level.items():
+            process_settings = process.default_settings()
+            setting = process_settings.get('deriver_setting', [])
+            role_map = topology[process_id]
+
+            for set in setting:
+                type = set['type']
+                keys = set['keys']
+                source_role = set['source_role']
+                target_role = set['derived_role']
+                source_compartment_role = role_map[source_role]
+                target_compartment_role = role_map[target_role]
+
+                deriver_topology = {
+                    type: {
+                        source_role: source_compartment_role,
+                        target_role: target_compartment_role,
+                        'global': 'global'}}
+                deep_merge(full_deriver_topology, deriver_topology)
+
+                # TODO -- what if multiple different source/targets?
+                # TODO -- merge overwrites them. need list extend
+                # roles for configuration
+                roles = {
+                    source_role: keys,
+                    target_role: keys}
+                config = {type: {'roles': roles}}
+
+                deep_merge(deriver_config, config)
+
+    # configure the derivers
+    deriver_processes = {}
+    for type, config in deriver_config.items():
+        deriver_processes[type] = deriver_library[type](config)
+
+    # add global deriver
+    # TODO -- configure global deriver to get mass
+    global_deriver = {
+        'global_deriver': DeriveGlobals()}
+
+    global_deriver_topology = {
+        'global_deriver': {
+            'global': 'global'}}
+
+    deep_merge(deriver_topology, global_deriver_topology)
+
+    # put the global deriver and additional derivers in two layers
+    processes = [
+        global_deriver,
+        deriver_processes]
+
+    return {
+        'deriver_processes': processes,
+        'deriver_topology': deriver_topology}
+
+
+def process_in_compartment(process):
+    process_settings = process.default_settings()
+    process_roles = list(process.roles.keys())
+
+    processes = [{'process': process}]
+    topology = {'process': {role: role for role in process.roles}}
+
+    derivers = get_derivers(processes, topology)
+    deriver_processes = derivers['deriver_processes']
+    deriver_topology = derivers['deriver_topology']
+
+    # add deriver processes
+    processes.extend(deriver_processes)
+
+    # add deriver topology
+    topology = {'process': {key: key for key in process_roles}}
+    topology.update(deriver_topology)
+
+    # # make the state
+    state_dict = process_settings['state']
+    states = initialize_state(processes, topology, state_dict)
+
+    options = {
+        'topology': topology}
+
+    return Compartment(processes, states, options)
+
+def simulate_process_with_environment(process, settings={}):
+    compartment = process_in_compartment(process)
+    return simulate_with_environment(compartment, settings)
 
 def simulate_with_environment(compartment, settings={}):
     '''
