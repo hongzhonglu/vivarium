@@ -416,12 +416,12 @@ def get_toy_configuration():
     default_reaction_bounds = 1000.0
 
     exchange_bounds = {
-        'A': 0.02,
-        'D': -0.01,
-        'E': -0.01,
-        'F': 0.005,
-        'H': 0.005,
-        'O2': 0.1}
+        'A': -0.02,
+        'D': 0.01,
+        'E': 0.01,
+        'F': -0.005,
+        'H': -0.005,
+        'O2': -0.1}
 
     mass = 1339 * units.fg
     density = 1100 * units.g/units.L
@@ -519,24 +519,10 @@ def test_BiGG_metabolism(time=10, out_dir='out'):
         'timeline': timeline,
         'environment_volume': 1e-2}
 
-    plot_settings = {
-        'max_rows': 40,
-        'remove_zeros': True,
-        'skip_roles': ['exchange', 'flux_bounds', 'reactions'],
-        'overlay': {
-            'reactions': 'flux_bounds'}}
-
     saved_data = simulate_metabolism(simulation_config)
-    del saved_data[0]  # remove first state
-    timeseries = convert_to_timeseries(saved_data)
+    return saved_data
 
-    # get growth
-    volume_ts = timeseries['internal']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-
-    plot_simulation_output(timeseries, plot_settings, out_dir)
-
-def test_toy_metabolism(out_dir):
+def test_toy_metabolism(out_dir='out'):
 
     regulation_logic = {
         'R4': 'if (external, O2) > 0.1 and not (external, F) < 0.1'}
@@ -564,16 +550,9 @@ def test_toy_metabolism(out_dir):
         'transport_kinetics': transport,
         'environment_volume': 1e-14}
 
-    plot_settings = {
-        'skip_roles': ['exchange'],
-        'overlay': {
-            'reactions': 'flux_bounds'}}
-
     saved_data = simulate_metabolism(simulation_config)
-    del saved_data[0]  # remove first state
-    timeseries = convert_to_timeseries(saved_data)
-    plot_simulation_output(timeseries, plot_settings, out_dir)
-    plot_exchanges(timeseries, simulation_config, out_dir)
+    return saved_data
+
 
 def make_network():
     # configure toy model
@@ -597,6 +576,30 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir_BiGG):
         os.makedirs(out_dir_BiGG)
 
-    test_BiGG_metabolism(2520, out_dir_BiGG)
-    # test_toy_metabolism(out_dir)
+    # run BiGG metabolism
+    plot_settings = {
+        'max_rows': 40,
+        'remove_zeros': True,
+        'skip_roles': ['exchange', 'flux_bounds', 'reactions'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    saved_data = test_BiGG_metabolism(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    del saved_data[0]  # remove first state
+    timeseries = convert_to_timeseries(saved_data)
+    volume_ts = timeseries['internal']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+    plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
+
+    # run toy model
+    plot_settings = {
+        'skip_roles': ['exchange'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    saved_data = test_toy_metabolism()
+    del saved_data[0]  # remove first state
+    timeseries = convert_to_timeseries(saved_data)
+    plot_simulation_output(timeseries, plot_settings, out_dir)
+
     # make_network()

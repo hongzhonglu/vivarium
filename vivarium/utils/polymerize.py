@@ -54,7 +54,7 @@ class Polymerase(Datum):
     def is_bound(self):
         return self.state == 'bound'
 
-    def is_transcribing(self):
+    def is_polymerizing(self):
         return self.state == 'transcribing'
 
     def is_complete(self):
@@ -190,7 +190,7 @@ def polymerize_to(
 
     for step in range(additions):
         for polymerase in polymerases:
-            if polymerase.is_transcribing():
+            if polymerase.is_polymerizing():
                 template = templates[polymerase.template]
                 projection = polymerase.position + 1
                 monomer_symbol = sequences[template.id][polymerase.position]
