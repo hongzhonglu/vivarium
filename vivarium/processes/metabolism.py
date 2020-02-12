@@ -109,6 +109,7 @@ class Metabolism(Process):
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
+            'deriver_setting': deriver_setting,
             'updaters': default_updaters}
 
     def next_update(self, timestep, states):
@@ -196,10 +197,11 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
     external_ts = timeseries['external']
     internal_ts = timeseries['internal']
+    global_ts = timeseries['global']
 
     # pull volume and mass out from internal
-    volume = internal_ts.pop('volume') * units.fL
-    mass = internal_ts.pop('mass')
+    volume = global_ts.pop('volume') * units.fL
+    mass = global_ts.pop('mass')
 
     # conversion factor
     mmol_to_count = [nAvogadro.to('1/mmol') * vol.to('L') for vol in volume]
@@ -217,9 +219,10 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     # plot external state
     for mol_id, series in external_ts.items():
         ax1.plot(series, label=mol_id)
-    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), ncol=2)
     ax1.title.set_text('environment: {} (fL)'.format(env_volume))
     ax1.set_ylabel('concentrations')
+    ax1.set_yscale('log')
 
     # plot internal concentrations
     for mol_id, counts_series in internal_ts.items():
@@ -227,7 +230,7 @@ def plot_exchanges(timeseries, sim_config, out_dir):
            for count, conversion in zip(counts_series, mmol_to_count)]
         ax2.plot(conc_series, label=mol_id)
 
-    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
     ax2.title.set_text('internal metabolites')
     ax2.set_ylabel('conc (mM)')
 
@@ -429,22 +432,21 @@ def toy_transport():
     return transport_kinetics
 
 # tests
-def test_BiGG_metabolism(time=10, out_dir='out'):
+def test_BiGG_metabolism(settings={}):
     metabolism_config = get_iAF1260b_config()
     # metabolism_config = get_e_coli_core_config()
     metabolism = Metabolism(metabolism_config)
 
     # simulate metabolism
-    timeline = [(time, {})]
-
-    settings = {
+    sim_settings = {
         'environment_role': 'external',
         'exchange_role': 'exchange',
         'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'timeline': timeline}
+        'timeline': [(10, {})]}
+    sim_settings.update(settings)
 
-    saved_data = simulate_process_with_environment(metabolism, settings)
+    saved_data = simulate_process_with_environment(metabolism, sim_settings)
 
     return saved_data
 
@@ -502,29 +504,38 @@ if __name__ == '__main__':
         os.makedirs(out_dir_BiGG)
 
     # run BiGG metabolism
+    timeline = [(10, {})]
+    sim_settings = {
+        'environment_role': 'external',
+        'exchange_role': 'exchange',
+        'environment_volume': 1e-13,  # L
+        'timestep': 1,
+        'timeline': timeline}
+
     plot_settings = {
-        'max_rows': 40,
+        'max_rows': 30,
         'remove_zeros': True,
         'skip_roles': ['exchange', 'flux_bounds', 'reactions'],
         'overlay': {
             'reactions': 'flux_bounds'}}
 
-    saved_data = test_BiGG_metabolism(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    saved_data = test_BiGG_metabolism(sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
     plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
+    plot_exchanges(timeseries, sim_settings, out_dir_BiGG)
 
-    # run toy model
-    plot_settings = {
-        'skip_roles': ['exchange'],
-        'overlay': {
-            'reactions': 'flux_bounds'}}
-
-    saved_data = test_toy_metabolism()
-    del saved_data[0]  # remove first state
-    timeseries = convert_to_timeseries(saved_data)
-    plot_simulation_output(timeseries, plot_settings, out_dir)
+    # # run toy model
+    # plot_settings = {
+    #     'skip_roles': ['exchange'],
+    #     'overlay': {
+    #         'reactions': 'flux_bounds'}}
+    #
+    # saved_data = test_toy_metabolism()
+    # del saved_data[0]  # remove first state
+    # timeseries = convert_to_timeseries(saved_data)
+    # plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make_network()

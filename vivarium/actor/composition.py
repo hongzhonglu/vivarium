@@ -46,7 +46,7 @@ def get_derivers(process_list, topology):
                 role_map = topology[process_id]
             except:
                 print('{} topology role mismatch'.format(process_id))
-                break
+                raise
 
             for set in setting:
                 type = set['type']
@@ -58,7 +58,7 @@ def get_derivers(process_list, topology):
                     target_compartment_role = role_map[target_role]
                 except:
                     print('{} source/target role mismatch'.format(process_id))
-                    break
+                    raise
 
                 deriver_topology = {
                     type: {
