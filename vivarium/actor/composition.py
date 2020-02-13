@@ -104,6 +104,7 @@ def get_derivers(process_list, topology):
 
 
 def process_in_compartment(process):
+    ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
     process_roles = list(process.roles.keys())
 
@@ -131,10 +132,12 @@ def process_in_compartment(process):
     return Compartment(processes, states, options)
 
 def simulate_process_with_environment(process, settings={}):
+    ''' simulate a process in a compartment with an environment '''
     compartment = process_in_compartment(process)
     return simulate_with_environment(compartment, settings)
 
 def simulate_process(process, settings={}):
+    ''' simulate a process in a compartment with no environment '''
     compartment = process_in_compartment(process)
     return simulate_compartment(compartment, settings)
 
