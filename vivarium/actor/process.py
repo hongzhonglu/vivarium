@@ -13,7 +13,7 @@ from vivarium.utils.units import units
 from vivarium.utils.dict_utils import merge_dicts, deep_merge
 
 
-GLOBAL_STATE_KEY = '__global__'
+COMPARTMENT_STATE = '__compartment_state__'
 
 class topologyError(Exception):
     pass
@@ -293,7 +293,7 @@ class Compartment(State):
 
         self.processes = processes
         self.states = states
-        self.states[GLOBAL_STATE_KEY] = self
+        self.states[COMPARTMENT_STATE] = self
 
         self.state = {'processes': self.processes}
         self.updaters = {'processes': 'set'}
@@ -372,7 +372,7 @@ class Compartment(State):
         return {
             key: state.to_dict()
             for key, state in self.states.items()
-            if key != GLOBAL_STATE_KEY}
+            if key != COMPARTMENT_STATE}
 
     def current_parameters(self):
         return {
@@ -513,7 +513,7 @@ def toy_composite(config):
             'internal': 'cytoplasm'},
         'death': {
             'compartment': 'cytoplasm',
-            'global': GLOBAL_STATE_KEY},
+            'global': COMPARTMENT_STATE},
         'external_volume': {
             'compartment': 'periplasm'},
         'internal_volume': {
