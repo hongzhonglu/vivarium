@@ -1,14 +1,14 @@
 import os
 from vivarium.utils.units import units
 
-from scipy import constants
-
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosome import gfp_plasmid_config
 from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
 from vivarium.processes.translation import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 from vivarium.environment.make_media import Media
+
+from vivarium.processes.derive_globals import AVOGADRO
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -26,13 +26,12 @@ def generate_gfp_compartment(config):
 
     # TODO: deal with volume
     volume = 1e-15 * units.L
-    avogadro = constants.N_A * 1 / units.mol
-    mmol_to_count = avogadro.to('1/mmol') * volume.to('L')
+    mmol_to_counts = AVOGADRO.to('1/mmol') * volume.to('L')
     
-    print(mmol_to_count)
+    print(mmol_to_counts)
 
     PURE_counts = {
-        key: int(value * mmol_to_count)
+        key: int(value * mmol_to_counts)
         for key, value in PURE.items()}
 
     print(PURE)

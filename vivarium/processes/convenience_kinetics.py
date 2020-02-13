@@ -39,7 +39,7 @@ class ConvenienceKinetics(Process):
         roles.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
             'exchange': roles['external'],
-            'global': ['volume']})
+            'global': ['mmol_to_counts']})
 
         # parameters
         parameters = {}
@@ -51,7 +51,6 @@ class ConvenienceKinetics(Process):
 
         # default state
         default_state = self.initial_state
-        default_state['global'] = {'volume': 1.2}  # (fL)
 
         # default emitter keys
         default_emitter_keys = {}
@@ -71,9 +70,8 @@ class ConvenienceKinetics(Process):
 
     def next_update(self, timestep, states):
 
-        # get mmol_to_count for converting flux to exchange counts
-        volume = states['global']['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        # get mmol_to_counts for converting flux to exchange counts
+        mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
         # kinetic rate law requires a flat dict with ('role', 'state') keys.
         flattened_states = tuplify_role_dicts(states)
@@ -97,8 +95,9 @@ class ConvenienceKinetics(Process):
                         state_flux = coeff * flux * timestep
 
                         if role_id == 'external':
-                            # convert exchange fluxes to counts with mmol_to_count
-                            delta_counts = int((state_flux * mmol_to_count).magnitude)
+                            # convert exchange fluxes to counts with mmol_to_counts
+                            # TODO -- use deriver to get exchanges
+                            delta_counts = int((state_flux * mmol_to_counts).magnitude)
                             update['exchange'][state_id] = delta_counts
                         else:
                             update[role_id][state_id] = state_flux
@@ -138,12 +137,12 @@ def get_glc_lct_config():
             ('internal', 'PTSG'): {
                 ('external', 'glc__D_e'): 1e-1,
                 ('internal', 'pep_c'): None,
-                'kcat_f': -3e5}},
+                'kcat_f': 3e5}},
         'EX_lac__D_e': {
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': -1e5}}}
+                'kcat_f': 1e5}}}
 
     transport_initial_state = {
         'internal': {
@@ -156,7 +155,7 @@ def get_glc_lct_config():
             'h_c': 100.0},
         'external': {
             'glc__D_e': 12.0,
-            'lac__D_e': 0.0,
+            'lac__D_e': 10.0,
             'h_e': 100.0},
         'fluxes': {  # TODO -- is this needed?
             'EX_glc__D_e': 0.0,
@@ -186,8 +185,8 @@ def get_toy_config():
     toy_kinetics = {
         'reaction1': {
             ('internal', 'enzyme1'): {
-                ('external', 'B'): 0.1,
-                'kcat_f': 1e-2}}}
+                ('external', 'B'): 0.2,
+                'kcat_f': 5e1}}}
 
     toy_roles = {
         'internal': ['A', 'enzyme1'],
@@ -196,9 +195,9 @@ def get_toy_config():
     toy_initial_state = {
         'internal': {
             'A': 1.0,
-            'enzyme1': 1e-6},
+            'enzyme1': 1e-1},
         'external': {
-            'B': 1.0},
+            'B': 10.0},
         'fluxes': {
             'reaction1': 0.0}}
 
@@ -210,15 +209,16 @@ def get_toy_config():
 
 # test
 def test_convenience_kinetics(end_time=10):
-    toy_config = get_toy_config()
-    kinetic_process = ConvenienceKinetics(toy_config)
+    # config = get_toy_config()
+    config = get_glc_lct_config()
+    kinetic_process = ConvenienceKinetics(config)
 
     settings = {
         'environment_role': 'external',
         'exchange_role': 'exchange',
-        'environment_volume': 1e-6,  # L
+        'environment_volume': 1e-13,  # L
         'timestep': 1,
-        'total_time': 100}
+        'total_time': end_time}
 
     saved_state = simulate_process_with_environment(kinetic_process, settings)
     return saved_state
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 
     plot_settings = {}
 
-    saved_data = test_convenience_kinetics()
+    saved_data = test_convenience_kinetics(1000)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)

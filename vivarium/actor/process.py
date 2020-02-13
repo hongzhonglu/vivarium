@@ -188,8 +188,10 @@ def connect_topology(process_layers, states, topology):
             roles = {
                 role: states[key]
                 for role, key in connections.items()}
-
-            process.assign_roles(roles)
+            try:
+                process.assign_roles(roles)
+            except:
+                print('{} mismatched roles'.format(name))
 
 def merge_default_states(processes):
     initial_state = {}

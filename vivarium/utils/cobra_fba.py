@@ -217,6 +217,8 @@ class CobraFBA(object):
             self.constrain_reaction_bounds(self.flux_bounds)
             self.set_exchange_bounds()
 
+        self.exchange_bounds_keys = list(self.exchange_bounds.keys())
+
         # get minimal external state
         # TODO -- make sure that scaling is accounted for
         max_growth = self.model.slim_optimize()
@@ -250,6 +252,11 @@ class CobraFBA(object):
         for reaction_id, bound in bounds.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
             scaled_level = bound / self.flux_scaling
+
+            if EXTERNAL_PREFIX in reaction_id and \
+                any(substring in reaction_id for substring in self.exchange_bounds_keys):
+                # exchanges use reverse flux
+                scaled_level *= -1
 
             if reaction_id in self.tolerance:
                 # use configured tolerance
