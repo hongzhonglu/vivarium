@@ -30,6 +30,7 @@ default_transcription_parameters = {
     'genes': test_chromosome_config['genes'],
     'elongation_rate': 1.0,
     'advancement_rate': 1.0,
+    'polymerase_occlusion': 30,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
     'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
@@ -77,6 +78,7 @@ class Transcription(Process):
         self.elongation = 0
         self.elongation_rate = self.parameters['elongation_rate']
         self.advancement_rate = self.parameters['advancement_rate']
+        self.polymerase_occlusion = self.parameters['polymerase_occlusion']
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.initiation = StochasticSystem(self.stoichiometry)
@@ -271,7 +273,7 @@ class Transcription(Process):
                     bound_domains[promoter_key].remove(domain)
                     bound_rnap[promoter_index] -= 1
 
-                    # # find rnap on this domain
+                    # find rnap on this domain
                     rnap = promoter_rnaps[promoter_key][domain]
                     rnap.start_transcribing()
 

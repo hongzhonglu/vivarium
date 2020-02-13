@@ -45,7 +45,8 @@ class Polymerase(Datum):
         self.state = 'bound'
 
     def start_transcribing(self):
-        self.state = 'transcribing'
+        self.state = 'occluding'
+        # self.state = 'transcribing'
 
     def complete(self):
         self.state = 'complete'
@@ -55,10 +56,20 @@ class Polymerase(Datum):
         return self.state == 'bound'
 
     def is_polymerizing(self):
-        return self.state == 'transcribing'
+        return self.state == 'occluding' or self.state == 'transcribing'
 
     def is_complete(self):
         return self.state == 'complete'
+
+    def is_occluding(self):
+        return self.state == 'occluding'
+
+    def occlude(self, occlusion):
+        if self.state == 'occluding' and self.occlusion < self.position:
+            self.state = 'transcribing'
+            return True
+        else:
+            return False
 
 class BindingSite(Datum):
     defaults = {
