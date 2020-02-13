@@ -116,7 +116,7 @@ class Translation(Process):
             self.affinity_vector,
             self.advancement_rate)
 
-        self.initiation = StochasticSystem(self.stoichiometry, self.rates)
+        self.initiation = StochasticSystem(self.stoichiometry)
 
         self.ribosome_id = 0
 
@@ -230,7 +230,7 @@ class Translation(Process):
             interval = min(distance / self.elongation_rate, timestep - time)
 
             # run simulation for interval of time to next terminator
-            result = self.initiation.evolve(interval, substrate)
+            result = self.initiation.evolve(interval, substrate, self.rates)
 
             # go through each event in the simulation and update the state
             ribosome_bindings = 0
