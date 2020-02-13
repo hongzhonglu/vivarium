@@ -78,7 +78,7 @@ if __name__ == '__main__':
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (400, {'environment': {
+        (600, {'environment': {
             'glc__D_e': 0.0}
         }),
         (1200, {'environment': {
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-12,  # L
+        'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
     plot_settings = {

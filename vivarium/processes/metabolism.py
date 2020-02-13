@@ -16,7 +16,7 @@ from vivarium.processes.derive_globals import AVOGADRO
 
 # external concentrations lower than exchange threshold are considered depleted
 EXCHANGE_THRESHOLD = 1e-6
-GLOBALS = ['volume', 'mass']
+GLOBALS = ['volume', 'mass', 'mmol_to_count']
 
 
 class Metabolism(Process):
@@ -109,7 +109,6 @@ class Metabolism(Process):
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'deriver_setting': deriver_setting,
             'updaters': default_updaters}
 
     def next_update(self, timestep, states):
@@ -117,11 +116,8 @@ class Metabolism(Process):
         ## get the state
         external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
-        mass = states['global']['mass'] * units.fg
-        volume = mass.to('g') / self.density  # TODO -- this can be handled by the deriver
-
-        # conversion factors
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
+        volume = states['global']['volume'] * units.fL
+        mmol_to_count = states['global']['mmol_to_count'] * units.L / units.mmol
 
         ## get flux constraints
         # exchange_constraints based on external availability
