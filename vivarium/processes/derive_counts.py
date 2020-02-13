@@ -15,7 +15,7 @@ class DeriveCounts(Process):
 
         roles = initial_parameters.get('roles')
         roles.update({
-            'global': ['volume', 'mmol_to_count']})
+            'global': ['volume', 'mmol_to_counts']})
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -30,7 +30,7 @@ class DeriveCounts(Process):
         default_state = {
             'global': {
                 'volume': volume.magnitude,
-                'mmol_to_count': mmol_to_counts.magnitude}}
+                'mmol_to_counts': mmol_to_counts.magnitude}}
 
         # default emitter keys
         default_emitter_keys = {}
@@ -48,13 +48,13 @@ class DeriveCounts(Process):
         return default_settings
 
     def next_update(self, timestep, states):
-        mmol_to_count = states['global']['mmol_to_count']
+        mmol_to_counts = states['global']['mmol_to_counts']
         concentrations = {role: state for role, state in states.items() if role not in ['counts', 'global']}
 
         counts = {}
         for role, states in concentrations.items():
             for state_id, conc in states.items():
-                counts[state_id] = int(conc * mmol_to_count)
+                counts[state_id] = int(conc * mmol_to_counts)
 
         return {
             'counts': counts}

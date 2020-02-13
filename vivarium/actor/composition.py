@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.utils.dict_utils import deep_merge
-from vivarium.actor.process import initialize_state, Compartment
+from vivarium.actor.process import initialize_state, simulate_compartment, Compartment
 from vivarium.utils.units import units
 
 # processes
@@ -134,6 +134,10 @@ def simulate_process_with_environment(process, settings={}):
     compartment = process_in_compartment(process)
     return simulate_with_environment(compartment, settings)
 
+def simulate_process(process, settings={}):
+    compartment = process_in_compartment(process)
+    return simulate_compartment(compartment, settings)
+
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
@@ -182,8 +186,8 @@ def simulate_with_environment(compartment, settings={}):
         # get counts, convert to change in concentration
         if exchange:
             delta_counts = exchange.state_for(exchange_ids)
-            mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-            delta_concs = {mol_id: counts / mmol_to_count for mol_id, counts in delta_counts.items()}
+            mmol_to_counts = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
+            delta_concs = {mol_id: counts / mmol_to_counts for mol_id, counts in delta_counts.items()}
             environment.apply_update(delta_concs)
 
             # reset exchange

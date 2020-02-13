@@ -15,7 +15,7 @@ class DeriveConcs(Process):
 
         roles = initial_parameters.get('roles')
         roles.update({
-            'global': ['volume', 'mmol_to_count']})
+            'global': ['volume', 'mmol_to_counts']})
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -30,7 +30,7 @@ class DeriveConcs(Process):
         default_state = {
             'global': {
                 'volume': volume.magnitude,
-                'mmol_to_count': mmol_to_counts.magnitude}}
+                'mmol_to_counts': mmol_to_counts.magnitude}}
 
         # default emitter keys
         default_emitter_keys = {}
@@ -51,14 +51,14 @@ class DeriveConcs(Process):
     def next_update(self, timestep, states):
 
         # states
-        mmol_to_count = states['global']['mmol_to_count']
+        mmol_to_counts = states['global']['mmol_to_counts']
         counts = {role: state for role, state in states.items() if role not in ['concentrations', 'global']}
 
         # concentration update
         concentrations = {}
         for role, states in counts.items():
             for state_id, count in states.items():
-                concentrations[state_id] = count / mmol_to_count
+                concentrations[state_id] = count / mmol_to_counts
 
         for mol_id, conc in concentrations.items():
             assert conc >= 0, 'derived {} concentration < 0'.format(mol_id)

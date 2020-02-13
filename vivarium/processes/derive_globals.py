@@ -40,7 +40,7 @@ class DeriveGlobals(Process):
             'growth_rate': 0.0,
             'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
-            'mmol_to_counts': mmol_to_counts,
+            'mmol_to_counts': mmol_to_counts.magnitude,
             'prior_mass': mass.magnitude}
 
         default_state = {

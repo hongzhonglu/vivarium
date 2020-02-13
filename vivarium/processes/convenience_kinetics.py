@@ -70,8 +70,8 @@ class ConvenienceKinetics(Process):
 
     def next_update(self, timestep, states):
 
-        # get mmol_to_count for converting flux to exchange counts
-        mmol_to_count = states['global']['mmol_to_counts'] * units.L / units.mmol
+        # get mmol_to_counts for converting flux to exchange counts
+        mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
         # kinetic rate law requires a flat dict with ('role', 'state') keys.
         flattened_states = tuplify_role_dicts(states)
@@ -95,9 +95,9 @@ class ConvenienceKinetics(Process):
                         state_flux = coeff * flux * timestep
 
                         if role_id == 'external':
-                            # convert exchange fluxes to counts with mmol_to_count
+                            # convert exchange fluxes to counts with mmol_to_counts
                             # TODO -- use deriver to get exchanges
-                            delta_counts = int((state_flux * mmol_to_count).magnitude)
+                            delta_counts = int((state_flux * mmol_to_counts).magnitude)
                             update['exchange'][state_id] = delta_counts
                         else:
                             update[role_id][state_id] = state_flux

@@ -16,7 +16,7 @@ from vivarium.processes.derive_globals import AVOGADRO
 
 # external concentrations lower than exchange threshold are considered depleted
 EXCHANGE_THRESHOLD = 1e-6
-GLOBALS = ['volume', 'mass', 'mmol_to_count']
+GLOBALS = ['volume', 'mass', 'mmol_to_counts']
 
 
 class Metabolism(Process):
@@ -117,7 +117,7 @@ class Metabolism(Process):
         external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
         volume = states['global']['volume'] * units.fL
-        mmol_to_count = states['global']['mmol_to_count'] * units.L / units.mmol
+        mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
         ## get flux constraints
         # exchange_constraints based on external availability
@@ -153,7 +153,7 @@ class Metabolism(Process):
 
         # update internal counts from objective flux
         # calculate added mass from the objective molecules' molecular weights
-        objective_count = (objective_exchange * mmol_to_count).magnitude
+        objective_count = (objective_exchange * mmol_to_counts).magnitude
         added_mass = 0.0
         internal_state_update = {}
         for reaction_id, coeff1 in self.fba.objective.items():
@@ -169,7 +169,7 @@ class Metabolism(Process):
 
         # convert exchange fluxes to counts
         exchange_deltas = {
-            reaction: int((flux * mmol_to_count).magnitude)
+            reaction: int((flux * mmol_to_counts).magnitude)
             for reaction, flux in exchange_fluxes.items()}
 
         all_fluxes = {}
@@ -200,7 +200,7 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     mass = global_ts.pop('mass')
 
     # conversion factor
-    mmol_to_count = [nAvogadro.to('1/mmol') * vol.to('L') for vol in volume]
+    mmol_to_counts = [nAvogadro.to('1/mmol') * vol.to('L') for vol in volume]
 
     # plot results
     cols = 1
@@ -223,7 +223,7 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     # plot internal concentrations
     for mol_id, counts_series in internal_ts.items():
         conc_series = [(count / conversion).to('mmol/L').magnitude
-           for count, conversion in zip(counts_series, mmol_to_count)]
+           for count, conversion in zip(counts_series, mmol_to_counts)]
         ax2.plot(conc_series, label=mol_id)
 
     ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
