@@ -10,6 +10,7 @@ import vivarium.actor.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge
 
 
+COMPARTMENT_STATE = '__compartment_state__'
 
 class topologyError(Exception):
     pass
@@ -151,7 +152,7 @@ class Process(object):
         ''' Called each timestep to find the next state for this process. '''
 
         states = {
-            role: self.states[role].state_for(self.roles[role])
+            role: self.states[role].state_for(values)
             for role, values in self.roles.items()}
 
         return self.next_update(timestep, states)
@@ -279,7 +280,7 @@ def initialize_state(process_layers, topology, initial_state):
 
     return initialized_state
 
-class Compartment(object):
+class Compartment(State):
     ''' Track a set of processes and states and the connections between them. '''
 
     def __init__(self, processes, states, configuration):
@@ -292,6 +293,12 @@ class Compartment(object):
 
         self.processes = processes
         self.states = states
+
+        # configure compartment state
+        self.states[COMPARTMENT_STATE] = self
+        self.state = {'processes': self.processes}
+        self.updaters = {'processes': 'set'}
+
         self.configuration = configuration
         self.topology = configuration['topology']
 
@@ -325,10 +332,19 @@ class Compartment(object):
             'data': data}
         self.emitter.emit(emit_config)
 
+    def prepare(self):
+        ''' Avoid creating a copy of the process objects. '''
+        self.new_state = self.state
+
+    def to_dict(self):
+        ''' overriding from State '''
+        return self.current_state()
+
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
-        for processes in self.processes:
+        # use processes from state
+        for processes in self.state['processes']:
             updates = {}
             for name, process in processes.items():
                 update = process.update_for(timestep)
@@ -357,12 +373,13 @@ class Compartment(object):
 
         return {
             key: state.to_dict()
-            for key, state in self.states.items()}
+            for key, state in self.states.items()
+            if key != COMPARTMENT_STATE}
 
     def current_parameters(self):
         return {
             name: process.parameters
-            for name, process in merge_dicts(self.processes).items()}
+            for name, process in merge_dicts(self.state['processes']).items()}
 
     def time(self):
         return self.initial_time + self.local_time
@@ -448,13 +465,34 @@ def toy_composite(config):
 
             return update
 
+    class ToyDeath(Process):
+        def __init__(self, initial_parameters={}):
+            roles = {
+                'compartment': ['VOLUME'],
+                'global': ['processes']}
+            super(ToyDeath, self).__init__(roles, {})
+
+        def next_update(self, timestep, states):
+            volume = states['compartment']['VOLUME']
+            update = {}
+
+            if volume > 1.0:
+                # kill the cell
+                update = {
+                    'global': {
+                        'processes': []}}
+
+            return update
+
+
     processes = [
         {'metabolism': ToyMetabolism(
             initial_parameters={
                 'mass_conversion_rate': 0.5}), # example of overriding default parameters
          'transport': ToyTransport()},
         {'external_volume': ToyDeriveVolume(),
-         'internal_volume': ToyDeriveVolume()}]
+         'internal_volume': ToyDeriveVolume()},
+        {'death': ToyDeath()}]
 
     def update_mass(key, state, current, new):
         return current / (current + new), {}
@@ -475,6 +513,9 @@ def toy_composite(config):
         'transport': {
             'external': 'periplasm',
             'internal': 'cytoplasm'},
+        'death': {
+            'compartment': 'cytoplasm',
+            'global': COMPARTMENT_STATE},
         'external_volume': {
             'compartment': 'periplasm'},
         'internal_volume': {
