@@ -71,7 +71,7 @@ class MotorActivity(Process):
         internal = INITIAL_STATE
         default_state = {
             'external': {},
-            'internal': deep_merge(internal, {'volume': 1})}
+            'internal': internal}
 
         # default emitter keys
         default_emitter_keys = {
@@ -83,8 +83,7 @@ class MotorActivity(Process):
                 'motor_state',
                 'CheA',
                 'CheY_P'],
-            'external': [],
-        }
+            'external': []}
 
         # default updaters
         set_states = [
@@ -95,6 +94,7 @@ class MotorActivity(Process):
             'motor_state',
             'CheA',
             'CheY_P']
+
         default_updaters = {
             'internal': {state_id: 'set' for state_id in set_states},
             'external': {}}

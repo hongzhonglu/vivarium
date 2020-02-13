@@ -25,6 +25,7 @@ class Datum(object):
 
     def __init__(self, config, default):
         self.keys = list(set(list(config.keys()) + list(default.keys()))) # a dance
+
         for key in self.keys:
             value = config.get(key, default[key])
             if value and key in self.schema:
@@ -54,5 +55,5 @@ class Datum(object):
         return to
 
     def __repr__(self):
-        return str(self.to_dict())
+        return str(type(self)) + ': ' + str(self.to_dict())
 
