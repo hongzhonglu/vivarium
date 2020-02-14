@@ -68,13 +68,13 @@ class Antibiotics(ConvenienceKinetics):
             'kinetic_parameters': {
                 'antibiotic_import': {
                     ('internal', 'antibiotic_importer'): {
-                        'kcat_f': 0.6,
+                        'kcat_f': 1e-4,
                         ('external', 'antibiotic'): 0.6,
                     },
                 },
                 'antibiotic_export': {
                     ('internal', 'antibiotic_exporter'): {
-                        'kcat_f': 1e5,
+                        'kcat_f': 2e-4,
                         ('internal', 'antibiotic'): 0.6,
                     },
                 },
@@ -118,7 +118,7 @@ class Antibiotics(ConvenienceKinetics):
 def test_antibiotics():
     process = Antibiotics()
     settings = {
-        'total_time': 20,
+        'total_time': 4000,
         'exchange_role': 'exchange',
         'environment_role': 'external',
         'environment_volume': 1e-15, # Units of L

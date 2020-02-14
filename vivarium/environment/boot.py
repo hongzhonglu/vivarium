@@ -54,6 +54,9 @@ from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 from vivarium.composites.variable_flagella import compose_variable_flagella
+from vivarium.composites.antibiotic_growth import (
+    compose_antibiotic_growth,
+)
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -351,12 +354,12 @@ def initialize_antibiotic(boot_config):
     lattice_config = {
         'name': 'measp_long',
         'new_media': new_media,
-        'timeline_str': '0 {}, 5000 end'.format(media_id),
+        'timeline_str': '0 {}, 2000 end'.format(media_id),
         'emit_fields': ['antibiotic'],
         'run_for': 1.0,  # timestep, in sec
         'rotation_jitter': 0.005,
-        'edge_length_x': 1.0,  # µm
-        'edge_length_y': 1.0,  # µm
+        'edge_length_x': 5.0,  # µm
+        'edge_length_y': 5.0,  # µm
         'depth': 1.0,  # µm
         # Patches discretize space for diffusion
         'patches_per_edge_x': 1,
@@ -466,7 +469,11 @@ class BootEnvironment(BootAgent):
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
-            }
+            'antibiotic_composite': wrap_boot(
+                wrap_init_composite(compose_antibiotic_growth),
+                {'volume': 1.0},
+            ),
+        }
 
 def run():
     boot = BootEnvironment()

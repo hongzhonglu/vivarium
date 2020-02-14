@@ -13,7 +13,6 @@ from vivarium.utils.units import units
 from vivarium.utils.dict_utils import merge_dicts, deep_merge
 
 
-
 class topologyError(Exception):
     pass
 
@@ -231,6 +230,8 @@ def default_death_freeze_state_meta_process(compartment):
     set to the empty list, preventing processes from changing the state
     in future timesteps.
     '''
+    if 'internal' not in compartment.topology.get('death', {}):
+        return
     internal_state_key = compartment.topology['death']['internal']
     internal_state = compartment.states[internal_state_key]
     if (

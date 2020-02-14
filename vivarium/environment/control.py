@@ -98,9 +98,29 @@ class ShepherdControl(ActorControl):
         self.init_experiment(args, exp_config)
 
     def antibiotic_experiment(self, args, actor_config):
-        experiment_id = args.get('experiment_id', 'antibiotic')
-        print('Creating lattice agent_id {} and {} cell agents'.format(
-            experiment_id, args['number']))
+        experiment_id = 'antibiotic'
+        environment_type = 'antibiotic_environment'
+        agent_type = 'antibiotic_composite'
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'antibiotic_experiment',
+            'description': (
+                'antibiotic_composite agents are placed in '
+                'an environment with antibiotics'
+            ),
+        }
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type,
+            'num_cells': 1
+        }
+
+        self.init_experiment(args, exp_config)
 
 
     def ecoli_core_experiment(self, args, actor_config):
@@ -205,6 +225,7 @@ class EnvironmentCommand(AgentCommand):
             'ecoli-core-experiment',
             'chemotaxis-experiment',
             'swarm-experiment',
+            'antibiotic_experiment',
             ] + choices
 
         super(EnvironmentCommand, self).__init__(
@@ -240,6 +261,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.swarm_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def antibiotic_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.antibiotic_experiment(args, self.actor_config)
         control.shutdown()
 
     def add_arguments(self, parser):
