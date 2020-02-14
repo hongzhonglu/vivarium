@@ -237,7 +237,7 @@ def get_compartment_timestep(process_layers):
 
     return minimum_step
 
-def initialize_state(process_layers, topology, initial_state):
+def initialize_state(process_layers, topology, schema, initial_state):
     processes = merge_dicts(process_layers)
 
     # make a dict with the compartment's default states {roles: states}
@@ -248,7 +248,6 @@ def initialize_state(process_layers, topology, initial_state):
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
-        default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.items():
             try:
@@ -260,15 +259,20 @@ def initialize_state(process_layers, topology, initial_state):
             # initialize the default states
             default_states = default_process_states.get(process_role, {})
 
-            # initialize the default updaters
-            default_updaters = default_process_updaters.get(process_role, {})
+            # get updater from schema
+            updaters = {}
+            role_schema = schema.get(compartment_role, {})
+            for state in states:
+                if state in role_schema:
+                    updater = role_schema[state].get('updater')
+                    updaters.update({state: updater})
 
             # update the states
             c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
             compartment_states[compartment_role] = c_states
 
             # update the updaters
-            c_updaters = deep_merge(default_updaters, compartment_updaters.get(compartment_role, {}))
+            c_updaters = deep_merge(updaters, compartment_updaters.get(compartment_role, {}))
             compartment_updaters[compartment_role] = c_updaters
 
     # initialize state for each compartment role
@@ -303,6 +307,7 @@ class Compartment(State):
 
         self.configuration = configuration
         self.topology = configuration['topology']
+        self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
         self.divide_state = configuration.get('divide_state', default_divide_state)
