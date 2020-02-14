@@ -33,9 +33,10 @@ def add_merge(ds):
 class Polymerase(Datum):
     defaults = {
         'id': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'complete']
         'position': 0,
         'template': None,
+        'template_index': 0,
         'terminator': 0}
 
     def __init__(self, config, defaults=defaults):
@@ -44,9 +45,9 @@ class Polymerase(Datum):
     def bind(self):
         self.state = 'bound'
 
-    def start_transcribing(self):
+    def start_polymerizing(self):
         self.state = 'occluding'
-        # self.state = 'transcribing'
+        # self.state = 'polymerizing'
 
     def complete(self):
         self.state = 'complete'
@@ -56,7 +57,7 @@ class Polymerase(Datum):
         return self.state == 'bound'
 
     def is_polymerizing(self):
-        return self.state == 'occluding' or self.state == 'transcribing'
+        return self.state == 'occluding' or self.state == 'polymerizing'
 
     def is_complete(self):
         return self.state == 'complete'
@@ -64,12 +65,12 @@ class Polymerase(Datum):
     def is_occluding(self):
         return self.state == 'occluding'
 
-    def occlude(self, occlusion):
-        if self.state == 'occluding' and self.occlusion < self.position:
-            self.state = 'transcribing'
-            return True
-        else:
-            return False
+    def is_unoccluding(self, occlusion):
+        return self.state == 'occluding' and self.position > occlusion
+
+    def unocclude(self):
+        if self.state == 'occluding':
+            self.state = 'polymerizing'
 
 class BindingSite(Datum):
     defaults = {

@@ -30,7 +30,7 @@ default_transcription_parameters = {
     'genes': test_chromosome_config['genes'],
     'elongation_rate': 1.0,
     'advancement_rate': 1.0,
-    'polymerase_occlusion': 30,
+    'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
     'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
@@ -45,7 +45,7 @@ class Transcription(Process):
         * promoter_order - a list representing a canonical ordering of the promoters.
         * elongation_rate - elongation rate of polymerizing mRNA.
         * advancement_rate - affinity for RNAP to move from the 'bound' to the 
-            'transcribing' state.
+            'polymerizing' state.
         '''
 
         if VERBOSE:
@@ -173,18 +173,31 @@ class Transcription(Process):
 
         # Find out how many promoters are currently blocked by a
         # newly initiated rnap
-        bound_rnap = []
+        promoter_count = len(chromosome.promoter_order)
+        bound_rnap = np.zeros(promoter_count, dtype=np.int64)
+        occluding_rnap = np.zeros(promoter_count, dtype=np.int64)
         open_domains = {}
         bound_domains = {}
-        for promoter_key in chromosome.promoter_order:
-            bound_domains[promoter_key] = set([
-                rnap.domain
-                for rnap in promoter_rnaps.get(promoter_key, {}).values()
-                if rnap.is_bound()])
-            bound_rnap.append(len(bound_domains[promoter_key]))
+        for promoter_index, promoter_key in enumerate(chromosome.promoter_order):
+            domains = []
+            for rnap in promoter_rnaps.get(promoter_key, {}).values():
+                if rnap.is_bound():
+                    domains.append(rnap.domain)
+                    bound_rnap[promoter_index] += 1
+                if rnap.is_occluding:
+                    occluding_rnap[promoter_index] += 1
+
+            # bound_domains[promoter_key] = set([
+            #     rnap.domain
+            #     for rnap in promoter_rnaps.get(promoter_key, {}).values()
+            #     if rnap.is_bound()])
+            # bound_rnap.append(len(bound_domains[promoter_key]))
+
+            bound_domains[promoter_key] = set(domains)
             open_domains[promoter_key] = promoter_domains[promoter_key] - bound_domains[promoter_key]
 
         bound_rnap = np.array(bound_rnap)
+        occluding_rnap = np.array(occluding_rnap)
 
         # Make the state for a gillespie simulation out of total number of each
         # promoter by copy number not blocked by initiated rnap,
@@ -214,8 +227,8 @@ class Transcription(Process):
         while time < timestep:
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
-                copy_numbers - bound_rnap,
-                bound_rnap,
+                copy_numbers - bound_rnap - occluding_rnap,
+                bound_rnap - occluding_rnap,
                 [unbound_rnaps]])
 
             if VERBOSE and time == 0:
@@ -234,7 +247,6 @@ class Transcription(Process):
                 initiation_rates)
 
             # go through each event in the simulation and update the state
-            rnap_bindings = 0
             for now, event in zip(result['time'], result['events']):
 
                 # perform the elongation until the next event
@@ -245,6 +257,13 @@ class Transcription(Process):
                     chromosome.rnaps)
                 unbound_rnaps += terminations
 
+                # deal with occluding rnap
+                for rnap in chromosome.rnaps:
+                    if rnap.is_unoccluding(self.polymerase_occlusion):
+                        occluding_rnap[rnap.template_index] -= 1
+                        open_domains[rnap.template].add(rnap.domain)
+                        rnap.unocclude()
+
                 # RNAP has bound the promoter
                 if event < self.promoter_count:
                     promoter_key = chromosome.promoter_order[event]
@@ -252,15 +271,16 @@ class Transcription(Process):
                     domains = open_domains[promoter_key]
                     domain = choose_element(domains)
 
+                    import ipdb; ipdb.set_trace()
+
                     bound_rnap[event] += 1
                     bound_domains[promoter_key].add(domain)
                     open_domains[promoter_key].remove(domain)
 
                     # create a new bound RNAP and add it to the chromosome.
-                    new_rnap = chromosome.bind_rnap(promoter_key, domain)
+                    new_rnap = chromosome.bind_rnap(promoter_index, domain)
                     promoter_rnaps[promoter_key][domain] = new_rnap
 
-                    rnap_bindings += 1
                     unbound_rnaps -= 1
                 # RNAP has begun polymerizing its transcript
                 else:
@@ -269,15 +289,15 @@ class Transcription(Process):
                     domains = bound_domains[promoter_key]
                     domain = choose_element(domains)
 
-                    open_domains[promoter_key].add(domain)
-                    bound_domains[promoter_key].remove(domain)
-                    bound_rnap[promoter_index] -= 1
-
                     # find rnap on this domain
                     rnap = promoter_rnaps[promoter_key][domain]
-                    rnap.start_transcribing()
-
+                    rnap.start_polymerizing()
                     del promoter_rnaps[promoter_key][domain]
+
+                    # open_domains[promoter_key].add(domain)
+                    bound_domains[promoter_key].remove(domain)
+                    bound_rnap[promoter_index] -= 1
+                    occluding_rnap[promoter_index] += 1
 
             # now that all events have been accounted for, elongate
             # until the end of this interval.
@@ -287,6 +307,13 @@ class Transcription(Process):
                 monomer_limits,
                 chromosome.rnaps)
             unbound_rnaps += terminations
+
+            # deal with occluding rnap
+            for rnap in chromosome.rnaps:
+                if rnap.is_unoccluding():
+                    occluding_rnap[rnap.template_index] -= 1
+                    open_domains[rnap.template].add(rnap.domain)
+                    rnap.unocclude()
 
             time += interval
 

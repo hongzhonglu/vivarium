@@ -8,6 +8,7 @@ test_chromosome_config = {
         'oAZ': ['A', 'Z'],
         'oA': ['A'],
         'oB': ['B']},
+    'promoter_order': ['pA', 'pB'],
     'promoters': {
         'pA': {
             'id': 'pA',
@@ -54,18 +55,21 @@ test_chromosome_config = {
     'rnaps': [
         {
             'template': 'pA',
+            'template_index': 0,
             'domain': 0,
-            'state': 'transcribing',
+            'state': 'polymerizing',
             'position': 3},
         {
             'template': 'pA',
+            'template_index': 0,
             'domain': 0,
-            'state': 'transcribing',
+            'state': 'polymerizing',
             'position': 6},
         {
             'template': 'pA',
+            'template_index': 0,
             'domain': 0,
-            'state': 'transcribing',
+            'state': 'polymerizing',
             'position': 0}]}
 
 

@@ -269,7 +269,7 @@ class Translation(Process):
                     bound_transcripts[transcript_index] -= 1
 
                     ribosome = ribosomes_by_transcript[transcript_key].pop()
-                    ribosome.start_transcribing()
+                    ribosome.start_polymerizing()
 
             # now that all events have been accounted for, elongate
             # until the end of this interval.
