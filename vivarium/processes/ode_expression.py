@@ -80,7 +80,7 @@ class ODE_expression(Process):
     def next_update(self, timestep, states):
         internal_state = states['internal']
         volume = internal_state['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume
+        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
@@ -188,4 +188,4 @@ if __name__ == '__main__':
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
-    
+
