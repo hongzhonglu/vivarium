@@ -142,17 +142,21 @@ class FlagellaActivity(Process):
             'motile_force',
             'motile_torque']
 
-        default_updaters = {
-            'internal': {state_id: 'set' for state_id in internal_set_states},
-            'membrane': {'PROTONS': 'accumulate'},
-            'flagella': {'flagella_activity': 'set'},
-            'external': {}}
+        # schema
+        internal_schema = {
+            state_id: {
+                'updater': 'set'}
+            for state_id in internal_set_states}
+        schema = {
+            'internal': internal_schema,
+            'membrane': {'PROTONS': {'updater': 'accumulate'}},
+            'flagella': {'flagella_activity': {'updater': 'set'}}}
 
         default_settings = {
             'process_id': 'motor',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'time_step': 0.001}
 
         return default_settings

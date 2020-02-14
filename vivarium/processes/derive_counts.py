@@ -35,15 +35,17 @@ class DeriveCounts(Process):
         # default emitter keys
         default_emitter_keys = {}
 
-        # default updaters
-        default_updaters = {
-            'counts': {state_id: 'set'
+        # schema
+        schema = {
+            'counts': {
+                state_id : {
+                    'updater': 'set'}
                 for state_id in self.roles['counts']}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 
