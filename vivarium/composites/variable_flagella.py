@@ -5,12 +5,12 @@ import os
 import random
 
 from vivarium.actor.process import initialize_state
+from vivarium.actor.composition import get_derivers
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.derive_global import DeriveGlobal
 from vivarium.processes.division import Division, divide_condition, divide_state
 
 
@@ -37,18 +37,14 @@ def compose_variable_flagella(config):
 
     # Other processes
     division_config = copy.deepcopy(config)
-    # division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
-    deriver = DeriveGlobal(config)
 
     # Place processes in layers
     processes = [
         {'PMF': PMF},
         {'receptor': receptor},
         {'flagella': flagella},
-        {'deriver': deriver,
-         'division': division}
-    ]
+        {'division': division}]
 
     ## Make the topology
     # for each process, map process roles to compartment roles
@@ -58,6 +54,7 @@ def compose_variable_flagella(config):
             'external': 'environment'},
         'flagella': {
             'internal': 'cell',
+            'counts': 'counts',
             'external': 'environment',
             'membrane': 'membrane',
             'flagella': 'flagella'},
@@ -66,13 +63,14 @@ def compose_variable_flagella(config):
             'external': 'environment',
             'membrane': 'membrane'},
         'division': {
-            'global': 'global'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
             'global': 'global'}}
 
-    ## Initialize the states
+    # add derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
+
+    # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -97,7 +95,6 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # TODO -- load print emitter
     compartment = load_compartment(compose_variable_flagella)
 
     # settings for simulation and plot

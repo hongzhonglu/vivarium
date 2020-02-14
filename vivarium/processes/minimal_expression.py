@@ -2,12 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import random
-import copy
 
 from vivarium.actor.process import Process
-from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.regulation_logic import build_rule
+from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
+    plot_simulation_output
+
 
 
 default_step_size = 1
@@ -33,7 +34,8 @@ class MinimalExpression(Process):
 
         roles = {
             'internal': self.internal_states + internal_regulators,
-            'external': external_regulators}
+            'external': external_regulators,
+            'concentrations': []}
 
         parameters = {
             'expression_rates': expression_rates,
@@ -57,10 +59,17 @@ class MinimalExpression(Process):
         # default updaters
         default_updaters = {}
 
+        deriver_setting = [{
+            'type': 'counts_to_mmol',
+            'source_role': 'internal',
+            'derived_role': 'concentrations',
+            'keys': self.internal_states}]
+
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'updaters': default_updaters,
+            'deriver_setting': deriver_setting}
 
         return default_settings
 
@@ -84,16 +93,17 @@ class MinimalExpression(Process):
                 if random.random() < rate:
                     internal_update[state_id] += 1
 
-        return {'internal': internal_update}
+        return {
+            'internal': internal_update}
 
 
 
 # test functions
 def test_expression(end_time=10):
     toy_expression_rates = {
-        'protein1': 1e-3,
-        'protein2': 1e-2,
-        'protein3': 1e-1}
+        'protein1': 1e-2,
+        'protein2': 1e-1,
+        'protein3': 1e0}
 
     expression_config = {
         'expression_rates': toy_expression_rates}
@@ -101,34 +111,15 @@ def test_expression(end_time=10):
     # load process
     expression = MinimalExpression(expression_config)
 
-    # get initial state and parameters
-    settings = expression.default_settings()
-    state = settings['state']
-    skip_roles = ['exchange']
 
-    # initialize saved data
-    saved_state = {}
+    settings = {
+        'total_time': 100,
+        # 'exchange_role': 'exchange',
+        'environment_role': 'external',
+        'environment_volume': 1e-12}
 
-    # run the simulation
-    time = 0
-    timestep = 5
-
-    saved_state[0] = state
-    while time < end_time:
-        time += timestep
-        # get update
-        update = expression.next_update(timestep, state)
-
-        # apply update
-        for role_id, states_update in update.items():
-            if role_id not in skip_roles:
-                for state_id, change in states_update.items():
-                    state[role_id][state_id] += change
-
-        saved_state[time] = copy.deepcopy(state)
-
-    return saved_state
-
+    compartment = process_in_compartment(expression)
+    return simulate_with_environment(compartment, settings)
 
 
 if __name__ == '__main__':
