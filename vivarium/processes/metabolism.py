@@ -32,7 +32,6 @@ class Metabolism(Process):
     """
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
-        self.density = 1100 * units.g/units.L
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
@@ -93,23 +92,23 @@ class Metabolism(Process):
             'external': self.fba.external_molecules,
             'reactions': self.reaction_ids}
 
-        # default updaters
-        set_internal_states = {state_id: 'set'
+        # schema
+        set_internal_states = {state_id: {'updater': 'set'}
             for state_id in self.reaction_ids}
-        accumulate_internal_states = {state_id: 'accumulate'
+        accumulate_internal_states = {state_id: {'updater': 'accumulate'}
             for state_id in self.objective_molecules}
-        default_updaters = {
+        schema = {
             'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
-            'external': {mol_id: 'accumulate' for mol_id in self.fba.external_molecules},
-            'reactions': {rxn_id: 'set' for rxn_id in self.reaction_ids},
-            'exchange': {rxn_id: 'set' for rxn_id in self.fba.external_molecules},
-            'flux_bounds': {rxn_id: 'set' for rxn_id in self.constrained_reaction_ids},
-            'global': {'mass': 'accumulate'}}
+            'external': {mol_id: {'updater': 'accumulate'} for mol_id in self.fba.external_molecules},
+            'reactions': {rxn_id: {'updater': 'set'} for rxn_id in self.reaction_ids},
+            'exchange': {rxn_id: {'updater': 'set'} for rxn_id in self.fba.external_molecules},
+            'flux_bounds': {rxn_id: {'updater': 'set'} for rxn_id in self.constrained_reaction_ids},
+            'global': {'mass': {'updater': 'accumulate'}}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
     def next_update(self, timestep, states):
 

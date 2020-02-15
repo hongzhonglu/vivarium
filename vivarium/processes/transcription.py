@@ -135,24 +135,26 @@ class Transcription(Process):
             'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
-        default_updaters = {
+        # schema
+        set_states = [
+            'sequence',
+            'genes',
+            'promoters',
+            'domains',
+            'root_domain',
+            'promoter_order',
+            'rnap_id',
+            'rnaps']
+        schema = {
             'chromosome': {
-                'sequence': 'set',
-                'genes': 'set',
-                'promoters': 'set',
-                'domains': 'set',
-                'root_domain': 'set',
-                'promoter_order': 'set',
-                'rnap_id': 'set',
-                'rnaps': 'set'},
-            'molecules': {},
-            'transcripts': {},
-            'factors': {}}
+                state_id : {
+                    'updater': 'set'}
+                for state_id in set_states}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'set_states': set_states,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):

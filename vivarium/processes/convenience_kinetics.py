@@ -55,15 +55,18 @@ class ConvenienceKinetics(Process):
         # default emitter keys
         default_emitter_keys = {}
 
-        # default updaters
-        default_updaters = {
-            'fluxes': {flux_id: 'set' for flux_id in self.kinetic_rate_laws.reaction_ids}}
+        # schema
+        schema = {
+            'fluxes': {
+                flux_id : {
+                    'updater': 'set'}
+                for flux_id in self.kinetic_rate_laws.reaction_ids}}
 
         default_settings = {
             'process_id': 'convenience_kinetics',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'time_step': 1.0}
 
         return default_settings

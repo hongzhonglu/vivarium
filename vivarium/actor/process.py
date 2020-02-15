@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 import vivarium.actor.emitter as emit
-from vivarium.utils.dict_utils import merge_dicts, deep_merge
+from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
 COMPARTMENT_STATE = '__compartment_state__'
@@ -24,21 +24,15 @@ def npize(d):
 
     return keys, values
 
-def update_delta(key, state_dict, current_value, new_value):
+def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-# def accumulate_delta(key, state_dict, current_value, new_value):
-#     new_key = key + exchange_key
-#     return current_value, {new_key: state_dict[new_key] + new_value}
-
 updater_library = {
-    'delta': update_delta,
-    'set': update_set,
-    'accumulate': update_delta,  # TODO -- remove accumulate
-}
+    'accumulate': update_accumulate,
+    'set': update_set}
 
 
 KEY_TYPE = 'U31'
@@ -86,7 +80,7 @@ class State(object):
 
         for key, value in update.items():
             # updater can be a function or a key into the updater library
-            updater = self.updaters.get(key, 'delta')
+            updater = self.updaters.get(key, 'accumulate')
             if not callable(updater):
                 updater = updater_library[updater]
 
@@ -237,7 +231,7 @@ def get_compartment_timestep(process_layers):
 
     return minimum_step
 
-def initialize_state(process_layers, topology, initial_state):
+def initialize_state(process_layers, topology, schema, initial_state):
     processes = merge_dicts(process_layers)
 
     # make a dict with the compartment's default states {roles: states}
@@ -248,7 +242,6 @@ def initialize_state(process_layers, topology, initial_state):
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
-        default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.items():
             try:
@@ -260,15 +253,21 @@ def initialize_state(process_layers, topology, initial_state):
             # initialize the default states
             default_states = default_process_states.get(process_role, {})
 
-            # initialize the default updaters
-            default_updaters = default_process_updaters.get(process_role, {})
+            # get updater from schema
+            updaters = {}
+            role_schema = schema.get(compartment_role, {})
+            for state in states:
+                if state in role_schema:
+                    updater = role_schema[state].get('updater')
+                    updaters.update({state: updater})
 
             # update the states
+            # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
             c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
             compartment_states[compartment_role] = c_states
 
             # update the updaters
-            c_updaters = deep_merge(default_updaters, compartment_updaters.get(compartment_role, {}))
+            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_role, {}))
             compartment_updaters[compartment_role] = c_updaters
 
     # initialize state for each compartment role
@@ -303,6 +302,7 @@ class Compartment(State):
 
         self.configuration = configuration
         self.topology = configuration['topology']
+        self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
         self.divide_state = configuration.get('divide_state', default_divide_state)
@@ -327,7 +327,8 @@ class Compartment(State):
         data = {
             'type': 'compartment',
             'name': configuration.get('name', 'compartment'),
-            'topology': self.topology}
+            'topology': self.topology,
+            'schema': self.schema}
 
         emit_config = {
             'table': 'configuration',
@@ -530,9 +531,13 @@ def toy_composite(config):
             'periplasm': ['GLC', 'MASS'],
             'cytoplasm': ['MASS']}})
 
+    # schema for states
+    schema = {}
+
     options = {
         # 'environment_role': 'environment',
         # 'exchange_role': 'exchange',
+        'schema': schema,
         'emitter': emitter,
         'topology': topology,
         'initial_time': 0.0}

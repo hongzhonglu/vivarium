@@ -56,9 +56,6 @@ class MinimalExpression(Process):
         # default emitter keys
         default_emitter_keys = {'internal': self.internal_states}
 
-        # default updaters
-        default_updaters = {}
-
         deriver_setting = [{
             'type': 'counts_to_mmol',
             'source_role': 'internal',
@@ -68,7 +65,6 @@ class MinimalExpression(Process):
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
             'deriver_setting': deriver_setting}
 
         return default_settings

@@ -24,13 +24,15 @@ class Growth(Process):
         # default emitter keys
         default_emitter_keys = {'global': ['mass']}
 
-        # default updaters
-        default_updaters = {'global': {'mass': 'set'}}
+        # schema
+        schema = {
+            'global': {
+                'mass': {'updater': 'set'}}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

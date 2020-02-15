@@ -98,16 +98,17 @@ class TransportLookup(Process):
             'external': self.external_molecule_ids,
             'exchange': []}
 
-        # default updaters
-        default_updaters = {
-            'internal': {},  # reactions set values directly
-            'external': {},  # reactions set values directly
-            'exchange': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
+        # schema
+        schema = {
+            'exchange': {
+                mol_id : {
+                    'updater': 'accumulate'}
+                for mol_id in self.external_molecule_ids}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.utils.dict_utils import deep_merge
+from vivarium.utils.dict_utils import deep_merge, deep_merge_check
 from vivarium.actor.process import initialize_state, simulate_compartment, Compartment
 from vivarium.utils.units import units
 
@@ -102,6 +102,28 @@ def get_derivers(process_list, topology):
         'deriver_processes': processes,
         'deriver_topology': deriver_topology}
 
+def get_schema(process_list, topology):
+    schema = {}
+    for level in process_list:
+        for process_id, process in level.items():
+            process_settings = process.default_settings()
+            process_schema = process_settings.get('schema', {})
+            try:
+                role_map = topology[process_id]
+            except:
+                print('{} topology role mismatch'.format(process_id))
+                raise
+
+            # go through each role, and get the schema
+            for process_role, settings in process_schema.items():
+                compartment_role = role_map[process_role]
+                compartment_schema = {
+                    compartment_role: settings}
+
+                ## TODO -- check for mismatch
+                deep_merge_check(schema, compartment_schema)
+
+    return schema
 
 def process_in_compartment(process):
     ''' put a process in a compartment, with all derivers added '''
@@ -122,12 +144,16 @@ def process_in_compartment(process):
     topology = {'process': {key: key for key in process_roles}}
     topology.update(deriver_topology)
 
-    # # make the state
+    # get schema
+    schema = get_schema(processes, topology)
+
+    # make the state
     state_dict = process_settings['state']
-    states = initialize_state(processes, topology, state_dict)
+    states = initialize_state(processes, topology, schema, state_dict)
 
     options = {
-        'topology': topology}
+        'topology': topology,
+        'schema': schema}
 
     return Compartment(processes, states, options)
 

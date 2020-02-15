@@ -35,16 +35,17 @@ class DeriveConcs(Process):
         # default emitter keys
         default_emitter_keys = {}
 
-        # default updaters
-        default_updaters = {
-            'concentrations': {state_id: 'set'
+        # schema
+        schema = {
+            'concentrations': {
+                state_id : {
+                    'updater': 'set'}
                 for state_id in self.roles['concentrations']}}
-
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

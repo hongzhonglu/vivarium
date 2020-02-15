@@ -84,16 +84,9 @@ class RnaDegradation(Process):
             'molecules': self.molecule_order,
             'global': []}
 
-        default_updaters = {
-            'transcripts': {},
-            'proteins': {},
-            'molecules': {},
-            'global': {}}
-
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
