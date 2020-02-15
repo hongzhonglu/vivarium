@@ -6,7 +6,7 @@ from vivarium.actor.process import initialize_state
 from vivarium.actor.composition import get_derivers, get_schema
 
 # processes
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.transcription import Transcription
@@ -109,8 +109,7 @@ def compose_master(config):
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,

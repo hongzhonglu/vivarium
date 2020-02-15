@@ -11,7 +11,7 @@ from vivarium.actor.composition import get_derivers, get_schema
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 
 
 
@@ -82,8 +82,7 @@ def compose_variable_flagella(config):
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,

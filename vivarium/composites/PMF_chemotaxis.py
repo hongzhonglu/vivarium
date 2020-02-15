@@ -13,7 +13,7 @@ from vivarium.processes.Mears2014_flagella_activity import FlagellaActivity
 from vivarium.processes.membrane_potential import MembranePotential
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 
 
 def compose_pmf_chemotaxis(config):
@@ -97,8 +97,7 @@ def compose_pmf_chemotaxis(config):
         'initial_time': config.get('initial_time', 0.0),
         'environment_role': 'environment',
         'exchange_role': 'exchange',
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,

@@ -7,7 +7,7 @@ from vivarium.actor.composition import get_derivers, get_schema, simulate_with_e
     convert_to_timeseries, plot_simulation_output
 
 # processes
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.ode_expression import ODE_expression
@@ -90,8 +90,7 @@ def compose_ode_expression(config):
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,

@@ -14,22 +14,6 @@ def divide_condition(compartment):
         divide = True
     return divide
 
-def divide_state(compartment):
-    divided = [{}, {}]
-    for state_key, state in compartment.states.items():
-        left = random.randint(0, 1)
-        for index in range(2):
-            divided[index][state_key] = {}
-            for key, value in state.to_dict().items():
-                if key == 'division':
-                    divided[index][state_key][key] = 0
-                else:
-                    # TODO -- this should not divide everything. if 'set' updater, just set value
-                    divided[index][state_key][key] = value // 2 + (value % 2 if index == left else 0)
-
-    print('divided {}'.format(divided))
-    return divided
-
 
 
 class Division(Process):
@@ -51,7 +35,7 @@ class Division(Process):
 
         # default state
         globals = {
-            'volume': 1,
+            'volume': 1.2,
             'division': False}
         default_state = {'global': globals}
 

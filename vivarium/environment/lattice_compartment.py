@@ -85,7 +85,7 @@ class LatticeCompartment(Compartment, Simulation):
             environment.assign_values(local_environment)
 
     def generate_daughters(self):
-        states = self.divide_state(self)
+        states = self.divide_state()
         volume = states[0][self.volume_role]['volume']  # TODO -- same volume for both daughters?
 
         return [
