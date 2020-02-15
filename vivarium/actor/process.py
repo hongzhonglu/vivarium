@@ -53,11 +53,18 @@ def divide_split(state):
         half = state/2
         return [half, half]
     else:
-        raise Exception('can not divide state {} with format {}'.format(state, type(state)))
+        raise Exception('can not divide state {} of type {}'.format(state, type(state)))
+
+def divide_split_dict(state):
+    d1 = dict(list(state.items())[len(state) // 2:])
+    d2 = dict(list(state.items())[:len(state) // 2])
+    return [d1, d2]
 
 divider_library = {
     'set': divide_set,
-    'split': divide_split}
+    'split': divide_split,
+    'split_dict': divide_split_dict}
+
 
 
 KEY_TYPE = 'U31'
@@ -341,7 +348,6 @@ class Compartment(State):
                     state_schema = self.schema[role_id].get(state_id, {})
                     divide_type = state_schema.get('divide', 'split')
                     divider = divider_library[divide_type]
-
                 else:
                     # default divider is 'split'
                     divider = divider_library['split']
