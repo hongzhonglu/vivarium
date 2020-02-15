@@ -332,7 +332,8 @@ class Compartment(State):
         data = {
             'type': 'compartment',
             'name': configuration.get('name', 'compartment'),
-            'topology': self.topology}
+            'topology': self.topology,
+            'schema': self.schema}
 
         emit_config = {
             'table': 'configuration',
@@ -535,9 +536,13 @@ def toy_composite(config):
             'periplasm': ['GLC', 'MASS'],
             'cytoplasm': ['MASS']}})
 
+    # schema for states
+    schema = {}
+
     options = {
         # 'environment_role': 'environment',
         # 'exchange_role': 'exchange',
+        'schema': schema,
         'emitter': emitter,
         'topology': topology,
         'initial_time': 0.0}

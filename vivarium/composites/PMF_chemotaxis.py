@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state, load_compartment
-from vivarium.actor.composition import get_derivers
-from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.actor.composition import get_derivers, get_schema, simulate_with_environment, \
+    convert_to_timeseries, plot_simulation_output
 
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
@@ -84,12 +84,16 @@ def compose_pmf_chemotaxis(config):
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
+    # get schema
+    schema = get_schema(processes, topology)
+
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
 
     options = {
         'name': 'PMF_chemotaxis_composite',
         'topology': topology,
+        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'environment_role': 'environment',
         'exchange_role': 'exchange',

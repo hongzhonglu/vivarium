@@ -58,8 +58,8 @@ class MotorActivity(Process):
                          'motile_force',
                          'motile_torque',
                          'motor_state'],
-            'external': []
-        }
+            'external': []}
+
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
