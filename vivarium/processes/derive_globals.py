@@ -22,10 +22,15 @@ class DeriveGlobals(Process):
     def __init__(self, initial_parameters={}):
 
         roles = {
-            'global': ['mass', 'volume', 'growth_rate', 'prior_mass', 'mmol_to_counts']}
+            'global': [
+                'mass',
+                'volume',
+                'growth_rate',
+                'prior_mass',
+                'mmol_to_counts',
+                'density']}
 
-        parameters = {
-            'density': 1100 * units.g / units.L}
+        parameters = {}
         parameters.update(initial_parameters)
 
         super(DeriveGlobals, self).__init__(roles, parameters)
@@ -33,7 +38,7 @@ class DeriveGlobals(Process):
     def default_settings(self):
         # default state
         mass = 1339 * units.fg  # wet mass in fg
-        density = self.parameters['density']
+        density = 1100 * units.g / units.L
         volume = mass/density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
         global_state = {
@@ -41,7 +46,8 @@ class DeriveGlobals(Process):
             'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
-            'prior_mass': mass.magnitude}
+            'prior_mass': mass.magnitude,
+            'density': density.magnitude}
 
         default_state = {
             'global': global_state}
@@ -67,10 +73,8 @@ class DeriveGlobals(Process):
 
     def next_update(self, timestep, states):
 
-        # parameters
-        density = self.parameters['density'] # units.g / units.L
-
         # states
+        density = states['global']['density'] * units.g / units.L
         prior_mass = states['global']['prior_mass'] * units.fg
         mass = states['global']['mass'] * units.fg
 
