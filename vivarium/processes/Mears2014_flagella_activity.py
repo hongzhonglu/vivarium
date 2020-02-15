@@ -157,7 +157,7 @@ class FlagellaActivity(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema,
-            'time_step': 0.001}
+            'time_step': 0.01}  # 0.001
 
         return default_settings
 

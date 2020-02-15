@@ -6,6 +6,8 @@ from vivarium.actor.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
 from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule
+from vivarium.utils.units import units
+from vivarium.processes.derive_globals import AVOGADRO
 
 
 class ODE_expression(Process):
@@ -161,13 +163,19 @@ def get_flagella_expression():
     protein_map = {
         'flagella': 'flag_RNA'}
 
+    # get initial concentrations from counts
+    volume = 1.2 * units.fL
+    mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
+    counts = {
+        'flagella': 5,
+        'flag_RNA': 30}
+    concentrations = {}
+    for state_id, count in counts.items():
+        concentrations[state_id] = (count / mmol_to_counts).magnitude
+
     initial_state = {
-        'counts': {
-            'flagella': 5,
-            'flag_RNA': 30},
-        'internal': {
-            'flagella': 0,
-            'flag_RNA': 0}}
+        'counts': counts,
+        'internal': concentrations}
         # 'global': {
         #     'volume': 1.2}}
 
