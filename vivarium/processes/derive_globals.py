@@ -56,15 +56,18 @@ class DeriveGlobals(Process):
         default_emitter_keys = {
             'global': ['volume', 'growth_rate']}
 
-        # default updaters
+        # schema
         set_states = ['volume', 'growth_rate', 'prior_mass', 'mmol_to_counts']
-        default_updaters = {
-            'global': {state_id: 'set' for state_id in set_states}}
+        schema = {
+            'global': {
+                state_id : {
+                    'updater': 'set'}
+                for state_id in set_states}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

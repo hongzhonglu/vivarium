@@ -58,14 +58,15 @@ class Division(Process):
         # default emitter keys
         default_emitter_keys = {}
 
-        # default updaters
-        default_updaters = {
-            'global': {'division': 'set'}}
+        # schema
+        schema = {
+            'global': {
+                'division': {'updater': 'set'}}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

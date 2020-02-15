@@ -54,11 +54,18 @@ class ODE_expression(Process):
         # default state
         default_state = self.initial_state
 
+        # schema
+        # don't include if it uses the default
+        schema = {
+            'internal': {
+                state : {
+                    'divide': 'set',
+                    'units': 'mmol',
+                    'updater': 'accumulate'}
+                for state in self.roles['internal']}}
+
         # default emitter keys
         default_emitter_keys = {}
-
-        # default updaters
-        default_updaters = {}
 
         # default derivers
         deriver_setting = [{
@@ -70,7 +77,7 @@ class ODE_expression(Process):
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'deriver_setting': deriver_setting}
 
         return default_settings
@@ -160,9 +167,9 @@ def get_flagella_expression():
             'flag_RNA': 30},
         'internal': {
             'flagella': 0,
-            'flag_RNA': 0},
-        'global': {
-            'volume': 1.2}}
+            'flag_RNA': 0}}
+        # 'global': {
+        #     'volume': 1.2}}
 
     return  {
         'transcription_rates': transcription,

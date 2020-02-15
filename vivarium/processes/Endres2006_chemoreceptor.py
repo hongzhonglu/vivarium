@@ -66,16 +66,18 @@ class ReceptorCluster(Process):
             'internal': set_keys,
             'external': [self.ligand_id]}
 
-        # default updaters
-        default_updaters = {
-            'internal': {state_id: 'set' for state_id in set_keys},
-            'external': {}}
+        # schema
+        schema = {
+            'internal': {
+                state_id : {
+                    'updater': 'set'}
+                for state_id in set_keys}}
 
         default_settings = {
             'process_id': 'receptor',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'time_step': 1.0}
 
         return default_settings

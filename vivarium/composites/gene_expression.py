@@ -5,7 +5,7 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers
+from vivarium.actor.composition import get_derivers, get_schema
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
@@ -56,14 +56,18 @@ def compose_gene_expression(config):
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
+    # get schema
+    schema = get_schema(processes, topology)
+
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
 
     options = {
         'name': 'gene_expression_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
+        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition,
         'divide_state': divide_state}

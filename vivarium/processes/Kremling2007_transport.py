@@ -154,19 +154,30 @@ class Transport(Process):
             'external': ['G6P', 'GLC', 'LAC'],
             'fluxes': self.target_fluxes}
 
-        # default updaters
-        default_updaters = {
-            'internal': {state_id: 'set' for state_id in [
-                'mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
-            'external': {},  # reactions set values directly
-            'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids},  # all external values use default 'delta' udpater
-            'fluxes': {state_id: 'set' for state_id in self.target_fluxes}}
+        # schema
+        set_internal = ['mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']
+        internal_schema = {
+            state_id: {
+                'updater': 'set'}
+            for state_id in set_internal}
+        fluxes_schema = {
+            state_id: {
+                'updater': 'set'}
+            for state_id in self.target_fluxes}
+        exchange_schema = {
+            mol_id: {
+                'updater': 'accumulate'}
+            for mol_id in self.environment_ids}
 
+        schema = {
+            'internal': internal_schema,
+            'fluxes': fluxes_schema,
+            'exchange': exchange_schema}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

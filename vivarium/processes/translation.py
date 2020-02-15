@@ -155,16 +155,15 @@ class Translation(Process):
             'transcripts': operons,
             'proteins': self.protein_ids}
 
-        default_updaters = {
-            'ribosomes': {'ribosomes': 'set'},
-            'molecules': {},
-            'transcripts': {},
-            'proteins': {}}
+        # schema
+        schema = {
+            'ribosomes': {
+                'ribosomes': {'updater': 'set'}}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
