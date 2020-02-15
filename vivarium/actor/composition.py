@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.utils.dict_utils import deep_merge
+from vivarium.utils.dict_utils import deep_merge, deep_merge_check
 from vivarium.actor.process import initialize_state, simulate_compartment, Compartment
 from vivarium.utils.units import units
 
@@ -121,7 +121,7 @@ def get_schema(process_list, topology):
                     compartment_role: settings}
 
                 ## TODO -- check for mismatch
-                deep_merge(schema, compartment_schema)
+                deep_merge_check(schema, compartment_schema)
 
     return schema
 
