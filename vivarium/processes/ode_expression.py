@@ -61,7 +61,7 @@ class ODE_expression(Process):
                 state : {
                     'divide': 'set',
                     'units': 'mmol',
-                    'updater': 'delta'}
+                    'updater': 'accumulate'}
                 for state in self.roles['internal']}}
 
         # default emitter keys

@@ -24,21 +24,15 @@ def npize(d):
 
     return keys, values
 
-def update_delta(key, state_dict, current_value, new_value):
+def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-# def accumulate_delta(key, state_dict, current_value, new_value):
-#     new_key = key + exchange_key
-#     return current_value, {new_key: state_dict[new_key] + new_value}
-
 updater_library = {
-    'delta': update_delta,
-    'set': update_set,
-    'accumulate': update_delta,  # TODO -- remove accumulate
-}
+    'accumulate': update_accumulate,
+    'set': update_set}
 
 
 KEY_TYPE = 'U31'
@@ -86,7 +80,7 @@ class State(object):
 
         for key, value in update.items():
             # updater can be a function or a key into the updater library
-            updater = self.updaters.get(key, 'delta')
+            updater = self.updaters.get(key, 'accumulate')
             if not callable(updater):
                 updater = updater_library[updater]
 
