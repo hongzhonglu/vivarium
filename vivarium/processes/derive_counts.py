@@ -5,13 +5,25 @@ from vivarium.actor.process import Process
 from vivarium.utils.units import units
 
 
+def get_default_state():
+    mass = 1339 * units.fg  # wet mass in fg
+    density = 1100 * units.g / units.L
+    volume = mass / density
+    mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
+
+    return {
+        'global': {
+            'volume': volume.magnitude,
+            'mmol_to_counts': mmol_to_counts.magnitude}}
+
 
 class DeriveCounts(Process):
     """
     Process for deriving counts from concentrations
     """
     def __init__(self, initial_parameters={}):
-        self.avogadro = AVOGADRO
+
+        self.initial_state = initial_parameters.get('initial_state', get_default_state())
 
         roles = initial_parameters.get('roles')
         roles.update({
@@ -23,14 +35,6 @@ class DeriveCounts(Process):
         super(DeriveCounts, self).__init__(roles, parameters)
 
     def default_settings(self):
-        volume = 1.2 * units.fL
-        mmol_to_counts = (self.avogadro * volume).to('L/mmol')
-
-        # default state
-        default_state = {
-            'global': {
-                'volume': volume.magnitude,
-                'mmol_to_counts': mmol_to_counts.magnitude}}
 
         # default emitter keys
         default_emitter_keys = {}
@@ -43,7 +47,7 @@ class DeriveCounts(Process):
                 for state_id in self.roles['counts']}}
 
         default_settings = {
-            'state': default_state,
+            'state': self.initial_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema}
 

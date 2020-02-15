@@ -167,9 +167,9 @@ def get_flagella_expression():
             'flag_RNA': 30},
         'internal': {
             'flagella': 0,
-            'flag_RNA': 0},
-        'global': {
-            'volume': 1.2}}
+            'flag_RNA': 0}}
+        # 'global': {
+        #     'volume': 1.2}}
 
     return  {
         'transcription_rates': transcription,

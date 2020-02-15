@@ -23,9 +23,9 @@ def deep_merge_check(dct, merge_dct):
             try:
                 deep_merge_check(dct[k], merge_dct[k])
             except:
-                raise Exception('merge dictionary error: {} AND {}'.format(dct[k], merge_dct[k]))
+                raise Exception('dict merge mismatch: key "{}" has values {} AND {}'.format(k, dct[k], merge_dct[k]))
         elif k in dct and (dct[k] is not merge_dct[k]):
-            raise Exception
+            raise Exception('dict merge mismatch: key "{}" has values {} AND {}'.format(k, dct[k], merge_dct[k]))
         else:
             dct[k] = merge_dct[k]
     return dct

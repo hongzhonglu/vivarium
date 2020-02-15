@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 import vivarium.actor.emitter as emit
-from vivarium.utils.dict_utils import merge_dicts, deep_merge
+from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
 COMPARTMENT_STATE = '__compartment_state__'
@@ -268,11 +268,12 @@ def initialize_state(process_layers, topology, schema, initial_state):
                     updaters.update({state: updater})
 
             # update the states
+            # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
             c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
             compartment_states[compartment_role] = c_states
 
             # update the updaters
-            c_updaters = deep_merge(updaters, compartment_updaters.get(compartment_role, {}))
+            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_role, {}))
             compartment_updaters[compartment_role] = c_updaters
 
     # initialize state for each compartment role

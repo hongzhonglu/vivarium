@@ -147,7 +147,7 @@ def process_in_compartment(process):
     # get schema
     schema = get_schema(processes, topology)
 
-    # # make the state
+    # make the state
     state_dict = process_settings['state']
     states = initialize_state(processes, topology, schema, state_dict)
 
