@@ -32,7 +32,6 @@ class Metabolism(Process):
     """
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
-        self.density = 1100 * units.g/units.L
 
         # initialize fba
         self.fba = CobraFBA(initial_parameters)
