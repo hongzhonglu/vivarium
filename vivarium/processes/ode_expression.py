@@ -67,9 +67,10 @@ class ODE_expression(Process):
                 for state in self.roles['internal']}}
 
         # default emitter keys
-        default_emitter_keys = {}
+        default_emitter_keys = {
+            'internal': self.roles['internal']}
 
-        # default derivers
+        # derivers
         deriver_setting = [{
             'type': 'mmol_to_counts',
             'source_role': 'internal',
