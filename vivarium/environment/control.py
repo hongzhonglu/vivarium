@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import copy
 import time
 import uuid
 
 from vivarium.actor.control import ActorControl, AgentCommand
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+
 
 
 class ShepherdControl(ActorControl):
