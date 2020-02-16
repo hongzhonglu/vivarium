@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import random
+import math
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -289,11 +290,18 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
 
         # location, orientation, length
         volume = data['volume']
-        x = data['location'][0]
-        y = data['location'][1]
+        x_center = data['location'][0]
+        y_center = data['location'][1]
         theta = data['location'][2] / np.pi * 180 + 90 # rotate 90 degrees to match field
         length = volume_to_length(volume, cell_radius)
         width = cell_radius * 2
+
+        # get bottom left poisition
+        hypotenuse = ((length / 2)**2 + (width / 2)**2)**0.5
+        dy = hypotenuse * math.cos(math.radians(theta))
+        dx = hypotenuse * math.sin(math.radians(theta))
+        x = x_center + dx
+        y = y_center + dy
 
         # get color, convert to rgb
         agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)

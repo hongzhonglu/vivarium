@@ -119,7 +119,7 @@ class ShepherdControl(ActorControl):
             'environment_type': environment_type,
             'actor_config': actor_config,
             'agent_type': agent_type,
-            'num_cells': 4}
+            'num_cells': 2}
 
         self.init_experiment(args, exp_config)
 

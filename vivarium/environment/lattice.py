@@ -547,7 +547,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
-            'time_created': filepath.timestamp()
+            'time_created': filepath.timestamp(),
             'name': self.name,
             'description': self.description,
             'cell_radius': self.cell_radius,
