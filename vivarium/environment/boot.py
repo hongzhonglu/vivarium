@@ -264,12 +264,14 @@ def initialize_ecoli_core_glc(boot_config):
         'name': 'ecoli_core',
         'timeline_str': timeline_str,
         'edge_length_x': 15.0,
-        'patches_per_edge_x': 15,
+        'patches_per_edge_x': 5,
         'run_for': 5.0,
         'diffusion': 1e-3,
         'depth': 1e-2,
-        'translation_jitter': 1.0,
+        'translation_jitter': 5e-2,
         'emit_fields': [
+            'co2_e',
+            'o2_e',
             'glc__D_e',
             'lac__D_e']}
 

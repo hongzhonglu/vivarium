@@ -67,7 +67,8 @@ class ODE_expression(Process):
                 for state in self.roles['internal']}}
 
         # default emitter keys
-        default_emitter_keys = {}
+        default_emitter_keys = {
+            'internal': self.roles['internal']}
 
         # default derivers
         deriver_setting = [{

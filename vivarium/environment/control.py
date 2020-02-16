@@ -100,15 +100,15 @@ class ShepherdControl(ActorControl):
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
-        experiment_id = 'glc-lct'
+        experiment_id = 'gluc-lact'
         environment_type = 'ecoli_core_glc'
         agent_type = 'shifter'
 
         # overwrite default environment config
         lattice_config = {
             'name': 'lct_experiment',
-            'description': 'run a glucose-lactose shifting agent that uses e_coli_core metabolism, kinetic transport'
-                'and ode gene expression of LacY'}
+            'description': 'four agents with e_coli_core BiGG metabolism, kinetic transport of glucose and lactose, '
+                           'and ode-based gene expression of LacY'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
