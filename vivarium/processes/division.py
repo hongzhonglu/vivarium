@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import random
-
 from vivarium.actor.process import Process
 
 
@@ -45,7 +43,9 @@ class Division(Process):
         # schema
         schema = {
             'global': {
-                'division': {'updater': 'set'}}}
+                'division': {
+                    'updater': 'set',
+                    'divide': 'zero'}}}
 
         default_settings = {
             'state': default_state,

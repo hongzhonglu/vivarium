@@ -25,6 +25,7 @@ from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
+from vivarium.actor import filepath
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
 from vivarium.environment.make_media import Media
@@ -546,6 +547,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
+            'time_created': filepath.timestamp(),
             'name': self.name,
             'description': self.description,
             'cell_radius': self.cell_radius,

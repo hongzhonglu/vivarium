@@ -25,6 +25,7 @@ DEFAULT_EMITTER_CONFIG = {
     'database': {
         'type': 'database',
         'host': 'localhost:27017',
+        # 'host': 'mongodb+srv://cyteam_user:cy2019!@cyteam-db-sanud.gcp.mongodb.net/vivarium?retryWrites=true&w=majority',
         'database': 'simulations'},
     'kafka': {
         'type': 'kafka',
