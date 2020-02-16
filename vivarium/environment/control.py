@@ -106,8 +106,10 @@ class ShepherdControl(ActorControl):
 
         # overwrite default environment config
         lattice_config = {
-            'name': 'ecoli_core_experiment',
-            'description': 'ecoli_core_experiment'}
+            'name': 'lct_experiment',
+            'description': 'Agents have an e_coli_core BiGG metabolism, kinetic transport of glucose and lactose, '
+                           'and ode-based gene expression of LacY. The environment is filled with minimal media with '
+                           'glucose and lactose.'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -116,6 +118,29 @@ class ShepherdControl(ActorControl):
             'actor_config': actor_config,
             'agent_type': agent_type,
             'num_cells': 1}
+
+        self.init_experiment(args, exp_config)
+
+    def chemotaxis_square(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp'
+        agent_type = 'minimal_chemotaxis'
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'chemotaxis experiment square',
+            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type,
+            'num_cells': 4}
 
         self.init_experiment(args, exp_config)
 

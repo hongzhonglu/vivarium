@@ -264,12 +264,14 @@ def initialize_ecoli_core_glc(boot_config):
         'name': 'ecoli_core',
         'timeline_str': timeline_str,
         'edge_length_x': 15.0,
-        'patches_per_edge_x': 15,
+        'patches_per_edge_x': 5,
         'run_for': 2.0,
         'diffusion': 1e-3,
         'depth': 1e-2,
-        'translation_jitter': 1.0,
+        'translation_jitter': 5e-2,
         'emit_fields': [
+            'co2_e',
+            'o2_e',
             'glc__D_e',
             'lac__D_e']}
 
@@ -279,7 +281,7 @@ def initialize_ecoli_core_glc(boot_config):
 def initialize_measp(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
+             'MeAsp': 80.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
@@ -290,14 +292,14 @@ def initialize_measp(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'type': 'gaussian',
+            'type': 'linear',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],
-                    'deviation': 30.0},
+                    'slope': -1e-2},
                 'MeAsp': {
                     'center': [0.5, 0.5],
-                    'deviation': 30.0}
+                    'slope': -1e-2}
             }},
         'diffusion': 0.0,
         'edge_length_x': 50.0,
