@@ -317,7 +317,7 @@ def initialize_measp_long(boot_config):
     lattice_config = {
         'name': 'measp_long',
         'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-                       'for obsferving chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+                       'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
                        'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
         'new_media': new_media,
         'timeline_str': timeline_str,

@@ -27,10 +27,10 @@ def compose_simple_chemotaxis(config):
     topology = {
         'receptor': {
             'external': 'environment',
-            'internal': 'cytoplasm'},
+            'internal': 'cell'},
         'motor': {
             'external': 'environment',
-            'internal': 'cytoplasm'}}
+            'internal': 'cell'}}
 
     # get schema
     schema = get_schema(processes, topology)

@@ -32,12 +32,12 @@ class ShepherdControl(ActorControl):
         actor_config['boot_config'].update(lattice_config)
 
         # get from args
-        experiment_id = args.get('experiment_id', default_experiment_id)
+        experiment_id = args.get('experiment_id')
         number = args.get('number')
         if number == 0:
             number = num_cells
         if not experiment_id:
-            experiment_id = self.get_experiment_id(experiment_id)
+            experiment_id = self.get_experiment_id(default_experiment_id)
 
         print('Creating experiment id {}: {} {} agents in {} environment\n'.format(
             experiment_id, number, agent_type, environment_type))
@@ -106,9 +106,12 @@ class ShepherdControl(ActorControl):
 
         # overwrite default environment config
         lattice_config = {
-            'name': 'lct_experiment',
-            'description': 'four agents with e_coli_core BiGG metabolism, kinetic transport of glucose and lactose, '
-                           'and ode-based gene expression of LacY'}
+            'name': 'ecoli_core_glc_lct',
+            'description': 'glucose-lactose diauxic shifters are placed in a shallow environment with glucose and '
+                           'lactose. The start off with no LacY, and so uptake only glucose, but LacY is expressed '
+                           'upon depletion of glucose and they begin to uptake lactose. Cells have an e_coli_core '
+                           'BiGG metabolism, kinetic transport of glucose and lactose, and ode-based gene expression '
+                           'of LacY'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -128,7 +131,7 @@ class ShepherdControl(ActorControl):
 
         # overwrite default environment config
         lattice_config = {
-            'name': 'chemotaxis experiment square',
+            'name': 'chemotaxis square experiment',
             'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
                'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
                'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
