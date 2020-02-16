@@ -7,6 +7,7 @@ import numpy as np
 
 from vivarium.actor.process import Process
 from vivarium.utils.units import units
+from vivarium.utils.dict_utils import deep_merge
 
 
 
@@ -58,11 +59,18 @@ class DeriveGlobals(Process):
 
         # schema
         set_states = ['volume', 'growth_rate', 'prior_mass', 'mmol_to_counts']
+        set_divide = ['density', 'prior_mass']
         schema = {
             'global': {
                 state_id : {
                     'updater': 'set'}
                 for state_id in set_states}}
+        divide_schema = {
+            'global': {
+                state_id : {
+                    'divide': 'set'}
+                for state_id in set_divide}}
+        schema = deep_merge(schema, divide_schema)
 
         default_settings = {
             'state': default_state,

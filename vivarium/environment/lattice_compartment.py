@@ -86,16 +86,15 @@ class LatticeCompartment(Compartment, Simulation):
 
     def generate_daughters(self):
         states = self.divide_state()
-        volume = states[0][self.volume_role]['volume']  # TODO -- same volume for both daughters?
 
         return [
             dict(
                 id=str(uuid.uuid1()),
-                volume=volume,  # daughter_state[self.volume_role]['volume'],
+                volume=daughter_state[self.volume_role]['volume'],
                 boot_config=dict(
                     initial_time=self.time(),
                     initial_state=daughter_state,
-                    volume=volume))  # daughter_state[self.volume_role]['volume']))
+                    volume=daughter_state[self.volume_role]['volume']))
             for daughter_state in states]
 
     def generate_inner_update(self):

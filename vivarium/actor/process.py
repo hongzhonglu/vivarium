@@ -49,11 +49,18 @@ def divide_split(state):
         remainder = state % 2
         half = int(state / 2)
         return [half, half + remainder]
+    elif state == float('inf') or state == 'Infinity':
+        # some concentrations are considered infinite in the environment
+        # an alternative option is to not divide the local environment state
+        return [state, state]
     elif isinstance(state, float):
         half = state/2
         return [half, half]
     else:
         raise Exception('can not divide state {} of type {}'.format(state, type(state)))
+
+def divide_zero(state):
+    return [0, 0]
 
 def divide_split_dict(state):
     d1 = dict(list(state.items())[len(state) // 2:])
@@ -63,7 +70,8 @@ def divide_split_dict(state):
 divider_library = {
     'set': divide_set,
     'split': divide_split,
-    'split_dict': divide_split_dict}
+    'split_dict': divide_split_dict,
+    'zero': divide_zero}
 
 
 
@@ -344,7 +352,6 @@ class Compartment(State):
 
             for state_id, value in state.to_dict().items():
                 if role_id in self.schema:
-                    # get divider from schema
                     state_schema = self.schema[role_id].get(state_id, {})
                     divide_type = state_schema.get('divide', 'split')
                     divider = divider_library[divide_type]

@@ -45,7 +45,9 @@ class Division(Process):
         # schema
         schema = {
             'global': {
-                'division': {'updater': 'set'}}}
+                'division': {
+                    'updater': 'set',
+                    'divide': 'zero'}}}
 
         default_settings = {
             'state': default_state,
