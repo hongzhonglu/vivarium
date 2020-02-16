@@ -279,7 +279,7 @@ def initialize_ecoli_core_glc(boot_config):
 def initialize_measp(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
+             'MeAsp': 80.0}
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
     lattice_config = {
@@ -290,14 +290,14 @@ def initialize_measp(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'gradient': {
-            'type': 'gaussian',
+            'type': 'linear',
             'molecules': {
                 'GLC': {
                     'center': [0.5, 0.5],
-                    'deviation': 30.0},
+                    'slope': -1e-2},
                 'MeAsp': {
                     'center': [0.5, 0.5],
-                    'deviation': 30.0}
+                    'slope': -1e-2}
             }},
         'diffusion': 0.0,
         'edge_length_x': 50.0,
@@ -315,7 +315,7 @@ def initialize_measp_long(boot_config):
     lattice_config = {
         'name': 'measp_long',
         'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-                       'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+                       'for obsferving chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
                        'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
         'new_media': new_media,
         'timeline_str': timeline_str,
