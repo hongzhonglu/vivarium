@@ -266,9 +266,9 @@ def initialize_ecoli_core_glc(boot_config):
         'edge_length_x': 15.0,
         'patches_per_edge_x': 10,
         'run_for': 5.0,
-        'diffusion': 5e-3,
-        'depth': 1e-1,
-        'translation_jitter': 5e-2,
+        'diffusion': 1e-3,
+        'depth': 2e-2,
+        'translation_jitter': 1e-1,
         'emit_fields': [
             'co2_e',
             'o2_e',
