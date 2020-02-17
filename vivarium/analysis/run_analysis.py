@@ -247,9 +247,7 @@ class Analyze(object):
         parser.add_argument(
             '-m', '--mongo-host',
             type=str,
-            # default='mongodb+srv://cyteam_user:cy2019!@cyteam-db-sanud.gcp.mongodb.net/vivarium?retryWrites=true&w=majority'
-            default='localhost:27017'
-            )
+            default='localhost:27017')
 
         parser.add_argument(
             '-a', '--analyses',
