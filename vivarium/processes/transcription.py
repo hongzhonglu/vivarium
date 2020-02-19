@@ -222,7 +222,7 @@ class Transcription(Process):
                 print('transcription substrate: {}'.format(substrate))
             
             # find number of monomers until next terminator
-            distance = chromosome.terminator_distance()
+            distance = 1 # chromosome.terminator_distance()
 
             # find interval of time that elongates to the point of the next terminator
             interval = min(distance / self.elongation_rate, timestep - time)
