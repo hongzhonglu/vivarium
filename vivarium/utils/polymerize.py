@@ -39,6 +39,7 @@ class Polymerase(Datum):
         'state': None, # other states: ['bound', 'polymerizing', 'complete']
         'position': 0,
         'template': None,
+        'template_index': 0,
         'terminator': 0}
 
     def __init__(self, config, defaults=defaults):
@@ -48,7 +49,7 @@ class Polymerase(Datum):
         self.state = 'bound'
 
     def start_polymerizing(self):
-        self.state = 'polymerizing'
+        self.state = 'occluding'
 
     def complete(self):
         self.state = 'complete'
@@ -58,10 +59,20 @@ class Polymerase(Datum):
         return self.state == 'bound'
 
     def is_polymerizing(self):
-        return self.state == 'polymerizing'
+        return self.state == 'occluding' or self.state == 'polymerizing'
 
     def is_complete(self):
         return self.state == 'complete'
+
+    def is_occluding(self):
+        return self.state == 'occluding'
+
+    def is_unoccluding(self, occlusion):
+        return self.state == 'occluding' and self.position > occlusion
+
+    def unocclude(self):
+        if self.state == 'occluding':
+            self.state = 'polymerizing'
 
 class BindingSite(Datum):
     defaults = {
