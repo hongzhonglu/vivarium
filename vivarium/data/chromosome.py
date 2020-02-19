@@ -52,25 +52,27 @@ test_chromosome_config = {
             'lead': 0,
             'lag': 0,
             'children': []}},
-    'rnaps': [
-        {
-            'template': 'pA',
-            'template_index': 0,
-            'domain': 0,
-            'state': 'polymerizing',
-            'position': 3},
-        {
-            'template': 'pA',
-            'template_index': 0,
-            'domain': 0,
-            'state': 'polymerizing',
-            'position': 6},
-        {
-            'template': 'pA',
-            'template_index': 0,
-            'domain': 0,
-            'state': 'polymerizing',
-            'position': 0}]}
+    'rnaps': []}
+
+
+        # {
+        #     'template': 'pA',
+        #     'template_index': 0,
+        #     'domain': 0,
+        #     'state': 'polymerizing',
+        #     'position': 3},
+        # {
+        #     'template': 'pA',
+        #     'template_index': 0,
+        #     'domain': 0,
+        #     'state': 'polymerizing',
+        #     'position': 6},
+        # {
+        #     'template': 'pA',
+        #     'template_index': 0,
+        #     'domain': 0,
+        #     'state': 'polymerizing',
+        #     'position': 0}
 
 
 gfp_plasmid_config = {

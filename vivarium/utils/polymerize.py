@@ -65,10 +65,10 @@ class Polymerase(Datum):
         return self.state == 'complete'
 
     def is_occluding(self):
-        return self.state == 'occluding'
+        return self.state == 'bound' or self.state == 'occluding'
 
     def is_unoccluding(self, occlusion):
-        return self.state == 'occluding' and self.position > occlusion
+        return self.state == 'occluding' and self.position >= occlusion
 
     def unocclude(self):
         if self.state == 'occluding':
@@ -228,6 +228,8 @@ def polymerize_step(
 
                         for product in terminator.products:
                             complete_polymers[product] += 1
+                    else:
+                        polymerase.terminator += 1
 
     polymerases = [
         polymerase
@@ -269,7 +271,25 @@ class Elongation(object):
         self.elongation = elongation
         self.limits = limits
 
-    def elongate(self, now, rate, limits, polymerases):
+    def step(self, interval, limits, polymerases):
+        self.time += interval
+        monomers, limits, terminated, complete, polymerases = polymerize_step(
+            self.sequence,
+            polymerases,
+            self.templates,
+            self.symbol_to_monomer,
+            limits)
+
+        self.monomers = add_merge([self.monomers, monomers])
+        self.complete_polymers = add_merge([
+            self.complete_polymers, complete])
+
+        return terminated, limits, polymerases
+
+    def store_partial(self, interval):
+        self.elongation += interval
+
+    def elongate_to(self, now, rate, limits, polymerases):
         '''
         Track increments of time and accumulate partial elongations, emitting the full
         elongation once a unit is attained.
@@ -303,7 +323,7 @@ class Elongation(object):
         return len(self.complete_polymers)
 
 
-def build_stoichiometry(promoter_count):
+def build_double_stoichiometry(promoter_count):
     '''
     Builds a stoichiometry for the given promoters. There are two states per promoter,
     open and bound, and two reactions per promoter, binding and unbinding. In addition
@@ -324,8 +344,25 @@ def build_stoichiometry(promoter_count):
 
     return stoichiometry
 
-def build_rates(affinities, advancement):
+def build_double_rates(affinities, advancement):
     return np.concatenate([
         affinities,
         np.repeat(advancement, len(affinities))])
+
+def build_stoichiometry(promoter_count):
+    '''
+    Builds a stoichiometry for the given promoters. There are two states per promoter,
+    open and bound, and two reactions per promoter, binding and unbinding. In addition
+    there is a single substrate for available RNAP in the final index.
+
+    Here we are assuming
+    '''
+    stoichiometry = np.zeros((promoter_count, promoter_count * 2 + 1), dtype=np.int64)
+    for index in range(promoter_count):
+        # forward reaction
+        stoichiometry[index][index] = -1
+        stoichiometry[index][index + promoter_count] = 1
+        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
+
+    return stoichiometry
 

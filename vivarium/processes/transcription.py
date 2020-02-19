@@ -5,7 +5,7 @@ from arrow import StochasticSystem
 
 from vivarium.actor.process import Process, keys_list
 from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
-from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates, template_products
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
 
 def choose_element(elements):
@@ -13,7 +13,7 @@ def choose_element(elements):
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
-VERBOSE = False
+VERBOSE = True
 UNBOUND_RNAP_KEY = 'RNA Polymerase'
 
 monomer_ids = list(nucleotides.values())
@@ -174,32 +174,22 @@ class Transcription(Process):
         promoter_domains = chromosome.promoter_domains()
 
         # Find out how many promoters are currently blocked by a
-        # newly initiated rnap
+        # newly initiated or occluding rnap
         promoter_count = len(chromosome.promoter_order)
-        bound_rnap = np.zeros(promoter_count, dtype=np.int64)
-        occluding_rnap = np.zeros(promoter_count, dtype=np.int64)
+        blocked_promoters = np.zeros(promoter_count, dtype=np.int64)
         open_domains = {}
         bound_domains = {}
         for promoter_index, promoter_key in enumerate(chromosome.promoter_order):
             domains = []
             for rnap in promoter_rnaps.get(promoter_key, {}).values():
-                if rnap.is_bound():
+                if rnap.is_occluding():
                     domains.append(rnap.domain)
-                    bound_rnap[promoter_index] += 1
-                if rnap.is_occluding:
-                    occluding_rnap[promoter_index] += 1
-
-            # bound_domains[promoter_key] = set([
-            #     rnap.domain
-            #     for rnap in promoter_rnaps.get(promoter_key, {}).values()
-            #     if rnap.is_bound()])
-            # bound_rnap.append(len(bound_domains[promoter_key]))
+                    blocked_domains[promoter_index] += 1
 
             bound_domains[promoter_key] = set(domains)
             open_domains[promoter_key] = promoter_domains[promoter_key] - bound_domains[promoter_key]
 
-        bound_rnap = np.array(bound_rnap)
-        occluding_rnap = np.array(occluding_rnap)
+        blocked_promoters = np.array(blocked_promoters)
 
         # Make the state for a gillespie simulation out of total number of each
         # promoter by copy number not blocked by initiated rnap,
@@ -224,99 +214,85 @@ class Transcription(Process):
             self.elongation)
 
         initiation_affinity = self.build_affinity_vector(chromosome.promoters, factors)
-        initiation_rates = build_rates(initiation_affinity, self.advancement_rate)
 
         while time < timestep:
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
-                copy_numbers - bound_rnap - occluding_rnap,
-                bound_rnap - occluding_rnap,
+                copy_numbers - blocked_promoters,
+                blocked_promoters,
                 [unbound_rnaps]])
 
-            if VERBOSE and time == 0:
+            if VERBOSE:
                 print('transcription substrate: {}'.format(substrate))
-            
+                print('blocked promoters: {}'.format(blocked_promoters))
+
             # find number of monomers until next terminator
-            distance = 1 # chromosome.terminator_distance()
+            distance = 1 / self.elongation_rate # chromosome.terminator_distance()
 
             # find interval of time that elongates to the point of the next terminator
-            interval = min(distance / self.elongation_rate, timestep - time)
+            interval = min(distance, timestep - time)
+
+            if interval == distance:
+                # perform the elongation until the next event
+                terminations, monomer_limits, chromosome.rnaps = elongation.step(
+                    interval,
+                    monomer_limits,
+                    chromosome.rnaps)
+                unbound_rnaps += terminations
+            else:
+                elongation.store_partial(interval)
+                terminations = 0
+
+            if VERBOSE:
+                print('time: {} --- interval: {}'.format(time, interval))
+                print('monomer limits: {}'.format(monomer_limits))
+                print('terminations: {}'.format(terminations))
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(
                 interval,
                 substrate,
-                initiation_rates)
+                initiation_affinity)
 
-            # go through each event in the simulation and update the state
+            if VERBOSE:
+                print('result: {}'.format(result))
+
+            # perform binding
             for now, event in zip(result['time'], result['events']):
-
-                # perform the elongation until the next event
-                terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
-                    time + now,
-                    self.elongation_rate,
-                    monomer_limits,
-                    chromosome.rnaps)
-                unbound_rnaps += terminations
-
-                # deal with occluding rnap
-                for rnap in chromosome.rnaps:
-                    if rnap.is_unoccluding(self.polymerase_occlusion):
-                        occluding_rnap[rnap.template_index] -= 1
-                        open_domains[rnap.template].add(rnap.domain)
-                        rnap.unocclude()
-
                 # RNAP has bound the promoter
-                if event < self.promoter_count:
-                    promoter_key = chromosome.promoter_order[event]
-                    promoter = chromosome.promoters[promoter_key]
-                    domains = open_domains[promoter_key]
-                    domain = choose_element(domains)
+                promoter_key = chromosome.promoter_order[event]
+                promoter = chromosome.promoters[promoter_key]
+                domains = open_domains[promoter_key]
+                domain = choose_element(domains)
 
-                    import ipdb; ipdb.set_trace()
+                blocked_promoters[event] += 1
+                bound_domains[promoter_key].add(domain)
+                open_domains[promoter_key].remove(domain)
 
-                    bound_rnap[event] += 1
-                    bound_domains[promoter_key].add(domain)
-                    open_domains[promoter_key].remove(domain)
+                # create a new bound RNAP and add it to the chromosome.
+                new_rnap = chromosome.bind_rnap(event, domain)
+                new_rnap.start_polymerizing()
 
-                    # create a new bound RNAP and add it to the chromosome.
-                    new_rnap = chromosome.bind_rnap(promoter_index, domain)
-                    promoter_rnaps[promoter_key][domain] = new_rnap
+                if VERBOSE:
+                    print('newly bound RNAP: {}'.format(new_rnap))
 
-                    unbound_rnaps -= 1
-                # RNAP has begun polymerizing its transcript
-                else:
-                    promoter_index = event - self.promoter_count
-                    promoter_key = chromosome.promoter_order[promoter_index]
-                    domains = bound_domains[promoter_key]
-                    domain = choose_element(domains)
-
-                    # find rnap on this domain
-                    rnap = promoter_rnaps[promoter_key][domain]
-                    rnap.start_polymerizing()
-
-                    del promoter_rnaps[promoter_key][domain]
-
-                    # open_domains[promoter_key].add(domain)
-                    bound_domains[promoter_key].remove(domain)
-                    bound_rnap[promoter_index] -= 1
-                    occluding_rnap[promoter_index] += 1
-
-            # now that all events have been accounted for, elongate
-            # until the end of this interval.
-            terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
-                time + interval,
-                self.elongation_rate,
-                monomer_limits,
-                chromosome.rnaps)
-            unbound_rnaps += terminations
+                unbound_rnaps -= 1
 
             # deal with occluding rnap
             for rnap in chromosome.rnaps:
-                if rnap.is_unoccluding():
-                    occluding_rnap[rnap.template_index] -= 1
+                if rnap.is_unoccluding(self.polymerase_occlusion):
+                    if VERBOSE:
+                        print('RNAP unoccluding: {}'.format(rnap))
+
+                    blocked_promoters[rnap.template_index] -= 1
+                    bound_domains[promoter_key].remove(rnap.domain)
                     open_domains[rnap.template].add(rnap.domain)
                     rnap.unocclude()
+                if VERBOSE:
+                    print('rnap: {}'.format(rnap))
+
+            if VERBOSE:
+                print('complete: {}'.format(elongation.complete_polymers))
 
             time += interval
 
