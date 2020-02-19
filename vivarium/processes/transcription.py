@@ -29,7 +29,6 @@ default_transcription_parameters = {
     'templates': test_chromosome_config['promoters'],
     'genes': test_chromosome_config['genes'],
     'elongation_rate': 1.0,
-    'advancement_rate': 1.0,
     'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
@@ -44,8 +43,6 @@ class Transcription(Process):
             values are the affinity RNAP have for that promoter state.
         * promoter_order - a list representing a canonical ordering of the promoters.
         * elongation_rate - elongation rate of polymerizing mRNA.
-        * advancement_rate - affinity for RNAP to move from the 'bound' to the 
-            'polymerizing' state.
         '''
 
         if VERBOSE:
@@ -77,7 +74,6 @@ class Transcription(Process):
         self.transcript_ids = self.parameters['transcript_ids']
         self.elongation = 0
         self.elongation_rate = self.parameters['elongation_rate']
-        self.advancement_rate = self.parameters['advancement_rate']
         self.polymerase_occlusion = self.parameters['polymerase_occlusion']
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
@@ -319,8 +315,7 @@ class Transcription(Process):
 
 def test_transcription():
     parameters = {
-        'elongation_rate': 10.0,
-        'advancement_rate': 10.0}
+        'elongation_rate': 10.0}
 
     chromosome = Chromosome(test_chromosome_config)
     transcription = Transcription(parameters)
