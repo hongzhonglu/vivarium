@@ -5,11 +5,11 @@ import logging as log
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process, keys_list
-from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
+from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, toy_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
 
-log.basicConfig(level=log.DEBUG)
+# log.basicConfig(level=log.DEBUG)
 
 def choose_element(elements):
     if elements:
@@ -27,9 +27,9 @@ default_transcription_parameters = {
         ('pB', None): 1.0,
         ('pB', 'tfB'): 10.0},
     'transcription_factors': ['tfA', 'tfB'],
-    'sequence': test_chromosome_config['sequence'],
-    'templates': test_chromosome_config['promoters'],
-    'genes': test_chromosome_config['genes'],
+    'sequence': toy_chromosome_config['sequence'],
+    'templates': toy_chromosome_config['promoters'],
+    'genes': toy_chromosome_config['genes'],
     'elongation_rate': 1.0,
     'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
@@ -308,7 +308,7 @@ def test_transcription():
     parameters = {
         'elongation_rate': 10.0}
 
-    chromosome = Chromosome(test_chromosome_config)
+    chromosome = Chromosome(toy_chromosome_config)
     transcription = Transcription(parameters)
 
     states = {
