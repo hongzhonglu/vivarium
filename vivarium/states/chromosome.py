@@ -180,7 +180,7 @@ class Chromosome(Datum):
             for promoter_key in self.promoter_order}
 
         for rnap in self.rnaps:
-            if rnap.is_bound():
+            if rnap.is_occluding():
                 by_promoter[rnap.template][rnap.domain] = rnap
 
         return by_promoter

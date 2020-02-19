@@ -13,7 +13,7 @@ def choose_element(elements):
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
-VERBOSE = True
+VERBOSE = False
 UNBOUND_RNAP_KEY = 'RNA Polymerase'
 
 monomer_ids = list(nucleotides.values())
@@ -143,6 +143,7 @@ class Transcription(Process):
             'promoter_order',
             'rnap_id',
             'rnaps']
+
         schema = {
             'chromosome': {
                 state_id : {
@@ -152,7 +153,7 @@ class Transcription(Process):
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'set_states': set_states,
+            'schema': schema,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
@@ -180,7 +181,7 @@ class Transcription(Process):
             for rnap in promoter_rnaps.get(promoter_key, {}).values():
                 if rnap.is_occluding():
                     domains.append(rnap.domain)
-                    blocked_domains[promoter_index] += 1
+                    blocked_promoters[promoter_index] += 1
 
             bound_domains[promoter_key] = set(domains)
             open_domains[promoter_key] = promoter_domains[promoter_key] - bound_domains[promoter_key]
@@ -281,7 +282,7 @@ class Transcription(Process):
                         print('RNAP unoccluding: {}'.format(rnap))
 
                     blocked_promoters[rnap.template_index] -= 1
-                    bound_domains[promoter_key].remove(rnap.domain)
+                    bound_domains[rnap.template].remove(rnap.domain)
                     open_domains[rnap.template].add(rnap.domain)
                     rnap.unocclude()
                 if VERBOSE:
