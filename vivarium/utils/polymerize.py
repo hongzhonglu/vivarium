@@ -30,10 +30,13 @@ def add_merge(ds):
             result[key] += value
     return result
 
+def kinetics(E, S, kcat, km):
+    return kcat * E * S / (S + km)
+
 class Polymerase(Datum):
     defaults = {
         'id': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'complete']
         'position': 0,
         'template': None,
         'terminator': 0}
@@ -44,8 +47,8 @@ class Polymerase(Datum):
     def bind(self):
         self.state = 'bound'
 
-    def start_transcribing(self):
-        self.state = 'transcribing'
+    def start_polymerizing(self):
+        self.state = 'polymerizing'
 
     def complete(self):
         self.state = 'complete'
@@ -55,7 +58,7 @@ class Polymerase(Datum):
         return self.state == 'bound'
 
     def is_polymerizing(self):
-        return self.state == 'transcribing'
+        return self.state == 'polymerizing'
 
     def is_complete(self):
         return self.state == 'complete'
@@ -176,11 +179,10 @@ def template_products(config):
         key: Template(config)
         for key, config in config.items()})
 
-def polymerize_to(
+def polymerize_step(
         sequences,
         polymerases,
         templates,
-        additions,
         symbol_to_monomer,
         monomer_limits):
 
@@ -193,35 +195,48 @@ def polymerize_to(
         for monomer in monomer_limits.keys()}
     terminated = 0
 
-    for step in range(additions):
-        for polymerase in polymerases:
-            if polymerase.is_polymerizing():
-                template = templates[polymerase.template]
-                projection = polymerase.position + 1
-                monomer_symbol = sequences[template.id][polymerase.position]
-                monomer = symbol_to_monomer[monomer_symbol]
+    for polymerase in polymerases:
+        if polymerase.is_polymerizing():
+            template = templates[polymerase.template]
+            projection = polymerase.position + 1
+            monomer_symbol = sequences[template.id][polymerase.position]
+            monomer = symbol_to_monomer[monomer_symbol]
 
-                if monomer_limits[monomer] > 0:
-                    monomer_limits[monomer] -= 1
-                    monomers[monomer] += 1
-                    polymerase.position = projection
-                    absolute_position = template.absolute_position(
-                        polymerase.position)
+            if monomer_limits[monomer] > 0:
+                monomer_limits[monomer] -= 1
+                monomers[monomer] += 1
+                polymerase.position = projection
+                absolute_position = template.absolute_position(
+                    polymerase.position)
 
-                    terminator = template.terminators[polymerase.terminator]
-                    if terminator.position == absolute_position:
-                        if template.terminates_at(polymerase.terminator):
-                            polymerase.complete()
-                            terminated += 1
+                terminator = template.terminators[polymerase.terminator]
+                if terminator.position == absolute_position:
+                    if template.terminates_at(polymerase.terminator):
+                        polymerase.complete()
+                        terminated += 1
 
-                            for product in terminator.products:
-                                complete_polymers[product] += 1
+                        for product in terminator.products:
+                            complete_polymers[product] += 1
 
     polymerases = [
         polymerase
         for polymerase in polymerases
         if not polymerase.is_complete()]
 
+    return monomers, monomer_limits, terminated, complete_polymers, polymerases
+    
+
+def polymerize_to(
+        sequences,
+        polymerases,
+        templates,
+        additions,
+        symbol_to_monomer,
+        monomer_limits):
+
+    for step in range(additions):
+        monomers, monomer_limits, terminated, complete_polymers, polymerases = polymerize_step(
+            sequences, polymerases, templates, symbol_to_monomer, monomer_limits)
     return monomers, monomer_limits, terminated, complete_polymers, polymerases
 
 

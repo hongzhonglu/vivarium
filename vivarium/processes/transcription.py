@@ -44,7 +44,7 @@ class Transcription(Process):
         * promoter_order - a list representing a canonical ordering of the promoters.
         * elongation_rate - elongation rate of polymerizing mRNA.
         * advancement_rate - affinity for RNAP to move from the 'bound' to the 
-            'transcribing' state.
+            'polymerizing' state.
         '''
 
         if VERBOSE:
@@ -275,7 +275,7 @@ class Transcription(Process):
 
                     # # find rnap on this domain
                     rnap = promoter_rnaps[promoter_key][domain]
-                    rnap.start_transcribing()
+                    rnap.start_polymerizing()
 
                     del promoter_rnaps[promoter_key][domain]
 

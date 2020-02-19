@@ -123,7 +123,7 @@ class Rnap(Polymerase):
         'template': None,
         'terminator': 0,
         'domain': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'complete']
         'position': 0}
 
     def __init__(self, config):
