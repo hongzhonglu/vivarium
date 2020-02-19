@@ -121,9 +121,10 @@ class Rnap(Polymerase):
     defaults = {
         'id': 0,
         'template': None,
+        'template_index': 0,
         'terminator': 0,
         'domain': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'occluding', 'complete']
         'position': 0}
 
     def __init__(self, config):
@@ -179,7 +180,7 @@ class Chromosome(Datum):
             for promoter_key in self.promoter_order}
 
         for rnap in self.rnaps:
-            if rnap.is_bound():
+            if rnap.is_occluding():
                 by_promoter[rnap.template][rnap.domain] = rnap
 
         return by_promoter
@@ -200,11 +201,14 @@ class Chromosome(Datum):
                 self.position_domains(child, position)
                 for child in domain.children])
 
-    def bind_rnap(self, promoter_key, domain):
+    def bind_rnap(self, promoter_index, domain):
         self.rnap_id += 1
+        promoter_key = self.promoter_order[promoter_index]
+
         new_rnap = Rnap({
             'id': self.rnap_id,
             'template': promoter_key,
+            'template_index': promoter_index,
             'domain': domain,
             'position': 0})
         new_rnap.bind()

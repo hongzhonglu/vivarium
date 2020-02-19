@@ -30,12 +30,16 @@ def add_merge(ds):
             result[key] += value
     return result
 
+def kinetics(E, S, kcat, km):
+    return kcat * E * S / (S + km)
+
 class Polymerase(Datum):
     defaults = {
         'id': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'complete']
         'position': 0,
         'template': None,
+        'template_index': 0,
         'terminator': 0}
 
     def __init__(self, config, defaults=defaults):
@@ -44,8 +48,8 @@ class Polymerase(Datum):
     def bind(self):
         self.state = 'bound'
 
-    def start_transcribing(self):
-        self.state = 'transcribing'
+    def start_polymerizing(self):
+        self.state = 'occluding'
 
     def complete(self):
         self.state = 'complete'
@@ -55,10 +59,20 @@ class Polymerase(Datum):
         return self.state == 'bound'
 
     def is_polymerizing(self):
-        return self.state == 'transcribing'
+        return self.state == 'occluding' or self.state == 'polymerizing'
 
     def is_complete(self):
         return self.state == 'complete'
+
+    def is_occluding(self):
+        return self.state == 'bound' or self.state == 'occluding'
+
+    def is_unoccluding(self, occlusion):
+        return self.state == 'occluding' and self.position >= occlusion
+
+    def unocclude(self):
+        if self.state == 'occluding':
+            self.state = 'polymerizing'
 
 class BindingSite(Datum):
     defaults = {
@@ -176,11 +190,10 @@ def template_products(config):
         key: Template(config)
         for key, config in config.items()})
 
-def polymerize_to(
+def polymerize_step(
         sequences,
         polymerases,
         templates,
-        additions,
         symbol_to_monomer,
         monomer_limits):
 
@@ -193,35 +206,50 @@ def polymerize_to(
         for monomer in monomer_limits.keys()}
     terminated = 0
 
-    for step in range(additions):
-        for polymerase in polymerases:
-            if polymerase.is_polymerizing():
-                template = templates[polymerase.template]
-                projection = polymerase.position + 1
-                monomer_symbol = sequences[template.id][polymerase.position]
-                monomer = symbol_to_monomer[monomer_symbol]
+    for polymerase in polymerases:
+        if polymerase.is_polymerizing():
+            template = templates[polymerase.template]
+            projection = polymerase.position + 1
+            monomer_symbol = sequences[template.id][polymerase.position]
+            monomer = symbol_to_monomer[monomer_symbol]
 
-                if monomer_limits[monomer] > 0:
-                    monomer_limits[monomer] -= 1
-                    monomers[monomer] += 1
-                    polymerase.position = projection
-                    absolute_position = template.absolute_position(
-                        polymerase.position)
+            if monomer_limits[monomer] > 0:
+                monomer_limits[monomer] -= 1
+                monomers[monomer] += 1
+                polymerase.position = projection
+                absolute_position = template.absolute_position(
+                    polymerase.position)
 
-                    terminator = template.terminators[polymerase.terminator]
-                    if terminator.position == absolute_position:
-                        if template.terminates_at(polymerase.terminator):
-                            polymerase.complete()
-                            terminated += 1
+                terminator = template.terminators[polymerase.terminator]
+                if terminator.position == absolute_position:
+                    if template.terminates_at(polymerase.terminator):
+                        polymerase.complete()
+                        terminated += 1
 
-                            for product in terminator.products:
-                                complete_polymers[product] += 1
+                        for product in terminator.products:
+                            complete_polymers[product] += 1
+                    else:
+                        polymerase.terminator += 1
 
     polymerases = [
         polymerase
         for polymerase in polymerases
         if not polymerase.is_complete()]
 
+    return monomers, monomer_limits, terminated, complete_polymers, polymerases
+    
+
+def polymerize_to(
+        sequences,
+        polymerases,
+        templates,
+        additions,
+        symbol_to_monomer,
+        monomer_limits):
+
+    for step in range(additions):
+        monomers, monomer_limits, terminated, complete_polymers, polymerases = polymerize_step(
+            sequences, polymerases, templates, symbol_to_monomer, monomer_limits)
     return monomers, monomer_limits, terminated, complete_polymers, polymerases
 
 
@@ -243,7 +271,25 @@ class Elongation(object):
         self.elongation = elongation
         self.limits = limits
 
-    def elongate(self, now, rate, limits, polymerases):
+    def step(self, interval, limits, polymerases):
+        self.time += interval
+        monomers, limits, terminated, complete, polymerases = polymerize_step(
+            self.sequence,
+            polymerases,
+            self.templates,
+            self.symbol_to_monomer,
+            limits)
+
+        self.monomers = add_merge([self.monomers, monomers])
+        self.complete_polymers = add_merge([
+            self.complete_polymers, complete])
+
+        return terminated, limits, polymerases
+
+    def store_partial(self, interval):
+        self.elongation += interval
+
+    def elongate_to(self, now, rate, limits, polymerases):
         '''
         Track increments of time and accumulate partial elongations, emitting the full
         elongation once a unit is attained.
@@ -277,7 +323,7 @@ class Elongation(object):
         return len(self.complete_polymers)
 
 
-def build_stoichiometry(promoter_count):
+def build_double_stoichiometry(promoter_count):
     '''
     Builds a stoichiometry for the given promoters. There are two states per promoter,
     open and bound, and two reactions per promoter, binding and unbinding. In addition
@@ -298,8 +344,25 @@ def build_stoichiometry(promoter_count):
 
     return stoichiometry
 
-def build_rates(affinities, advancement):
+def build_double_rates(affinities, advancement):
     return np.concatenate([
         affinities,
         np.repeat(advancement, len(affinities))])
+
+def build_stoichiometry(promoter_count):
+    '''
+    Builds a stoichiometry for the given promoters. There are two states per promoter,
+    open and bound, and two reactions per promoter, binding and unbinding. In addition
+    there is a single substrate for available RNAP in the final index.
+
+    Here we are assuming
+    '''
+    stoichiometry = np.zeros((promoter_count, promoter_count * 2 + 1), dtype=np.int64)
+    for index in range(promoter_count):
+        # forward reaction
+        stoichiometry[index][index] = -1
+        stoichiometry[index][index + promoter_count] = 1
+        stoichiometry[index][-1] = -1 # forward reaction consumes RNAP also
+
+    return stoichiometry
 
