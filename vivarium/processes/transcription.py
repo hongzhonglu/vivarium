@@ -57,9 +57,13 @@ class Transcription(Process):
         self.parameters.update(initial_parameters)
 
         self.sequence = self.parameters['sequence']
-        self.sequences = None # set when the chromosome first appears
         self.templates = self.parameters['templates']
         self.genes = self.parameters['genes']
+        empty_chromosome = Chromosome({
+            'sequence': self.sequence,
+            'promoters': self.templates,
+            'genes': self.genes})
+        self.sequences = empty_chromosome.sequences()
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
         log.debug('chromosome sequence: {}'.format(self.sequence))
@@ -80,10 +84,11 @@ class Transcription(Process):
         self.initiation = StochasticSystem(self.stoichiometry)
 
         self.roles = {
-            'chromosome': Chromosome({}).fields(),
+            'chromosome': ['rnaps', 'rnap_id', 'domains', 'root_domain'],
             'molecules': self.molecule_ids,
             'factors': self.transcription_factors,
-            'transcripts': self.transcript_ids}
+            'transcripts': self.transcript_ids,
+            'proteins': [UNBOUND_RNAP_KEY]}
 
         log.debug('transcription parameters: {}'.format(self.parameters))
 
@@ -98,29 +103,40 @@ class Transcription(Process):
             vector[index] = affinity
         return vector
 
+    def chromosome_config(self, chromosome_states):
+        return dict(
+            chromosome_states,
+            sequence=self.sequence,
+            promoters=self.templates,
+            promoter_order=self.promoter_order,
+            genes=self.genes)
+
     def default_settings(self):
         default_state = {
             'chromosome': {
-                'sequence': self.sequence,
-                'promoters': self.templates,
-                'genes': self.genes,
                 'rnaps': [],
+                'rnap_id': 0,
+                'root_domain': 0,
                 'domains': {
                     0: {
                         'id': 0,
                         'lead': 0,
                         'lag': 0,
                         'children': []}}},
-            'molecules': {UNBOUND_RNAP_KEY: 10},
+            'molecules': {},
+            'proteins': {UNBOUND_RNAP_KEY: 10},
             'factors': {
-                'tfA': 0.1,
-                'tfB': 1.0}}
+                key: 0.0
+                for key in self.transcription_factors}}
 
         default_state['molecules'].update({
             nucleotide: 100
             for nucleotide in self.monomer_ids})
 
-        chromosome = Chromosome(default_state['chromosome'])
+        chromosome = Chromosome(
+            self.chromosome_config(
+                default_state['chromosome']))
+
         operons = [operon.id for operon in chromosome.operons()]
 
         default_state['transcripts'] = {
@@ -132,22 +148,17 @@ class Transcription(Process):
             'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
-        # schema
-        set_states = [
-            'sequence',
-            'genes',
-            'promoters',
-            'domains',
-            'root_domain',
-            'promoter_order',
-            'rnap_id',
-            'rnaps']
+        deriver_setting = [{
+            'type': 'counts_to_mmol',
+            'source_role': 'proteins',
+            'derived_role': 'factors',
+            'keys': self.transcription_factors}]
 
         schema = {
             'chromosome': {
                 state_id : {
                     'updater': 'set'}
-                for state_id in set_states}}
+                for state_id in self.roles['chromosome']}}
 
         return {
             'state': default_state,
@@ -156,14 +167,12 @@ class Transcription(Process):
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
-        chromosome = Chromosome(states['chromosome'])
+        chromosome = Chromosome(
+            self.chromosome_config(
+                states['chromosome']))
         molecules = states['molecules']
+        proteins = states['proteins']
         factors = states['factors'] # as concentrations
-
-        if self.sequences is None:
-            self.sequences = chromosome.sequences()
-
-            log.debug('sequences: {}'.format(self.sequences))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
@@ -193,7 +202,7 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = molecules[UNBOUND_RNAP_KEY]
+        original_unbound_rnaps = proteins[UNBOUND_RNAP_KEY]
         monomer_limits = {
             monomer: molecules[monomer]
             for monomer in self.monomer_ids}
@@ -287,15 +296,19 @@ class Transcription(Process):
         # track how far elongation proceeded to start from next iteration
         self.elongation = elongation.elongation - int(elongation.elongation)
 
-        molecules = {
+        proteins = {
             UNBOUND_RNAP_KEY: unbound_rnaps - original_unbound_rnaps}
 
-        molecules.update({
+        molecules = {
             key: count * -1
-            for key, count in elongation.monomers.items()})
+            for key, count in elongation.monomers.items()}
 
+        chromosome_dict = chromosome.to_dict()
         update = {
-            'chromosome': chromosome.to_dict(),
+            'chromosome': {
+                key: chromosome_dict[key]
+                for key in self.roles['chromosome']},
+            'proteins': proteins,
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
@@ -313,7 +326,8 @@ def test_transcription():
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {UNBOUND_RNAP_KEY: 10},
+        'molecules': {},
+        'proteins': {UNBOUND_RNAP_KEY: 10},
         'factors': {'tfA': 0.2, 'tfB': 0.7}}
 
     states['molecules'].update({

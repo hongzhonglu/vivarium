@@ -86,8 +86,7 @@ class Translation(Process):
             initial_parameters.get(
                 'transcript_affinities',
                 self.default_parameters['transcript_affinities']).keys())
-        self.default_parameters['molecule_ids'] = self.monomer_ids + [
-            UNBOUND_RIBOSOME_KEY]
+        self.default_parameters['molecule_ids'] = self.monomer_ids
 
         self.parameters = copy.deepcopy(self.default_parameters)
         self.parameters.update(initial_parameters)
@@ -121,7 +120,7 @@ class Translation(Process):
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
-            'proteins': self.protein_ids}
+            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
 
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
@@ -132,14 +131,16 @@ class Translation(Process):
         default_state = {
             'ribosomes': {
                 'ribosomes': []},
-            'molecules': dict({
-                UNBOUND_RIBOSOME_KEY: 10}),
+            'molecules': {},
             'transcripts': {
                 transcript_id: 1
                 for transcript_id in self.transcript_order},
-            'proteins': {
-                protein_id: 0
-                for protein_id in self.protein_ids}}
+            'proteins': dict({
+                UNBOUND_RIBOSOME_KEY: 10})}
+
+        default_state['proteins'].update({
+            protein_id: 0
+            for protein_id in self.protein_ids})
 
         default_state['molecules'].update({
             monomer_id: 200
@@ -148,9 +149,9 @@ class Translation(Process):
         operons = list(default_state['transcripts'].keys())
         default_emitter_keys = {
             'ribosomes': ['ribosomes'],
-            'molecules': self.monomer_ids + [UNBOUND_RIBOSOME_KEY],
+            'molecules': self.monomer_ids,
             'transcripts': operons,
-            'proteins': self.protein_ids}
+            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
 
         # schema
         schema = {
@@ -165,6 +166,7 @@ class Translation(Process):
 
     def next_update(self, timestep, states):
         ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
+        proteins = states['proteins']
         molecules = states['molecules']
         transcripts = states['transcripts']
         transcript_counts = np.array([
@@ -192,7 +194,7 @@ class Translation(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
 
-        original_unbound_ribosomes = molecules[UNBOUND_RIBOSOME_KEY]
+        original_unbound_ribosomes = proteins[UNBOUND_RIBOSOME_KEY]
         monomer_limits = {
             monomer: molecules[monomer]
             for monomer in self.monomer_ids}
@@ -272,18 +274,19 @@ class Translation(Process):
         # track how far elongation proceeded to start from next iteration
         self.elongation = elongation.elongation - int(elongation.elongation)
 
-        molecules = {
+        proteins = {
             UNBOUND_RIBOSOME_KEY: unbound_ribosomes - original_unbound_ribosomes}
+        proteins.update(elongation.complete_polymers)
 
-        molecules.update({
+        molecules = {
             key: count * -1
-            for key, count in elongation.monomers.items()})
+            for key, count in elongation.monomers.items()}
 
         update = {
             'ribosomes': {
                 'ribosomes': [ribosome.to_dict() for ribosome in ribosomes]},
             'molecules': molecules,
-            'proteins': elongation.complete_polymers}
+            'proteins': proteins}
 
         return update
 
@@ -303,7 +306,8 @@ def test_translation():
 
     states = {
         'ribosomes': {'ribosomes': []},
-        'molecules': {UNBOUND_RIBOSOME_KEY: 10},
+        'molecules': {},
+        'proteins': {UNBOUND_RIBOSOME_KEY: 10},
         'transcripts': {
             'oA': 10,
             'oAZ': 10,

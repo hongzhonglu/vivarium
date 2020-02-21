@@ -5,6 +5,7 @@ import random
 import os
 
 import numpy as np
+import logging as log
 
 import vivarium.actor.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
@@ -84,11 +85,17 @@ class State(object):
             if not callable(updater):
                 updater = updater_library[updater]
 
-            self.new_state[key], other_updates = updater(
-                key,
-                state_dict,
-                self.new_state[key],
-                value)
+            try:
+                self.new_state[key], other_updates = updater(
+                    key,
+                    state_dict,
+                    self.new_state[key],
+                    value)
+            except TypeError as e:
+                log.error(
+                    'bad update - {}: {}, {}'.format(
+                        key, value, self.new_state[key]))
+                raise e
 
             self.new_state.update(other_updates)
 

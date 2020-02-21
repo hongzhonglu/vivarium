@@ -36,18 +36,22 @@ def compose_gene_expression(config):
         'transcription': {
             'chromosome': 'chromosome',
             'molecules': 'molecules',
+            'proteins': 'proteins',
             'transcripts': 'transcripts',
             'factors': 'factors'},
+
         'translation': {
             'ribosomes': 'ribosomes',
             'molecules': 'molecules',
             'transcripts': 'transcripts',
             'proteins': 'proteins'},
+
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
             'molecules': 'molecules',
             'global': 'global'},
+
         'division': {
             'global': 'global'}}
 
@@ -108,7 +112,7 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     # plot polymerases
     for poly_id in polymerase_ids:
-        ax1.plot(time, molecules[poly_id], label=poly_id)
+        ax1.plot(time, proteins[poly_id], label=poly_id)
     ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
     ax1.title.set_text('polymerases')
 

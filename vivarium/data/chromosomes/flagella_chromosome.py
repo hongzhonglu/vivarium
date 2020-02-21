@@ -1,3 +1,4 @@
+from vivarium.utils.fasta import read_sequence
 from vivarium.data.knowledge_base import KnowledgeBase
 
 knowledge_base = KnowledgeBase()
@@ -7,9 +8,9 @@ genes = {
     gene['symbol']: gene
     for gene in genes_list}
 
-flagella_sequence = ''
+ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
 
-import ipdb; ipdb.set_trace()
+flagella_sequence = read_sequence(ECOLI_GENOME_PATH)
 
 flagella_config = {
     'sequence': flagella_sequence,
@@ -21,7 +22,7 @@ flagella_config = {
         'flgA': ['flgA', 'flgM', 'flgN'],
         'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
         'flhB': ['flhB', 'flhA', 'flhE'],
-        'fliA': ['fliA', 'fliZ', 'tcyJ'],
+        'fliA': ['fliA', 'fliZ'], # ignore 'tcyJ' for now
         'fliD': ['fliD', 'fliS', 'fliT'],
         'flgK': ['flgK', 'flgL'],
         'fliC': ['fliC'],
@@ -229,3 +230,4 @@ flagella_config = {
             'lag': 0,
             'children': []}},
     'rnaps': []}
+
