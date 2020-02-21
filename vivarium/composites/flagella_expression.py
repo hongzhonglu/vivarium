@@ -49,6 +49,7 @@ def generate_flagella_compartment(config):
 
             'sequences': flagella.operon_sequences,
             'templates': flagella.transcript_templates,
+            'concentration_keys': ['CRP'],
             'transcript_affinities': flagella.transcript_affinities,
 
             'elongation_rate': 22,

@@ -55,7 +55,8 @@ default_translation_parameters = {
     'elongation_rate': 5.0,
     'polymerase_occlusion': 10,
     'symbol_to_monomer': amino_acids,
-    'monomer_ids': monomer_ids}
+    'monomer_ids': monomer_ids,
+    'concentration_keys': []}
 
 class Translation(Process):
     def __init__(self, initial_parameters={}):
@@ -95,6 +96,7 @@ class Translation(Process):
         self.elongation = 0
         self.elongation_rate = self.parameters['elongation_rate']
         self.polymerase_occlusion = self.parameters['polymerase_occlusion']
+        self.concentration_keys = self.parameters['concentration_keys']
 
         self.affinity_vector = np.array([
             self.transcript_affinities[transcript_key]
@@ -106,12 +108,13 @@ class Translation(Process):
 
         self.ribosome_id = 0
 
+        concentration_keys = self.concentration_keys + self.protein_ids
         self.roles = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
-            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY],
-            'concentrations': self.protein_ids}
+            'proteins': concentration_keys + [UNBOUND_RIBOSOME_KEY],
+            'concentrations': concentration_keys}
 
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
@@ -152,7 +155,7 @@ class Translation(Process):
             'type': 'counts_to_mmol',
             'source_role': 'proteins',
             'derived_role': 'concentrations',
-            'keys': self.protein_ids}]
+            'keys': self.protein_ids + self.concentration_keys}]
 
         # schema
         schema = {
@@ -163,6 +166,7 @@ class Translation(Process):
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema,
+            'deriver_setting': deriver_setting,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):

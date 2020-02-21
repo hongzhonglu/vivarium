@@ -260,11 +260,11 @@ class FlagellaChromosome(object):
             ('flhDp', None): 0.01,
             ('flhDp', 'CRP'): 0.5}
 
-        self.promoter_affinities[('fliCp', None)] = 0.01
-        self.promoter_affinities[('flgMp', None)] = 0.01
+        self.promoter_affinities[('fliCp', None)] = 0.0
+        self.promoter_affinities[('flgMp', None)] = 0.0
 
         for promoter in self.flhD_activated:
-            self.promoter_affinities[(promoter, None)] = 0.01
+            self.promoter_affinities[(promoter, None)] = 0.0
             self.promoter_affinities[(promoter, 'flhD')] = 0.5
 
         self.transcripts = [
