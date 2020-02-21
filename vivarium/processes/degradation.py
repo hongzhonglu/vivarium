@@ -27,7 +27,7 @@ default_degradation_parameters = {
         'oBY': 'AGUUGACGG'},
 
     'catalysis_rates': {
-        'endoRNAse': 2.0},
+        'endoRNAse': 0.1},
 
     'degradation_rates': {
         'transcripts': {

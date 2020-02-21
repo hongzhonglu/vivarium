@@ -52,7 +52,7 @@ def generate_gfp_compartment(config):
             'promoter_affinities': {
                 ('T7',): 0.5},
 
-            'advancement_rate': 10.0,
+            'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
@@ -66,13 +66,13 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': 0.1},
 
             'elongation_rate': 22,
-            'advancement_rate': 10.0},
+            'polymerase_occlusion': 50},
 
         'degradation': {
             
             'sequences': sequences,
             'catalysis_rates': {
-                'endoRNAse': 8.0},
+                'endoRNAse': 0},
             'degradation_rates': {
                 'transcripts': {
                     'endoRNAse': {

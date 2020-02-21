@@ -1,19 +1,21 @@
 import copy
 import math
 import numpy as np
+import logging as log
 from arrow import StochasticSystem
 
 from vivarium.actor.process import Process, keys_list
 from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
-from vivarium.utils.polymerize import Elongation, build_stoichiometry, build_rates, template_products
+from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
+
+log.basicConfig(level=log.DEBUG)
 
 def choose_element(elements):
     if elements:
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
-VERBOSE = False
 UNBOUND_RNAP_KEY = 'RNA Polymerase'
 
 monomer_ids = list(nucleotides.values())
@@ -29,7 +31,7 @@ default_transcription_parameters = {
     'templates': test_chromosome_config['promoters'],
     'genes': test_chromosome_config['genes'],
     'elongation_rate': 1.0,
-    'advancement_rate': 1.0,
+    'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
     'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
@@ -43,12 +45,9 @@ class Transcription(Process):
             values are the affinity RNAP have for that promoter state.
         * promoter_order - a list representing a canonical ordering of the promoters.
         * elongation_rate - elongation rate of polymerizing mRNA.
-        * advancement_rate - affinity for RNAP to move from the 'bound' to the 
-            'transcribing' state.
         '''
 
-        if VERBOSE:
-            print('inital_parameters: {}'.format(initial_parameters))
+        log.debug('inital_parameters: {}'.format(initial_parameters))
 
         self.default_parameters = default_transcription_parameters
         self.derive_defaults(initial_parameters, 'templates', 'promoter_order', keys_list)
@@ -63,8 +62,7 @@ class Transcription(Process):
         self.genes = self.parameters['genes']
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
-        if VERBOSE:
-            print('chromosome sequence: {}'.format(self.sequence))
+        log.debug('chromosome sequence: {}'.format(self.sequence))
 
         self.promoter_affinities = self.parameters['promoter_affinities']
         self.promoter_order = self.parameters['promoter_order']
@@ -76,7 +74,7 @@ class Transcription(Process):
         self.transcript_ids = self.parameters['transcript_ids']
         self.elongation = 0
         self.elongation_rate = self.parameters['elongation_rate']
-        self.advancement_rate = self.parameters['advancement_rate']
+        self.polymerase_occlusion = self.parameters['polymerase_occlusion']
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.initiation = StochasticSystem(self.stoichiometry)
@@ -87,8 +85,7 @@ class Transcription(Process):
             'factors': self.transcription_factors,
             'transcripts': self.transcript_ids}
 
-        if VERBOSE:
-            print('transcription parameters: {}'.format(self.parameters))
+        log.debug('transcription parameters: {}'.format(self.parameters))
 
         super(Transcription, self).__init__(self.roles, self.parameters)
 
@@ -145,6 +142,7 @@ class Transcription(Process):
             'promoter_order',
             'rnap_id',
             'rnaps']
+
         schema = {
             'chromosome': {
                 state_id : {
@@ -154,7 +152,7 @@ class Transcription(Process):
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'set_states': set_states,
+            'schema': schema,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
@@ -165,26 +163,28 @@ class Transcription(Process):
         if self.sequences is None:
             self.sequences = chromosome.sequences()
 
-            if VERBOSE:
-                print('sequences: {}'.format(self.sequences))
+            log.debug('sequences: {}'.format(self.sequences))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
 
         # Find out how many promoters are currently blocked by a
-        # newly initiated rnap
-        bound_rnap = []
+        # newly initiated or occluding rnap
+        promoter_count = len(chromosome.promoter_order)
+        blocked_promoters = np.zeros(promoter_count, dtype=np.int64)
         open_domains = {}
         bound_domains = {}
-        for promoter_key in chromosome.promoter_order:
-            bound_domains[promoter_key] = set([
-                rnap.domain
-                for rnap in promoter_rnaps.get(promoter_key, {}).values()
-                if rnap.is_bound()])
-            bound_rnap.append(len(bound_domains[promoter_key]))
+        for promoter_index, promoter_key in enumerate(chromosome.promoter_order):
+            domains = []
+            for rnap in promoter_rnaps.get(promoter_key, {}).values():
+                if rnap.is_occluding():
+                    domains.append(rnap.domain)
+                    blocked_promoters[promoter_index] += 1
+
+            bound_domains[promoter_key] = set(domains)
             open_domains[promoter_key] = promoter_domains[promoter_key] - bound_domains[promoter_key]
 
-        bound_rnap = np.array(bound_rnap)
+        blocked_promoters = np.array(blocked_promoters)
 
         # Make the state for a gillespie simulation out of total number of each
         # promoter by copy number not blocked by initiated rnap,
@@ -209,84 +209,78 @@ class Transcription(Process):
             self.elongation)
 
         initiation_affinity = self.build_affinity_vector(chromosome.promoters, factors)
-        initiation_rates = build_rates(initiation_affinity, self.advancement_rate)
 
         while time < timestep:
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
-                copy_numbers - bound_rnap,
-                bound_rnap,
+                copy_numbers - blocked_promoters,
+                blocked_promoters,
                 [unbound_rnaps]])
 
-            if VERBOSE and time == 0:
-                print('transcription substrate: {}'.format(substrate))
-            
+            log.debug('transcription substrate: {}'.format(substrate))
+            log.debug('blocked promoters: {}'.format(blocked_promoters))
+
             # find number of monomers until next terminator
-            distance = chromosome.terminator_distance()
+            distance = 1 / self.elongation_rate # chromosome.terminator_distance()
 
             # find interval of time that elongates to the point of the next terminator
-            interval = min(distance / self.elongation_rate, timestep - time)
+            interval = min(distance, timestep - time)
+
+            if interval == distance:
+                # perform the elongation until the next event
+                terminations, monomer_limits, chromosome.rnaps = elongation.step(
+                    interval,
+                    monomer_limits,
+                    chromosome.rnaps)
+                unbound_rnaps += terminations
+            else:
+                elongation.store_partial(interval)
+                terminations = 0
+
+            log.debug('time: {} --- interval: {}'.format(time, interval))
+            log.debug('monomer limits: {}'.format(monomer_limits))
+            log.debug('terminations: {}'.format(terminations))
 
             # run simulation for interval of time to next terminator
             result = self.initiation.evolve(
                 interval,
                 substrate,
-                initiation_rates)
+                initiation_affinity)
 
-            # go through each event in the simulation and update the state
-            rnap_bindings = 0
+            log.debug('result: {}'.format(result))
+
+            # perform binding
             for now, event in zip(result['time'], result['events']):
-
-                # perform the elongation until the next event
-                terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
-                    time + now,
-                    self.elongation_rate,
-                    monomer_limits,
-                    chromosome.rnaps)
-                unbound_rnaps += terminations
-
                 # RNAP has bound the promoter
-                if event < self.promoter_count:
-                    promoter_key = chromosome.promoter_order[event]
-                    promoter = chromosome.promoters[promoter_key]
-                    domains = open_domains[promoter_key]
-                    domain = choose_element(domains)
+                promoter_key = chromosome.promoter_order[event]
+                promoter = chromosome.promoters[promoter_key]
+                domains = open_domains[promoter_key]
+                domain = choose_element(domains)
 
-                    bound_rnap[event] += 1
-                    bound_domains[promoter_key].add(domain)
-                    open_domains[promoter_key].remove(domain)
+                blocked_promoters[event] += 1
+                bound_domains[promoter_key].add(domain)
+                open_domains[promoter_key].remove(domain)
 
-                    # create a new bound RNAP and add it to the chromosome.
-                    new_rnap = chromosome.bind_rnap(promoter_key, domain)
-                    promoter_rnaps[promoter_key][domain] = new_rnap
+                # create a new bound RNAP and add it to the chromosome.
+                new_rnap = chromosome.bind_rnap(event, domain)
+                new_rnap.start_polymerizing()
 
-                    rnap_bindings += 1
-                    unbound_rnaps -= 1
-                # RNAP has begun polymerizing its transcript
-                else:
-                    promoter_index = event - self.promoter_count
-                    promoter_key = chromosome.promoter_order[promoter_index]
-                    domains = bound_domains[promoter_key]
-                    domain = choose_element(domains)
+                log.debug('newly bound RNAP: {}'.format(new_rnap))
 
-                    open_domains[promoter_key].add(domain)
-                    bound_domains[promoter_key].remove(domain)
-                    bound_rnap[promoter_index] -= 1
+                unbound_rnaps -= 1
 
-                    # # find rnap on this domain
-                    rnap = promoter_rnaps[promoter_key][domain]
-                    rnap.start_transcribing()
+            # deal with occluding rnap
+            for rnap in chromosome.rnaps:
+                if rnap.is_unoccluding(self.polymerase_occlusion):
+                    log.debug('RNAP unoccluding: {}'.format(rnap))
 
-                    del promoter_rnaps[promoter_key][domain]
+                    blocked_promoters[rnap.template_index] -= 1
+                    bound_domains[rnap.template].remove(rnap.domain)
+                    open_domains[rnap.template].add(rnap.domain)
+                    rnap.unocclude()
+                log.debug('rnap: {}'.format(rnap))
 
-            # now that all events have been accounted for, elongate
-            # until the end of this interval.
-            terminations, monomer_limits, chromosome.rnaps = elongation.elongate(
-                time + interval,
-                self.elongation_rate,
-                monomer_limits,
-                chromosome.rnaps)
-            unbound_rnaps += terminations
+            log.debug('complete: {}'.format(elongation.complete_polymers))
 
             time += interval
 
@@ -305,16 +299,14 @@ class Transcription(Process):
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
-        if VERBOSE:
-            print('molecules update: {}'.format(update['molecules']))
+        log.debug('molecules update: {}'.format(update['molecules']))
 
         return update
 
 
 def test_transcription():
     parameters = {
-        'elongation_rate': 10.0,
-        'advancement_rate': 10.0}
+        'elongation_rate': 10.0}
 
     chromosome = Chromosome(test_chromosome_config)
     transcription = Transcription(parameters)
