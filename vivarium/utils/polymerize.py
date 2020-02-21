@@ -179,6 +179,17 @@ class Template(Datum):
             terminator.products
             for terminator in self.terminators])
 
+def generate_template(id, length, products):
+    return {
+        'id': id,
+        'position': 0,
+        'direction': 1,
+        'sites': [],
+        'terminators': [
+            {'position': length,
+             'strength': 1.0,
+             'products': products}]}
+
 def all_products(templates):
     return list(set([
         product

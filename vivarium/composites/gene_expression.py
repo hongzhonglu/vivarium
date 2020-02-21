@@ -38,13 +38,14 @@ def compose_gene_expression(config):
             'molecules': 'molecules',
             'proteins': 'proteins',
             'transcripts': 'transcripts',
-            'factors': 'factors'},
+            'factors': 'concentrations'},
 
         'translation': {
             'ribosomes': 'ribosomes',
             'molecules': 'molecules',
             'transcripts': 'transcripts',
-            'proteins': 'proteins'},
+            'proteins': 'proteins',
+            'concentrations': 'concentrations'},
 
         'degradation': {
             'transcripts': 'transcripts',
@@ -170,7 +171,7 @@ if __name__ == '__main__':
 
     # run simulation
     sim_settings = {
-        'total_time': 60}
+        'total_time': 100}
     saved_state = simulate_compartment(gene_expression_compartment, sim_settings)
     del saved_state[0]
     timeseries = convert_to_timeseries(saved_state)

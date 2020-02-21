@@ -6,24 +6,14 @@ from arrow import StochasticSystem
 from vivarium.actor.process import Process
 from vivarium.data.amino_acids import amino_acids
 from vivarium.utils.datum import Datum
-from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products
+from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products, generate_template
+from vivarium.utils.dict_utils import deep_merge
 
 class Ribosome(Polymerase):
     pass
 
 class Transcript(Template):
     pass
-
-def generate_template(id, length, products):
-    return {
-        'id': id,
-        'position': 0,
-        'direction': 1,
-        'sites': [],
-        'terminators': [
-            {'position': length,
-             'strength': 1.0,
-             'products': products}]}
 
 def shuffle(l):
     l = [item for item in l]
@@ -120,7 +110,8 @@ class Translation(Process):
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
-            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
+            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY],
+            'concentrations': self.protein_ids}
 
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
@@ -146,12 +137,22 @@ class Translation(Process):
             monomer_id: 200
             for monomer_id in self.monomer_ids})
 
+        default_state = deep_merge(
+            default_state,
+            self.parameters.get('initial_state', {}))
+
         operons = list(default_state['transcripts'].keys())
         default_emitter_keys = {
             'ribosomes': ['ribosomes'],
             'molecules': self.monomer_ids,
             'transcripts': operons,
             'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
+
+        deriver_setting = [{
+            'type': 'counts_to_mmol',
+            'source_role': 'proteins',
+            'derived_role': 'concentrations',
+            'keys': self.protein_ids}]
 
         # schema
         schema = {

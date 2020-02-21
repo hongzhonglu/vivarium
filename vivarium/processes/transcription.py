@@ -4,6 +4,7 @@ import numpy as np
 import logging as log
 from arrow import StochasticSystem
 
+from vivarium.utils.dict_utils import deep_merge
 from vivarium.actor.process import Process, keys_list
 from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, toy_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
@@ -143,16 +144,14 @@ class Transcription(Process):
             operon: 0
             for operon in operons}
 
+        default_state = deep_merge(
+            default_state,
+            self.parameters.get('initial_state', {}))
+
         default_emitter_keys = {
             'chromosome': ['rnaps'],
             'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
             'transcripts': operons}
-
-        deriver_setting = [{
-            'type': 'counts_to_mmol',
-            'source_role': 'proteins',
-            'derived_role': 'factors',
-            'keys': self.transcription_factors}]
 
         schema = {
             'chromosome': {
@@ -173,6 +172,8 @@ class Transcription(Process):
         molecules = states['molecules']
         proteins = states['proteins']
         factors = states['factors'] # as concentrations
+
+        import ipdb; ipdb.set_trace()
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
