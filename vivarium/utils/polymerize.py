@@ -1,6 +1,7 @@
 import random
 
 import numpy as np
+import logging as log
 
 from vivarium.utils.datum import Datum
 
@@ -221,7 +222,15 @@ def polymerize_step(
         if polymerase.is_polymerizing():
             template = templates[polymerase.template]
             projection = polymerase.position + 1
-            monomer_symbol = sequences[template.id][polymerase.position]
+
+            try:
+                monomer_symbol = sequences[template.id][polymerase.position]
+            except IndexError as e:
+                log.error('index beyond sequence: polymerase - {} template - {}'.format(
+                    polymerase,
+                    template))
+                monomer_symbol = random.choice(list(symbol_to_monomer.keys()))
+
             monomer = symbol_to_monomer[monomer_symbol]
 
             if monomer_limits[monomer] > 0:

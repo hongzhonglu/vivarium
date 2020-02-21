@@ -89,7 +89,7 @@ class Transcription(Process):
             'molecules': self.molecule_ids,
             'factors': self.transcription_factors,
             'transcripts': self.transcript_ids,
-            'proteins': [UNBOUND_RNAP_KEY]}
+            'proteins': [UNBOUND_RNAP_KEY] + self.transcription_factors}
 
         log.debug('transcription parameters: {}'.format(self.parameters))
 
@@ -172,8 +172,6 @@ class Transcription(Process):
         molecules = states['molecules']
         proteins = states['proteins']
         factors = states['factors'] # as concentrations
-
-        import ipdb; ipdb.set_trace()
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()

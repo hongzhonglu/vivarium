@@ -164,7 +164,7 @@ class FlagellaChromosome(object):
                             'strength': 1.0,
                             'products': ['fliD']}]},
                 'flgKp': {
-                    'id': 'flgK',
+                    'id': 'flgKp',
                     'position': 1138378,
                     'direction': 1,
                     'sites': [
@@ -178,8 +178,8 @@ class FlagellaChromosome(object):
                             'position': 1140986,
                             'strength': 1.0,
                             'products': ['flgK']}]},
-                'fliC': {
-                    'id': 'fliC',
+                'fliCp': {
+                    'id': 'fliCp',
                     'position': 2002110,
                     'direction': -1,
                     'sites': [
@@ -240,7 +240,7 @@ class FlagellaChromosome(object):
             'fliAp1',
             'fliDp',
             'flgKp',
-            'fliC',
+            'fliCp',
             # 'meche',
             # 'mocha',
             'flgMp']
@@ -259,6 +259,9 @@ class FlagellaChromosome(object):
         self.promoter_affinities = {
             ('flhDp', None): 0.01,
             ('flhDp', 'CRP'): 0.5}
+
+        self.promoter_affinities[('fliCp', None)] = 0.01
+        self.promoter_affinities[('flgMp', None)] = 0.01
 
         for promoter in self.flhD_activated:
             self.promoter_affinities[(promoter, None)] = 0.01
@@ -288,4 +291,4 @@ class FlagellaChromosome(object):
             operon: 1.0
             for operon in self.config['genes'].keys()}
 
-        self.transcription_factors = ['flhD', 'CsgD', 'CRP']
+        self.transcription_factors = ['flhD', 'CsgD', 'CRP', 'GadE', 'H-NS']
