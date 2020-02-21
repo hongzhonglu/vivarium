@@ -7,7 +7,7 @@ from vivarium.actor.composition import get_derivers, get_schema
 
 # processes
 from vivarium.processes.growth import Growth
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 
@@ -64,8 +64,7 @@ def compose_growth_division(config):
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,

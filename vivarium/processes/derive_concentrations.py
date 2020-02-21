@@ -39,7 +39,8 @@ class DeriveConcs(Process):
         schema = {
             'concentrations': {
                 state_id : {
-                    'updater': 'set'}
+                    'updater': 'set',
+                    'divide': 'set'}
                 for state_id in self.roles['concentrations']}}
 
         default_settings = {

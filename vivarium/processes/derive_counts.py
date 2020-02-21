@@ -43,7 +43,8 @@ class DeriveCounts(Process):
         schema = {
             'counts': {
                 state_id : {
-                    'updater': 'set'}
+                    'updater': 'set',
+                    'divide': 'split'}
                 for state_id in self.roles['counts']}}
 
         default_settings = {

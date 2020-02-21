@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
-import random
 import os
 
 import numpy as np
@@ -24,6 +23,8 @@ def npize(d):
 
     return keys, values
 
+
+# updater functions
 def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
@@ -33,6 +34,44 @@ def update_set(key, state_dict, current_value, new_value):
 updater_library = {
     'accumulate': update_accumulate,
     'set': update_set}
+
+
+# divider functions
+def default_divide_condition(compartment):
+    return False
+
+def divide_set(state):
+    return [state, state]
+
+def divide_split(state):
+    if isinstance(state, int):
+        remainder = state % 2
+        half = int(state / 2)
+        return [half, half + remainder]
+    elif state == float('inf') or state == 'Infinity':
+        # some concentrations are considered infinite in the environment
+        # an alternative option is to not divide the local environment state
+        return [state, state]
+    elif isinstance(state, float):
+        half = state/2
+        return [half, half]
+    else:
+        raise Exception('can not divide state {} of type {}'.format(state, type(state)))
+
+def divide_zero(state):
+    return [0, 0]
+
+def divide_split_dict(state):
+    d1 = dict(list(state.items())[len(state) // 2:])
+    d2 = dict(list(state.items())[:len(state) // 2])
+    return [d1, d2]
+
+divider_library = {
+    'set': divide_set,
+    'split': divide_split,
+    'split_dict': divide_split_dict,
+    'zero': divide_zero}
+
 
 
 KEY_TYPE = 'U31'
@@ -187,38 +226,6 @@ def connect_topology(process_layers, states, topology):
             except:
                 print('{} mismatched roles'.format(name))
 
-def merge_default_states(processes):
-    initial_state = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_state = settings['state']
-        initial_state = deep_merge(dict(initial_state), default_state)
-    return initial_state
-
-def merge_default_updaters(processes):
-    updaters = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_updaters = settings['updaters']
-        updaters = deep_merge(dict(updaters), default_updaters)
-    return updaters
-
-def default_divide_condition(compartment):
-    return False
-
-def default_divide_state(compartment):
-    divided = [{}, {}]
-    for state_key, state in compartment.states.items():
-        left = random.randint(0, 1)
-        for index in range(2):
-            divided[index][state_key] = {}
-            for key, value in state.to_dict().items():
-                divided[index][state_key][key] = value // 2 + (
-                    value % 2 if index == left else 0)
-
-    print('divided {}'.format(divided))
-    return divided
-
 def get_compartment_timestep(process_layers):
     # get the minimum time_step from all processes
     processes = merge_dicts(process_layers)
@@ -305,7 +312,6 @@ class Compartment(State):
         self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
-        self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
         emitter_type = configuration.get('emitter')
@@ -334,6 +340,35 @@ class Compartment(State):
             'table': 'configuration',
             'data': data}
         self.emitter.emit(emit_config)
+
+
+    def divide_state(self):
+        daughter_states = [{}, {}]
+        for role_id, state in self.states.items():
+            if role_id == COMPARTMENT_STATE:
+                # TODO -- copy compartment_state to each daughter???
+                break
+
+            for state_id, value in state.to_dict().items():
+                if role_id in self.schema:
+                    state_schema = self.schema[role_id].get(state_id, {})
+                    divide_type = state_schema.get('divide', 'split')
+                    divider = divider_library[divide_type]
+                else:
+                    # default divider is 'split'
+                    divider = divider_library['split']
+
+                # divide the state
+                divided_state = divider(value)
+
+                for index in range(2):
+                    new_state = {
+                        role_id: {
+                            state_id: divided_state[index]}}
+                    deep_merge(daughter_states[index], new_state)
+
+        print('divided {}'.format(daughter_states))
+        return daughter_states
 
     def prepare(self):
         ''' Avoid creating a copy of the process objects. '''

@@ -145,12 +145,15 @@ class FlagellaActivity(Process):
         # schema
         internal_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in internal_set_states}
         schema = {
             'internal': internal_schema,
             'membrane': {'PROTONS': {'updater': 'accumulate'}},
-            'flagella': {'flagella_activity': {'updater': 'set'}}}
+            'flagella': {'flagella_activity': {
+                'updater': 'set',
+                'divide': 'split_dict'}}}
 
         default_settings = {
             'process_id': 'motor',

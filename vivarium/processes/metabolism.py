@@ -93,17 +93,13 @@ class Metabolism(Process):
             'reactions': self.reaction_ids}
 
         # schema
-        set_internal_states = {state_id: {'updater': 'set'}
-            for state_id in self.reaction_ids}
-        accumulate_internal_states = {state_id: {'updater': 'accumulate'}
-            for state_id in self.objective_molecules}
         schema = {
-            'internal': deep_merge(dict(set_internal_states), accumulate_internal_states),
-            'external': {mol_id: {'updater': 'accumulate'} for mol_id in self.fba.external_molecules},
-            'reactions': {rxn_id: {'updater': 'set'} for rxn_id in self.reaction_ids},
-            'exchange': {rxn_id: {'updater': 'set'} for rxn_id in self.fba.external_molecules},
-            'flux_bounds': {rxn_id: {'updater': 'set'} for rxn_id in self.constrained_reaction_ids},
-            'global': {'mass': {'updater': 'accumulate'}}}
+            'reactions': {rxn_id: {
+                    'updater': 'set',
+                    'divide': 'set'}
+                for rxn_id in self.reaction_ids},
+            'global': {'mass': {
+                    'updater': 'accumulate'}}}
 
         return {
             'state': default_state,
@@ -167,6 +163,7 @@ class Metabolism(Process):
         global_update = {'mass': added_mass}
 
         # convert exchange fluxes to counts
+        # TODO -- use derive_counts for exchange
         exchange_deltas = {
             reaction: int((flux * mmol_to_counts).magnitude)
             for reaction, flux in exchange_fluxes.items()}
@@ -219,15 +216,25 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     ax1.set_ylabel('concentrations')
     ax1.set_yscale('log')
 
-    # plot internal concentrations
+    # plot internal counts
     for mol_id, counts_series in internal_ts.items():
-        conc_series = [(count / conversion).to('mmol/L').magnitude
-           for count, conversion in zip(counts_series, mmol_to_counts)]
-        ax2.plot(conc_series, label=mol_id)
+        # conc_series = [(count / conversion).to('mmol/L').magnitude
+        #    for count, conversion in zip(counts_series, mmol_to_counts)]
+        ax2.plot(counts_series, label=mol_id)
+
+    # # plot internal concentrations
+    # for mol_id, counts_series in internal_ts.items():
+    #     conc_series = [(count / conversion).to('mmol/L').magnitude
+    #        for count, conversion in zip(counts_series, mmol_to_counts)]
+    #     ax2.plot(conc_series, label=mol_id)
+
+    # ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
+    # ax2.title.set_text('internal metabolites')
+    # ax2.set_ylabel('conc (mM)')
 
     ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
     ax2.title.set_text('internal metabolites')
-    ax2.set_ylabel('conc (mM)')
+    ax2.set_ylabel('delta counts')
 
     # plot mass
     ax3.plot(mass, label='mass')
@@ -499,7 +506,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir_BiGG)
 
     # run BiGG metabolism
-    timeline = [(10, {})]
+    timeline = [(2520, {})]
     sim_settings = {
         'environment_role': 'external',
         'exchange_role': 'exchange',
