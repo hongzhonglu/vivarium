@@ -59,7 +59,7 @@ def generate_flagella_compartment(config):
             
             'sequences': sequences,
             'catalysis_rates': {
-                'endoRNAse': 0.05},
+                'endoRNAse': 0.01},
             'degradation_rates': {
                 'transcripts': {
                     'endoRNAse': {
