@@ -158,11 +158,13 @@ class Transport(Process):
         set_internal = ['mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']
         internal_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in set_internal}
         fluxes_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in self.target_fluxes}
         exchange_schema = {
             mol_id: {

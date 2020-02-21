@@ -145,7 +145,8 @@ class FlagellaActivity(Process):
         # schema
         internal_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in internal_set_states}
         schema = {
             'internal': internal_schema,

@@ -70,7 +70,8 @@ class ReceptorCluster(Process):
         schema = {
             'internal': {
                 state_id : {
-                    'updater': 'set'}
+                    'updater': 'set',
+                    'divide': 'set'}
                 for state_id in set_keys}}
 
         default_settings = {

@@ -27,7 +27,8 @@ class Growth(Process):
         # schema
         schema = {
             'global': {
-                'mass': {'updater': 'set'}}}
+                'mass': {
+                    'updater': 'set'}}}
 
         default_settings = {
             'state': default_state,

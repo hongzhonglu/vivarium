@@ -97,7 +97,8 @@ class MembranePotential(Process):
         schema = {
             'membrane': {
                 state_id : {
-                    'updater': 'set'}
+                    'updater': 'set',
+                    'divide': 'set'}
                 for state_id in set_membrane}}
 
         default_settings = {
