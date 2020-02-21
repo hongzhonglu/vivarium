@@ -29,9 +29,9 @@ def generate_flagella_compartment(config):
 
     molecules = {}
     for nucleotide in nucleotides.values():
-        molecules[nucleotide] = 10000
+        molecules[nucleotide] = 1000000
     for amino_acid in amino_acids.values():
-        molecules[amino_acid] = 10000
+        molecules[amino_acid] = 100000
 
     flagella_expression_config = {
 
@@ -59,7 +59,7 @@ def generate_flagella_compartment(config):
             
             'sequences': sequences,
             'catalysis_rates': {
-                'endoRNAse': 0.01},
+                'endoRNAse': 0.05},
             'degradation_rates': {
                 'transcripts': {
                     'endoRNAse': {
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 100}
+        'total_time': 2000}
     saved_state = simulate_compartment(flagella_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)

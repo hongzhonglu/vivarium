@@ -35,7 +35,7 @@ default_transcription_parameters = {
     'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
-    'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
+    'molecule_ids': monomer_ids}
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):

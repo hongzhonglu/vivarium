@@ -136,8 +136,8 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
     ax4.title.set_text('transcripts')
 
     # plot proteins
-    for protein_id, series in proteins.items():
-        ax5.plot(time, series, label=protein_id)
+    for protein_id in sorted(proteins.keys()):
+        ax5.plot(time, proteins[protein_id], label=protein_id)
     ax5.legend(loc='center left', bbox_to_anchor=(1.5, 0.5))
     ax5.title.set_text('proteins')
 
