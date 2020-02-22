@@ -141,9 +141,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # make physics object by passing in bounds and jitter
         bounds = [self.edge_length_x, self.edge_length_y]
+        debug_multicell_physics = config.get('debug_multicell_physics', False)
         self.multicell_physics = MultiCellPhysics(
             bounds,
-            jitter_force)
+            jitter_force,
+            debug_multicell_physics)
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
@@ -678,6 +680,7 @@ def test_lattice(config=motile_config):
     jitter_force = config.get('jitter_force', JITTER_FORCE)
     depth = config.get('depth', 0.01)  # 3000 um is default
     motile_cells = config.get('motile_cells', False)  # if True, run/tumble applied to bodies
+    debug_multicell_physics = config.get('debug_multicell_physics', False)
 
     # get emitter
     emitter = get_emitter({'type': 'null'})  # TODO -- is an emitter really necessary?
@@ -690,8 +693,8 @@ def test_lattice(config=motile_config):
         'edge_length_x': edge_length,
         'patches_per_edge_x': patches_per_edge_x,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'emitter': emitter
-    }
+        'emitter': emitter,
+        'debug_multicell_physics': debug_multicell_physics}
 
     # configure lattice
     lattice = EnvironmentSpatialLattice(boot_config)
@@ -946,7 +949,8 @@ if __name__ == '__main__':
         'edge_length': 3,
         'jitter_force': 1e-1,
         'patches_per_edge': 1,
-        'motile_cells': False}
+        'motile_cells': False,
+        'debug_multicell_physics': True}
 
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
@@ -961,7 +965,8 @@ if __name__ == '__main__':
         'timestep': 0.1,
         'edge_length': 50,
         'jitter_force': 1e-1,
-        'motile_cells': True}
+        'motile_cells': True,
+        'debug_multicell_physics': True}
 
     motile_output = test_lattice(motile_config)
     plot_motility(motile_output, 'motility_state', out_dir)
@@ -973,6 +978,6 @@ if __name__ == '__main__':
     plot_motility(motile_output, 'motility_state_short_ts', out_dir)
     plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
-
+    # test diffusion
     diffusion_out = test_diffusion()
     plot_field(diffusion_out, 'diffusion', out_dir)

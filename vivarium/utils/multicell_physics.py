@@ -109,14 +109,6 @@ class MultiCellPhysics(object):
         for body in self.space.bodies:
             width, length = body.dimensions
 
-            # jitter forces
-            jitter_location = self.random_body_position(body)
-            jitter_force = [
-                random.normalvariate(0, self.jitter_force),
-                random.normalvariate(0, self.jitter_force)]
-            scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
-            body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
-
             # motile forces
             motile_location = (width / 2, 0)  # apply force at back end of body
             motile_torque = 0.0
@@ -124,9 +116,17 @@ class MultiCellPhysics(object):
             if hasattr(body, 'motile_force'):
                 force, motile_torque = body.motile_force
                 motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-            body.angular_velocity = motile_torque
+            body.angular_velocity += motile_torque
             scaled_motile_force = [force * self.force_scaling for force in motile_force]
             body.apply_force_at_local_point(scaled_motile_force, motile_location)
+
+            # jitter forces
+            jitter_location = self.random_body_position(body)
+            jitter_force = [
+                random.normalvariate(0, self.jitter_force),
+                random.normalvariate(0, self.jitter_force)]
+            scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
+            body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
 
         # run physics
         time = 0
@@ -138,7 +138,7 @@ class MultiCellPhysics(object):
             # TODO (Eran) this should be function of viscosity
             for body in self.space.bodies:
                 body.velocity -= (0.5 * body.velocity * self.physics_dt)
-                body.angular_velocity -= (0.5 * body.angular_velocity * self.physics_dt)
+                body.angular_velocity -= (0.1 * body.angular_velocity * self.physics_dt)
 
         if self.pygame_viz:
             self._update_screen()
@@ -317,14 +317,13 @@ if __name__ == '__main__':
     time_step = 1
 
     bounds = [10.0, 10.0]
-    jitter_force = 1.0
+    jitter_force = 5.0e0
 
     # make physics instance
     physics = MultiCellPhysics(
         bounds,
         jitter_force,
         True)
-
 
     # initialize n agents
     n_agents = 3
