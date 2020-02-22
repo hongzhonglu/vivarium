@@ -140,8 +140,8 @@ class MultiCellPhysics(object):
                 body.velocity -= (0.5 * body.velocity * self.physics_dt)
                 body.angular_velocity -= (0.5 * body.angular_velocity * self.physics_dt)
 
-            if self.pygame_viz:
-                self._update_screen()
+        if self.pygame_viz:
+            self._update_screen()
 
     def update_cell(self, cell_id, length, width, mass):
         ''' create a new body and new shape at the cell's same center position and angle '''
@@ -313,18 +313,11 @@ def set_motile_force(physics, agent_id, object_id):
 # For testing with pygame
 if __name__ == '__main__':
 
-    bounds = [20.0, 20.0]
+    total_time = 100
+    time_step = 1
 
-    agent_id = 1
-    volume = 1.0
-    width = 0.5
-    length = 2.0
-    cell_density = 1100
-    mass = volume * cell_density
-    jitter_force = 0.5
-
-    position = (2.0, 2.0)
-    angle = PI/2
+    bounds = [10.0, 10.0]
+    jitter_force = 1.0
 
     # make physics instance
     physics = MultiCellPhysics(
@@ -332,31 +325,44 @@ if __name__ == '__main__':
         jitter_force,
         True)
 
-    # add cell
-    physics.add_cell_from_center(
-        cell_id = agent_id,
-        width = width,
-        length = length,
-        mass = mass,
-        position = position,
-        angle = angle,
-    )
 
-    # add object
-    object_id = 999
-    physics.add_cell_from_center(
-        cell_id=object_id,    # agent_id,
-        width=0.5,          # width
-        length=0.5,          # length
-        mass=100000.0,       # mass
-        position=(14.0, 14.0),     # position
-        angle=0.0,          # angle
-    )
+    # initialize n agents
+    n_agents = 3
+    agent_ids = list(range(n_agents))
 
-    running = True
-    growth = 0.1  # 0.02
-    while running:
-        length += growth
-        physics.update_cell(agent_id, length, width, mass)
-        # set_motile_force(physics, agent_id, object_id)
-        physics.run_incremental(5)
+    # agent initial conditions
+    growth = 0.01
+    volume = 1.0
+    width = 0.5
+    length = 2.0
+    cell_density = 1100
+    mass = volume * cell_density
+
+    # add cells
+    for agent_id in agent_ids:
+        position = np.array([
+            np.random.uniform(0, bounds[0]),
+            np.random.uniform(0, bounds[1])])
+        angle = np.random.uniform(0, 2 * PI)
+
+        physics.add_cell_from_center(
+            cell_id=agent_id,
+            width=width,
+            length=length,
+            mass=mass,
+            center_position=position,
+            angle=angle)
+
+    # run simulation
+    time = 0
+    while time < total_time:
+        time += time_step
+
+        for agent_id in agent_ids:
+            (body, shape) = physics.cells[agent_id]
+            (width, length) = body.dimensions
+            length += growth
+            physics.update_cell(agent_id, length, width, mass)
+            # set_motile_force(physics, agent_id, object_id)
+
+            physics.run_incremental(time_step)
