@@ -2,6 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+import matplotlib.pyplot as plt
+
+from vivarium.actor.composition import set_axes
+
 # composite
 from vivarium.composites.ode_expression import compose_ode_expression
 
@@ -59,6 +63,59 @@ def compose_glc_lct_shifter(config):
 
 
 
+def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
+
+    time = timeseries['time']
+    environment = timeseries['environment']
+    cell = timeseries['cell']
+    cell_counts = timeseries['cell_counts']
+    globals = timeseries['global']
+    lactose = environment['lac__D_e']
+    glucose = environment['glc__D_e']
+    LacY = cell['LacY']
+    lacy_RNA = cell['lacy_RNA']
+    LacY_counts = cell_counts['LacY']
+    lacy_RNA_counts = cell_counts['lacy_RNA']
+    mass = globals['mass']
+
+    # settings
+    environment_volume = settings.get('environment_volume')
+
+    n_cols = 1
+    n_rows = 3
+
+    # make figure and plot
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
+    grid = plt.GridSpec(n_rows, n_cols)
+
+    ax1 = fig.add_subplot(grid[0, 0])  # grid is (row, column)
+    ax1.plot(time, glucose, label='glucose')
+    ax1.plot(time, lactose, label='lactose')
+    set_axes(ax1)
+    ax1.title.set_text('environment, volume = {} L'.format(environment_volume))
+    ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+    ax2 = fig.add_subplot(grid[1, 0])  # grid is (row, column)
+    ax2.plot(time, lacy_RNA, label='lacy_RNA')
+    ax2.plot(time, LacY, label='LacY')
+    set_axes(ax2)
+    ax2.title.set_text('internal')
+    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+    ax3 = fig.add_subplot(grid[2, 0])  # grid is (row, column)
+    ax3.plot(time, mass, label='mass')
+    set_axes(ax3, True)
+    ax3.title.set_text('global')
+    ax3.set_xlabel('time (s)')
+    ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+    # save figure
+    fig_path = os.path.join(out_dir, 'diauxic_shift')
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
+    plt.savefig(fig_path, bbox_inches='tight')
+
+
+
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment
     from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
@@ -74,17 +131,29 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
+    # timeline = [
+    #     (100, {})]
+
     timeline = [
         (0, {'environment': {
             'lac__D_e': 12.0}
         }),
-        (600, {'environment': {
+        (1500, {'environment': {
             'glc__D_e': 0.0}
         }),
-        (1200, {'environment': {
-            'glc__D_e': 12.0}
-        }),
-        (1800, {})]
+        (3000, {})]
+
+    # timeline = [
+    #     (0, {'environment': {
+    #         'lac__D_e': 12.0}
+    #     }),
+    #     (600, {'environment': {
+    #         'glc__D_e': 0.0}
+    #     }),
+    #     (1200, {'environment': {
+    #         'glc__D_e': 12.0}
+    #     }),
+    #     (1800, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -113,4 +182,5 @@ if __name__ == '__main__':
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
+    plot_diauxic_shift(timeseries, settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)
