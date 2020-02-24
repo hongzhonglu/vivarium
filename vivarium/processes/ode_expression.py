@@ -130,14 +130,14 @@ def get_lacy_config():
         'lacy_RNA': 1e-5}
 
     toy_translation_rates = {
-        'LacY': 1e-4}
+        'LacY': 3e-4}
 
     toy_protein_map = {
         'LacY': 'lacy_RNA'}
 
     toy_degradation_rates = {
-        'lacy_RNA': 0.1,
-        'LacY': 0.001}
+        'lacy_RNA': 1e-1,
+        'LacY': 3e-3}
 
     initial_state = {
         'internal': {

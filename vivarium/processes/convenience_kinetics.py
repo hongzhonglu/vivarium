@@ -113,8 +113,8 @@ class ConvenienceKinetics(Process):
 # functions
 def get_glc_lct_config():
     """
-    Convenience kinetics configuration for simplified glucose/lactose transport.
-    This abstracts the PTS/GalP system to a single uptake kinetic
+    Convenience kinetics configuration for simplified glucose and lactose transport.
+    Glucose updake simplifies the PTS/GalP system to a single uptake kinetic
     with glc__D_e_external as the only cofactor.
     """
     transport_reactions = {
@@ -145,7 +145,7 @@ def get_glc_lct_config():
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': 1e5}}}
+                'kcat_f': 5e4}}}
 
     transport_initial_state = {
         'internal': {
