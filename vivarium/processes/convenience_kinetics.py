@@ -145,7 +145,7 @@ def get_glc_lct_config():
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,
                 ('external', 'h_e'): None,
-                'kcat_f': 1e5}}}
+                'kcat_f': 5e4}}}
 
     transport_initial_state = {
         'internal': {

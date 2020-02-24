@@ -69,20 +69,31 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     environment = timeseries['environment']
     cell = timeseries['cell']
     cell_counts = timeseries['cell_counts']
+    reactions = timeseries['reactions']
     globals = timeseries['global']
+
+    # environment
     lactose = environment['lac__D_e']
     glucose = environment['glc__D_e']
+
+    # internal
     LacY = cell['LacY']
     lacy_RNA = cell['lacy_RNA']
     LacY_counts = cell_counts['LacY']
     lacy_RNA_counts = cell_counts['lacy_RNA']
+
+    # reactions
+    glc_exchange = reactions['EX_glc__D_e']
+    lac_exchange = reactions['EX_lac__D_e']
+
+    # global
     mass = globals['mass']
 
     # settings
     environment_volume = settings.get('environment_volume')
 
-    n_cols = 1
-    n_rows = 3
+    n_cols = 2
+    n_rows = 4
 
     # make figure and plot
     fig = plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
@@ -93,6 +104,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     ax1.plot(time, lactose, label='lactose')
     set_axes(ax1)
     ax1.title.set_text('environment, volume = {} L'.format(environment_volume))
+    ax1.set_ylabel('(mM)')
     ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
     ax2 = fig.add_subplot(grid[1, 0])  # grid is (row, column)
@@ -100,18 +112,28 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     ax2.plot(time, LacY, label='LacY')
     set_axes(ax2)
     ax2.title.set_text('internal')
+    ax2.set_ylabel('(mM)')
     ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
     ax3 = fig.add_subplot(grid[2, 0])  # grid is (row, column)
     ax3.plot(time, mass, label='mass')
     set_axes(ax3, True)
     ax3.title.set_text('global')
+    ax3.set_ylabel('(fg)')
     ax3.set_xlabel('time (s)')
     ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
+    ax4 = fig.add_subplot(grid[0, 1])  # grid is (row, column)
+    ax4.plot(time, glc_exchange, label='glucose exchange')
+    ax4.plot(time, lac_exchange, label='lactose exchange')
+    set_axes(ax4, True)
+    ax4.title.set_text('flux'.format(environment_volume))
+    ax4.set_xlabel('time (s)')
+    ax4.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
     # save figure
     fig_path = os.path.join(out_dir, 'diauxic_shift')
-    plt.subplots_adjust(wspace=0.3, hspace=0.5)
+    plt.subplots_adjust(wspace=0.6, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
 
@@ -136,29 +158,15 @@ if __name__ == '__main__':
 
     timeline = [
         (0, {'environment': {
-            'lac__D_e': 12.0}
-        }),
-        (1500, {'environment': {
-            'glc__D_e': 0.0}
+            'glc__D_e': 5.0,
+            'lac__D_e': 5.0}
         }),
         (3000, {})]
-
-    # timeline = [
-    #     (0, {'environment': {
-    #         'lac__D_e': 12.0}
-    #     }),
-    #     (600, {'environment': {
-    #         'glc__D_e': 0.0}
-    #     }),
-    #     (1200, {'environment': {
-    #         'glc__D_e': 12.0}
-    #     }),
-    #     (1800, {})]
 
     settings = {
         'environment_role': options['environment_role'],
         'exchange_role': options['exchange_role'],
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 2e-13,  # L
         'timeline': timeline}
 
     plot_settings = {
