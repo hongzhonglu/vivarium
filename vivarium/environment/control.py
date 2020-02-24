@@ -106,7 +106,7 @@ class ShepherdControl(ActorControl):
         lattice_config = {
             'name': 'ecoli_core_glc_lct',
             'description': 'glucose-lactose diauxic shifters are placed in a shallow environment with glucose and '
-                           'lactose. The start off with no LacY, and so uptake only glucose, but LacY is expressed '
+                           'lactose. They start off with no LacY, and so uptake only glucose, but LacY is expressed '
                            'upon depletion of glucose and they begin to uptake lactose. Cells have an e_coli_core '
                            'BiGG metabolism, kinetic transport of glucose and lactose, and ode-based gene expression '
                            'of LacY'}
