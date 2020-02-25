@@ -58,8 +58,8 @@ class MotorActivity(Process):
                          'motile_force',
                          'motile_torque',
                          'motor_state'],
-            'external': []
-        }
+            'external': []}
+
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
@@ -71,7 +71,7 @@ class MotorActivity(Process):
         internal = INITIAL_STATE
         default_state = {
             'external': {},
-            'internal': deep_merge(internal, {'volume': 1})}
+            'internal': internal}
 
         # default emitter keys
         default_emitter_keys = {
@@ -83,10 +83,9 @@ class MotorActivity(Process):
                 'motor_state',
                 'CheA',
                 'CheY_P'],
-            'external': [],
-        }
+            'external': []}
 
-        # default updaters
+        # schema
         set_states = [
             'ccw_motor_bias',
             'ccw_to_cw',
@@ -95,15 +94,17 @@ class MotorActivity(Process):
             'motor_state',
             'CheA',
             'CheY_P']
-        default_updaters = {
-            'internal': {state_id: 'set' for state_id in set_states},
-            'external': {}}
+        schema = {
+            'internal': {
+                state_id : {
+                    'updater': 'set'}
+                for state_id in set_states}}
 
         default_settings = {
             'process_id': 'motor',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
             'time_step': 0.1}
 
         return default_settings

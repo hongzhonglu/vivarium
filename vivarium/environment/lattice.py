@@ -25,6 +25,7 @@ from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
+from vivarium.actor import filepath
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
 from vivarium.environment.make_media import Media
@@ -140,9 +141,11 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         # make physics object by passing in bounds and jitter
         bounds = [self.edge_length_x, self.edge_length_y]
+        debug_multicell_physics = config.get('debug_multicell_physics', False)
         self.multicell_physics = MultiCellPhysics(
             bounds,
-            jitter_force)
+            jitter_force,
+            debug_multicell_physics)
 
         # configure emitter and emit lattice configuration
         self.emitter = config['emitter'].get('object')
@@ -546,6 +549,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def emit_configuration(self):
         data = {
             'type': 'lattice',
+            'time_created': filepath.timestamp(),
             'name': self.name,
             'description': self.description,
             'cell_radius': self.cell_radius,
@@ -576,7 +580,21 @@ def run():
     torque = 0.0
     return [force, torque]
 
-def test_diffusion(config):
+# default configs for tests
+diffusion_config = {
+    'total_time': 2,
+    'timestep': 0.05,
+    'diffusion': 1e2}
+
+motile_config = {
+    'total_time': 100,
+    'timestep': 0.1,
+    'edge_length': 50,
+    'jitter_force': 1e-1,
+    'motile_cells': True}
+
+
+def test_diffusion(config=diffusion_config):
     test_diffusion = 'GLC'
 
     total_time = config.get('total_time', 10)
@@ -650,7 +668,7 @@ def test_diffusion(config):
     }
     return data
 
-def test_lattice(config):
+def test_lattice(config=motile_config):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
     tumble_time = 0.14  # s (Berg)
@@ -662,6 +680,7 @@ def test_lattice(config):
     jitter_force = config.get('jitter_force', JITTER_FORCE)
     depth = config.get('depth', 0.01)  # 3000 um is default
     motile_cells = config.get('motile_cells', False)  # if True, run/tumble applied to bodies
+    debug_multicell_physics = config.get('debug_multicell_physics', False)
 
     # get emitter
     emitter = get_emitter({'type': 'null'})  # TODO -- is an emitter really necessary?
@@ -674,8 +693,8 @@ def test_lattice(config):
         'edge_length_x': edge_length,
         'patches_per_edge_x': patches_per_edge_x,
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'emitter': emitter
-    }
+        'emitter': emitter,
+        'debug_multicell_physics': debug_multicell_physics}
 
     # configure lattice
     lattice = EnvironmentSpatialLattice(boot_config)
@@ -930,7 +949,8 @@ if __name__ == '__main__':
         'edge_length': 3,
         'jitter_force': 1e-1,
         'patches_per_edge': 1,
-        'motile_cells': False}
+        'motile_cells': False,
+        'debug_multicell_physics': True}
 
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
@@ -945,7 +965,8 @@ if __name__ == '__main__':
         'timestep': 0.1,
         'edge_length': 50,
         'jitter_force': 1e-1,
-        'motile_cells': True}
+        'motile_cells': True,
+        'debug_multicell_physics': True}
 
     motile_output = test_lattice(motile_config)
     plot_motility(motile_output, 'motility_state', out_dir)
@@ -958,10 +979,5 @@ if __name__ == '__main__':
     plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
     # test diffusion
-    diffusion_config = {
-        'total_time': 2,
-        'timestep': 0.05,
-        'diffusion': 1e2}
-
-    diffusion_out = test_diffusion(diffusion_config)
+    diffusion_out = test_diffusion()
     plot_field(diffusion_out, 'diffusion', out_dir)

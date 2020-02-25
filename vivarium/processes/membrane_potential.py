@@ -91,17 +91,20 @@ class MembranePotential(Process):
         # default emitter keys
         default_emitter_keys = {'membrane': ['d_V', 'd_pH', 'PMF']}
 
-        # default updaters
-        default_updaters = {
+
+        # schema
+        set_membrane = ['d_V', 'd_pH', 'PMF']
+        schema = {
             'membrane': {
-                'd_V': 'set',
-                'd_pH': 'set',
-                'PMF': 'set'}}
+                state_id : {
+                    'updater': 'set',
+                    'divide': 'set'}
+                for state_id in set_membrane}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 

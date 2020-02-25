@@ -5,6 +5,7 @@ import uuid
 from vivarium.actor.process import Compartment, initialize_state, get_compartment_timestep
 from vivarium.actor.emitter import get_emitter
 from vivarium.actor.inner import Simulation
+from vivarium.actor.composition import get_derivers
 
 
 
@@ -84,17 +85,16 @@ class LatticeCompartment(Compartment, Simulation):
             environment.assign_values(local_environment)
 
     def generate_daughters(self):
-        states = self.divide_state(self)
-        volume = states[0][self.volume_role]['volume']  # TODO -- same volume for both daughters?
+        states = self.divide_state()
 
         return [
             dict(
                 id=str(uuid.uuid1()),
-                volume=volume,  # daughter_state[self.volume_role]['volume'],
+                volume=daughter_state[self.volume_role]['volume'],
                 boot_config=dict(
                     initial_time=self.time(),
                     initial_state=daughter_state,
-                    volume=volume))  # daughter_state[self.volume_role]['volume']))
+                    volume=daughter_state[self.volume_role]['volume']))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -148,6 +148,11 @@ def generate_lattice_compartment(process, config):
     # make a simple topology mapping 'role' to 'role'
     process_roles = process.roles.keys()
     topology = {process_id: {role: role for role in process_roles}}
+
+    # add derivers
+    derivers = get_derivers(processes_layers, topology)
+    processes_layers.extend(derivers['deriver_processes'])  # add deriver processes
+    topology.update(derivers['deriver_topology'])  # add deriver topology
 
     # initialize the states for each role
     states = initialize_state(processes_layers, topology, config.get('initial_state', {}))

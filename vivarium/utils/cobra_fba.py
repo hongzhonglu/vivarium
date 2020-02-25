@@ -5,6 +5,7 @@ import cobra.test
 from cobra.medium import minimal_medium
 
 from cobra import Model, Reaction, Metabolite, Configuration
+from vivarium.data.synonyms import get_synonym
 
 
 
@@ -77,7 +78,6 @@ def extract_model(model):
     boundary_reactions = [reaction.id for reaction in boundary]
     """
 
-
     reactions = model.reactions
     metabolites = model.metabolites
     exchanges = model.exchanges
@@ -148,7 +148,14 @@ def extract_model(model):
         'molecular_weights': molecular_weights,
         'flux_scaling': flux_scaling}
 
+def swap_synonyms(model):
+    metabolites = model.metabolites
 
+    # swap metabolite ids
+    for mol in metabolites:
+        mol_id = mol.id
+        mol_id = get_synonym(mol_id)
+        mol.id = mol_id
 
 class CobraFBA(object):
     """
@@ -174,6 +181,7 @@ class CobraFBA(object):
         if model_path:
             # load a BiGG model
             self.model = cobra.io.load_json_model(model_path)
+            swap_synonyms(self.model)
             extract = extract_model(self.model)
 
             self.stoichiometry = extract['stoichiometry']
@@ -209,6 +217,8 @@ class CobraFBA(object):
             self.constrain_reaction_bounds(self.flux_bounds)
             self.set_exchange_bounds()
 
+        self.exchange_bounds_keys = list(self.exchange_bounds.keys())
+
         # get minimal external state
         # TODO -- make sure that scaling is accounted for
         max_growth = self.model.slim_optimize()
@@ -242,6 +252,11 @@ class CobraFBA(object):
         for reaction_id, bound in bounds.items():
             reaction = self.model.reactions.get_by_id(reaction_id)
             scaled_level = bound / self.flux_scaling
+
+            if EXTERNAL_PREFIX in reaction_id and \
+                any(substring in reaction_id for substring in self.exchange_bounds_keys):
+                # exchanges use reverse flux
+                scaled_level *= -1
 
             if reaction_id in self.tolerance:
                 # use configured tolerance

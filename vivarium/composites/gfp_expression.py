@@ -1,14 +1,14 @@
 import os
 from vivarium.utils.units import units
 
-from scipy import constants
-
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosome import gfp_plasmid_config
 from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
 from vivarium.processes.translation import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 from vivarium.environment.make_media import Media
+
+from vivarium.processes.derive_globals import AVOGADRO
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -26,13 +26,12 @@ def generate_gfp_compartment(config):
 
     # TODO: deal with volume
     volume = 1e-15 * units.L
-    avogadro = constants.N_A * 1 / units.mol
-    mmol_to_count = avogadro.to('1/mmol') * volume.to('L')
+    mmol_to_counts = AVOGADRO.to('1/mmol') * volume.to('L')
     
-    print(mmol_to_count)
+    print(mmol_to_counts)
 
     PURE_counts = {
-        key: int(value * mmol_to_count)
+        key: int(value * mmol_to_counts)
         for key, value in PURE.items()}
 
     print(PURE)
@@ -51,9 +50,9 @@ def generate_gfp_compartment(config):
             'templates': gfp_plasmid_config['promoters'],
             'genes': gfp_plasmid_config['genes'],
             'promoter_affinities': {
-                'T7': 0.5},
+                ('T7',): 0.5},
 
-            'advancement_rate': 10.0,
+            'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
@@ -67,13 +66,13 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': 0.1},
 
             'elongation_rate': 22,
-            'advancement_rate': 10.0},
+            'polymerase_occlusion': 50},
 
         'degradation': {
             
             'sequences': sequences,
             'catalysis_rates': {
-                'endoRNAse': 8.0},
+                'endoRNAse': 0},
             'degradation_rates': {
                 'transcripts': {
                     'endoRNAse': {
@@ -87,7 +86,8 @@ def generate_gfp_compartment(config):
     return compose_gene_expression(gfp_config)
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment, convert_to_timeseries
+    from vivarium.actor.process import load_compartment, simulate_compartment
+    from vivarium.actor.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')
     if not os.path.exists(out_dir):
@@ -102,5 +102,15 @@ if __name__ == '__main__':
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gfp_expression', out_dir)
-    
+
+    plot_config = {
+        'name': 'gfp_expression',
+        'roles': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(
+        timeseries,
+        plot_config,
+        out_dir)

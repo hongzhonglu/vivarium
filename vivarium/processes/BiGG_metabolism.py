@@ -72,7 +72,7 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 if __name__ == '__main__':
     from vivarium.processes.metabolism import simulate_metabolism, save_network
-    from vivarium.actor.process import convert_to_timeseries, plot_simulation_output
+    from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'BiGG_metabolism')
     if not os.path.exists(out_dir):

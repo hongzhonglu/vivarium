@@ -1,16 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
-import random
 import os
 
 import numpy as np
-from scipy import constants
-import matplotlib.pyplot as plt
 
 import vivarium.actor.emitter as emit
-from vivarium.utils.units import units
-from vivarium.utils.dict_utils import merge_dicts, deep_merge
+from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
 COMPARTMENT_STATE = '__compartment_state__'
@@ -28,24 +24,61 @@ def npize(d):
 
     return keys, values
 
-def update_delta(key, state_dict, current_value, new_value):
+
+# updater functions
+def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
-# def accumulate_delta(key, state_dict, current_value, new_value):
-#     new_key = key + exchange_key
-#     return current_value, {new_key: state_dict[new_key] + new_value}
-
 updater_library = {
-    'delta': update_delta,
-    'set': update_set,
-    'accumulate': update_delta,  # TODO -- remove accumulate
-}
+    'accumulate': update_accumulate,
+    'set': update_set}
+
+
+# divider functions
+def default_divide_condition(compartment):
+    return False
+
+def divide_set(state):
+    return [state, state]
+
+def divide_split(state):
+    if isinstance(state, int):
+        remainder = state % 2
+        half = int(state / 2)
+        return [half, half + remainder]
+    elif state == float('inf') or state == 'Infinity':
+        # some concentrations are considered infinite in the environment
+        # an alternative option is to not divide the local environment state
+        return [state, state]
+    elif isinstance(state, float):
+        half = state/2
+        return [half, half]
+    else:
+        raise Exception('can not divide state {} of type {}'.format(state, type(state)))
+
+def divide_zero(state):
+    return [0, 0]
+
+def divide_split_dict(state):
+    d1 = dict(list(state.items())[len(state) // 2:])
+    d2 = dict(list(state.items())[:len(state) // 2])
+    return [d1, d2]
+
+divider_library = {
+    'set': divide_set,
+    'split': divide_split,
+    'split_dict': divide_split_dict,
+    'zero': divide_zero}
+
 
 
 KEY_TYPE = 'U31'
+
+def keys_list(d):
+    return list(d.keys())
 
 class State(object):
     ''' Represents a set of named values. '''
@@ -87,7 +120,7 @@ class State(object):
 
         for key, value in update.items():
             # updater can be a function or a key into the updater library
-            updater = self.updaters.get(key, 'delta')
+            updater = self.updaters.get(key, 'accumulate')
             if not callable(updater):
                 updater = updater_library[updater]
 
@@ -189,40 +222,10 @@ def connect_topology(process_layers, states, topology):
             roles = {
                 role: states[key]
                 for role, key in connections.items()}
-
-            process.assign_roles(roles)
-
-def merge_default_states(processes):
-    initial_state = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_state = settings['state']
-        initial_state = deep_merge(dict(initial_state), default_state)
-    return initial_state
-
-def merge_default_updaters(processes):
-    updaters = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_updaters = settings['updaters']
-        updaters = deep_merge(dict(updaters), default_updaters)
-    return updaters
-
-def default_divide_condition(compartment):
-    return False
-
-def default_divide_state(compartment):
-    divided = [{}, {}]
-    for state_key, state in compartment.states.items():
-        left = random.randint(0, 1)
-        for index in range(2):
-            divided[index][state_key] = {}
-            for key, value in state.to_dict().items():
-                divided[index][state_key][key] = value // 2 + (
-                    value % 2 if index == left else 0)
-
-    print('divided {}'.format(divided))
-    return divided
+            try:
+                process.assign_roles(roles)
+            except:
+                print('{} mismatched roles'.format(name))
 
 def get_compartment_timestep(process_layers):
     # get the minimum time_step from all processes
@@ -236,7 +239,7 @@ def get_compartment_timestep(process_layers):
 
     return minimum_step
 
-def initialize_state(process_layers, topology, initial_state):
+def initialize_state(process_layers, topology, schema, initial_state):
     processes = merge_dicts(process_layers)
 
     # make a dict with the compartment's default states {roles: states}
@@ -247,7 +250,6 @@ def initialize_state(process_layers, topology, initial_state):
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
-        default_process_updaters = settings['updaters']
 
         for process_role, states in process_roles.items():
             try:
@@ -259,15 +261,21 @@ def initialize_state(process_layers, topology, initial_state):
             # initialize the default states
             default_states = default_process_states.get(process_role, {})
 
-            # initialize the default updaters
-            default_updaters = default_process_updaters.get(process_role, {})
+            # get updater from schema
+            updaters = {}
+            role_schema = schema.get(compartment_role, {})
+            for state in states:
+                if state in role_schema:
+                    updater = role_schema[state].get('updater')
+                    updaters.update({state: updater})
 
             # update the states
+            # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
             c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
             compartment_states[compartment_role] = c_states
 
             # update the updaters
-            c_updaters = deep_merge(default_updaters, compartment_updaters.get(compartment_role, {}))
+            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_role, {}))
             compartment_updaters[compartment_role] = c_updaters
 
     # initialize state for each compartment role
@@ -302,9 +310,9 @@ class Compartment(State):
 
         self.configuration = configuration
         self.topology = configuration['topology']
+        self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
-        self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
         emitter_type = configuration.get('emitter')
@@ -326,12 +334,41 @@ class Compartment(State):
         data = {
             'type': 'compartment',
             'name': configuration.get('name', 'compartment'),
-            'topology': self.topology}
+            'topology': self.topology,
+            'schema': self.schema}
 
         emit_config = {
             'table': 'configuration',
             'data': data}
         self.emitter.emit(emit_config)
+
+    def divide_state(self):
+        daughter_states = [{}, {}]
+        for role_id, state in self.states.items():
+            if role_id == COMPARTMENT_STATE:
+                # TODO -- copy compartment_state to each daughter???
+                break
+
+            for state_id, value in state.to_dict().items():
+                if role_id in self.schema:
+                    state_schema = self.schema[role_id].get(state_id, {})
+                    divide_type = state_schema.get('divide', 'split')
+                    divider = divider_library[divide_type]
+                else:
+                    # default divider is 'split'
+                    divider = divider_library['split']
+
+                # divide the state
+                divided_state = divider(value)
+
+                for index in range(2):
+                    new_state = {
+                        role_id: {
+                            state_id: divided_state[index]}}
+                    deep_merge(daughter_states[index], new_state)
+
+        print('divided {}'.format(daughter_states))
+        return daughter_states
 
     def prepare(self):
         ''' Avoid creating a copy of the process objects. '''
@@ -529,9 +566,13 @@ def toy_composite(config):
             'periplasm': ['GLC', 'MASS'],
             'cytoplasm': ['MASS']}})
 
+    # schema for states
+    schema = {}
+
     options = {
         # 'environment_role': 'environment',
         # 'exchange_role': 'exchange',
+        'schema': schema,
         'emitter': emitter,
         'topology': topology,
         'initial_time': 0.0}
@@ -551,11 +592,8 @@ def test_compartment():
     settings = {
         'timestep': 1,
         'total_time': 10}
-    plot_settings = {}
 
     saved_state = simulate_compartment(compartment, settings)
-    timeseries = convert_to_timeseries(saved_state)
-    plot_simulation_output(timeseries, plot_settings, out_dir)
 
 def load_compartment(composite=toy_composite, boot_config={}):
     '''
@@ -601,259 +639,6 @@ def simulate_compartment(compartment, settings={}):
         saved_state[time] = compartment.current_state()
 
     return saved_state
-
-def simulate_process_with_environment(process, settings={}):
-    '''
-    Simulate running a process in an environment. In settings,
-    exchange_role and environment_role must be specified.
-    '''
-    process_settings = process.default_settings()
-    state_dict = process_settings['state']
-    states = initialize_state(
-        [{"process": process}],
-        {"process": {role: role for role in process.roles}},
-        state_dict,
-    )
-
-    # hook up the roles in each process to compartment states
-    topology = {
-        'process': {key: key for key in states},
-    }
-
-    options = {
-        'topology': topology,
-    }
-    processes = [{
-        'process': process,
-    }]
-    compartment = Compartment(processes, states, options)
-    return simulate_with_environment(compartment, settings)
-
-def simulate_with_environment(compartment, settings={}):
-    '''
-    run a compartment simulation with an environment.
-    requires processes made for LatticeCompartment, with environment_role and exchange_role
-    '''
-
-    # parameters
-    nAvogadro = constants.N_A * 1 / units.mol
-
-    # get environment configuration
-    environment_role = settings['environment_role']
-    env_volume = settings.get('environment_volume', 1e-12) * units.L
-    exchange_role = settings.get('exchange_role')
-    if exchange_role:
-        exchange_ids = list(compartment.states[exchange_role].keys())
-    else:
-        print('no exchange role! simulate environment without exchange')
-    environment = compartment.states.get(environment_role)
-    exchange = compartment.states.get(exchange_role)
-
-    # get timeline
-    total_time = settings.get('total_time', 10)
-    timeline = copy.deepcopy(settings.get('timeline', [(total_time, {})]))
-    end_time = timeline[-1][0]
-    timestep = compartment.time_step
-
-    # initialize saved_state
-    saved_state = {}
-
-    ## run simulation
-    time = 0
-    saved_state[time] = compartment.current_state()
-    while time < end_time:
-        time += timestep
-        for (t, change_dict) in timeline:
-            if time >= t:
-                for role_id, change in change_dict.items():
-                    role = compartment.states.get(role_id)
-                    role.assign_values(change)
-                timeline.pop(0)
-
-        # update compartment
-        compartment.update(timestep)
-
-        ## apply exchange to environment
-        # get counts, convert to change in concentration
-        if exchange:
-            delta_counts = exchange.state_for(exchange_ids)
-            mmol_to_count = (nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-            delta_concs = {mol_id: counts / mmol_to_count  for mol_id, counts in delta_counts.items()}
-            environment.apply_update(delta_concs)
-
-            # reset exchange
-            reset_exchange = {key: 0 for key in exchange_ids}
-            exchange.assign_values(reset_exchange)
-
-        saved_state[time] = compartment.current_state()
-
-    return saved_state
-
-def convert_to_timeseries(sim_output):
-    '''
-    input:
-        - saved_states (dict) with {timestep: state_dict}
-    returns:
-        - timeseries (dict) with timeseries in lists {'time': [], 'role1': {'state': []}}
-    TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
-    '''
-
-    time_vec = list(sim_output.keys())
-    initial_state = sim_output[time_vec[0]]
-    timeseries = {role: {state: []
-        for state, initial in states.items()}
-        for role, states in initial_state.items()}
-    timeseries['time'] = time_vec
-
-    for time, all_states in sim_output.items():
-        for role, states in all_states.items():
-            for state_id, state in states.items():
-                timeseries[role][state_id].append(state)
-
-    return timeseries
-
-def set_axes(ax, show_xaxis=False):
-    ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(right=False, top=False)
-    if not show_xaxis:
-        ax.spines['bottom'].set_visible(False)
-        ax.tick_params(bottom=False, labelbottom=False)
-
-def plot_simulation_output(timeseries, settings={}, out_dir='out'):
-    '''
-    plot simulation output, with rows organized into separate columns.
-
-    Requires:
-        - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
-        - settings (dict) with:
-            {
-            'max_rows': (int) roles with more states than this number of states get wrapped into a new column
-            'remove_zeros': (bool) if True, timeseries with all zeros get removed
-            'remove_flat': (bool) if True, timeseries with all the same value get removed
-            'skip_roles': (list) entire roles that won't be plotted
-            'overlay': (dict) with
-                {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
-            'show_state': (list) with [('role_id', 'state_id')]
-                for all states that will be highlighted, even if they are otherwise to be removed
-            }
-    TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
-    '''
-
-    skip_keys = ['time']
-
-    # get settings
-    max_rows = settings.get('max_rows', 25)
-    remove_zeros = settings.get('remove_zeros', False)
-    remove_flat = settings.get('remove_flat', False)
-    skip_roles = settings.get('skip_roles', [])
-    overlay = settings.get('overlay', {})
-    show_state = settings.get('show_state', [])
-    top_roles = list(overlay.values())
-    bottom_roles = list(overlay.keys())
-
-    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
-    time_vec = timeseries['time']
-
-    # remove selected states
-    # TODO -- plot removed_states as text
-    removed_states = []
-    if remove_flat:
-        # find series with all the same value
-        for role in roles:
-            for state_id, series in timeseries[role].items():
-                if series.count(series[0]) == len(series):
-                    removed_states.append((role, state_id))
-    elif remove_zeros:
-        # find series with all zeros
-        for role in roles:
-            for state_id, series in timeseries[role].items():
-                if all(v == 0 for v in series):
-                    removed_states.append((role, state_id))
-
-    # if specified in show_state, keep in timeseries
-    for role_state in show_state:
-        if role_state in removed_states:
-            removed_states.remove(role_state)
-
-    # remove from timeseries
-    for (role, state_id) in removed_states:
-        del timeseries[role][state_id]
-
-    # get the number of states in each role
-    n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
-    if 0 in n_data:
-        n_data.remove(0)
-
-    # limit number of rows to max_rows by adding new columns
-    columns = []
-    for n_states in n_data:
-        new_cols = n_states / max_rows
-        if new_cols > 1:
-            for col in range(int(new_cols)):
-                columns.append(max_rows)
-
-            mod_states = n_states % max_rows
-            if mod_states > 0:
-                columns.append(mod_states)
-        else:
-            columns.append(n_states)
-    n_cols = len(columns)
-    n_rows = max(columns)
-
-    # make figure and plot
-    fig = plt.figure(figsize=(n_cols * 6, n_rows * 1.5))
-    grid = plt.GridSpec(n_rows, n_cols)
-
-    row_idx = 0
-    col_idx = 0
-    for role in roles:
-        top_timeseries = {}
-        if role in bottom_roles:
-            # get overlay
-            top_role = overlay[role]
-            top_timeseries = timeseries[top_role]
-        elif role in top_roles + skip_roles:
-            # don't give this row its own plot
-            continue
-
-        for state_id, series in sorted(timeseries[role].items()):
-            ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
-
-            # plot line at zero if series crosses the zero line
-            if any(x == 0.0 for x in series) or \
-                    (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
-                zero_line = [0 for t in time_vec]
-                ax.plot(time_vec, zero_line, 'k--')
-
-            if (role, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo', linewidth=2)
-            else:
-                ax.plot(time_vec, series)
-
-            # overlay
-            if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_role)
-                ax.legend()
-
-            ax.title.set_text(str(role) + ': ' + str(state_id))
-            ax.title.set_fontsize(16)
-
-            if row_idx == columns[col_idx]-1:
-                # if last row of column
-                set_axes(ax, True)
-                ax.set_xlabel('time')
-                row_idx = 0
-                col_idx += 1
-            else:
-                set_axes(ax)
-                row_idx += 1
-
-    # save figure
-    fig_path = os.path.join(out_dir, 'simulation')
-    plt.subplots_adjust(wspace=0.3, hspace=0.5)
-    plt.savefig(fig_path, bbox_inches='tight')
 
 
 if __name__ == '__main__':

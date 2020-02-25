@@ -2,46 +2,39 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers, get_schema
+from vivarium.actor.process import initialize_state, load_compartment
+from vivarium.actor.composition import get_derivers, get_schema, simulate_with_environment, \
+    convert_to_timeseries, plot_simulation_output
 
 # processes
 from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.processes.transcription import Transcription
-from vivarium.processes.translation import Translation
-from vivarium.processes.degradation import RnaDegradation
+from vivarium.processes.ode_expression import ODE_expression
 
 
 
-# the composite function
-def compose_master(config):
+def compose_ode_expression(config):
     """
-    A composite with kinetic transport, metabolism, and gene expression
+    A composite with kinetic transport, metabolism, and ode-based gene expression
     """
 
     ## Declare the processes.
     # Transport
     # load the kinetic parameters
-    transport_config = config.get('transport', default_transport_config())
+    transport_config = config.get('transport', {})
     transport = ConvenienceKinetics(transport_config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
     # Metabolism
     # get target fluxes from transport
     # load regulation function
-    metabolism_config = config.get('metabolism', default_metabolism_config())
+    metabolism_config = config.get('metabolism', get_metabolism_config())
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
-    # expression
-    transcription_config = config.get('transcription', {})
-    translation_config = config.get('translation', {})
-    degradation_config = config.get('degradation', {})
-    transcription = Transcription(transcription_config)
-    translation = Translation(translation_config)
-    degradation = RnaDegradation(degradation_config)
+    # expression/degradation
+    expression = ODE_expression(config.get('expression', {}))
 
     # Division
     # get initial volume from metabolism
@@ -52,9 +45,7 @@ def compose_master(config):
     # Place processes in layers
     processes = [
         {'transport': transport,
-         'transcription': transcription,
-         'translation': translation,
-         'degradation': degradation},
+         'expression': expression},
         {'metabolism': metabolism},
         {'division': division}]
 
@@ -64,30 +55,20 @@ def compose_master(config):
         'transport': {
             'internal': 'cell',
             'external': 'environment',
-            'exchange': 'null',  # metabolism's exchange is used
-            'fluxes': 'flux_bounds',
+            'exchange': 'null',
+            'fluxes': 'flux',
             'global': 'global'},
         'metabolism': {
             'internal': 'cell',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds',
+            'flux_bounds': 'flux',
             'global': 'global'},
-        'transcription': {
-            'chromosome': 'chromosome',
-            'molecules': 'cell',
-            'transcripts': 'transcripts'},
-        'translation': {
-            'ribosomes': 'ribosomes',
-            'molecules': 'cell',
-            'transcripts': 'transcripts',
-            'proteins': 'proteins'},
-        'degradation': {
-            'transcripts': 'transcripts',
-            'proteins': 'proteins',
-            'molecules': 'cell',
-            'global': 'global'},
+        'expression' : {
+            'counts': 'cell_counts',
+            'internal': 'cell',
+            'external': 'environment'},
         'division': {
             'global': 'global'}}
 
@@ -99,7 +80,7 @@ def compose_master(config):
     # get schema
     schema = get_schema(processes, topology)
 
-    # initialize the states
+    # Initialize the states
     states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
 
     options = {
@@ -119,7 +100,7 @@ def compose_master(config):
 
 
 # toy functions/ defaults
-def default_metabolism_config():
+def get_metabolism_config():
     config = get_e_coli_core_config()
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
@@ -133,28 +114,18 @@ def default_metabolism_config():
 
     return config
 
-def default_transport_config():
-    return {}
-
-
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
-    from vivarium.composites.gene_expression import plot_gene_expression_output
-
-    out_dir = os.path.join('out', 'tests', 'master_composite')
+    out_dir = os.path.join('out', 'tests', 'ode_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {}  # {'emitter': 'null'}
-    compartment = load_compartment(compose_master, boot_config)
+    boot_config = {'emitter': 'null'}
+    compartment = load_compartment(compose_ode_expression, boot_config)
 
     # settings for simulation and plot
     options = compartment.configuration
-
-    # define timeline
-    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeline = [(2520, {})]
 
     settings = {
         'environment_role': options['environment_role'],
@@ -165,21 +136,14 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux_bounds'},
+        'overlay': {
+            'reactions': 'flux'},
         'skip_roles': ['prior_state', 'null']}
-
-    expression_plot_settings = {
-        'name': 'gene_expression',
-        'roles': {
-            'transcripts': 'transcripts',
-            'molecules': 'cell',
-            'proteins': 'proteins'}}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
+    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

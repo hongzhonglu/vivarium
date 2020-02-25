@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import copy
 import time
 import uuid
 
 from vivarium.actor.control import ActorControl, AgentCommand
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+
 
 
 class ShepherdControl(ActorControl):
@@ -23,16 +21,16 @@ class ShepherdControl(ActorControl):
             actor_config)
 
     def init_experiment(self, args, exp_config):
-        default_experiment_id = exp_config.get('default_experiment_id')
+        default_experiment_id = exp_config.get('default_experiment_id', 'experiment')
         lattice_config = exp_config.get('lattice_config')
         environment_type = exp_config.get('environment_type')
         actor_config = exp_config.get('actor_config')
         agent_type = exp_config.get('agent_type')
-        num_cells = exp_config.get('num_cells')
+        num_cells = exp_config.get('num_cells', 1)
         actor_config['boot_config'].update(lattice_config)
 
         # get from args
-        experiment_id = args['experiment_id']
+        experiment_id = args.get('experiment_id')
         number = args.get('number')
         if number == 0:
             number = num_cells
@@ -43,7 +41,7 @@ class ShepherdControl(ActorControl):
             experiment_id, number, agent_type, environment_type))
 
         # boot environment
-        self.add_agent(experiment_id, environment_type, lattice_config)
+        self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
         # boot agents
@@ -126,14 +124,18 @@ class ShepherdControl(ActorControl):
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
-        experiment_id = 'glc-g6p'
+        experiment_id = 'gluc-lact'
         environment_type = 'ecoli_core_glc'
         agent_type = 'shifter'
 
         # overwrite default environment config
         lattice_config = {
-            'name': 'ecoli_core_experiment',
-            'description': 'ecoli_core_experiment'}
+            'name': 'ecoli_core_glc_lct',
+            'description': 'glucose-lactose diauxic shifters are placed in a shallow environment with glucose and '
+                           'lactose. They start off with no LacY, and so uptake only glucose, but LacY is expressed '
+                           'upon depletion of glucose and they begin to uptake lactose. Cells have an e_coli_core '
+                           'BiGG metabolism, kinetic transport of glucose and lactose, and ode-based gene expression '
+                           'of LacY'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -141,7 +143,53 @@ class ShepherdControl(ActorControl):
             'environment_type': environment_type,
             'actor_config': actor_config,
             'agent_type': agent_type,
-            'num_cells': 1}
+            'num_cells': 2}
+
+        self.init_experiment(args, exp_config)
+
+    def chemotaxis_square(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp'
+        agent_type = 'minimal_chemotaxis'
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'chemotaxis square experiment',
+            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type,
+            'num_cells': 4}
+
+        self.init_experiment(args, exp_config)
+
+    def chemotaxis_square(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp'
+        agent_type = 'minimal_chemotaxis'
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'chemotaxis experiment square',
+            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
+               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agent_type': agent_type,
+            'num_cells': 4}
 
         self.init_experiment(args, exp_config)
 
@@ -156,8 +204,7 @@ class ShepherdControl(ActorControl):
             'name': 'chemotaxis_experiment',
             'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
                'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
-        }
+               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -223,6 +270,7 @@ class EnvironmentCommand(AgentCommand):
         full_choices = [
             'growth-division-experiment',
             'ecoli-core-experiment',
+            'chemotaxis-square',
             'chemotaxis-experiment',
             'swarm-experiment',
             'antibiotic_experiment',
@@ -249,6 +297,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.ecoli_core_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def chemotaxis_square(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.chemotaxis_square(args, self.actor_config)
         control.shutdown()
 
     def chemotaxis_experiment(self, args):

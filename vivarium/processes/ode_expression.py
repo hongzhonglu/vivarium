@@ -1,25 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from scipy import constants
 
-from vivarium.actor.process import Process, convert_to_timeseries, \
-    plot_simulation_output, simulate_process_with_environment
+from vivarium.actor.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
-from vivarium.utils.units import units
+from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule
-
+from vivarium.utils.units import units
+from vivarium.processes.derive_globals import AVOGADRO
 
 
 class ODE_expression(Process):
     '''
     a ode-based mRNA and protein expression process, with boolean logic for regulation
-
     TODO -- kinetic regulation, cooperativity, autoinhibition, autactivation
     '''
-    def __init__(self, initial_parameters={}):
 
-        self.nAvogadro = constants.N_A * 1 / units.mol
+    def __init__(self, initial_parameters={}):
 
         # ode gene expression
         self.transcription = initial_parameters.get('transcription_rates', {})
@@ -44,15 +41,10 @@ class ODE_expression(Process):
         internal = list(self.initial_state.get('internal', {}).keys())
         external = list(self.initial_state.get('external', {}).keys())
 
-        self.partial_expression = {
-            mol_id: 0 for mol_id in internal}
-
-        # TODO -- get initial counts.
-
         roles = {
-            'counts': states,
-            'internal': internal + internal_regulators + ['volume'],
-            'external': external + external_regulators}
+            'internal': internal + internal_regulators,
+            'external': external + external_regulators,
+            'counts': []}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -64,23 +56,37 @@ class ODE_expression(Process):
         # default state
         default_state = self.initial_state
 
-        # default emitter keys
-        default_emitter_keys = {}
+        # schema
+        # don't include if it uses the default
+        schema = {
+            'internal': {
+                state : {
+                    'divide': 'set',
+                    'units': 'mmol',
+                    'updater': 'accumulate'}
+                for state in self.roles['internal']}}
 
-        # default updaters
-        default_updaters = {}
+        # default emitter keys
+        default_emitter_keys = {
+            'internal': self.roles['internal']}
+
+        # derivers
+        deriver_setting = [{
+            'type': 'mmol_to_counts',
+            'source_role': 'internal',
+            'derived_role': 'counts',
+            'keys': self.roles['internal']}]
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema,
+            'deriver_setting': deriver_setting}
 
         return default_settings
 
     def next_update(self, timestep, states):
         internal_state = states['internal']
-        volume = internal_state['volume'] * units.fL
-        mmol_to_count = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_role_dicts(states)
@@ -114,78 +120,95 @@ class ODE_expression(Process):
             internal_update[protein] = \
                 (rate * transcript_state - self.degradation.get(protein, 0) * protein_state) * timestep
 
-        # convert concentrations to counts.
-        # keep partially expressed molecules for the next iteration
-        expression_levels = {
-            mol_id: (delta_conc * mmol_to_count).magnitude + self.partial_expression[mol_id] for
-            mol_id, delta_conc in internal_update.items()}
-
-        counts_update = {
-            mol_id: int(level) for mol_id, level in expression_levels.items()}
-
-        self.partial_expression = {
-             mol_id: level - int(level)
-             for mol_id, level in expression_levels.items()}
-
-        return {
-            'internal': internal_update,
-            'counts': counts_update}
-
+        return {'internal': internal_update}
 
 
 # test functions
 # toy config
-toy_transcription_rates = {
-    'lacy_RNA': 1e-20}
+def get_lacy_config():
+    toy_transcription_rates = {
+        'lacy_RNA': 1e-5}
 
-toy_translation_rates = {
-    'LacY': 1e-2}
+    toy_translation_rates = {
+        'LacY': 3e-4}
 
-toy_protein_map = {
-    'LacY': 'lacy_RNA'}
+    toy_protein_map = {
+        'LacY': 'lacy_RNA'}
 
-toy_degradation_rates = {
-    'lacy_RNA': 0.2,
-    'LacY': 0.001}
+    toy_degradation_rates = {
+        'lacy_RNA': 1e-1,
+        'LacY': 3e-3}
 
-initial_state = {
-    'internal': {
-        'volume': 1.2,
-        'lacy_RNA': 0,
-        'LacY': 0.0
-    }}
+    initial_state = {
+        'internal': {
+            'lacy_RNA': 0,
+            'LacY': 0.0}}
 
-def test_expression():
-    expression_config = {
+    return {
         'transcription_rates': toy_transcription_rates,
         'translation_rates': toy_translation_rates,
         'degradation_rates': toy_degradation_rates,
         'protein_map': toy_protein_map,
-        'initial_state': initial_state
-    }
+        'initial_state': initial_state}
+
+def get_flagella_expression():
+    transcription = {
+        'flag_RNA': 1e-6}
+
+    translation = {
+        'flagella': 8e-5}
+
+    degradation = {
+        'flag_RNA': 2e-2}  # 1e-23}
+
+    protein_map = {
+        'flagella': 'flag_RNA'}
+
+    # get initial concentrations from counts
+    volume = 1.2 * units.fL
+    mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
+    counts = {
+        'flagella': 5,
+        'flag_RNA': 30}
+    concentrations = {}
+    for state_id, count in counts.items():
+        concentrations[state_id] = (count / mmol_to_counts).magnitude
+
+    initial_state = {
+        'counts': counts,
+        'internal': concentrations}
+        # 'global': {
+        #     'volume': 1.2}}
+
+    return  {
+        'transcription_rates': transcription,
+        'translation_rates': translation,
+        'degradation_rates': degradation,
+        'protein_map': protein_map,
+        'initial_state': initial_state}
+
+def test_expression(time=10):
+    expression_config = get_lacy_config()
 
     # load process
     expression = ODE_expression(expression_config)
 
     settings = {
-        'total_time': 100,
+        'total_time': time,
         # 'exchange_role': 'exchange',
         'environment_role': 'external',
         'environment_volume': 1e-12}
 
-    saved_data = simulate_process_with_environment(expression, settings)
-
-    return saved_data
-
+    compartment = process_in_compartment(expression)
+    return simulate_with_environment(compartment, settings)
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'ode_expression')
+    out_dir = os.path.join('out', 'tests', 'ode_expression_process')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression()
-    del saved_data[0] # remove first state
+    saved_data = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    del saved_data[0]  # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
-

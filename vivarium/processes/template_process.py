@@ -47,14 +47,26 @@ class Template(Process):
             'internal': ['states'],
             'external': ['states']}
 
-        # default updaters
-        default_updaters = {'state': 'accumulate'}
+        # schema -- define how each state is updater, divided, and its units
+        schema = {
+            'internal': {
+                state_id : {
+                    'updater': 'accumulate'}
+                for state_id in self.roles['internal']}}
+
+        # default derivers -- create a new derived role for these roles: keys
+        deriver_setting = [{
+            'type': 'mmol_to_counts',
+            'source_role': 'internal',
+            'derived_role': 'counts',
+            'keys': self.roles['internal']}]
 
         default_settings = {
             'process_id': 'template',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
+            'schema': schema,
+            'deriver_setting': deriver_setting,
             'time_step': 1.0}
 
         return default_settings

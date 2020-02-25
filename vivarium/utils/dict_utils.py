@@ -11,6 +11,25 @@ def merge_dicts(dicts):
         merge.update(d)
     return merge
 
+def deep_merge_check(dct, merge_dct):
+    '''
+    Recursive dict merge, which throws exceptions for conflicting values
+    This mutates dct - the contents of merge_dct are added to dct (which is also returned).
+    If you want to keep dct you could call it like deep_merge(dict(dct), merge_dct)'''
+
+    for k, v in merge_dct.items():
+        if (k in dct and isinstance(dct[k], dict)
+                and isinstance(merge_dct[k], collections.Mapping)):
+            try:
+                deep_merge_check(dct[k], merge_dct[k])
+            except:
+                raise Exception('dict merge mismatch: key "{}" has values {} AND {}'.format(k, dct[k], merge_dct[k]))
+        elif k in dct and (dct[k] is not merge_dct[k]):
+            raise Exception('dict merge mismatch: key "{}" has values {} AND {}'.format(k, dct[k], merge_dct[k]))
+        else:
+            dct[k] = merge_dct[k]
+    return dct
+
 def deep_merge(dct, merge_dct):
     '''
     Recursive dict merge
