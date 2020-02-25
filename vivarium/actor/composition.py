@@ -4,7 +4,12 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.utils.dict_utils import deep_merge, deep_merge_check
-from vivarium.actor.process import initialize_state, simulate_compartment, Compartment
+from vivarium.actor.process import (
+    initialize_state,
+    simulate_compartment,
+    Compartment,
+    COMPARTMENT_STATE,
+)
 from vivarium.utils.units import units
 
 # processes
@@ -125,13 +130,22 @@ def get_schema(process_list, topology):
 
     return schema
 
-def process_in_compartment(process):
+def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    process_roles = list(process.roles.keys())
+    compartment_state_role = settings['compartment_state_role']
 
     processes = [{'process': process}]
-    topology = {'process': {role: role for role in process.roles}}
+    topology = {
+        'process': {
+            role: role for role in process.roles
+            if (not compartment_state_role
+                or role != compartment_state_role)
+        }
+    }
+
+    if compartment_state_role:
+        topology[compartment_state_role] = COMPARTMENT_STATE
 
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
@@ -141,7 +155,6 @@ def process_in_compartment(process):
     processes.extend(deriver_processes)
 
     # add deriver topology
-    topology = {'process': {key: key for key in process_roles}}
     topology.update(deriver_topology)
 
     # get schema
@@ -159,12 +172,12 @@ def process_in_compartment(process):
 
 def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
-    compartment = process_in_compartment(process)
+    compartment = process_in_compartment(process, settings)
     return simulate_with_environment(compartment, settings)
 
 def simulate_process(process, settings={}):
     ''' simulate a process in a compartment with no environment '''
-    compartment = process_in_compartment(process)
+    compartment = process_in_compartment(process, settings)
     return simulate_compartment(compartment, settings)
 
 def simulate_with_environment(compartment, settings={}):
