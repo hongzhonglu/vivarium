@@ -25,6 +25,34 @@ FRICTION = 0.9
 PHYSICS_TS = 0.005
 FORCE_SCALING = 83000  # scales from pN
 
+def get_force_with_angle(force, angle):
+    x = force * math.cos(angle)
+    y = force * math.sin(angle)
+    return [x, y]
+
+def random_body_position(body):
+    ''' pick a random point along the boundary'''
+    width, length = body.dimensions
+    if random.randint(0, 1) == 0:
+        # force along ends
+        if random.randint(0, 1) == 0:
+            # force on the left end
+            location = (random.uniform(0, width), 0)
+        else:
+            # force on the right end
+            location = (random.uniform(0, width), length)
+    else:
+        # force along length
+        if random.randint(0, 1) == 0:
+            # force on the bottom end
+            location = (0, random.uniform(0, length))
+        else:
+            # force on the top end
+            location = (width, random.uniform(0, length))
+
+    return location
+
+
 
 class MultiCellPhysics(object):
     ''''''
@@ -76,69 +104,64 @@ class MultiCellPhysics(object):
         # Delay fixed time between frames
         self._clock.tick(5)
 
-    def random_body_position(self, body):
-        ''' pick a random point along the boundary'''
-        width, length = body.dimensions
-        if random.randint(0, 1) == 0:
-            # force along ends
-            if random.randint(0, 1) == 0:
-                # force on the left end
-                location = (random.uniform(0, width), 0)
-            else:
-                # force on the right end
-                location = (random.uniform(0, width), length)
-        else:
-            # force along length
-            if random.randint(0, 1) == 0:
-                # force on the bottom end
-                location = (0, random.uniform(0, length))
-            else:
-                # force on the top end
-                location = (width, random.uniform(0, length))
-
-        return location
-
-    def apply_motile_force(self, cell_id, force, torque):
+    def update_motile_force(self, cell_id, force, torque):
         body, shape = self.cells[cell_id]
         body.motile_force = (force, torque)
+
+    def apply_motile_force(self, body):
+        width, length = body.dimensions
+
+        # motile forces
+        motile_location = (width / 2, 0)  # apply force at back end of body
+        motile_force = [0.0, 0.0]
+        if hasattr(body, 'motile_force'):
+            force, angle = body.motile_force
+            motile_force = [force, 0.0]
+
+            if angle != 0.0:
+                motile_location = (random.uniform(0, width), 0)  # random position at back end of body
+                motile_force = get_force_with_angle(force, angle)
+
+        scaled_motile_force = [force * self.force_scaling for force in motile_force]
+        body.apply_force_at_local_point(scaled_motile_force, motile_location)
+
+    def apply_jitter_force(self, body):
+        # jitter forces
+        jitter_location = random_body_position(body)
+        jitter_force = [
+            random.normalvariate(0, self.jitter_force),
+            random.normalvariate(0, self.jitter_force)]
+        scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
+        body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
 
     def run_incremental(self, run_for):
         assert self.physics_dt < run_for
 
         # apply forces
-        for body in self.space.bodies:
-            width, length = body.dimensions
+        # for body in self.space.bodies:
+            # self.apply_motile_force(body)
+            # self.apply_jitter_force(body)
 
-            # motile forces
-            motile_location = (width / 2, 0)  # apply force at back end of body
-            motile_torque = 0.0
-            motile_force = [0.0, 0.0]
-            if hasattr(body, 'motile_force'):
-                force, motile_torque = body.motile_force
-                motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-            body.angular_velocity += motile_torque
-            scaled_motile_force = [force * self.force_scaling for force in motile_force]
-            body.apply_force_at_local_point(scaled_motile_force, motile_location)
-
-            # jitter forces
-            jitter_location = self.random_body_position(body)
-            jitter_force = [
-                random.normalvariate(0, self.jitter_force),
-                random.normalvariate(0, self.jitter_force)]
-            scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
-            body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+            # save force to reapply in physics loop
+            # body.saved_force = body.force
 
         # run physics
         time = 0
         while time < run_for:
             time += self.physics_dt
+
+            for body in self.space.bodies:
+                self.apply_jitter_force(body)
+
             self.space.step(self.physics_dt)
 
-            # reduce velocity at low Reynolds number (the ratio of inertial and viscous forces)
-            # TODO (Eran) this should be function of viscosity
-            for body in self.space.bodies:
-                body.velocity -= (0.5 * body.velocity * self.physics_dt)
-                body.angular_velocity -= (0.1 * body.angular_velocity * self.physics_dt)
+            # reapply force
+            # reduce velocity at low Reynolds number
+            # for body in self.space.bodies:
+                # self.apply_jitter_force(body)
+                # body.velocity = 0 * body.velocity * self.physics_dt
+                # body.angular_velocity = 0 * body.angular_velocity * self.physics_dt
+                # body.force = body.saved_force
 
         if self.pygame_viz:
             self._update_screen()
@@ -307,7 +330,7 @@ def set_motile_force(physics, agent_id, object_id):
         torque = random.normalvariate(0, 0.02)  #random.uniform(-0.005, 0.005)  #random.uniform(-50000.0, 50000.0)  # random.normalvariate(0, 5000.0) #5000.0 #random.uniform(0.0, 2*PI)
         print('TUMBLE!')
 
-    physics.apply_motile_force(agent_id, force, torque)
+    physics.update_motile_force(agent_id, force, torque)
 
 
 # For testing with pygame

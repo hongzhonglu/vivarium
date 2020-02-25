@@ -22,6 +22,7 @@ import random
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
+from scipy.stats import rv_continuous
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
@@ -190,7 +191,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             # update motile forces in multicell_physics
             force = self.motile_forces[agent_id][0]
             torque = self.motile_forces[agent_id][1]
-            self.multicell_physics.apply_motile_force(agent_id, force, torque)
+            self.multicell_physics.update_motile_force(agent_id, force, torque)
 
         # run multicell physics
         self.multicell_physics.run_incremental(timestep)
@@ -569,14 +570,22 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
 # tests
+
+# probability density function for tumble angles
+class tumble_pdf(rv_continuous):
+    def _pdf(self,x):
+        return 0.5 * (1 + math.cos(x)) * math.sin(x)
+tumble_dist = tumble_pdf(a=0, b=PI)
+
 def tumble():
-    force = 0.1  # pN
-    tumble_jitter = 30
-    torque = random.normalvariate(0, tumble_jitter)
-    return [force, torque]
+    print('TUMBLE')
+    force = 4e-3  # 4e-1  # pN
+    angle = np.random.choice([-1, 1]) * tumble_dist.rvs()
+    return [force, angle]
 
 def run():
-    force = 0.3  # pN
+    # print('RUN')
+    force = 2.5e-2  #2.5e-1  # pN  TODO -- this should be ~ 3 pN
     torque = 0.0
     return [force, torque]
 
@@ -814,7 +823,10 @@ def plot_motility(data, filename='motility', out_dir='out'):
         previous_motor_state = m_state
 
     avg_speed = sum(speed_vec) / len(speed_vec)
-    avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+    try:
+        avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+    except:
+        avg_angle_between_runs = 0
 
     # plot results
     cols = 1
@@ -829,7 +841,7 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax1.plot(times, speed_vec)
     ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
     ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
-    ax1.set_ylabel(u'speed (\u03bcm/sec)')
+    ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
     # ax1.set_xlabel('time')
     ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
@@ -837,7 +849,7 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax2.plot(angle_between_runs)
     ax2.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
     ax2.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
-    ax2.set_ylabel('angle between runs')
+    ax2.set_ylabel('angle \n between runs')
     ax2.set_xlabel('run #')
     ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
@@ -950,7 +962,7 @@ if __name__ == '__main__':
         'jitter_force': 1e-1,
         'patches_per_edge': 1,
         'motile_cells': False,
-        'debug_multicell_physics': True}
+        'debug_multicell_physics': False}
 
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
@@ -959,25 +971,25 @@ if __name__ == '__main__':
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
 
-    # test motility
-    motile_config = {
-        'total_time': 100,
-        'timestep': 0.1,
-        'edge_length': 50,
-        'jitter_force': 1e-1,
-        'motile_cells': True,
-        'debug_multicell_physics': True}
+    # # test motility
+    # motile_config = {
+    #     'total_time': 20,
+    #     'timestep': 0.1,
+    #     'edge_length': 200,
+    #     'jitter_force': 1e-1,  # 1e-3,
+    #     'motile_cells': True,
+    #     'debug_multicell_physics': False}
+    #
+    # motile_output = test_lattice(motile_config)
+    # plot_motility(motile_output, 'motility_state', out_dir)
+    # plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+    #
+    # # test motility short ts
+    # motile_config.update({'timestep': 0.01})
+    # motile_output = test_lattice(motile_config)
+    # plot_motility(motile_output, 'motility_state_short_ts', out_dir)
+    # plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
-    motile_output = test_lattice(motile_config)
-    plot_motility(motile_output, 'motility_state', out_dir)
-    plot_trajectory(motile_output, 'motility_trajectory', out_dir)
-
-    # test motility short ts
-    motile_config.update({'timestep': 0.01})
-    motile_output = test_lattice(motile_config)
-    plot_motility(motile_output, 'motility_state_short_ts', out_dir)
-    plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
-
-    # test diffusion
-    diffusion_out = test_diffusion()
-    plot_field(diffusion_out, 'diffusion', out_dir)
+    # # test diffusion
+    # diffusion_out = test_diffusion()
+    # plot_field(diffusion_out, 'diffusion', out_dir)
