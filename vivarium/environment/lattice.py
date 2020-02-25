@@ -578,14 +578,12 @@ class tumble_pdf(rv_continuous):
 tumble_dist = tumble_pdf(a=0, b=PI)
 
 def tumble():
-    print('TUMBLE')
-    force = 4e-3  # 4e-1  # pN
-    angle = np.random.choice([-1, 1]) * tumble_dist.rvs()
-    return [force, angle]
+    force = 1e-1  # pN
+    torque = np.random.choice([-1, 1]) * 1 * tumble_dist.rvs()
+    return [force, torque]
 
 def run():
-    # print('RUN')
-    force = 2.5e-2  #2.5e-1  # pN  TODO -- this should be ~ 3 pN
+    force = 1e-1  # pN  TODO -- this should be ~ 3 pN
     torque = 0.0
     return [force, torque]
 
@@ -954,41 +952,41 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # test jitter
-    jitter_config = {
-        'total_time': 100,
-        'timestep': 0.1,
-        'edge_length': 3,
-        'jitter_force': 1e-1,
-        'patches_per_edge': 1,
-        'motile_cells': False,
-        'debug_multicell_physics': False}
-
-    jitter_output = test_lattice(jitter_config)
-    plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
-
-    jitter_config.update({'timestep': 0.1})
-    jitter_output = test_lattice(jitter_config)
-    plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
-
-    # # test motility
-    # motile_config = {
-    #     'total_time': 20,
+    # # test jitter
+    # jitter_config = {
+    #     'total_time': 100,
     #     'timestep': 0.1,
-    #     'edge_length': 200,
-    #     'jitter_force': 1e-1,  # 1e-3,
-    #     'motile_cells': True,
+    #     'edge_length': 5,
+    #     'jitter_force': 1e-1,
+    #     'patches_per_edge': 1,
+    #     'motile_cells': False,
     #     'debug_multicell_physics': False}
     #
-    # motile_output = test_lattice(motile_config)
-    # plot_motility(motile_output, 'motility_state', out_dir)
-    # plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+    # jitter_output = test_lattice(jitter_config)
+    # plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
     #
-    # # test motility short ts
-    # motile_config.update({'timestep': 0.01})
-    # motile_output = test_lattice(motile_config)
-    # plot_motility(motile_output, 'motility_state_short_ts', out_dir)
-    # plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
+    # jitter_config.update({'timestep': 0.1})
+    # jitter_output = test_lattice(jitter_config)
+    # plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
+
+    # test motility
+    motile_config = {
+        'total_time': 20,
+        'timestep': 0.1,
+        'edge_length': 200,
+        'jitter_force': 0.0,
+        'motile_cells': True,
+        'debug_multicell_physics': False}
+
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+
+    # test motility short ts
+    motile_config.update({'timestep': 0.01})
+    motile_output = test_lattice(motile_config)
+    plot_motility(motile_output, 'motility_state_short_ts', out_dir)
+    plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
     # # test diffusion
     # diffusion_out = test_diffusion()

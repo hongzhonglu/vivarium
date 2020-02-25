@@ -21,7 +21,9 @@ import pymunk.pygame_util
 PI = math.pi
 
 ELASTICITY = 0.95
-FRICTION = 0.9
+DAMPING = 0.1  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
+ANGULAR_DAMPING = 0.6  # less damping for angular velocity seems to improve behavior
+FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
 FORCE_SCALING = 83000  # scales from pN
 
@@ -61,6 +63,8 @@ class MultiCellPhysics(object):
         self.pygame_viz = debug
         self.elasticity = ELASTICITY
         self.friction = FRICTION
+        self.damping = DAMPING
+        self.angular_damping = ANGULAR_DAMPING
         self.force_scaling = FORCE_SCALING
         self.jitter_force = jitter_force
 
@@ -119,7 +123,6 @@ class MultiCellPhysics(object):
             motile_force = [force, 0.0]
 
             if angle != 0.0:
-                motile_location = (random.uniform(0, width), 0)  # random position at back end of body
                 motile_force = get_force_with_angle(force, angle)
 
         scaled_motile_force = [force * self.force_scaling for force in motile_force]
@@ -134,34 +137,25 @@ class MultiCellPhysics(object):
         scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
         body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
 
+    def apply_viscous_force(self, body):
+        # dampen the velocity
+        body.velocity = body.velocity * self.damping + (body.force / body.mass) * self.physics_dt
+        body.angular_velocity = body.angular_velocity * self.angular_damping + body.torque / body.moment * self.physics_dt
+
     def run_incremental(self, run_for):
         assert self.physics_dt < run_for
 
-        # apply forces
-        # for body in self.space.bodies:
-            # self.apply_motile_force(body)
-            # self.apply_jitter_force(body)
-
-            # save force to reapply in physics loop
-            # body.saved_force = body.force
-
-        # run physics
         time = 0
         while time < run_for:
             time += self.physics_dt
 
+            # apply forces
             for body in self.space.bodies:
                 self.apply_jitter_force(body)
+                self.apply_motile_force(body)
+                self.apply_viscous_force(body)
 
             self.space.step(self.physics_dt)
-
-            # reapply force
-            # reduce velocity at low Reynolds number
-            # for body in self.space.bodies:
-                # self.apply_jitter_force(body)
-                # body.velocity = 0 * body.velocity * self.physics_dt
-                # body.angular_velocity = 0 * body.angular_velocity * self.physics_dt
-                # body.force = body.saved_force
 
         if self.pygame_viz:
             self._update_screen()
