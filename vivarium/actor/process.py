@@ -224,27 +224,6 @@ def default_divide_state(compartment):
     print('divided {}'.format(divided))
     return divided
 
-def default_death_freeze_state_meta_process(compartment):
-    # type: (Compartment) -> None
-    '''Default meta-process for killing the cell by freezing the state
-
-    Checks for the states['internal']['death_freeze_state'] flag to be
-    set to be True. If so, the compartment's `processes` attribute is
-    set to the empty list, preventing processes from changing the state
-    in future timesteps.
-    '''
-    if 'internal' not in compartment.topology.get('death', {}):
-        return
-    internal_state_key = compartment.topology['death']['internal']
-    internal_state = compartment.states[internal_state_key]
-    if (
-        'death_freeze_state' in internal_state.keys()
-        and internal_state.state_for(
-            ['death_freeze_state']
-        )['death_freeze_state']
-    ):
-        compartment.processes = []
-
 def get_compartment_timestep(process_layers):
     # get the minimum time_step from all processes
     processes = merge_dicts(process_layers)
@@ -327,12 +306,6 @@ class Compartment(State):
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
         self.divide_state = configuration.get('divide_state', default_divide_state)
 
-        # These processes can be adjusted by subclasses as needed. They
-        # will run each timestep and be passed `self`.
-        self.meta_processes = {
-            'division': default_death_freeze_state_meta_process,
-        }
-
         # emitter
         emitter_type = configuration.get('emitter')
         if emitter_type is None:
@@ -391,27 +364,10 @@ class Compartment(State):
             for key in self.states.keys():
                 self.states[key].proceed()
 
-        self.run_meta_processes()
-
         self.local_time += timestep
 
         # run emitters
         self.emit_data()
-
-    def run_meta_processes(self):
-        # type: () -> None
-        '''Executes each meta-process, passing in `self`
-
-        Meta-processes are for performing compartment-level operations,
-        so they have access to the entire compartment object. They may
-        read and/or mutate the compartment. Each meta-process should
-        accept the compartment to act on as the first positional
-        argument. The return value of a meta-process is ignored.
-        Meta-processes are read from the values of
-        `self.meta_processes`.
-        '''
-        for meta_process in self.meta_processes.values():
-            meta_process(self)
 
     def current_state(self):
         ''' Construct the total current state from the existing substates. '''

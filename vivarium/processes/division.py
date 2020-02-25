@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import random
 
-from vivarium.actor.process import Process
+from vivarium.actor.process import Process, COMPARTMENT_STATE
 
 
 def divide_condition(compartment):
@@ -21,6 +21,8 @@ def divide_state(compartment):
         for index in range(2):
             divided[index][state_key] = {}
             for key, value in state.to_dict().items():
+                if state_key == COMPARTMENT_STATE:
+                    continue
                 if key == 'division':
                     divided[index][state_key][key] = 0
                 else:

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
+from vivarium.actor.process import initialize_state, COMPARTMENT_STATE
 
 # processes
 from vivarium.processes.antibiotics import Antibiotics
@@ -100,6 +100,7 @@ def compose_antibiotic_growth(config):
         },
         'death': {
             'internal': 'cell',
+            'compartment': COMPARTMENT_STATE,
         },
     }
 

@@ -66,7 +66,10 @@ class DeathFreezeState(Process):
             for name, config_dict in initial_parameters.get(
                 'checkers', []).items()
         ]
-        roles = {'internal': set(['death_freeze_state'])}
+        roles = {
+            'internal': set(),
+            'compartment': ['processes'],
+        }
         for checker in self.checkers:
             needed_keys = checker.needed_state_keys
             for role in needed_keys:
@@ -79,13 +82,11 @@ class DeathFreezeState(Process):
     def default_settings(self):
         default_settings = {
             'state': {
-                'internal': {
-                    'death_freeze_state': False,
-                },
+                'internal': {},
             },
             'emitter_keys': {},
             'updaters': {
-                'internal': {'death_freeze_state': 'set'},
+                'compartment': {'processes': 'set'},
             },
         }
         return default_settings
@@ -93,11 +94,7 @@ class DeathFreezeState(Process):
     def next_update(self, timestep, states):
         for checker in self.checkers:
             if not checker.check_can_survive(states):
-                return {
-                    'internal': {
-                        'death_freeze_state': True
-                    }
-                }
+                return {'compartment': {'processes': []}}
         return {}
 
 
@@ -141,8 +138,10 @@ def test_death_freeze_state(end_time=10, antibiotic_step=1, asserts=True):
             }
             for time in range(end_time)
         }
+        assert expected_saved_states == saved_states
 
     return saved_states
+
 
 def plot_death_freeze_state_test():
     out_dir = os.path.join('out', 'tests', 'death_freeze_state')
