@@ -6,6 +6,8 @@ from vivarium.data.chromosomes.gfp_chromosome import gfp_plasmid_config
 from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
 from vivarium.utils.polymerize import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.processes.transcription import UNBOUND_RNAP_KEY
+from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.environment.make_media import Media
 
 from vivarium.processes.derive_globals import AVOGADRO
@@ -42,6 +44,12 @@ def generate_gfp_compartment(config):
 
     print(sequences)
 
+    proteins = {
+        UNBOUND_RNAP_KEY: PURE_counts[UNBOUND_RNAP_KEY],
+        UNBOUND_RIBOSOME_KEY: PURE_counts[UNBOUND_RIBOSOME_KEY],
+        'GFP': 0,
+        'endoRNAse': 1}
+
     gfp_config = {
 
         'transcription': {
@@ -71,7 +79,7 @@ def generate_gfp_compartment(config):
         'degradation': {
             
             'sequences': sequences,
-            'catalysis_rates': {
+            'catalysis_rates': { # TODO: provide kcat for each RNA variety
                 'endoRNAse': 0},
             'degradation_rates': {
                 'transcripts': {
@@ -81,7 +89,7 @@ def generate_gfp_compartment(config):
         'initial_state': {
             'molecules': PURE_counts,
             'transcripts': {'GFP_RNA': 0},
-            'proteins': {'GFP': 0, 'endoRNAse': 1}}}
+            'proteins': proteins}}
 
     return compose_gene_expression(gfp_config)
 
@@ -98,7 +106,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 40}
+        'total_time': 600}
     saved_state = simulate_compartment(gfp_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)

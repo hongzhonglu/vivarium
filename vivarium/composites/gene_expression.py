@@ -137,7 +137,8 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     # plot proteins
     for protein_id in sorted(proteins.keys()):
-        ax5.plot(time, proteins[protein_id], label=protein_id)
+        if protein_id != UNBOUND_RIBOSOME_KEY:
+            ax5.plot(time, proteins[protein_id], label=protein_id)
     ax5.legend(loc='center left', bbox_to_anchor=(1.5, 0.5))
     ax5.title.set_text('proteins')
 
