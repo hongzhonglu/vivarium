@@ -20,7 +20,7 @@ class FlagellaChromosome(object):
                 'flgA': ['flgA', 'flgM', 'flgN'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
-        'fliA': ['fliA', 'fliZ'], # ignore 'tcyJ' for now
+                'fliA': ['fliA', 'fliZ'], # ignore 'tcyJ' for now
                 'fliD': ['fliD', 'fliS', 'fliT'],
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
