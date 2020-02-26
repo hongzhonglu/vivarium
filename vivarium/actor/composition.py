@@ -133,7 +133,7 @@ def get_schema(process_list, topology):
 def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    compartment_state_role = settings['compartment_state_role']
+    compartment_state_role = settings.get('compartment_state_role')
 
     processes = [{'process': process}]
     topology = {
