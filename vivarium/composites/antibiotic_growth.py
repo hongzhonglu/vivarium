@@ -10,14 +10,13 @@ from vivarium.processes.antibiotics import (
     DEFAULT_INITIAL_STATE as ANTIBIOTIC_DEFAULT_INITIAL_STATE,
 )
 from vivarium.processes.death import DeathFreezeState
-from vivarium.processes.deriver import Deriver
 from vivarium.processes.division import (
     Division,
     divide_condition,
-    divide_state,
 )
 from vivarium.processes.growth import Growth
 from vivarium.processes.ode_expression import ODE_expression
+from vivarium.actor.composition import get_derivers, get_schema
 
 
 def compose_antibiotic_growth(config):
@@ -55,7 +54,6 @@ def compose_antibiotic_growth(config):
     antibiotic_transport = Antibiotics(config)
     growth = Growth(config)
     expression = ODE_expression(config)
-    deriver = Deriver(config)
     death = DeathFreezeState(config)
     division = Division(config)
 
@@ -68,7 +66,6 @@ def compose_antibiotic_growth(config):
             'death': death,
         },
         {
-            'deriver': deriver,
             'division': division,
         },
     ]
@@ -81,22 +78,18 @@ def compose_antibiotic_growth(config):
             'external': 'environment',
             'exchange': 'exchange',
             'fluxes': 'fluxes',
+            'global': 'global',
         },
         'growth': {
-            'internal': 'cell'
+            'global': 'global',
         },
         'expression': {
             'counts': 'cell_counts',
             'internal': 'cell',
             'external': 'environment',
         },
-        'deriver': {
-            'state': 'cell',
-            'counts': 'cell_counts',
-            'prior_state': 'prior_state',
-        },
         'division': {
-            'internal': 'cell',
+            'global': 'global',
         },
         'death': {
             'internal': 'cell',
@@ -104,18 +97,25 @@ def compose_antibiotic_growth(config):
         },
     }
 
+    # Add Derivers
+    derivers = get_derivers(processes, topology)
+    processes.extend(derivers['deriver_processes'])
+    topology.update(derivers['deriver_topology'])
+
+    schema = get_schema(processes, topology)
+
     # initialize the states
     states = initialize_state(
-        processes, topology, config.get('initial_state', {}))
+        processes, topology, schema, config.get('initial_state', {}))
 
     options = {
         'name': 'antibiotic_growth_composite',
         'environment_role': 'environment',
         'exchange_role': 'exchange',
         'topology': topology,
+        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition,
-        'divide_state': divide_state,
     }
 
     return {

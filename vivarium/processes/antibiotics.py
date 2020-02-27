@@ -3,16 +3,14 @@
 
 from __future__ import absolute_import, division, print_function
 
-import copy
 import os
 
-from vivarium.actor.process import (
+from vivarium.actor.composition import (
     convert_to_timeseries,
     plot_simulation_output,
     simulate_process_with_environment,
 )
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.utils.units import units
 
 
 #: Default initial concentrations
@@ -121,8 +119,7 @@ def test_antibiotics():
         'total_time': 4000,
         'exchange_role': 'exchange',
         'environment_role': 'external',
-        'environment_volume': 1e-15, # Units of L
-
+        'environment_volume': 1e-15,  # Units of L
     }
     return simulate_process_with_environment(process, settings)
 
