@@ -60,8 +60,8 @@ class Metabolism(Process):
         global_state = default_state.get('global', {})
         internal_state = default_state.get('internal', {})
         external_state = default_state.get('external', {})
-        initial_mass = global_state.get('mass')
-        mmol_to_counts = global_state.get('mmol_to_counts')
+        initial_mass = global_state.get('mass', 0)
+        mmol_to_counts = global_state.get('mmol_to_counts', 1)
         density = global_state.get('density') * units.g / units.L
         mw = self.fba.molecular_weights
 
@@ -392,13 +392,11 @@ def get_toy_configuration():
         'H': -0.005,
         'O2': -0.1}
 
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
+    # mass = 1339 * units.fg
+    # density = 1100 * units.g/units.L
+    # volume = mass.to('g') / density
+    global_state = get_initial_global_state()
     initial_state = {
-        'global': {
-            'mass': mass.magnitude,  # fg
-            'volume': volume.to('fL').magnitude},
         'external': {
             'A': 21.0,
             'F': 5.0,
@@ -406,6 +404,7 @@ def get_toy_configuration():
             'E': 12.0,
             'H': 5.0,
             'O2': 100.0}}
+    initial_state.update(global_state)
 
     # molecular weight units are (units.g / units.mol)
     molecular_weights = {

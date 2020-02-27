@@ -2,9 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.processes.metabolism import Metabolism
+from vivarium.processes.metabolism import Metabolism, get_initial_global_state
 from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
 
 
 
@@ -19,23 +18,17 @@ def BiGGMetabolism(parameters):
     return Metabolism(parameters)
 
 def get_initial_state():
-    # internal state
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
-
-    internal = {
-            'mass': mass.magnitude,  # fg
-            'volume': volume.to('fL').magnitude}
+    # global state
+    global_state = get_initial_global_state()
 
     # external state
-    # TODO -- initial state is set to e_coli_core, needs to be generalized to whatever BiGG model is loaded
     make_media = Media()
     external = make_media.get_saved_media('ecoli_core_GLC')
+    initial_state = {'external': external}
 
-    return {
-        'internal': internal,
-        'external': external}
+    initial_state.update(global_state)
+
+    return initial_state
 
 
 
