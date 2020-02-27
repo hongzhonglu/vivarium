@@ -4,14 +4,14 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers, get_schema
+from vivarium.compartment.process import initialize_state
+from vivarium.compartment.composition import get_derivers, get_schema
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
 
@@ -69,13 +69,12 @@ def compose_gene_expression(config):
 
     options = {
         'name': 'gene_expression_composite',
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,
@@ -87,10 +86,10 @@ def compose_gene_expression(config):
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     name = config.get('name', 'gene_expression')
-    roles = config.get('roles', {})
-    molecules = timeseries[roles['molecules']]
-    transcripts = timeseries[roles['transcripts']]
-    proteins = timeseries[roles['proteins']]
+    ports = config.get('ports', {})
+    molecules = timeseries[ports['molecules']]
+    transcripts = timeseries[ports['transcripts']]
+    proteins = timeseries[ports['proteins']]
     time = timeseries['time']
 
     # make figure and plot
@@ -160,8 +159,8 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment
-    from vivarium.actor.composition import convert_to_timeseries
+    from vivarium.compartment.process import load_compartment, simulate_compartment
+    from vivarium.compartment.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gene_expression_composite')
     if not os.path.exists(out_dir):
@@ -179,7 +178,7 @@ if __name__ == '__main__':
 
     plot_settings = {
         'name': 'gene_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'molecules',
             'proteins': 'proteins'}}

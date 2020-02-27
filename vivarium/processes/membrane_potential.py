@@ -4,9 +4,8 @@ import os
 import numpy as np
 import scipy.constants as constants
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge
-from vivarium.utils.units import units
 
 # PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)
 # Ecoli internal pH in range 7.6-7.8 (Berg)
@@ -73,14 +72,14 @@ class MembranePotential(Process):
         internal_states = list(self.initial_states['internal'].keys())
         external_states = list(self.initial_states['external'].keys())
 
-        # set roles
-        roles = {
+        # set ports
+        ports = {
             'internal': internal_states + ['c_in'],
             'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
             'external': external_states + ['c_out', 'T'],
         }
 
-        super(MembranePotential, self).__init__(roles, parameters)
+        super(MembranePotential, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -97,7 +96,8 @@ class MembranePotential(Process):
         schema = {
             'membrane': {
                 state_id : {
-                    'updater': 'set'}
+                    'updater': 'set',
+                    'divide': 'set'}
                 for state_id in set_membrane}}
 
         default_settings = {
@@ -202,12 +202,12 @@ def test_mem_potential():
         saved_state['time'].append(time)
 
         # update external state
-        for role in ['internal', 'external']:
-            for state_id, value in state[role].items():
-                if state_id in saved_state[role].keys():
-                    saved_state[role][state_id].append(value)
+        for port in ['internal', 'external']:
+            for state_id, value in state[port].items():
+                if state_id in saved_state[port].keys():
+                    saved_state[port][state_id].append(value)
                 else:
-                    saved_state[role][state_id] = [value]
+                    saved_state[port][state_id] = [value]
 
         # update membrane state from update
         for state_id, value in update['membrane'].items():

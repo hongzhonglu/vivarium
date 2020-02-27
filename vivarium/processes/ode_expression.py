@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import Process
-from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
-from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.process import Process
+from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
+from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.utils.units import units
 from vivarium.processes.derive_globals import AVOGADRO
@@ -29,8 +29,8 @@ class ODE_expression(Process):
         self.regulation = {
             gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
         regulators = initial_parameters.get('regulators', [])
-        internal_regulators = [state_id for role_id, state_id in regulators if role_id == 'internal']
-        external_regulators = [state_id for role_id, state_id in regulators if role_id == 'external']
+        internal_regulators = [state_id for port_id, state_id in regulators if port_id == 'internal']
+        external_regulators = [state_id for port_id, state_id in regulators if port_id == 'external']
 
         # get initial state
         states = list(self.transcription.keys()) + list(self.translation.keys())
@@ -41,7 +41,7 @@ class ODE_expression(Process):
         internal = list(self.initial_state.get('internal', {}).keys())
         external = list(self.initial_state.get('external', {}).keys())
 
-        roles = {
+        ports = {
             'internal': internal + internal_regulators,
             'external': external + external_regulators,
             'counts': []}
@@ -49,7 +49,7 @@ class ODE_expression(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(ODE_expression, self).__init__(roles, parameters)
+        super(ODE_expression, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -64,17 +64,18 @@ class ODE_expression(Process):
                     'divide': 'set',
                     'units': 'mmol',
                     'updater': 'accumulate'}
-                for state in self.roles['internal']}}
+                for state in self.ports['internal']}}
 
         # default emitter keys
-        default_emitter_keys = {}
+        default_emitter_keys = {
+            'internal': self.ports['internal']}
 
-        # default derivers
+        # derivers
         deriver_setting = [{
             'type': 'mmol_to_counts',
-            'source_role': 'internal',
-            'derived_role': 'counts',
-            'keys': self.roles['internal']}]
+            'source_port': 'internal',
+            'derived_port': 'counts',
+            'keys': self.ports['internal']}]
 
         default_settings = {
             'state': default_state,
@@ -88,7 +89,7 @@ class ODE_expression(Process):
         internal_state = states['internal']
 
         # get state of regulated reactions (True/False)
-        flattened_states = tuplify_role_dicts(states)
+        flattened_states = tuplify_port_dicts(states)
         regulation_state = {}
         for gene_id, reg_logic in self.regulation.items():
             regulation_state[gene_id] = reg_logic(flattened_states)
@@ -129,14 +130,14 @@ def get_lacy_config():
         'lacy_RNA': 1e-5}
 
     toy_translation_rates = {
-        'LacY': 1e-4}
+        'LacY': 3e-4}
 
     toy_protein_map = {
         'LacY': 'lacy_RNA'}
 
     toy_degradation_rates = {
-        'lacy_RNA': 0.1,
-        'LacY': 0.001}
+        'lacy_RNA': 1e-1,
+        'LacY': 3e-3}
 
     initial_state = {
         'internal': {
@@ -194,8 +195,8 @@ def test_expression(time=10):
 
     settings = {
         'total_time': time,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
+        # 'exchange_port': 'exchange',
+        'environment_port': 'external',
         'environment_volume': 1e-12}
 
     compartment = process_in_compartment(expression)

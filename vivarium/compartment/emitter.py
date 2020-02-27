@@ -53,12 +53,12 @@ def get_emitter_keys(process, topology):
     emitter_keys = {}
 
     for process_id, process_object in merge_dicts(process).items():
-        process_roles = topology[process_id]
+        process_ports = topology[process_id]
 
         default_settings = process_object.default_settings()
         process_keys = default_settings['emitter_keys']
-        for role, keys in process_keys.items():
-            compartment_name = process_roles[role]
+        for port, keys in process_keys.items():
+            compartment_name = process_ports[port]
             if compartment_name in emitter_keys.keys():
                 emitter_keys[compartment_name].extend(keys)
             else:

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from vivarium.processes.derive_globals import AVOGADRO
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 
 
@@ -13,14 +13,14 @@ class DeriveConcs(Process):
     def __init__(self, initial_parameters={}):
         self.avogadro = AVOGADRO
 
-        roles = initial_parameters.get('roles')
-        roles.update({
+        ports = initial_parameters.get('ports')
+        ports.update({
             'global': ['volume', 'mmol_to_counts']})
 
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(DeriveConcs, self).__init__(roles, parameters)
+        super(DeriveConcs, self).__init__(ports, parameters)
 
     def default_settings(self):
         volume = 1.2 * units.fL
@@ -39,8 +39,9 @@ class DeriveConcs(Process):
         schema = {
             'concentrations': {
                 state_id : {
-                    'updater': 'set'}
-                for state_id in self.roles['concentrations']}}
+                    'updater': 'set',
+                    'divide': 'set'}
+                for state_id in self.ports['concentrations']}}
 
         default_settings = {
             'state': default_state,
@@ -53,11 +54,11 @@ class DeriveConcs(Process):
 
         # states
         mmol_to_counts = states['global']['mmol_to_counts']
-        counts = {role: state for role, state in states.items() if role not in ['concentrations', 'global']}
+        counts = {port: state for port, state in states.items() if port not in ['concentrations', 'global']}
 
         # concentration update
         concentrations = {}
-        for role, states in counts.items():
+        for port, states in counts.items():
             for state_id, count in states.items():
                 concentrations[state_id] = count / mmol_to_counts
 

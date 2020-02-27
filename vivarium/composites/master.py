@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers, get_schema
+from vivarium.compartment.process import initialize_state
+from vivarium.compartment.composition import get_derivers, get_schema
 
 # processes
-from vivarium.processes.division import Division, divide_condition, divide_state
+from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.transcription import Transcription
@@ -59,7 +59,7 @@ def compose_master(config):
         {'division': division}]
 
     # Make the topology
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'transport': {
             'internal': 'cell',
@@ -104,13 +104,12 @@ def compose_master(config):
 
     options = {
         'name': config.get('name', 'master_composite'),
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,
@@ -140,8 +139,8 @@ def default_transport_config():
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
+    from vivarium.compartment.process import load_compartment
+    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
     from vivarium.composites.gene_expression import plot_gene_expression_output
 
     out_dir = os.path.join('out', 'tests', 'master_composite')
@@ -158,8 +157,8 @@ if __name__ == '__main__':
     timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
-        'environment_role': options['environment_role'],
-        'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        'exchange_port': options['exchange_port'],
         'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
@@ -167,11 +166,11 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null']}
 
     expression_plot_settings = {
         'name': 'gene_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'cell',
             'proteins': 'proteins'}}

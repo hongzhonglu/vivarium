@@ -94,8 +94,8 @@ def generate_gfp_compartment(config):
     return compose_gene_expression(gfp_config)
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment
-    from vivarium.actor.composition import convert_to_timeseries
+    from vivarium.compartment.process import load_compartment, simulate_compartment
+    from vivarium.compartment.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')
     if not os.path.exists(out_dir):
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     plot_config = {
         'name': 'gfp_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'molecules',
             'proteins': 'proteins'}}

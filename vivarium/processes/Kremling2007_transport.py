@@ -4,11 +4,9 @@ import os
 import numpy as np
 from scipy.integrate import odeint
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from vivarium.environment.make_media import Media
-from vivarium.utils.dict_utils import merge_dicts
-
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
@@ -93,7 +91,7 @@ class Transport(Process):
         internal_state = default_state['internal']
         external_state = default_state['external']
 
-        roles = {
+        ports = {
             'external': list(external_state.keys()),
             'exchange': list(external_state.keys()),
             'internal': list(internal_state.keys()),
@@ -103,7 +101,7 @@ class Transport(Process):
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(Transport, self).__init__(roles, parameters)
+        super(Transport, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -158,11 +156,13 @@ class Transport(Process):
         set_internal = ['mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']
         internal_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in set_internal}
         fluxes_schema = {
             state_id: {
-                'updater': 'set'}
+                'updater': 'set',
+                'divide': 'set'}
             for state_id in self.target_fluxes}
         exchange_schema = {
             mol_id: {
@@ -435,12 +435,12 @@ def test_transport(sim_time = 10):
             state['exchange'][mol_id] = 0
 
         # save state
-        for role in ['internal', 'external']:
-             for state_id, value in state[role].items():
-                 if state_id in saved_state[role].keys():
-                     saved_state[role][state_id].append(value)
+        for port in ['internal', 'external']:
+             for state_id, value in state[port].items():
+                 if state_id in saved_state[port].keys():
+                     saved_state[port][state_id].append(value)
                  else:
-                     saved_state[role][state_id] = [value]
+                     saved_state[port][state_id] = [value]
 
     return saved_state
 

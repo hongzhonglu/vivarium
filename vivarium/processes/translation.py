@@ -3,7 +3,7 @@ import numpy as np
 import random
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.data.amino_acids import amino_acids
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products, generate_template
@@ -109,7 +109,7 @@ class Translation(Process):
         self.ribosome_id = 0
 
         concentration_keys = self.concentration_keys + self.protein_ids
-        self.roles = {
+        self.ports = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
@@ -119,7 +119,7 @@ class Translation(Process):
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
 
-        super(Translation, self).__init__(self.roles, self.parameters)
+        super(Translation, self).__init__(self.ports, self.parameters)
 
     def default_settings(self):
         default_state = {
@@ -153,8 +153,8 @@ class Translation(Process):
 
         deriver_setting = [{
             'type': 'counts_to_mmol',
-            'source_role': 'proteins',
-            'derived_role': 'concentrations',
+            'source_port': 'proteins',
+            'derived_port': 'concentrations',
             'keys': self.protein_ids + self.concentration_keys}]
 
         # schema

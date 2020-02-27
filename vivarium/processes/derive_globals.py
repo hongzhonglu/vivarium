@@ -5,8 +5,9 @@ import copy
 from scipy import constants
 import numpy as np
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.units import units
+from vivarium.utils.dict_utils import deep_merge
 
 
 
@@ -21,7 +22,7 @@ class DeriveGlobals(Process):
     """
     def __init__(self, initial_parameters={}):
 
-        roles = {
+        ports = {
             'global': [
                 'mass',
                 'volume',
@@ -33,7 +34,7 @@ class DeriveGlobals(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(DeriveGlobals, self).__init__(roles, parameters)
+        super(DeriveGlobals, self).__init__(ports, parameters)
 
     def default_settings(self):
         # default state
@@ -58,11 +59,18 @@ class DeriveGlobals(Process):
 
         # schema
         set_states = ['volume', 'growth_rate', 'prior_mass', 'mmol_to_counts']
+        set_divide = ['density', 'prior_mass']
         schema = {
             'global': {
                 state_id : {
                     'updater': 'set'}
                 for state_id in set_states}}
+        divide_schema = {
+            'global': {
+                state_id : {
+                    'divide': 'set'}
+                for state_id in set_divide}}
+        schema = deep_merge(schema, divide_schema)
 
         default_settings = {
             'state': default_state,

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.actor.process import initialize_state, get_compartment_timestep
-from vivarium.actor.composition import get_schema
+from vivarium.compartment.process import initialize_state, get_compartment_timestep
+from vivarium.compartment.composition import get_schema
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -23,7 +23,7 @@ def compose_simple_chemotaxis(config):
         {'motor': motor}]
 
     # make the topology.
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'receptor': {
             'external': 'environment',
@@ -47,8 +47,8 @@ def compose_simple_chemotaxis(config):
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,
-        'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
     }
 
     return {

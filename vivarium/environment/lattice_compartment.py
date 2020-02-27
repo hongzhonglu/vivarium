@@ -2,10 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from vivarium.actor.process import Compartment, initialize_state, get_compartment_timestep
-from vivarium.actor.emitter import get_emitter
+from vivarium.compartment.process import Compartment, initialize_state, get_compartment_timestep
+from vivarium.compartment.emitter import get_emitter
 from vivarium.actor.inner import Simulation
-from vivarium.actor.composition import get_derivers
+from vivarium.compartment.composition import get_derivers
 
 
 
@@ -30,33 +30,33 @@ def add_str_to_keys(dct, key_str):
 
 class LatticeCompartment(Compartment, Simulation):
     '''
-    - environment_role holds the local concentrations from the external environment,
+    - environment_port holds the local concentrations from the external environment,
     and is updated at each exchange timestep
-    - exchange_role holds accumulated molecules counts over the exchange timestep,
+    - exchange_port holds accumulated molecules counts over the exchange timestep,
     and passes them to the environment upon exchange.
     '''
     def __init__(self, processes, states, configuration):
-        self.exchange_role = configuration.get('exchange_role', '')
-        self.environment_role = configuration.get('environment_role', '')
+        self.exchange_port = configuration.get('exchange_port', '')
+        self.environment_port = configuration.get('environment_port', '')
 
         # set up exchange with lattice
         self.exchange_ids = []
-        if self.exchange_role in states.keys():
-            exchange_state = states[self.exchange_role]
+        if self.exchange_port in states.keys():
+            exchange_state = states[self.exchange_port]
             self.exchange_ids = exchange_state.keys()
 
-        # find roles that contain volume, motile_force, division
-        self.volume_role = False
-        self.motile_role = False
-        self.division_role = False
-        for role, state in states.items():
+        # find ports that contain volume, motile_force, division
+        self.volume_port = False
+        self.motile_port = False
+        self.division_port = False
+        for port, state in states.items():
             state_ids = state.keys()
             if 'volume' in state_ids:
-                self.volume_role = role
+                self.volume_port = port
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
-                self.motile_role = role
+                self.motile_port = port
             if 'division' in state_ids:
-                self.division_role = role
+                self.division_port = port
 
         super(LatticeCompartment, self).__init__(processes, states, configuration)
 
@@ -67,11 +67,11 @@ class LatticeCompartment(Compartment, Simulation):
     def apply_outer_update(self, update):
         self.last_update = update
         env_keys = update['concentrations'].keys()
-        environment = self.states.get(self.environment_role)
+        environment = self.states.get(self.environment_port)
 
         if len(self.exchange_ids) > 0:
             # update only the states defined in both exchange and the external environment
-            exchange = self.states.get(self.exchange_role)
+            exchange = self.states.get(self.exchange_port)
             local_env_keys = self.exchange_ids
             exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
         elif environment:
@@ -85,17 +85,16 @@ class LatticeCompartment(Compartment, Simulation):
             environment.assign_values(local_environment)
 
     def generate_daughters(self):
-        states = self.divide_state(self)
-        volume = states[0][self.volume_role]['volume']  # TODO -- same volume for both daughters?
+        states = self.divide_state()
 
         return [
             dict(
                 id=str(uuid.uuid1()),
-                volume=volume,  # daughter_state[self.volume_role]['volume'],
+                volume=daughter_state[self.volume_port]['volume'],
                 boot_config=dict(
                     initial_time=self.time(),
                     initial_state=daughter_state,
-                    volume=volume))  # daughter_state[self.volume_role]['volume']))
+                    volume=daughter_state[self.volume_port]['volume']))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -103,18 +102,18 @@ class LatticeCompartment(Compartment, Simulation):
         volume = 1.0
         motile_force = [0.0, 0.0]
 
-        exchange = self.states.get(self.exchange_role)
+        exchange = self.states.get(self.exchange_port)
         if exchange:
             environment_change = exchange.state_for(self.exchange_ids)
         else:
             environment_change = {}
 
-        if self.volume_role:
-            volume_state = self.states[self.volume_role].state_for(['volume'])
+        if self.volume_port:
+            volume_state = self.states[self.volume_port].state_for(['volume'])
             volume = volume_state['volume']
 
-        if self.motile_role:
-            motile_state = self.states.get(self.motile_role)
+        if self.motile_port:
+            motile_state = self.states.get(self.motile_port)
             forces = motile_state.state_for(['motile_force', 'motile_torque'])
             motile_force = [
                 forces['motile_force'],
@@ -146,16 +145,16 @@ def generate_lattice_compartment(process, config):
     # declare the processes layers (with a single layer)
     processes_layers = [{process_id: process}]
 
-    # make a simple topology mapping 'role' to 'role'
-    process_roles = process.roles.keys()
-    topology = {process_id: {role: role for role in process_roles}}
+    # make a simple topology mapping 'port' to 'port'
+    process_ports = process.ports.keys()
+    topology = {process_id: {port: port for port in process_ports}}
 
     # add derivers
     derivers = get_derivers(processes_layers, topology)
     processes_layers.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
-    # initialize the states for each role
+    # initialize the states for each port
     states = initialize_state(processes_layers, topology, config.get('initial_state', {}))
 
     # get the time step
@@ -172,8 +171,8 @@ def generate_lattice_compartment(process, config):
         'emitter': emitter,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,
-        'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
-        'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
+        'exchange_port': 'exchange',  # TODO -- get this state id from a default_config() function in the process
+        'environment_port': 'external',  # TODO -- get this state id from a default_config() function in the process
         'topology': topology,
     }
 

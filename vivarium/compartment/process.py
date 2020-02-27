@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
-import random
 import os
+import random
 
 import numpy as np
 import logging as log
 
-import vivarium.actor.emitter as emit
+import vivarium.compartment.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
@@ -25,6 +25,8 @@ def npize(d):
 
     return keys, values
 
+
+# updater functions
 def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
@@ -36,12 +38,53 @@ updater_library = {
     'set': update_set}
 
 
+# divider functions
+def default_divide_condition(compartment):
+    return False
+
+def divide_set(state):
+    return [state, state]
+
+def divide_split(state):
+    if isinstance(state, int):
+        remainder = state % 2
+        half = int(state / 2)
+        if random.choice([True, False]):
+            return [half + remainder, half]
+        else:
+            return [half, half + remainder]
+    elif state == float('inf') or state == 'Infinity':
+        # some concentrations are considered infinite in the environment
+        # an alternative option is to not divide the local environment state
+        return [state, state]
+    elif isinstance(state, float):
+        half = state/2
+        return [half, half]
+    else:
+        raise Exception('can not divide state {} of type {}'.format(state, type(state)))
+
+def divide_zero(state):
+    return [0, 0]
+
+def divide_split_dict(state):
+    d1 = dict(list(state.items())[len(state) // 2:])
+    d2 = dict(list(state.items())[:len(state) // 2])
+    return [d1, d2]
+
+divider_library = {
+    'set': divide_set,
+    'split': divide_split,
+    'split_dict': divide_split_dict,
+    'zero': divide_zero}
+
+
+
 KEY_TYPE = 'U31'
 
 def keys_list(d):
     return list(d.keys())
 
-class State(object):
+class Store(object):
     ''' Represents a set of named values. '''
 
     def __init__(self, initial_state={}, updaters={}):
@@ -54,7 +97,7 @@ class State(object):
         return self.state.keys()
 
     def duplicate(self, initial_state={}):
-        return State(
+        return Store(
             initial_state = initial_state or self.to_dict(),
             updaters = self.dict(self.updaters))
 
@@ -129,32 +172,32 @@ class State(object):
 
 
 class Process(object):
-    def __init__(self, roles, parameters=None):
-        ''' Declare what roles this process expects. '''
+    def __init__(self, ports, parameters=None):
+        ''' Declare what ports this process expects. '''
 
-        self.roles = roles
+        self.ports = ports
         self.parameters = parameters or {}
         self.states = None
 
     def default_settings(self):
         return {}
 
-    def assign_roles(self, states):
+    def assign_ports(self, states):
         '''
-        Provide States for some or all of the roles this Process expects.
+        Provide States for some or all of the ports this Process expects.
 
         Roles and States must have the same keys. '''
 
         self.states = states
-        for role, state in self.states.items():
-            state.declare_state(self.roles[role])
+        for port, state in self.states.items():
+            state.declare_state(self.ports[port])
 
     def update_for(self, timestep):
         ''' Called each timestep to find the next state for this process. '''
 
         states = {
-            role: self.states[role].state_for(values)
-            for role, values in self.roles.items()}
+            port: self.states[port].state_for(values)
+            for port, values in self.ports.items()}
 
         return self.next_update(timestep, states)
 
@@ -175,56 +218,24 @@ class Process(object):
         This is the main function a new process would override.'''
 
         return {
-            role: {}
-            for role, values in self.roles.items()}
+            port: {}
+            for port, values in self.ports.items()}
 
 
 def connect_topology(process_layers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
-        between them, link the roles in each process to the state they refer to.'''
+        between them, link the ports in each process to the state they refer to.'''
 
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]
-            roles = {
-                role: states[key]
-                for role, key in connections.items()}
+            ports = {
+                port: states[key]
+                for port, key in connections.items()}
             try:
-                process.assign_roles(roles)
+                process.assign_ports(ports)
             except:
-                print('{} mismatched roles'.format(name))
-
-def merge_default_states(processes):
-    initial_state = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_state = settings['state']
-        initial_state = deep_merge(dict(initial_state), default_state)
-    return initial_state
-
-def merge_default_updaters(processes):
-    updaters = {}
-    for process_id, process in merge_dicts(processes).items():
-        settings = process.default_settings()
-        default_updaters = settings['updaters']
-        updaters = deep_merge(dict(updaters), default_updaters)
-    return updaters
-
-def default_divide_condition(compartment):
-    return False
-
-def default_divide_state(compartment):
-    divided = [{}, {}]
-    for state_key, state in compartment.states.items():
-        left = random.randint(0, 1)
-        for index in range(2):
-            divided[index][state_key] = {}
-            for key, value in state.to_dict().items():
-                divided[index][state_key][key] = value // 2 + (
-                    value % 2 if index == left else 0)
-
-    print('divided {}'.format(divided))
-    return divided
+                print('{} mismatched ports'.format(name))
 
 def get_compartment_timestep(process_layers):
     # get the minimum time_step from all processes
@@ -241,54 +252,54 @@ def get_compartment_timestep(process_layers):
 def initialize_state(process_layers, topology, schema, initial_state):
     processes = merge_dicts(process_layers)
 
-    # make a dict with the compartment's default states {roles: states}
+    # make a dict with the compartment's default states {ports: states}
     compartment_states = {}
     compartment_updaters = {}
-    for process_id, roles_map in topology.items():
-        process_roles = processes[process_id].roles
+    for process_id, ports_map in topology.items():
+        process_ports = processes[process_id].ports
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
 
-        for process_role, states in process_roles.items():
+        for process_port, states in process_ports.items():
             try:
-                compartment_role = topology[process_id][process_role]
+                compartment_port = topology[process_id][process_port]
             except:
                 raise topologyError(
-                    'no "{}" role assigned to "{}" process in topology'.format(process_role, process_id))
+                    'no "{}" port assigned to "{}" process in topology'.format(process_port, process_id))
 
             # initialize the default states
-            default_states = default_process_states.get(process_role, {})
+            default_states = default_process_states.get(process_port, {})
 
             # get updater from schema
             updaters = {}
-            role_schema = schema.get(compartment_role, {})
+            port_schema = schema.get(compartment_port, {})
             for state in states:
-                if state in role_schema:
-                    updater = role_schema[state].get('updater')
+                if state in port_schema:
+                    updater = port_schema[state].get('updater')
                     updaters.update({state: updater})
 
             # update the states
             # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
-            c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
-            compartment_states[compartment_role] = c_states
+            c_states = deep_merge(default_states, compartment_states.get(compartment_port, {}))
+            compartment_states[compartment_port] = c_states
 
             # update the updaters
-            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_role, {}))
-            compartment_updaters[compartment_role] = c_updaters
+            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_port, {}))
+            compartment_updaters[compartment_port] = c_updaters
 
-    # initialize state for each compartment role
+    # initialize state for each compartment port
     initialized_state = {}
-    for compartment_role, states in compartment_states.items():
-        updaters = compartment_updaters[compartment_role]
-        make_state = State(
-            initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),
+    for compartment_port, states in compartment_states.items():
+        updaters = compartment_updaters[compartment_port]
+        make_state = Store(
+            initial_state=deep_merge(states, dict(initial_state.get(compartment_port, {}))),
             updaters=updaters)
-        initialized_state[compartment_role] = make_state
+        initialized_state[compartment_port] = make_state
 
     return initialized_state
 
-class Compartment(State):
+class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
     def __init__(self, processes, states, configuration):
@@ -312,7 +323,6 @@ class Compartment(State):
         self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
-        self.divide_state = configuration.get('divide_state', default_divide_state)
 
         # emitter
         emitter_type = configuration.get('emitter')
@@ -342,6 +352,35 @@ class Compartment(State):
             'data': data}
         self.emitter.emit(emit_config)
 
+
+    def divide_state(self):
+        daughter_states = [{}, {}]
+        for port_id, state in self.states.items():
+            if port_id == COMPARTMENT_STATE:
+                # TODO -- copy compartment_state to each daughter???
+                break
+
+            for state_id, value in state.to_dict().items():
+                if port_id in self.schema:
+                    state_schema = self.schema[port_id].get(state_id, {})
+                    divide_type = state_schema.get('divide', 'split')
+                    divider = divider_library[divide_type]
+                else:
+                    # default divider is 'split'
+                    divider = divider_library['split']
+
+                # divide the state
+                divided_state = divider(value)
+
+                for index in range(2):
+                    new_state = {
+                        port_id: {
+                            state_id: divided_state[index]}}
+                    deep_merge(daughter_states[index], new_state)
+
+        print('divided {}'.format(daughter_states))
+        return daughter_states
+
     def prepare(self):
         ''' Avoid creating a copy of the process objects. '''
         self.new_state = self.state
@@ -358,8 +397,8 @@ class Compartment(State):
             updates = {}
             for name, process in processes.items():
                 update = process.update_for(timestep)
-                for role, update_dict in update.items():
-                    key = self.topology[name][role]
+                for port, update_dict in update.items():
+                    key = self.topology[name][port]
                     if not updates.get(key):
                         updates[key] = []
                     updates[key].append(update_dict)
@@ -396,8 +435,8 @@ class Compartment(State):
 
     def emit_data(self):
         data = {}
-        for role_key, emit_keys in self.emitter_keys.items():
-            data[role_key] = self.states[role_key].state_for(emit_keys)
+        for port_key, emit_keys in self.emitter_keys.items():
+            data[port_key] = self.states[port_key].state_for(emit_keys)
 
         data.update({
             'type': 'compartment',
@@ -423,11 +462,11 @@ def toy_composite(config):
     # toy processes
     class ToyMetabolism(Process):
         def __init__(self, initial_parameters={}):
-            roles = {'pool': ['GLC', 'MASS']}
+            ports = {'pool': ['GLC', 'MASS']}
             parameters = {'mass_conversion_rate': 1}
             parameters.update(initial_parameters)
 
-            super(ToyMetabolism, self).__init__(roles, parameters)
+            super(ToyMetabolism, self).__init__(ports, parameters)
 
         def next_update(self, timestep, states):
             update = {}
@@ -442,13 +481,13 @@ def toy_composite(config):
 
     class ToyTransport(Process):
         def __init__(self, initial_parameters={}):
-            roles = {
+            ports = {
                 'external': ['GLC'],
                 'internal': ['GLC']}
             parameters = {'intake_rate': 2}
             parameters.update(initial_parameters)
 
-            super(ToyTransport, self).__init__(roles, parameters)
+            super(ToyTransport, self).__init__(ports, parameters)
 
         def next_update(self, timestep, states):
             update = {}
@@ -462,11 +501,11 @@ def toy_composite(config):
 
     class ToyDeriveVolume(Process):
         def __init__(self, initial_parameters={}):
-            roles = {
+            ports = {
                 'compartment': ['MASS', 'DENSITY', 'VOLUME']}
             parameters = {}
 
-            super(ToyDeriveVolume, self).__init__(roles, parameters)
+            super(ToyDeriveVolume, self).__init__(ports, parameters)
 
         def next_update(self, timestep, states):
             volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
@@ -477,10 +516,10 @@ def toy_composite(config):
 
     class ToyDeath(Process):
         def __init__(self, initial_parameters={}):
-            roles = {
+            ports = {
                 'compartment': ['VOLUME'],
                 'global': ['processes']}
-            super(ToyDeath, self).__init__(roles, {})
+            super(ToyDeath, self).__init__(ports, {})
 
         def next_update(self, timestep, states):
             volume = states['compartment']['VOLUME']
@@ -509,14 +548,14 @@ def toy_composite(config):
 
     # declare the states
     states = {
-        'periplasm': State(
+        'periplasm': Store(
             initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10},
             updaters={'MASS': update_mass, 'VOLUME': 'set'}),
-        'cytoplasm': State(
+        'cytoplasm': Store(
             initial_state={'MASS': 3, 'DENSITY': 10},
             updaters={'VOLUME': 'set'})}
 
-    # hook up the roles in each process to compartment states
+    # hook up the ports in each process to compartment states
     topology = {
         'metabolism': {
             'pool': 'cytoplasm'},
@@ -542,8 +581,8 @@ def toy_composite(config):
     schema = {}
 
     options = {
-        # 'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
+        # 'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
         'schema': schema,
         'emitter': emitter,
         'topology': topology,
