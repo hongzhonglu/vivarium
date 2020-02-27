@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from vivarium.actor.process import Compartment, initialize_state, get_compartment_timestep
+from vivarium.compartment.process import Compartment, initialize_state, get_compartment_timestep
 from vivarium.actor.emitter import get_emitter
 from vivarium.actor.inner import Simulation
 from vivarium.compartment.composition import get_derivers

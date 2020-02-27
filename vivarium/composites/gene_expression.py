@@ -4,7 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import initialize_state
+from vivarium.compartment.process import initialize_state
 from vivarium.compartment.composition import get_derivers, get_schema
 
 # processes
@@ -153,7 +153,7 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment
+    from vivarium.compartment.process import load_compartment, simulate_compartment
     from vivarium.compartment.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gene_expression_composite')

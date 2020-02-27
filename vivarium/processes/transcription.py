@@ -1,11 +1,10 @@
 import copy
-import math
 import numpy as np
 import logging as log
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process, keys_list
-from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
+from vivarium.compartment.process import Process, keys_list
+from vivarium.states.chromosome import Chromosome, test_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
 

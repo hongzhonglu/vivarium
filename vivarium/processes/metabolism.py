@@ -5,7 +5,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, \
     plot_simulation_output
 from vivarium.utils.units import units

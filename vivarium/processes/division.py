@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 
 
 def divide_condition(compartment):

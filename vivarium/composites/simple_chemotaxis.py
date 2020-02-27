@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.actor.process import initialize_state, get_compartment_timestep
+from vivarium.compartment.process import initialize_state, get_compartment_timestep
 from vivarium.compartment.composition import get_schema
 
 # processes

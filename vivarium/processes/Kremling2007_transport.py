@@ -4,11 +4,9 @@ import os
 import numpy as np
 from scipy.integrate import odeint
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from vivarium.environment.make_media import Media
-from vivarium.utils.dict_utils import merge_dicts
-
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis

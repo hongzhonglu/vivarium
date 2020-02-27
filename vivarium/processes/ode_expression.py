@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
 from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule

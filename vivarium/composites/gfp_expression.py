@@ -3,7 +3,7 @@ from vivarium.utils.units import units
 
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosome import gfp_plasmid_config
-from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
+from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.translation import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 from vivarium.environment.make_media import Media
@@ -86,7 +86,7 @@ def generate_gfp_compartment(config):
     return compose_gene_expression(gfp_config)
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment
+    from vivarium.compartment.process import load_compartment, simulate_compartment
     from vivarium.compartment.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')

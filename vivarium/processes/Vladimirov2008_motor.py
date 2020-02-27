@@ -7,8 +7,7 @@ import numpy as np
 from numpy import linspace
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import Process
-from vivarium.utils.dict_utils import deep_merge
+from vivarium.compartment.process import Process
 
 # parameters
 DEFAULT_PARAMETERS = {

@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.actor.process import load_compartment, simulate_compartment
+from vivarium.compartment.process import load_compartment, simulate_compartment
 
 # composites
 from vivarium.composites.master import compose_master

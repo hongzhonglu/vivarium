@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import copy
 
-from vivarium.actor.process import Process, keys_list
+from vivarium.compartment.process import Process, keys_list
 from vivarium.compartment.composition import simulate_process, convert_to_timeseries, plot_simulation_output
 from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.units import units

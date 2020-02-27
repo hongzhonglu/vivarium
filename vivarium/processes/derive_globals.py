@@ -5,7 +5,7 @@ import copy
 from scipy import constants
 import numpy as np
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
 

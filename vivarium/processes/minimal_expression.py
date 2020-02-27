@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \

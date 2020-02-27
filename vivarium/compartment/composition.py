@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.utils.dict_utils import deep_merge, deep_merge_check
-from vivarium.actor.process import initialize_state, simulate_compartment, Compartment
+from vivarium.compartment.process import initialize_state, simulate_compartment, Compartment
 from vivarium.utils.units import units
 
 # processes

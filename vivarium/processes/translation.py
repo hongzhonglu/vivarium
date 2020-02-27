@@ -3,9 +3,8 @@ import numpy as np
 import random
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.data.amino_acids import amino_acids
-from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products
 
 class Ribosome(Polymerase):
