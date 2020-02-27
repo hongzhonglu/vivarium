@@ -116,7 +116,7 @@ class Translation(Process):
 
         self.ribosome_id = 0
 
-        self.roles = {
+        self.ports = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': self.transcript_order,
@@ -125,7 +125,7 @@ class Translation(Process):
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
 
-        super(Translation, self).__init__(self.roles, self.parameters)
+        super(Translation, self).__init__(self.ports, self.parameters)
 
     def default_settings(self):
         default_state = {

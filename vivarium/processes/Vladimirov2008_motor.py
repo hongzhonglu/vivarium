@@ -46,7 +46,7 @@ class MotorActivity(Process):
     '''
     def __init__(self, initial_parameters={}):
 
-        roles = {
+        ports = {
             'internal': ['chemoreceptor_activity',
                          'CheA',
                          'CheZ',
@@ -62,7 +62,7 @@ class MotorActivity(Process):
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(MotorActivity, self).__init__(roles, parameters)
+        super(MotorActivity, self).__init__(ports, parameters)
 
     def default_settings(self):
 

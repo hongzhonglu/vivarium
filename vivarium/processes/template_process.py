@@ -8,13 +8,13 @@ class Template(Process):
     Need to add a boot method for this process to vivarium/environment/boot.py for it to run on its own
     '''
     def __init__(self, initial_parameters={}):
-        roles = {
+        ports = {
             'internal': ['states'],
             'external': ['states'],
         }
         parameters = {}
 
-        super(Template, self).__init__(roles, parameters)
+        super(Template, self).__init__(ports, parameters)
 
     def default_settings(self):
         '''
@@ -29,7 +29,7 @@ class Template(Process):
             'external': states (list), # a list of states to emit from external
         }
 
-        updaters defines the updater type for each state in roles.
+        updaters defines the updater type for each state in ports.
         The default updater is to pass a delta,
         which is accumulated and passed to the environment at every exchange step
         '''
@@ -51,14 +51,14 @@ class Template(Process):
             'internal': {
                 state_id : {
                     'updater': 'accumulate'}
-                for state_id in self.roles['internal']}}
+                for state_id in self.ports['internal']}}
 
-        # default derivers -- create a new derived role for these roles: keys
+        # default derivers -- create a new derived port for these ports: keys
         deriver_setting = [{
             'type': 'mmol_to_counts',
             'source_port': 'internal',
             'derived_port': 'counts',
-            'keys': self.roles['internal']}]
+            'keys': self.ports['internal']}]
 
         default_settings = {
             'process_id': 'template',

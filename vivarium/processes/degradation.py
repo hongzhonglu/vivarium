@@ -58,13 +58,13 @@ class RnaDegradation(Process):
             transcript: 0
             for transcript in self.transcript_order}
 
-        self.roles = {
+        self.ports = {
             'transcripts': self.transcript_order,
             'proteins': self.protein_order,
             'molecules': self.molecule_order,
             'global': ['mmol_to_counts']}
 
-        super(RnaDegradation, self).__init__(self.roles, self.parameters)
+        super(RnaDegradation, self).__init__(self.ports, self.parameters)
 
     def default_settings(self):
         default_state = {

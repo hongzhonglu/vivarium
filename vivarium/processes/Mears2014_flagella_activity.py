@@ -83,7 +83,7 @@ class FlagellaActivity(Process):
         self.n_flagella = initial_parameters.get('flagella', DEFAULT_N_FLAGELLA)
         self.flagella_ids = [str(uuid.uuid1()) for flagella in range(self.n_flagella)]
 
-        roles = {
+        ports = {
             'internal': [
                 'chemoreceptor_activity',
                 'CheY',
@@ -104,7 +104,7 @@ class FlagellaActivity(Process):
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(FlagellaActivity, self).__init__(roles, parameters)
+        super(FlagellaActivity, self).__init__(ports, parameters)
 
     def default_settings(self):
 

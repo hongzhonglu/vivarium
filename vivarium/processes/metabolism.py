@@ -10,7 +10,7 @@ from vivarium.compartment.composition import simulate_process_with_environment, 
     plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
-from vivarium.utils.dict_utils import tuplify_role_dicts, deep_merge
+from vivarium.utils.dict_utils import tuplify_port_dicts, deep_merge
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.processes.derive_globals import AVOGADRO
 
@@ -53,9 +53,9 @@ class Metabolism(Process):
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 self.objective_molecules.append(mol_id)
 
-        # assign internal and external roles
+        # assign internal and external ports
         self.internal_state_ids = self.objective_molecules
-        roles = {
+        ports = {
             'external': self.fba.external_molecules,
             'internal': self.internal_state_ids,
             'reactions': self.reaction_ids,
@@ -66,7 +66,7 @@ class Metabolism(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(Metabolism, self).__init__(roles, parameters)
+        super(Metabolism, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -120,7 +120,7 @@ class Metabolism(Process):
             for mol_id, conc in external_state.items() if conc <= EXCHANGE_THRESHOLD}
 
         # get state of regulated reactions (True/False)
-        flattened_states = tuplify_role_dicts(states)
+        flattened_states = tuplify_port_dicts(states)
         regulation_state = {}
         for reaction_id, reg_logic in self.regulation.items():
             regulation_state[reaction_id] = reg_logic(flattened_states)

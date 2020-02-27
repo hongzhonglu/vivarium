@@ -69,7 +69,7 @@ class TransportLookup(Process):
         # make look up object
         self.look_up = LookUp()
 
-        roles = {
+        ports = {
             'internal': internal_molecule_ids,
             'external': self.external_molecule_ids,
             'exchange': self.external_molecule_ids,
@@ -77,7 +77,7 @@ class TransportLookup(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(TransportLookup, self).__init__(roles, parameters)
+        super(TransportLookup, self).__init__(ports, parameters)
 
 
     def default_settings(self):
