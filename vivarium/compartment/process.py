@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
-import os
 import random
 
 import numpy as np
@@ -86,10 +85,18 @@ def keys_list(d):
 class Store(object):
     ''' Represents a set of named values. '''
 
-    def __init__(self, initial_state={}, updaters={}):
+    def __init__(self, initial_state={}, schema={}):
         ''' Keys and state initialize empty, with a maximum key length of 31. '''
 
         self.state = copy.deepcopy(initial_state)
+        self.schema = schema
+
+        # get updaters from schema
+        updaters = {}
+        for state in self.state.keys():
+            if state in schema:
+                updater = schema[state].get('updater')
+                updaters.update({state: updater})
         self.updaters = updaters
 
     def keys(self):
@@ -98,12 +105,7 @@ class Store(object):
     def duplicate(self, initial_state={}):
         return Store(
             initial_state = initial_state or self.to_dict(),
-            updaters = self.dict(self.updaters))
-
-    def merge_updaters(self, updaters):
-        ''' Merge in a new set of updaters '''
-
-        self.updaters.merge(updaters)
+            schema = self.dict(self.schema))
 
     def declare_state(self, keys):
         ''' Initialize values for the given keys to zero. '''
@@ -247,7 +249,6 @@ def initialize_state(process_layers, topology, schema, initial_state):
 
     # make a dict with the compartment's default states {ports: states}
     compartment_states = {}
-    compartment_updaters = {}
     for process_id, ports_map in topology.items():
         process_ports = processes[process_id].ports
 
@@ -264,30 +265,19 @@ def initialize_state(process_layers, topology, schema, initial_state):
             # initialize the default states
             default_states = default_process_states.get(process_port, {})
 
-            # get updater from schema
-            updaters = {}
-            port_schema = schema.get(compartment_port, {})
-            for state in states:
-                if state in port_schema:
-                    updater = port_schema[state].get('updater')
-                    updaters.update({state: updater})
-
             # update the states
             # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
             c_states = deep_merge(default_states, compartment_states.get(compartment_port, {}))
             compartment_states[compartment_port] = c_states
 
-            # update the updaters
-            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_port, {}))
-            compartment_updaters[compartment_port] = c_updaters
-
     # initialize state for each compartment port
     initialized_state = {}
     for compartment_port, states in compartment_states.items():
-        updaters = compartment_updaters[compartment_port]
+        state_schema = schema.get(compartment_port, {})
+
         make_state = Store(
             initial_state=deep_merge(states, dict(initial_state.get(compartment_port, {}))),
-            updaters=updaters)
+            schema=state_schema)
         initialized_state[compartment_port] = make_state
 
     return initialized_state
@@ -313,7 +303,6 @@ class Compartment(Store):
 
         self.configuration = configuration
         self.topology = configuration['topology']
-        self.schema = configuration['schema']
 
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
@@ -338,7 +327,7 @@ class Compartment(Store):
             'type': 'compartment',
             'name': configuration.get('name', 'compartment'),
             'topology': self.topology,
-            'schema': self.schema}
+            'schema': configuration['schema']}
 
         emit_config = {
             'table': 'configuration',
@@ -352,15 +341,13 @@ class Compartment(Store):
             if port_id == COMPARTMENT_STATE:
                 # TODO -- copy compartment_state to each daughter???
                 break
+            else:
+                schema = state.schema
 
             for state_id, value in state.to_dict().items():
-                if port_id in self.schema:
-                    state_schema = self.schema[port_id].get(state_id, {})
-                    divide_type = state_schema.get('divide', 'split')
-                    divider = divider_library[divide_type]
-                else:
-                    # default divider is 'split'
-                    divider = divider_library['split']
+                state_schema = schema.get(state_id, {})
+                divide_type = state_schema.get('divide', 'split')  # default divider is 'split'
+                divider = divider_library[divide_type]
 
                 # divide the state
                 divided_state = divider(value)
@@ -536,17 +523,18 @@ def toy_composite(config):
          'internal_volume': ToyDeriveVolume()},
         {'death': ToyDeath()}]
 
-    def update_mass(key, state, current, new):
-        return current / (current + new), {}
-
     # declare the states
     states = {
         'periplasm': Store(
-            initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10},
-            updaters={'MASS': update_mass, 'VOLUME': 'set'}),
+            initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10, 'VOLUME': 100/10},
+            schema={
+                'VOLUME': {
+                    'updater': 'set'}}),
         'cytoplasm': Store(
-            initial_state={'MASS': 3, 'DENSITY': 10},
-            updaters={'VOLUME': 'set'})}
+            initial_state={'MASS': 3, 'DENSITY': 10, 'VOLUME': 3/10},
+            schema={
+                'VOLUME': {
+                    'updater': 'set'}})}
 
     # hook up the ports in each process to compartment states
     topology = {
@@ -586,18 +574,14 @@ def toy_composite(config):
         'states': states,
         'options': options}
 
-def test_compartment():
-    out_dir = os.path.join('out', 'tests', 'toy_compartment')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    compartment = load_compartment(toy_composite)
-
+def test_compartment(composite=toy_composite):
+    compartment = load_compartment(composite)
     settings = {
         'timestep': 1,
-        'total_time': 10}
+        'total_time': 20}
 
     saved_state = simulate_compartment(compartment, settings)
+    return saved_state
 
 def load_compartment(composite=toy_composite, boot_config={}):
     '''
@@ -646,4 +630,7 @@ def simulate_compartment(compartment, settings={}):
 
 
 if __name__ == '__main__':
-    test_compartment()
+    saved_state = test_compartment()
+    for time, state in saved_state.items():
+        print('{}: {}'.format(time,state))
+

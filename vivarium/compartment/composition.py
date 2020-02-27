@@ -153,7 +153,7 @@ def process_in_compartment(process):
 
     options = {
         'topology': topology,
-        'schema': schema}
+        'schema': schema}  # TODO -- does compartment need schema?
 
     return Compartment(processes, states, options)
 
