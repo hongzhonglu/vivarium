@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.actor.process import Process
-from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.compartment.process import Process
+from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.regulation_logic import build_rule
-from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
+from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
     plot_simulation_output
 
 
@@ -29,10 +29,10 @@ class MinimalExpression(Process):
         self.regulation = {
             gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
         regulators = initial_parameters.get('regulators', [])
-        internal_regulators = [state_id for role_id, state_id in regulators if role_id == 'internal']
-        external_regulators = [state_id for role_id, state_id in regulators if role_id == 'external']
+        internal_regulators = [state_id for port_id, state_id in regulators if port_id == 'internal']
+        external_regulators = [state_id for port_id, state_id in regulators if port_id == 'external']
 
-        roles = {
+        ports = {
             'internal': self.internal_states + internal_regulators,
             'external': external_regulators,
             'concentrations': []}
@@ -44,7 +44,7 @@ class MinimalExpression(Process):
         parameters.update(initial_parameters)
 
 
-        super(MinimalExpression, self).__init__(roles, parameters)
+        super(MinimalExpression, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -58,8 +58,8 @@ class MinimalExpression(Process):
 
         deriver_setting = [{
             'type': 'counts_to_mmol',
-            'source_role': 'internal',
-            'derived_role': 'concentrations',
+            'source_port': 'internal',
+            'derived_port': 'concentrations',
             'keys': self.internal_states}]
 
         default_settings = {
@@ -75,7 +75,7 @@ class MinimalExpression(Process):
         n_steps = int(timestep / step_size)
 
         # get state of regulated reactions (True/False)
-        flattened_states = tuplify_role_dicts(states)
+        flattened_states = tuplify_port_dicts(states)
         regulation_state = {}
         for gene_id, reg_logic in self.regulation.items():
             regulation_state[gene_id] = reg_logic(flattened_states)
@@ -110,8 +110,8 @@ def test_expression(end_time=10):
 
     settings = {
         'total_time': 100,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
+        # 'exchange_port': 'exchange',
+        'environment_port': 'external',
         'environment_volume': 1e-12}
 
     compartment = process_in_compartment(expression)

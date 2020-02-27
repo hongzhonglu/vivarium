@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 
 
@@ -41,14 +41,14 @@ class ReceptorCluster(Process):
     def __init__(self, initial_parameters={}):
 
         self.ligand_id = initial_parameters.get('ligand', LIGAND_ID)
-        roles = {
+        ports = {
             'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
             'external': [self.ligand_id]
         }
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(ReceptorCluster, self).__init__(roles, parameters)
+        super(ReceptorCluster, self).__init__(ports, parameters)
 
     def default_settings(self):
 

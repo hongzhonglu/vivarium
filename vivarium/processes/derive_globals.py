@@ -5,7 +5,7 @@ import copy
 from scipy import constants
 import numpy as np
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
 
@@ -22,7 +22,7 @@ class DeriveGlobals(Process):
     """
     def __init__(self, initial_parameters={}):
 
-        roles = {
+        ports = {
             'global': [
                 'mass',
                 'volume',
@@ -34,7 +34,7 @@ class DeriveGlobals(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(DeriveGlobals, self).__init__(roles, parameters)
+        super(DeriveGlobals, self).__init__(ports, parameters)
 
     def default_settings(self):
         # default state
