@@ -146,8 +146,8 @@ def generate_lattice_compartment(process, config):
     processes_layers = [{process_id: process}]
 
     # make a simple topology mapping 'role' to 'role'
-    process_roles = process.roles.keys()
-    topology = {process_id: {role: role for role in process_roles}}
+    process_ports = process.roles.keys()
+    topology = {process_id: {role: role for role in process_ports}}
 
     # add derivers
     derivers = get_derivers(processes_layers, topology)

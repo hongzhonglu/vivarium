@@ -43,7 +43,7 @@ def get_derivers(process_list, topology):
             process_settings = process.default_settings()
             setting = process_settings.get('deriver_setting', [])
             try:
-                role_map = topology[process_id]
+                port_map = topology[process_id]
             except:
                 print('{} topology role mismatch'.format(process_id))
                 raise
@@ -54,16 +54,16 @@ def get_derivers(process_list, topology):
                 source_port = set['source_port']
                 target_port = set['derived_port']
                 try:
-                    source_compartment_role = role_map[source_port]
-                    target_compartment_role = role_map[target_port]
+                    source_compartment_port = port_map[source_port]
+                    target_compartment_port = port_map[target_port]
                 except:
                     print('{} source/target role mismatch'.format(process_id))
                     raise
 
                 deriver_topology = {
                     type: {
-                        source_port: source_compartment_role,
-                        target_port: target_compartment_role,
+                        source_port: source_compartment_port,
+                        target_port: target_compartment_port,
                         'global': 'global'}}
                 deep_merge(full_deriver_topology, deriver_topology)
 
@@ -109,16 +109,16 @@ def get_schema(process_list, topology):
             process_settings = process.default_settings()
             process_schema = process_settings.get('schema', {})
             try:
-                role_map = topology[process_id]
+                port_map = topology[process_id]
             except:
                 print('{} topology role mismatch'.format(process_id))
                 raise
 
             # go through each role, and get the schema
-            for process_role, settings in process_schema.items():
-                compartment_role = role_map[process_role]
+            for process_port, settings in process_schema.items():
+                compartment_port = port_map[process_port]
                 compartment_schema = {
-                    compartment_role: settings}
+                    compartment_port: settings}
 
                 ## TODO -- check for mismatch
                 deep_merge_check(schema, compartment_schema)
@@ -128,7 +128,7 @@ def get_schema(process_list, topology):
 def process_in_compartment(process):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    process_roles = list(process.roles.keys())
+    process_ports = list(process.roles.keys())
 
     processes = [{'process': process}]
     topology = {'process': {role: role for role in process.roles}}
@@ -141,7 +141,7 @@ def process_in_compartment(process):
     processes.extend(deriver_processes)
 
     # add deriver topology
-    topology = {'process': {key: key for key in process_roles}}
+    topology = {'process': {key: key for key in process_ports}}
     topology.update(deriver_topology)
 
     # get schema
@@ -274,7 +274,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
             'remove_flat': (bool) if True, timeseries with all the same value get removed
             'skip_ports': (list) entire roles that won't be plotted
             'overlay': (dict) with
-                {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
+                {'bottom_port': 'top_port'}  roles plotted together by matching state_ids, with 'top_port' in red
             'show_state': (list) with [('role_id', 'state_id')]
                 for all states that will be highlighted, even if they are otherwise to be removed
             }
@@ -290,8 +290,8 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     skip_ports = settings.get('skip_ports', [])
     overlay = settings.get('overlay', {})
     show_state = settings.get('show_state', [])
-    top_roles = list(overlay.values())
-    bottom_roles = list(overlay.keys())
+    top_ports = list(overlay.values())
+    bottom_ports = list(overlay.keys())
 
     roles = [role for role in timeseries.keys() if role not in skip_keys + skip_ports]
     time_vec = timeseries['time']
@@ -322,7 +322,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
         del timeseries[role][state_id]
 
     # get the number of states in each role
-    n_data = [len(timeseries[key]) for key in roles if key not in top_roles]
+    n_data = [len(timeseries[key]) for key in roles if key not in top_ports]
     if 0 in n_data:
         n_data.remove(0)
 
@@ -350,11 +350,11 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     col_idx = 0
     for role in roles:
         top_timeseries = {}
-        if role in bottom_roles:
+        if role in bottom_ports:
             # get overlay
-            top_role = overlay[role]
-            top_timeseries = timeseries[top_role]
-        elif role in top_roles + skip_ports:
+            top_port = overlay[role]
+            top_timeseries = timeseries[top_port]
+        elif role in top_ports + skip_ports:
             # don't give this row its own plot
             continue
 
@@ -378,7 +378,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
             # overlay
             if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_role)
+                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
                 ax.legend()
 
             ax.title.set_text(str(role) + ': ' + str(state_id))

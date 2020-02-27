@@ -245,24 +245,24 @@ def initialize_state(process_layers, topology, schema, initial_state):
     compartment_states = {}
     compartment_updaters = {}
     for process_id, roles_map in topology.items():
-        process_roles = processes[process_id].roles
+        process_ports = processes[process_id].roles
 
         settings = processes[process_id].default_settings()
         default_process_states = settings['state']
 
-        for process_role, states in process_roles.items():
+        for process_port, states in process_ports.items():
             try:
-                compartment_role = topology[process_id][process_role]
+                compartment_port = topology[process_id][process_port]
             except:
                 raise topologyError(
-                    'no "{}" role assigned to "{}" process in topology'.format(process_role, process_id))
+                    'no "{}" role assigned to "{}" process in topology'.format(process_port, process_id))
 
             # initialize the default states
-            default_states = default_process_states.get(process_role, {})
+            default_states = default_process_states.get(process_port, {})
 
             # get updater from schema
             updaters = {}
-            role_schema = schema.get(compartment_role, {})
+            role_schema = schema.get(compartment_port, {})
             for state in states:
                 if state in role_schema:
                     updater = role_schema[state].get('updater')
@@ -270,21 +270,21 @@ def initialize_state(process_layers, topology, schema, initial_state):
 
             # update the states
             # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
-            c_states = deep_merge(default_states, compartment_states.get(compartment_role, {}))
-            compartment_states[compartment_role] = c_states
+            c_states = deep_merge(default_states, compartment_states.get(compartment_port, {}))
+            compartment_states[compartment_port] = c_states
 
             # update the updaters
-            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_role, {}))
-            compartment_updaters[compartment_role] = c_updaters
+            c_updaters = deep_merge_check(updaters, compartment_updaters.get(compartment_port, {}))
+            compartment_updaters[compartment_port] = c_updaters
 
     # initialize state for each compartment role
     initialized_state = {}
-    for compartment_role, states in compartment_states.items():
-        updaters = compartment_updaters[compartment_role]
+    for compartment_port, states in compartment_states.items():
+        updaters = compartment_updaters[compartment_port]
         make_state = Store(
-            initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),
+            initial_state=deep_merge(states, dict(initial_state.get(compartment_port, {}))),
             updaters=updaters)
-        initialized_state[compartment_role] = make_state
+        initialized_state[compartment_port] = make_state
 
     return initialized_state
 
