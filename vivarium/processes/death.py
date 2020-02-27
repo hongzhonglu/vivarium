@@ -2,14 +2,23 @@
 
 from __future__ import absolute_import, division, print_function
 
-import copy
 import os
 
-from vivarium.actor.process import (
+from vivarium.actor.composition import (
     convert_to_timeseries,
     plot_simulation_output,
-    Process,
+    simulate_compartment,
 )
+from vivarium.actor.process import (
+    Process,
+    initialize_state,
+    load_compartment,
+)
+from vivarium.actor.composition import COMPARTMENT_STATE, get_schema
+
+
+TOY_ANTIBIOTIC_THRESHOLD = 5.0
+TOY_INJECTION_RATE = 2.0
 
 
 class CheckerInterface(object):
@@ -98,45 +107,103 @@ class DeathFreezeState(Process):
         return {}
 
 
-def test_death_freeze_state(end_time=10, antibiotic_step=1, asserts=True):
-    THRESHOLD = 5
-    parameters = {
+class ToyAntibioticInjector(Process):
+
+    def __init__(self, initial_parameters={}):
+        self.injection_rate = initial_parameters.get(
+            'injection_rate', 1.0)
+        roles = {'internal': ['antibiotic']}
+        super(ToyAntibioticInjector, self).__init__(roles, initial_parameters)
+
+    def default_settings(self):
+        default_settings = {
+            'state': {
+                'internal': {
+                    'antibiotic': 0.0
+                }
+            },
+            'emitter_keys': {'antibiotic'},
+        }
+        return default_settings
+
+    def next_update(self, timestep, states):
+        delta = timestep * self.injection_rate
+        return {'internal': {'antibiotic': delta}}
+
+
+def compose_toy_death(config):
+    death_parameters = {
         'checkers': {
             'antibiotic': {
-                'antibiotic_threshold': THRESHOLD,
+                'antibiotic_threshold': TOY_ANTIBIOTIC_THRESHOLD,
             }
         }
     }
-    process = DeathFreezeState(parameters)
-    states = process.default_settings()['state']
-    states['internal']['antibiotic'] = 0
-
-    time = 0
-    timestep = 1
-    saved_states = {
-        time: copy.deepcopy(states)
+    death_process = DeathFreezeState(death_parameters)
+    injector_parameters = {
+        'injection_rate': TOY_INJECTION_RATE,
+    }
+    injector_process = ToyAntibioticInjector(injector_parameters)
+    processes = [
+        {
+            'death': death_process,
+            'injector': injector_process,
+        },
+    ]
+    topology = {
+        'death': {
+            'internal': 'cell',
+            'compartment': COMPARTMENT_STATE,
+        },
+        'injector': {
+            'internal': 'cell',
+        }
+    }
+    init_state = {
+        'cell': {
+            'antibiotic': 0.0
+        }
+    }
+    schema = get_schema(processes, topology)
+    states = initialize_state(processes, topology, schema, init_state)
+    options = {
+        'topology': topology,
+        'schema': schema,
+    }
+    return {
+        'processes': processes,
+        'states': states,
+        'options': options,
     }
 
-    while time < end_time:
-        update = process.next_update(timestep, states)
-        # Update is this easy only because the only updater is 'set'
-        for role, state in states.items():
-            state.update(update.get(role, {}))
-        time += timestep
-        states['internal']['antibiotic'] += antibiotic_step
-        saved_states[time] = copy.deepcopy(states)
 
+def test_death_freeze_state(end_time=10, asserts=True):
+    boot_config = {'emitter': 'null'}
+    compartment = load_compartment(compose_toy_death, boot_config)
+    settings = {
+        'timeline': [(end_time, {})]
+    }
+    saved_states = simulate_compartment(compartment, settings)
     if asserts:
-        expected_death = THRESHOLD / antibiotic_step
+        # Add 1 because dies when antibiotic strictly above threshold
+        expected_death = 1 + TOY_ANTIBIOTIC_THRESHOLD // TOY_INJECTION_RATE
         expected_saved_states = {
             time: {
-                'internal': {
-                    'death_freeze_state': (
-                        False if time <= expected_death else True),
-                    'antibiotic': time * antibiotic_step,
+                'cell': {
+                    'antibiotic': (
+                        time * TOY_INJECTION_RATE
+                        if time <= expected_death
+                        # Add one because death will only be detected
+                        # the iteration after antibiotic above
+                        # threshold. This happens because death and
+                        # injector run "concurrently" in the composite,
+                        # so their updates are applied after both have
+                        # finished.
+                        else (expected_death + 1) * TOY_INJECTION_RATE
+                    )
                 }
             }
-            for time in range(end_time)
+            for time in range(end_time + 1)
         }
         assert expected_saved_states == saved_states
 
