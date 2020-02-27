@@ -26,7 +26,7 @@ def get_derivers(process_list, topology):
 
     requires:
         - process_list -- (list) with configured processes
-        - topology -- (dict) with topology of the processes connected to compartment roles
+        - topology -- (dict) with topology of the processes connected to compartment ports
 
     returns: (dict) with:
         {'deriver_processes': processes,
@@ -45,7 +45,7 @@ def get_derivers(process_list, topology):
             try:
                 port_map = topology[process_id]
             except:
-                print('{} topology role mismatch'.format(process_id))
+                print('{} topology port mismatch'.format(process_id))
                 raise
 
             for set in setting:
@@ -57,7 +57,7 @@ def get_derivers(process_list, topology):
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
                 except:
-                    print('{} source/target role mismatch'.format(process_id))
+                    print('{} source/target port mismatch'.format(process_id))
                     raise
 
                 deriver_topology = {
@@ -69,11 +69,11 @@ def get_derivers(process_list, topology):
 
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
-                # roles for configuration
-                roles = {
+                # ports for configuration
+                ports = {
                     source_port: keys,
                     target_port: keys}
-                config = {type: {'roles': roles}}
+                config = {type: {'ports': ports}}
 
                 deep_merge(deriver_config, config)
 
@@ -111,10 +111,10 @@ def get_schema(process_list, topology):
             try:
                 port_map = topology[process_id]
             except:
-                print('{} topology role mismatch'.format(process_id))
+                print('{} topology port mismatch'.format(process_id))
                 raise
 
-            # go through each role, and get the schema
+            # go through each port, and get the schema
             for process_port, settings in process_schema.items():
                 compartment_port = port_map[process_port]
                 compartment_schema = {
@@ -128,10 +128,10 @@ def get_schema(process_list, topology):
 def process_in_compartment(process):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    process_ports = list(process.roles.keys())
+    process_ports = list(process.ports.keys())
 
     processes = [{'process': process}]
-    topology = {'process': {role: role for role in process.roles}}
+    topology = {'process': {port: port for port in process.ports}}
 
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
@@ -183,7 +183,7 @@ def simulate_with_environment(compartment, settings={}):
     if exchange_port:
         exchange_ids = list(compartment.states[exchange_port].keys())
     else:
-        print('no exchange role! simulate environment without exchange')
+        print('no exchange port! simulate environment without exchange')
     environment = compartment.states.get(environment_port)
     exchange = compartment.states.get(exchange_port)
 
@@ -203,9 +203,9 @@ def simulate_with_environment(compartment, settings={}):
         time += timestep
         for (t, change_dict) in timeline:
             if time >= t:
-                for role_id, change in change_dict.items():
-                    role = compartment.states.get(role_id)
-                    role.assign_values(change)
+                for port_id, change in change_dict.items():
+                    port = compartment.states.get(port_id)
+                    port.assign_values(change)
                 timeline.pop(0)
 
         # update compartment
@@ -232,21 +232,21 @@ def convert_to_timeseries(sim_output):
     input:
         - saved_states (dict) with {timestep: state_dict}
     returns:
-        - timeseries (dict) with timeseries in lists {'time': [], 'role1': {'state': []}}
+        - timeseries (dict) with timeseries in lists {'time': [], 'port1': {'state': []}}
     TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
     '''
 
     time_vec = list(sim_output.keys())
     initial_state = sim_output[time_vec[0]]
-    timeseries = {role: {state: []
+    timeseries = {port: {state: []
         for state, initial in states.items()}
-        for role, states in initial_state.items()}
+        for port, states in initial_state.items()}
     timeseries['time'] = time_vec
 
     for time, all_states in sim_output.items():
-        for role, states in all_states.items():
+        for port, states in all_states.items():
             for state_id, state in states.items():
-                timeseries[role][state_id].append(state)
+                timeseries[port][state_id].append(state)
 
     return timeseries
 
@@ -269,13 +269,13 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
         - timeseries (dict). This can be obtained from simulation output with convert_to_timeseries()
         - settings (dict) with:
             {
-            'max_rows': (int) roles with more states than this number of states get wrapped into a new column
+            'max_rows': (int) ports with more states than this number of states get wrapped into a new column
             'remove_zeros': (bool) if True, timeseries with all zeros get removed
             'remove_flat': (bool) if True, timeseries with all the same value get removed
-            'skip_ports': (list) entire roles that won't be plotted
+            'skip_ports': (list) entire ports that won't be plotted
             'overlay': (dict) with
-                {'bottom_port': 'top_port'}  roles plotted together by matching state_ids, with 'top_port' in red
-            'show_state': (list) with [('role_id', 'state_id')]
+                {'bottom_port': 'top_port'}  ports plotted together by matching state_ids, with 'top_port' in red
+            'show_state': (list) with [('port_id', 'state_id')]
                 for all states that will be highlighted, even if they are otherwise to be removed
             }
     TODO -- some molecules have 'inf' concentrations for practical reasons. How should these be plotted?
@@ -293,7 +293,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     top_ports = list(overlay.values())
     bottom_ports = list(overlay.keys())
 
-    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_ports]
+    ports = [port for port in timeseries.keys() if port not in skip_keys + skip_ports]
     time_vec = timeseries['time']
 
     # remove selected states
@@ -301,28 +301,28 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     removed_states = []
     if remove_flat:
         # find series with all the same value
-        for role in roles:
-            for state_id, series in timeseries[role].items():
+        for port in ports:
+            for state_id, series in timeseries[port].items():
                 if series.count(series[0]) == len(series):
-                    removed_states.append((role, state_id))
+                    removed_states.append((port, state_id))
     elif remove_zeros:
         # find series with all zeros
-        for role in roles:
-            for state_id, series in timeseries[role].items():
+        for port in ports:
+            for state_id, series in timeseries[port].items():
                 if all(v == 0 for v in series):
-                    removed_states.append((role, state_id))
+                    removed_states.append((port, state_id))
 
     # if specified in show_state, keep in timeseries
-    for role_state in show_state:
-        if role_state in removed_states:
-            removed_states.remove(role_state)
+    for port_state in show_state:
+        if port_state in removed_states:
+            removed_states.remove(port_state)
 
     # remove from timeseries
-    for (role, state_id) in removed_states:
-        del timeseries[role][state_id]
+    for (port, state_id) in removed_states:
+        del timeseries[port][state_id]
 
-    # get the number of states in each role
-    n_data = [len(timeseries[key]) for key in roles if key not in top_ports]
+    # get the number of states in each port
+    n_data = [len(timeseries[key]) for key in ports if key not in top_ports]
     if 0 in n_data:
         n_data.remove(0)
 
@@ -348,17 +348,17 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
     row_idx = 0
     col_idx = 0
-    for role in roles:
+    for port in ports:
         top_timeseries = {}
-        if role in bottom_ports:
+        if port in bottom_ports:
             # get overlay
-            top_port = overlay[role]
+            top_port = overlay[port]
             top_timeseries = timeseries[top_port]
-        elif role in top_ports + skip_ports:
+        elif port in top_ports + skip_ports:
             # don't give this row its own plot
             continue
 
-        for state_id, series in sorted(timeseries[role].items()):
+        for state_id, series in sorted(timeseries[port].items()):
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             # check if series is a list of ints or floats
@@ -371,7 +371,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 zero_line = [0 for t in time_vec]
                 ax.plot(time_vec, zero_line, 'k--')
 
-            if (role, state_id) in show_state:
+            if (port, state_id) in show_state:
                 ax.plot(time_vec, series, 'indigo', linewidth=2)
             else:
                 ax.plot(time_vec, series)
@@ -381,7 +381,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
                 ax.legend()
 
-            ax.title.set_text(str(role) + ': ' + str(state_id))
+            ax.title.set_text(str(port) + ': ' + str(state_id))
             ax.title.set_fontsize(16)
 
             if row_idx == columns[col_idx]-1:

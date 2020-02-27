@@ -57,8 +57,8 @@ def get_emitter_keys(process, topology):
 
         default_settings = process_object.default_settings()
         process_keys = default_settings['emitter_keys']
-        for role, keys in process_keys.items():
-            compartment_name = process_ports[role]
+        for port, keys in process_keys.items():
+            compartment_name = process_ports[port]
             if compartment_name in emitter_keys.keys():
                 emitter_keys[compartment_name].extend(keys)
             else:
