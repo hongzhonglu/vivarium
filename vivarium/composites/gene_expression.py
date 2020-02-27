@@ -64,8 +64,8 @@ def compose_gene_expression(config):
 
     options = {
         'name': 'gene_expression_composite',
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),

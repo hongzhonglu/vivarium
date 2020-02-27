@@ -77,8 +77,8 @@ def compose_variable_flagella(config):
     states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
 
     options = {
-        'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
@@ -107,14 +107,14 @@ if __name__ == '__main__':
     timeline = [(5.0, {})]
 
     settings = {
-        'environment_role': options['environment_role'],
-        # 'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        # 'exchange_port': options['exchange_port'],
         'environment_volume': 1e-12,  # L
         'timeline': timeline}
 
     plot_settings = {
         'max_rows': 20,
-        'skip_roles': ['prior_state']}
+        'skip_ports': ['prior_state']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

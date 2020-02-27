@@ -30,19 +30,19 @@ def add_str_to_keys(dct, key_str):
 
 class LatticeCompartment(Compartment, Simulation):
     '''
-    - environment_role holds the local concentrations from the external environment,
+    - environment_port holds the local concentrations from the external environment,
     and is updated at each exchange timestep
-    - exchange_role holds accumulated molecules counts over the exchange timestep,
+    - exchange_port holds accumulated molecules counts over the exchange timestep,
     and passes them to the environment upon exchange.
     '''
     def __init__(self, processes, states, configuration):
-        self.exchange_role = configuration.get('exchange_role', '')
-        self.environment_role = configuration.get('environment_role', '')
+        self.exchange_port = configuration.get('exchange_port', '')
+        self.environment_port = configuration.get('environment_port', '')
 
         # set up exchange with lattice
         self.exchange_ids = []
-        if self.exchange_role in states.keys():
-            exchange_state = states[self.exchange_role]
+        if self.exchange_port in states.keys():
+            exchange_state = states[self.exchange_port]
             self.exchange_ids = exchange_state.keys()
 
         # find roles that contain volume, motile_force, division
@@ -67,11 +67,11 @@ class LatticeCompartment(Compartment, Simulation):
     def apply_outer_update(self, update):
         self.last_update = update
         env_keys = update['concentrations'].keys()
-        environment = self.states.get(self.environment_role)
+        environment = self.states.get(self.environment_port)
 
         if len(self.exchange_ids) > 0:
             # update only the states defined in both exchange and the external environment
-            exchange = self.states.get(self.exchange_role)
+            exchange = self.states.get(self.exchange_port)
             local_env_keys = self.exchange_ids
             exchange.assign_values({key: 0 for key in self.exchange_ids})  # reset exchange
         elif environment:
@@ -102,7 +102,7 @@ class LatticeCompartment(Compartment, Simulation):
         volume = 1.0
         motile_force = [0.0, 0.0]
 
-        exchange = self.states.get(self.exchange_role)
+        exchange = self.states.get(self.exchange_port)
         if exchange:
             environment_change = exchange.state_for(self.exchange_ids)
         else:
@@ -171,8 +171,8 @@ def generate_lattice_compartment(process, config):
         'emitter': emitter,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,
-        'exchange_role': 'exchange',  # TODO -- get this state id from a default_config() function in the process
-        'environment_role': 'external',  # TODO -- get this state id from a default_config() function in the process
+        'exchange_port': 'exchange',  # TODO -- get this state id from a default_config() function in the process
+        'environment_port': 'external',  # TODO -- get this state id from a default_config() function in the process
         'topology': topology,
     }
 

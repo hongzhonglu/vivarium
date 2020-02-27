@@ -47,8 +47,8 @@ def compose_simple_chemotaxis(config):
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,
-        'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
     }
 
     return {

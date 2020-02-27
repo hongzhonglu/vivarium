@@ -217,8 +217,8 @@ def test_convenience_kinetics(end_time=10):
     kinetic_process = ConvenienceKinetics(config)
 
     settings = {
-        'environment_role': 'external',
-        'exchange_role': 'exchange',
+        'environment_port': 'external',
+        'exchange_port': 'exchange',
         'environment_volume': 1e-13,  # L
         'timestep': 1,
         'total_time': end_time}

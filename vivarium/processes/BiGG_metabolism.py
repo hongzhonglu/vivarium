@@ -95,7 +95,7 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 30,
         'remove_flat': True,
-        'skip_roles': ['exchange'],
+        'skip_ports': ['exchange'],
         'overlay': {'reactions': 'flux_bounds'}}
 
     saved_data = simulate_metabolism(simulation_config)

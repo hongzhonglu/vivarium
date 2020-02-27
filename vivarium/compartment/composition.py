@@ -170,22 +170,22 @@ def simulate_process(process, settings={}):
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
-    requires processes made for LatticeCompartment, with environment_role and exchange_role
+    requires processes made for LatticeCompartment, with environment_port and exchange_port
     '''
 
     # parameters
     nAvogadro = AVOGADRO
 
     # get environment configuration
-    environment_role = settings['environment_role']
+    environment_port = settings['environment_port']
     env_volume = settings.get('environment_volume', 1e-12) * units.L
-    exchange_role = settings.get('exchange_role')
-    if exchange_role:
-        exchange_ids = list(compartment.states[exchange_role].keys())
+    exchange_port = settings.get('exchange_port')
+    if exchange_port:
+        exchange_ids = list(compartment.states[exchange_port].keys())
     else:
         print('no exchange role! simulate environment without exchange')
-    environment = compartment.states.get(environment_role)
-    exchange = compartment.states.get(exchange_role)
+    environment = compartment.states.get(environment_port)
+    exchange = compartment.states.get(exchange_port)
 
     # get timeline
     total_time = settings.get('total_time', 10)
@@ -272,7 +272,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
             'max_rows': (int) roles with more states than this number of states get wrapped into a new column
             'remove_zeros': (bool) if True, timeseries with all zeros get removed
             'remove_flat': (bool) if True, timeseries with all the same value get removed
-            'skip_roles': (list) entire roles that won't be plotted
+            'skip_ports': (list) entire roles that won't be plotted
             'overlay': (dict) with
                 {'bottom_role': 'top_role'}  roles plotted together by matching state_ids, with 'top_role' in red
             'show_state': (list) with [('role_id', 'state_id')]
@@ -287,13 +287,13 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     max_rows = settings.get('max_rows', 25)
     remove_zeros = settings.get('remove_zeros', False)
     remove_flat = settings.get('remove_flat', False)
-    skip_roles = settings.get('skip_roles', [])
+    skip_ports = settings.get('skip_ports', [])
     overlay = settings.get('overlay', {})
     show_state = settings.get('show_state', [])
     top_roles = list(overlay.values())
     bottom_roles = list(overlay.keys())
 
-    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_roles]
+    roles = [role for role in timeseries.keys() if role not in skip_keys + skip_ports]
     time_vec = timeseries['time']
 
     # remove selected states
@@ -354,7 +354,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
             # get overlay
             top_role = overlay[role]
             top_timeseries = timeseries[top_role]
-        elif role in top_roles + skip_roles:
+        elif role in top_roles + skip_ports:
             # don't give this row its own plot
             continue
 

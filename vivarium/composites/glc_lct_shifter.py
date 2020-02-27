@@ -164,8 +164,8 @@ if __name__ == '__main__':
         (3000, {})]
 
     settings = {
-        'environment_role': options['environment_role'],
-        'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        'exchange_port': options['exchange_port'],
         'environment_volume': 2e-13,  # L
         'timeline': timeline}
 
@@ -184,7 +184,7 @@ if __name__ == '__main__':
             ('cell', 'lac__D_c'),
             ('cell', 'lacy_RNA'),
             ('cell', 'LacY')],
-        'skip_roles': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)

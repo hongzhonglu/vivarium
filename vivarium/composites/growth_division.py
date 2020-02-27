@@ -59,8 +59,8 @@ def compose_growth_division(config):
 
     options = {
         'name': 'growth_division_composite',
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
@@ -85,15 +85,15 @@ if __name__ == '__main__':
     # settings for simulation and plot
     options = compartment.configuration
     settings = {
-        'environment_role': options['environment_role'],
-        'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        'exchange_port': options['exchange_port'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
         'total_time': 100}
 
     plot_settings = {
         'max_rows': 25,
-        'skip_roles': ['prior_state']}
+        'skip_ports': ['prior_state']}
 
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]

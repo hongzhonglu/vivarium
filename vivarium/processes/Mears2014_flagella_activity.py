@@ -293,7 +293,7 @@ def test_activity(parameters=default_params, timeline=default_timeline):
 
     settings = {
         'timeline': timeline,
-        'environment_role': 'external'}
+        'environment_port': 'external'}
 
     return simulate_process_with_environment(motor, settings)
 

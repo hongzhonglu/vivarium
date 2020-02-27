@@ -570,8 +570,8 @@ def toy_composite(config):
     schema = {}
 
     options = {
-        # 'environment_role': 'environment',
-        # 'exchange_role': 'exchange',
+        # 'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
         'schema': schema,
         'emitter': emitter,
         'topology': topology,

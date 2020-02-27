@@ -195,8 +195,8 @@ def test_expression(time=10):
 
     settings = {
         'total_time': time,
-        # 'exchange_role': 'exchange',
-        'environment_role': 'external',
+        # 'exchange_port': 'exchange',
+        'environment_port': 'external',
         'environment_volume': 1e-12}
 
     compartment = process_in_compartment(expression)

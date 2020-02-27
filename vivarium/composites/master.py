@@ -104,8 +104,8 @@ def compose_master(config):
 
     options = {
         'name': config.get('name', 'master_composite'),
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
@@ -157,8 +157,8 @@ if __name__ == '__main__':
     timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
-        'environment_role': options['environment_role'],
-        'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        'exchange_port': options['exchange_port'],
         'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null']}
 
     expression_plot_settings = {
         'name': 'gene_expression',
