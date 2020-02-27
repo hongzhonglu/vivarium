@@ -45,18 +45,18 @@ class LatticeCompartment(Compartment, Simulation):
             exchange_state = states[self.exchange_port]
             self.exchange_ids = exchange_state.keys()
 
-        # find roles that contain volume, motile_force, division
-        self.volume_role = False
-        self.motile_role = False
-        self.division_role = False
-        for role, state in states.items():
+        # find ports that contain volume, motile_force, division
+        self.volume_port = False
+        self.motile_port = False
+        self.division_port = False
+        for port, state in states.items():
             state_ids = state.keys()
             if 'volume' in state_ids:
-                self.volume_role = role
+                self.volume_port = port
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
-                self.motile_role = role
+                self.motile_port = port
             if 'division' in state_ids:
-                self.division_role = role
+                self.division_port = port
 
         super(LatticeCompartment, self).__init__(processes, states, configuration)
 
@@ -90,11 +90,11 @@ class LatticeCompartment(Compartment, Simulation):
         return [
             dict(
                 id=str(uuid.uuid1()),
-                volume=daughter_state[self.volume_role]['volume'],
+                volume=daughter_state[self.volume_port]['volume'],
                 boot_config=dict(
                     initial_time=self.time(),
                     initial_state=daughter_state,
-                    volume=daughter_state[self.volume_role]['volume']))
+                    volume=daughter_state[self.volume_port]['volume']))
             for daughter_state in states]
 
     def generate_inner_update(self):
@@ -108,12 +108,12 @@ class LatticeCompartment(Compartment, Simulation):
         else:
             environment_change = {}
 
-        if self.volume_role:
-            volume_state = self.states[self.volume_role].state_for(['volume'])
+        if self.volume_port:
+            volume_state = self.states[self.volume_port].state_for(['volume'])
             volume = volume_state['volume']
 
-        if self.motile_role:
-            motile_state = self.states.get(self.motile_role)
+        if self.motile_port:
+            motile_state = self.states.get(self.motile_port)
             forces = motile_state.state_for(['motile_force', 'motile_torque'])
             motile_force = [
                 forces['motile_force'],
@@ -145,16 +145,16 @@ def generate_lattice_compartment(process, config):
     # declare the processes layers (with a single layer)
     processes_layers = [{process_id: process}]
 
-    # make a simple topology mapping 'role' to 'role'
-    process_ports = process.roles.keys()
-    topology = {process_id: {role: role for role in process_ports}}
+    # make a simple topology mapping 'port' to 'port'
+    process_ports = process.ports.keys()
+    topology = {process_id: {port: port for port in process_ports}}
 
     # add derivers
     derivers = get_derivers(processes_layers, topology)
     processes_layers.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
-    # initialize the states for each role
+    # initialize the states for each port
     states = initialize_state(processes_layers, topology, config.get('initial_state', {}))
 
     # get the time step
