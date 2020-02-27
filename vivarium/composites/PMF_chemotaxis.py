@@ -45,7 +45,7 @@ def compose_pmf_chemotaxis(config):
         {'division': division}]
 
     # make the topology.
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'receptor': {
             'external': 'environment',

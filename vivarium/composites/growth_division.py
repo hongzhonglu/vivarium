@@ -29,7 +29,7 @@ def compose_growth_division(config):
         {'division': division}]
 
     # make the topology.
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'transport': {
             'internal': 'cell',

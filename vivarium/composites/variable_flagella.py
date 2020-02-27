@@ -47,7 +47,7 @@ def compose_variable_flagella(config):
         {'division': division}]
 
     ## Make the topology
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'receptor': {
             'internal': 'cell',

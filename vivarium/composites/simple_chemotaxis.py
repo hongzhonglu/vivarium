@@ -23,7 +23,7 @@ def compose_simple_chemotaxis(config):
         {'motor': motor}]
 
     # make the topology.
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'receptor': {
             'external': 'environment',

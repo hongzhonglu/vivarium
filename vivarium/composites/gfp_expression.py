@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     plot_config = {
         'name': 'gfp_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'molecules',
             'proteins': 'proteins'}}

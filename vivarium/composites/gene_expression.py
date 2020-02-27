@@ -81,10 +81,10 @@ def compose_gene_expression(config):
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     name = config.get('name', 'gene_expression')
-    roles = config.get('roles', {})
-    molecules = timeseries[roles['molecules']]
-    transcripts = timeseries[roles['transcripts']]
-    proteins = timeseries[roles['proteins']]
+    ports = config.get('ports', {})
+    molecules = timeseries[ports['molecules']]
+    transcripts = timeseries[ports['transcripts']]
+    proteins = timeseries[ports['proteins']]
     time = timeseries['time']
 
     # make figure and plot
@@ -172,7 +172,7 @@ if __name__ == '__main__':
 
     plot_settings = {
         'name': 'gene_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'molecules',
             'proteins': 'proteins'}}

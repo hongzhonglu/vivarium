@@ -50,7 +50,7 @@ def compose_ode_expression(config):
         {'division': division}]
 
     # Make the topology
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'transport': {
             'internal': 'cell',

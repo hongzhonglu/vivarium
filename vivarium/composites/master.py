@@ -59,7 +59,7 @@ def compose_master(config):
         {'division': division}]
 
     # Make the topology
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'transport': {
             'internal': 'cell',
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 
     expression_plot_settings = {
         'name': 'gene_expression',
-        'roles': {
+        'ports': {
             'transcripts': 'transcripts',
             'molecules': 'cell',
             'proteins': 'proteins'}}
