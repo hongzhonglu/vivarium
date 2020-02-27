@@ -79,7 +79,7 @@ KEY_TYPE = 'U31'
 def keys_list(d):
     return list(d.keys())
 
-class State(object):
+class Store(object):
     ''' Represents a set of named values. '''
 
     def __init__(self, initial_state={}, updaters={}):
@@ -92,7 +92,7 @@ class State(object):
         return self.state.keys()
 
     def duplicate(self, initial_state={}):
-        return State(
+        return Store(
             initial_state = initial_state or self.to_dict(),
             updaters = self.dict(self.updaters))
 
@@ -281,14 +281,14 @@ def initialize_state(process_layers, topology, schema, initial_state):
     initialized_state = {}
     for compartment_role, states in compartment_states.items():
         updaters = compartment_updaters[compartment_role]
-        make_state = State(
+        make_state = Store(
             initial_state=deep_merge(states, dict(initial_state.get(compartment_role, {}))),
             updaters=updaters)
         initialized_state[compartment_role] = make_state
 
     return initialized_state
 
-class Compartment(State):
+class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
     def __init__(self, processes, states, configuration):
@@ -537,10 +537,10 @@ def toy_composite(config):
 
     # declare the states
     states = {
-        'periplasm': State(
+        'periplasm': Store(
             initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10},
             updaters={'MASS': update_mass, 'VOLUME': 'set'}),
-        'cytoplasm': State(
+        'cytoplasm': Store(
             initial_state={'MASS': 3, 'DENSITY': 10},
             updaters={'VOLUME': 'set'})}
 
