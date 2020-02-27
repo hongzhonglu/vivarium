@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 
-import vivarium.actor.emitter as emit
+import vivarium.compartment.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
