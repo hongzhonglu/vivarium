@@ -6,7 +6,7 @@ import random
 from vivarium.actor.process import Process
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.regulation_logic import build_rule
-from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
+from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
     plot_simulation_output
 
 

@@ -5,7 +5,7 @@ import os
 import random
 
 from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers, get_schema
+from vivarium.compartment.composition import get_derivers, get_schema
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -92,7 +92,7 @@ def compose_variable_flagella(config):
 
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
+    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'variable_flagella_composite')
     if not os.path.exists(out_dir):

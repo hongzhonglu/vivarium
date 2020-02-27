@@ -4,7 +4,7 @@ import os
 
 from vivarium.actor.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_role_dicts
-from vivarium.actor.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.utils.units import units
 from vivarium.processes.derive_globals import AVOGADRO

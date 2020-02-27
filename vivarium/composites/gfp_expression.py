@@ -87,7 +87,7 @@ def generate_gfp_compartment(config):
 
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment, simulate_compartment
-    from vivarium.actor.composition import convert_to_timeseries
+    from vivarium.compartment.composition import convert_to_timeseries
 
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')
     if not os.path.exists(out_dir):

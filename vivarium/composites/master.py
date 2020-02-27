@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state
-from vivarium.actor.composition import get_derivers, get_schema
+from vivarium.compartment.composition import get_derivers, get_schema
 
 # processes
 from vivarium.processes.division import Division, divide_condition
@@ -140,7 +140,7 @@ def default_transport_config():
 
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
+    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
     from vivarium.composites.gene_expression import plot_gene_expression_output
 
     out_dir = os.path.join('out', 'tests', 'master_composite')

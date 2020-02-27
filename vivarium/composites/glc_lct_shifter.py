@@ -4,7 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.actor.composition import set_axes
+from vivarium.compartment.composition import set_axes
 
 # composite
 from vivarium.composites.ode_expression import compose_ode_expression
@@ -140,7 +140,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
 if __name__ == '__main__':
     from vivarium.actor.process import load_compartment
-    from vivarium.actor.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
+    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'glc_lct_shifter')
     if not os.path.exists(out_dir):

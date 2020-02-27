@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.actor.process import initialize_state, load_compartment
-from vivarium.actor.composition import get_derivers, get_schema, simulate_with_environment, \
+from vivarium.compartment.composition import get_derivers, get_schema, simulate_with_environment, \
     convert_to_timeseries, plot_simulation_output
 
 # processes

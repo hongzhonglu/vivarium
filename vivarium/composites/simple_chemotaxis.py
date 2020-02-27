@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from vivarium.actor.process import initialize_state, get_compartment_timestep
-from vivarium.actor.composition import get_schema
+from vivarium.compartment.composition import get_schema
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster

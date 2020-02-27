@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vivarium.actor.process import Process
-from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, \
+from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, \
     plot_simulation_output
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA

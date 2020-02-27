@@ -5,7 +5,7 @@ import os
 from scipy import constants
 
 from vivarium.actor.process import Process
-from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_role_dicts
 from vivarium.utils.units import units

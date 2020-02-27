@@ -5,7 +5,7 @@ import uuid
 from vivarium.actor.process import Compartment, initialize_state, get_compartment_timestep
 from vivarium.actor.emitter import get_emitter
 from vivarium.actor.inner import Simulation
-from vivarium.actor.composition import get_derivers
+from vivarium.compartment.composition import get_derivers
 
 
 

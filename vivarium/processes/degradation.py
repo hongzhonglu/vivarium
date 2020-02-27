@@ -4,7 +4,7 @@ import os
 import copy
 
 from vivarium.actor.process import Process, keys_list
-from vivarium.actor.composition import simulate_process, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import simulate_process, convert_to_timeseries, plot_simulation_output
 from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.units import units
 
