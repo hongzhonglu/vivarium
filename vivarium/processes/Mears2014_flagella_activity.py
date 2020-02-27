@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.patches import Patch
 
-from vivarium.actor.process import Process
-from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries
+from vivarium.compartment.process import Process
+from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries
 
 DEFAULT_N_FLAGELLA = 5
 DEFAULT_PMF = 170  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg)
@@ -83,7 +83,7 @@ class FlagellaActivity(Process):
         self.n_flagella = initial_parameters.get('flagella', DEFAULT_N_FLAGELLA)
         self.flagella_ids = [str(uuid.uuid1()) for flagella in range(self.n_flagella)]
 
-        roles = {
+        ports = {
             'internal': [
                 'chemoreceptor_activity',
                 'CheY',
@@ -104,7 +104,7 @@ class FlagellaActivity(Process):
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
-        super(FlagellaActivity, self).__init__(roles, parameters)
+        super(FlagellaActivity, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -293,7 +293,7 @@ def test_activity(parameters=default_params, timeline=default_timeline):
 
     settings = {
         'timeline': timeline,
-        'environment_role': 'external'}
+        'environment_port': 'external'}
 
     return simulate_process_with_environment(motor, settings)
 

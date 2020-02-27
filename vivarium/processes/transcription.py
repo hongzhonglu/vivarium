@@ -1,11 +1,10 @@
 import copy
-import math
 import numpy as np
 import logging as log
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process, keys_list
-from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
+from vivarium.compartment.process import Process, keys_list
+from vivarium.states.chromosome import Chromosome, test_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
 
@@ -79,7 +78,7 @@ class Transcription(Process):
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.initiation = StochasticSystem(self.stoichiometry)
 
-        self.roles = {
+        self.ports = {
             'chromosome': Chromosome({}).fields(),
             'molecules': self.molecule_ids,
             'factors': self.transcription_factors,
@@ -87,7 +86,7 @@ class Transcription(Process):
 
         log.debug('transcription parameters: {}'.format(self.parameters))
 
-        super(Transcription, self).__init__(self.roles, self.parameters)
+        super(Transcription, self).__init__(self.ports, self.parameters)
 
     def build_affinity_vector(self, promoters, factors):
         vector = np.zeros(len(self.promoter_order), dtype=np.float64)

@@ -21,12 +21,12 @@ class MultigenCompartment(Analysis):
             times = compartment_history['time']
 
             # get history of all tags
-            roles = [role for role in list(compartment_history.keys()) if role not in ['time']]
+            ports = [port for port in list(compartment_history.keys()) if port not in ['time']]
             tags_history = {}
             for tag in tags:
-                for role in roles:
-                    if tag in compartment_history[role]:
-                        tags_history.update({tag: compartment_history[role][tag]})
+                for port in ports:
+                    if tag in compartment_history[port]:
+                        tags_history.update({tag: compartment_history[port][tag]})
 
             data['time'] = times
             data['tags'] = tags_history

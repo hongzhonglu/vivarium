@@ -94,7 +94,7 @@ class Compartment(Analysis):
         # additional data as text
         if zero_state:
             text_rows = n_rows - rows_text
-            zeros = ['{}:{} '.format(role, state) for (role, state) in zero_state]
+            zeros = ['{}:{} '.format(port, state) for (port, state) in zero_state]
             ax = fig.add_subplot(grid[text_rows:, :])
             ax.text(0.02, 0.1, 'all zeros: {}'.format(zeros), wrap=True)
             ax.axis('off')

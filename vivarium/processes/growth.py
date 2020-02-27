@@ -2,17 +2,17 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 
 
 class Growth(Process):
     def __init__(self, initial_parameters={}):
-        roles = {
+        ports = {
             'global': ['mass', 'volume']}
 
         parameters = {'growth_rate': 0.0006}
         parameters.update(initial_parameters)
-        super(Growth, self).__init__(roles, parameters)
+        super(Growth, self).__init__(ports, parameters)
 
     def default_settings(self):
 
