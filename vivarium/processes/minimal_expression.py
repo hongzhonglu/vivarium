@@ -58,8 +58,8 @@ class MinimalExpression(Process):
 
         deriver_setting = [{
             'type': 'counts_to_mmol',
-            'source_role': 'internal',
-            'derived_role': 'concentrations',
+            'source_port': 'internal',
+            'derived_port': 'concentrations',
             'keys': self.internal_states}]
 
         default_settings = {

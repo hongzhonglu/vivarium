@@ -51,19 +51,19 @@ def get_derivers(process_list, topology):
             for set in setting:
                 type = set['type']
                 keys = set['keys']
-                source_role = set['source_role']
-                target_role = set['derived_role']
+                source_port = set['source_port']
+                target_port = set['derived_port']
                 try:
-                    source_compartment_role = role_map[source_role]
-                    target_compartment_role = role_map[target_role]
+                    source_compartment_role = role_map[source_port]
+                    target_compartment_role = role_map[target_port]
                 except:
                     print('{} source/target role mismatch'.format(process_id))
                     raise
 
                 deriver_topology = {
                     type: {
-                        source_role: source_compartment_role,
-                        target_role: target_compartment_role,
+                        source_port: source_compartment_role,
+                        target_port: target_compartment_role,
                         'global': 'global'}}
                 deep_merge(full_deriver_topology, deriver_topology)
 
@@ -71,8 +71,8 @@ def get_derivers(process_list, topology):
                 # TODO -- merge overwrites them. need list extend
                 # roles for configuration
                 roles = {
-                    source_role: keys,
-                    target_role: keys}
+                    source_port: keys,
+                    target_port: keys}
                 config = {type: {'roles': roles}}
 
                 deep_merge(deriver_config, config)

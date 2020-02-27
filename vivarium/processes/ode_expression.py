@@ -73,8 +73,8 @@ class ODE_expression(Process):
         # derivers
         deriver_setting = [{
             'type': 'mmol_to_counts',
-            'source_role': 'internal',
-            'derived_role': 'counts',
+            'source_port': 'internal',
+            'derived_port': 'counts',
             'keys': self.roles['internal']}]
 
         default_settings = {
