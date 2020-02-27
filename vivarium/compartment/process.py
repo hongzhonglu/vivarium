@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import copy
 import os
+import random
 
 import numpy as np
 
@@ -47,7 +48,10 @@ def divide_split(state):
     if isinstance(state, int):
         remainder = state % 2
         half = int(state / 2)
-        return [half, half + remainder]
+        if random.choice([True, False]):
+            return [half + remainder, half]
+        else:
+            return [half, half + remainder]
     elif state == float('inf') or state == 'Infinity':
         # some concentrations are considered infinite in the environment
         # an alternative option is to not divide the local environment state

@@ -33,13 +33,12 @@ class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
 
-        # initialize fba
+        # initialize FBA
         self.fba = CobraFBA(initial_parameters)
         self.reaction_ids = self.fba.reaction_ids()
 
-        # additional options
+        # additional FBA options
         self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
-        self.initial_state = initial_parameters.get('initial_state', {})
         self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
 
         # get regulation functions
@@ -47,14 +46,66 @@ class Metabolism(Process):
         self.regulation = {
             reaction: build_rule(logic) for reaction, logic in regulation_logic.items()}
 
-        # get molecules in objective
-        self.objective_molecules = []
+        # get molecules from fba objective
+        self.objective_composition = {}
         for reaction_id, coeff1 in self.fba.objective.items():
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
-                self.objective_molecules.append(mol_id)
+                if mol_id in self.objective_composition:
+                    self.objective_composition[mol_id] += coeff1 * coeff2
+                else:
+                    self.objective_composition[mol_id] = coeff1 * coeff2
 
-        # assign internal and external ports
-        self.internal_state_ids = self.objective_molecules
+        ## Get initial state from state specified in parameters
+        default_state = initial_parameters.get('initial_state', {})
+        global_state = default_state.get('global', {})
+        internal_state = default_state.get('internal', {})
+        external_state = default_state.get('external', {})
+        initial_mass = global_state.get('mass')
+        mmol_to_counts = global_state.get('mmol_to_counts')
+        density = global_state.get('density') * units.g / units.L
+        mw = self.fba.molecular_weights
+
+        ## update initial states to match global mass
+        ## internal state
+        # get initial internal pools based on objective composition, molecular weights, and initial mass
+        composition = {mol_id: (-coeff if coeff < 0 else 0)
+            for mol_id, coeff in self.objective_composition.items()}
+        composition_mass = sum([coeff * mw.get(mol_id, 0.0)
+            for mol_id, coeff in composition.items()])
+        scale_mass = initial_mass / composition_mass
+        updated_internal_state = {mol_id: int(scale_mass * coeff * mmol_to_counts)
+            for mol_id, coeff in composition.items()}
+        updated_internal_state = deep_merge(dict(updated_internal_state), internal_state)
+
+        ## update global state
+        updated_mass = sum([count / mmol_to_counts * mw.get(mol_id, 0.0)
+            for mol_id, count in updated_internal_state.items()]) * units.fg
+        updated_volume = (updated_mass.to('g') / density)
+        updated_mmol_to_counts = (AVOGADRO * updated_volume)
+
+        updated_global_state = {
+            'mass': updated_mass.magnitude,
+            'volume': updated_volume.to('fL').magnitude,
+            'mmol_to_counts': updated_mmol_to_counts.to('L/mmol').magnitude,
+            'density': density.magnitude}
+
+        ## external state
+        updated_external_state = {state_id: 0.0 for state_id in self.fba.external_molecules}
+        updated_external_state.update(self.fba.minimal_external)  # optimal minimal media from fba
+        updated_external_state.update(external_state)
+
+        # save initial state
+        self.initial_state = {
+            'external': updated_external_state,
+            'internal': updated_internal_state,
+            'reactions': {state_id: 0 for state_id in self.reaction_ids},
+            'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
+            'flux_bounds': {state_id: self.default_upper_bound
+                            for state_id in self.constrained_reaction_ids},
+            'global': updated_global_state}
+
+        ## assign ports
+        self.internal_state_ids = list(self.objective_composition.keys())
         ports = {
             'external': self.fba.external_molecules,
             'internal': self.internal_state_ids,
@@ -63,6 +114,7 @@ class Metabolism(Process):
             'flux_bounds': self.constrained_reaction_ids,
             'global': GLOBALS}
 
+        ## parameters
         parameters = {}
         parameters.update(initial_parameters)
 
@@ -70,25 +122,9 @@ class Metabolism(Process):
 
     def default_settings(self):
 
-        # default state
-        internal = {state_id: 0.0 for state_id in self.internal_state_ids}
-        external = {state_id: 0.0 for state_id in self.fba.external_molecules}
-        # get optimal media from fba
-        external.update(self.fba.minimal_external)
-        external.update(self.initial_state.get('external', {}))
-
-        default_state = {
-            'external': external,
-            'internal': deep_merge(dict(internal), self.initial_state.get('internal', {})),
-            'reactions': {state_id: 0 for state_id in self.reaction_ids},
-            'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
-            'flux_bounds': {state_id: self.default_upper_bound
-                for state_id in self.constrained_reaction_ids},
-            'global': self.initial_state.get('global', {})}
-
         # default emitter keys
         default_emitter_keys = {
-            'internal': self.objective_molecules,
+            'internal': self.internal_state_ids,
             'external': self.fba.external_molecules,
             'reactions': self.reaction_ids}
 
@@ -102,7 +138,7 @@ class Metabolism(Process):
                     'updater': 'accumulate'}}}
 
         return {
-            'state': default_state,
+            'state': self.initial_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema}
 
@@ -295,28 +331,32 @@ def save_network(config, out_dir='out'):
     save_network(nodes, edges, out_dir)
 
 # configs
-def get_initial_state():
+def get_initial_global_state():
     # initial state
     mass = 1339 * units.fg
     density = 1100 * units.g / units.L
     volume = mass.to('g') / density
+    mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
+
     globals = {
+        'density': density.magnitude,
         'mass': mass.magnitude,  # fg
-        'volume': volume.to('fL').magnitude}
+        'volume': volume.to('fL').magnitude,
+        'mmol_to_counts': mmol_to_counts.magnitude}
 
     return {
         'global': globals}
 
 def get_e_coli_core_config():
     metabolism_file = os.path.join('models', 'e_coli_core.json')
-    initial_state = get_initial_state()
+    initial_state = get_initial_global_state()
     return {
         'model_path': metabolism_file,
         'initial_state': initial_state}
 
 def get_iAF1260b_config():
     metabolism_file = os.path.join('models', 'iAF1260b.json')
-    initial_state = get_initial_state()
+    initial_state = get_initial_global_state()
     return {
         'model_path': metabolism_file,
         'initial_state': initial_state}
@@ -481,7 +521,6 @@ def test_toy_metabolism(out_dir='out'):
 
     saved_data = simulate_process_with_environment(toy_metabolism, settings)
     return saved_data
-
 
 def make_network():
     # configure toy model
