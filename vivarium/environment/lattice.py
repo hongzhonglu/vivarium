@@ -570,13 +570,16 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    thrust = 1e-1  # pN  TODO -- should be ~ 3 pN
+    thrust = 5.0e-1  # pN  TODO -- should be ~ 3 pN
     tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
-    thrust  = 1.2e-1  # pN  TODO --  should be ~ 3 pN
+    # average thrust = 0.57 pN according to:
+    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
+    # Swimming efficiency of bacterium Escherichia coli. PNAS
+    thrust  = 5.7e-1  # pN
     torque = 0.0
     return [thrust, torque]
 
