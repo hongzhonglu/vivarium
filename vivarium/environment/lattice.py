@@ -30,7 +30,7 @@ from vivarium.actor import filepath
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
 from vivarium.environment.make_media import Media
-from vivarium.actor.emitter import get_emitter
+from vivarium.compartment.emitter import get_emitter
 
 # Constants
 N_AVOGADRO = constants.N_A
