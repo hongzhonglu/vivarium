@@ -1,5 +1,5 @@
-from vivarium.actor import composition
-from vivarium.actor.process import Process
+from vivarium.compartment import composition
+from vivarium.compartment.process import Process
 
 
 class ToyLinearGrowthDeathProcess(Process):
