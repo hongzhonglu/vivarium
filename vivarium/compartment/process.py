@@ -5,6 +5,7 @@ import os
 import random
 
 import numpy as np
+import logging as log
 
 import vivarium.compartment.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
@@ -119,19 +120,23 @@ class Store(object):
     def apply_update(self, update):
         ''' Apply a dict of keys and values to the state using its updaters. '''
 
-        state_dict = self.to_dict()
-
         for key, value in update.items():
             # updater can be a function or a key into the updater library
             updater = self.updaters.get(key, 'accumulate')
             if not callable(updater):
                 updater = updater_library[updater]
 
-            self.new_state[key], other_updates = updater(
-                key,
-                state_dict,
-                self.new_state[key],
-                value)
+            try:
+                self.new_state[key], other_updates = updater(
+                    key,
+                    self.state,
+                    self.new_state[key],
+                    value)
+            except TypeError as e:
+                log.error(
+                    'bad update - {}: {}, {}'.format(
+                        key, value, self.new_state[key]))
+                raise e
 
             self.new_state.update(other_updates)
 
@@ -144,7 +149,8 @@ class Store(object):
     def prepare(self):
         ''' Prepares for state updates by creating new copy of existing state '''
 
-        self.new_state = copy.deepcopy(self.state)
+        self.new_state = self.state
+        # self.new_state = copy.deepcopy(self.state)
 
     def proceed(self):
         ''' Once all updates are complete, swaps out state for newly calculated state '''
@@ -161,7 +167,10 @@ class Store(object):
     def to_dict(self):
         ''' Get the current state of all keys '''
 
-        return copy.deepcopy(self.state)
+        # return copy.deepcopy(self.state)
+        return {
+            key: value
+            for key, value in self.state.items()}
 
 
 class Process(object):
