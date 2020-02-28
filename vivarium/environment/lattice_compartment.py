@@ -52,7 +52,7 @@ class LatticeCompartment(Compartment, Simulation):
         self.division_port = False
         for port, state in states.items():
             state_ids = state.keys()
-            assert 'volume' in state_ids, 'no port contains volume'
+            assert 'volume' in state_ids, 'no port includes volume'
             self.volume_port = port
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
                 self.motile_port = port
