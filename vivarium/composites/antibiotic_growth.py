@@ -2,9 +2,17 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state, COMPARTMENT_STATE
-
-# processes
+from vivarium.compartment.composition import (
+    convert_to_timeseries,
+    plot_simulation_output,
+    simulate_with_environment,
+    get_derivers,
+)
+from vivarium.compartment.process import (
+    initialize_state,
+    COMPARTMENT_STATE,
+    load_compartment,
+)
 from vivarium.processes.antibiotics import Antibiotics
 from vivarium.processes.antibiotics import (
     DEFAULT_INITIAL_STATE as ANTIBIOTIC_DEFAULT_INITIAL_STATE,
@@ -16,7 +24,6 @@ from vivarium.processes.division import (
 )
 from vivarium.processes.growth import Growth
 from vivarium.processes.ode_expression import ODE_expression
-from vivarium.compartment.composition import get_derivers, get_schema
 
 
 def compose_antibiotic_growth(config):
@@ -102,18 +109,15 @@ def compose_antibiotic_growth(config):
     processes.extend(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])
 
-    schema = get_schema(processes, topology)
-
     # initialize the states
     states = initialize_state(
-        processes, topology, schema, config.get('initial_state', {}))
+        processes, topology, config.get('initial_state', {}))
 
     options = {
         'name': 'antibiotic_growth_composite',
         'environment_port': 'environment',
         'exchange_port': 'exchange',
         'topology': topology,
-        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition,
     }
@@ -157,13 +161,6 @@ def test_antibiotic_growth_composite():
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.composition import (
-        convert_to_timeseries,
-        plot_simulation_output,
-        simulate_with_environment,
-    )
-    from vivarium.compartment.process import load_compartment
-
     out_dir = os.path.join('out', 'tests', 'antibiotic_growth_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)

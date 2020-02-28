@@ -8,7 +8,6 @@ from vivarium.compartment.composition import (
     convert_to_timeseries,
     plot_simulation_output,
     simulate_compartment,
-    get_schema,
 )
 from vivarium.compartment.process import (
     Process,
@@ -165,11 +164,9 @@ def compose_toy_death(config):
             'antibiotic': 0.0
         }
     }
-    schema = get_schema(processes, topology)
-    states = initialize_state(processes, topology, schema, init_state)
+    states = initialize_state(processes, topology, init_state)
     options = {
         'topology': topology,
-        'schema': schema,
     }
     return {
         'processes': processes,
