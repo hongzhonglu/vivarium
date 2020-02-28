@@ -287,7 +287,7 @@ def initialize_measp(boot_config):
     media = {'GLC': 20.0,  # assumes mmol/L
              'MeAsp': 80.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 600 end'.format(media_id)
     lattice_config = {
         'name': 'measp',
         'new_media': new_media,
@@ -295,7 +295,7 @@ def initialize_measp(boot_config):
         'emit_fields': ['MeAsp'],
         'run_for': 1.0,
         'static_concentrations': True,
-        'emit_frequency': 5,
+        'emit_frequency': 20,
         'gradient': {
             'type': 'linear',
             'molecules': {
@@ -318,7 +318,7 @@ def initialize_measp_long(boot_config):
     media = {'GLC': 20.0,  # assumes mmol/L
              'MeAsp': 8000.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 1800 end'.format(media_id)
+    timeline_str = '0 {}, 600 end'.format(media_id)
     lattice_config = {
         'name': 'measp_long',
         'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
@@ -329,7 +329,7 @@ def initialize_measp_long(boot_config):
         'emit_fields': ['GLC','MeAsp'],
         'run_for': 0.05,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
-        'emit_frequency': 5,
+        'emit_frequency': 20,
         'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
         'gradient': {
             'type': 'linear',

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import math
+import copy
 
 from vivarium.compartment.process import Process
 from vivarium.utils.units import units
@@ -89,10 +90,10 @@ class ReceptorCluster(Process):
             Endres & Wingreen. (2006). Precise adaptation in bacterial chemotaxis through "assistance neighborhoods"
         '''
         # states
-        n_methyl = states['internal']['n_methyl']
-        P_on = states['internal']['chemoreceptor_activity']
-        CheR = states['internal']['CheR'] * (units.mmol / units.L)
-        CheB = states['internal']['CheB'] * (units.mmol / units.L)
+        n_methyl = copy.copy(states['internal']['n_methyl'])
+        P_on = copy.copy(states['internal']['chemoreceptor_activity'])
+        CheR = copy.copy(states['internal']['CheR'] * (units.mmol / units.L))
+        CheB = copy.copy(states['internal']['CheB'] * (units.mmol / units.L))
         ligand_conc = states['external'][self.ligand_id]   # mmol/L
 
         # convert to umol / L
