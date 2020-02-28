@@ -59,9 +59,6 @@ class LatticeCompartment(Compartment, Simulation):
             if 'division' in state_ids:
                 self.division_port = port
 
-        if not self.volume_port:
-            print('no port includes volume')
-
         super(LatticeCompartment, self).__init__(processes, states, configuration)
 
     def run_incremental(self, run_until):
