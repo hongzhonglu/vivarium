@@ -133,19 +133,19 @@ def get_schema(process_list, topology):
 def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    compartment_state_role = settings.get('compartment_state_role')
+    compartment_state_port = settings.get('compartment_state_port')
 
     processes = [{'process': process}]
     topology = {
         'process': {
             port: port for port in process.ports
-            if (not compartment_state_role
-                or port != compartment_state_role)
+            if (not compartment_state_port
+                or port != compartment_state_port)
         }
     }
 
-    if compartment_state_role:
-        topology['process'][compartment_state_role] = COMPARTMENT_STATE
+    if compartment_state_port:
+        topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']

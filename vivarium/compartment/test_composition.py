@@ -8,12 +8,12 @@ class ToyLinearGrowthDeathProcess(Process):
     THRESHOLD = 5.0
 
     def __init__(self, initial_parameters={}):
-        roles = {
+        ports = {
             'compartment': ['processes'],
             'global': ['mass'],
         }
         super(ToyLinearGrowthDeathProcess, self).__init__(
-            roles, initial_parameters)
+            ports, initial_parameters)
 
     def default_settings(self):
         default_settings = {
@@ -41,11 +41,11 @@ class ToyLinearGrowthDeathProcess(Process):
 
 class TestSimulateProcess:
 
-    def test_compartment_state_role(self):
-        '''Check that compartment state roles are handled'''
+    def test_compartment_state_port(self):
+        '''Check that compartment state ports are handled'''
         process = ToyLinearGrowthDeathProcess()
         settings = {
-            'compartment_state_role': 'compartment',
+            'compartment_state_port': 'compartment',
         }
         saved_total_states = composition.simulate_process(
             process, settings)
