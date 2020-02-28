@@ -145,7 +145,7 @@ def process_in_compartment(process, settings={}):
     }
 
     if compartment_state_role:
-        topology[compartment_state_role] = COMPARTMENT_STATE
+        topology['process'][compartment_state_role] = COMPARTMENT_STATE
 
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
