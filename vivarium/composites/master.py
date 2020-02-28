@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers, get_schema
+from vivarium.compartment.composition import get_derivers
 
 # processes
 from vivarium.processes.division import Division, divide_condition
@@ -96,18 +96,14 @@ def compose_master(config):
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
-    # get schema
-    schema = get_schema(processes, topology)
-
     # initialize the states
-    states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
         'name': config.get('name', 'master_composite'),
         'environment_port': 'environment',
         'exchange_port': 'exchange',
         'topology': topology,
-        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition}
 

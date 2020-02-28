@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 from vivarium.compartment.process import initialize_state, get_compartment_timestep
-from vivarium.compartment.composition import get_schema
 
 # processes
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
@@ -32,11 +31,8 @@ def compose_simple_chemotaxis(config):
             'external': 'environment',
             'internal': 'cell'}}
 
-    # get schema
-    schema = get_schema(processes, topology)
-
     # initialize the states
-    states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     # get the time step
     time_step = get_compartment_timestep(processes)
@@ -44,7 +40,6 @@ def compose_simple_chemotaxis(config):
     options = {
         'name': 'simple_chemotaxis_composite',
         'topology': topology,
-        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'time_step': time_step,
         'environment_port': 'environment',

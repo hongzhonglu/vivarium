@@ -102,29 +102,6 @@ def get_derivers(process_list, topology):
         'deriver_processes': processes,
         'deriver_topology': deriver_topology}
 
-def get_schema(process_list, topology):
-    schema = {}
-    for level in process_list:
-        for process_id, process in level.items():
-            process_settings = process.default_settings()
-            process_schema = process_settings.get('schema', {})
-            try:
-                port_map = topology[process_id]
-            except:
-                print('{} topology port mismatch'.format(process_id))
-                raise
-
-            # go through each port, and get the schema
-            for process_port, settings in process_schema.items():
-                compartment_port = port_map[process_port]
-                compartment_schema = {
-                    compartment_port: settings}
-
-                ## TODO -- check for mismatch
-                deep_merge_check(schema, compartment_schema)
-
-    return schema
-
 def process_in_compartment(process):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
@@ -144,16 +121,12 @@ def process_in_compartment(process):
     topology = {'process': {key: key for key in process_ports}}
     topology.update(deriver_topology)
 
-    # get schema
-    schema = get_schema(processes, topology)
-
     # make the state
     state_dict = process_settings['state']
-    states = initialize_state(processes, topology, schema, state_dict)
+    states = initialize_state(processes, topology, state_dict)
 
     options = {
-        'topology': topology,
-        'schema': schema}  # TODO -- does compartment need schema?
+        'topology': topology}
 
     return Compartment(processes, states, options)
 

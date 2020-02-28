@@ -244,7 +244,30 @@ def get_compartment_timestep(process_layers):
 
     return minimum_step
 
-def initialize_state(process_layers, topology, schema, initial_state):
+def get_schema(process_list, topology):
+    schema = {}
+    for level in process_list:
+        for process_id, process in level.items():
+            process_settings = process.default_settings()
+            process_schema = process_settings.get('schema', {})
+            try:
+                port_map = topology[process_id]
+            except:
+                print('{} topology port mismatch'.format(process_id))
+                raise
+
+            # go through each port, and get the schema
+            for process_port, settings in process_schema.items():
+                compartment_port = port_map[process_port]
+                compartment_schema = {
+                    compartment_port: settings}
+
+                ## TODO -- check for mismatch
+                deep_merge_check(schema, compartment_schema)
+    return schema
+
+def initialize_state(process_layers, topology, initial_state):
+    schema = get_schema(process_layers, topology)
     processes = merge_dicts(process_layers)
 
     # make a dict with the compartment's default states {ports: states}
@@ -326,8 +349,7 @@ class Compartment(Store):
         data = {
             'type': 'compartment',
             'name': configuration.get('name', 'compartment'),
-            'topology': self.topology,
-            'schema': configuration['schema']}
+            'topology': self.topology}
 
         emit_config = {
             'table': 'configuration',
