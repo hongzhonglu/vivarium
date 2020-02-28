@@ -9,6 +9,7 @@ from vivarium.compartment.process import (
     simulate_compartment,
     Compartment,
     COMPARTMENT_STATE,
+    Process,
 )
 from vivarium.utils.units import units
 
@@ -407,3 +408,63 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     fig_path = os.path.join(out_dir, 'simulation')
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
+
+
+# TESTS
+
+
+class ToyLinearGrowthDeathProcess(Process):
+
+    GROWTH_RATE = 1.0
+    THRESHOLD = 5.0
+
+    def __init__(self, initial_parameters={}):
+        ports = {
+            'compartment': ['processes'],
+            'global': ['mass'],
+        }
+        super(ToyLinearGrowthDeathProcess, self).__init__(
+            ports, initial_parameters)
+
+    def default_settings(self):
+        default_settings = {
+            'state': {
+                'global': {
+                    'mass': 0.0
+                }
+            },
+        }
+        return default_settings
+
+    def next_update(self, timestep, states):
+        mass = states['global']['mass']
+        mass_grown = (
+            ToyLinearGrowthDeathProcess.GROWTH_RATE * timestep)
+        update = {
+            'global': {'mass': mass_grown},
+        }
+        if mass > ToyLinearGrowthDeathProcess.THRESHOLD:
+            update['compartment'] = {
+                'processes': [],
+            }
+        return update
+
+
+class TestSimulateProcess:
+
+    def test_compartment_state_port(self):
+        '''Check that compartment state ports are handled'''
+        process = ToyLinearGrowthDeathProcess()
+        settings = {
+            'compartment_state_port': 'compartment',
+        }
+        saved_total_states = simulate_process(
+            process, settings)
+        timeseries = convert_to_timeseries(
+            saved_total_states)
+        expected_masses = [
+            # Mass stops increasing the iteration after mass > 5 because
+            # cell dies
+            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
+        masses = timeseries['global']['mass']
+        assert masses == expected_masses
