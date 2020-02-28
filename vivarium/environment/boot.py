@@ -291,6 +291,7 @@ def initialize_measp(boot_config):
         'emit_fields': ['MeAsp'],
         'run_for': 1.0,
         'static_concentrations': True,
+        'emit_frequency': 5,
         'gradient': {
             'type': 'linear',
             'molecules': {
@@ -324,6 +325,7 @@ def initialize_measp_long(boot_config):
         'emit_fields': ['GLC','MeAsp'],
         'run_for': 0.05,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
+        'emit_frequency': 5,
         'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
         'gradient': {
             'type': 'linear',

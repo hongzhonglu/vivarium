@@ -67,16 +67,16 @@ class BootAgent(object):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--id',
+            '-i', '--id',
             required=True,
             help='id of the new agent')
 
         parser.add_argument(
-            '--outer-id',
+            '-o', '--outer-id',
             help="ID of the new agent's outer environment agent")
 
         parser.add_argument(
-            '--type',
+            '-t', '--type',
             required=True,
             choices=self.agent_types,
             help='type of the new agent')
