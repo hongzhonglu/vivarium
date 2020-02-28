@@ -1,15 +1,15 @@
 import copy
-import math
 import numpy as np
 import logging as log
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process, keys_list
-from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, test_chromosome_config
+from vivarium.utils.dict_utils import deep_merge
+from vivarium.compartment.process import Process, keys_list
+from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, toy_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides
 
-log.basicConfig(level=log.DEBUG)
+# log.basicConfig(level=log.DEBUG)
 
 def choose_element(elements):
     if elements:
@@ -27,14 +27,14 @@ default_transcription_parameters = {
         ('pB', None): 1.0,
         ('pB', 'tfB'): 10.0},
     'transcription_factors': ['tfA', 'tfB'],
-    'sequence': test_chromosome_config['sequence'],
-    'templates': test_chromosome_config['promoters'],
-    'genes': test_chromosome_config['genes'],
+    'sequence': toy_chromosome_config['sequence'],
+    'templates': toy_chromosome_config['promoters'],
+    'genes': toy_chromosome_config['genes'],
     'elongation_rate': 1.0,
     'polymerase_occlusion': 5,
     'symbol_to_monomer': nucleotides,
     'monomer_ids': monomer_ids,
-    'molecule_ids': monomer_ids + [UNBOUND_RNAP_KEY]}
+    'molecule_ids': monomer_ids}
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
@@ -57,9 +57,13 @@ class Transcription(Process):
         self.parameters.update(initial_parameters)
 
         self.sequence = self.parameters['sequence']
-        self.sequences = None # set when the chromosome first appears
         self.templates = self.parameters['templates']
         self.genes = self.parameters['genes']
+        empty_chromosome = Chromosome({
+            'sequence': self.sequence,
+            'promoters': self.templates,
+            'genes': self.genes})
+        self.sequences = empty_chromosome.sequences()
         self.symbol_to_monomer = self.parameters['symbol_to_monomer']
 
         log.debug('chromosome sequence: {}'.format(self.sequence))
@@ -79,15 +83,16 @@ class Transcription(Process):
         self.stoichiometry = build_stoichiometry(self.promoter_count)
         self.initiation = StochasticSystem(self.stoichiometry)
 
-        self.roles = {
-            'chromosome': Chromosome({}).fields(),
+        self.ports = {
+            'chromosome': ['rnaps', 'rnap_id', 'domains', 'root_domain'],
             'molecules': self.molecule_ids,
             'factors': self.transcription_factors,
-            'transcripts': self.transcript_ids}
+            'transcripts': self.transcript_ids,
+            'proteins': [UNBOUND_RNAP_KEY] + self.transcription_factors}
 
         log.debug('transcription parameters: {}'.format(self.parameters))
 
-        super(Transcription, self).__init__(self.roles, self.parameters)
+        super(Transcription, self).__init__(self.ports, self.parameters)
 
     def build_affinity_vector(self, promoters, factors):
         vector = np.zeros(len(self.promoter_order), dtype=np.float64)
@@ -98,56 +103,60 @@ class Transcription(Process):
             vector[index] = affinity
         return vector
 
+    def chromosome_config(self, chromosome_states):
+        return dict(
+            chromosome_states,
+            sequence=self.sequence,
+            promoters=self.templates,
+            promoter_order=self.promoter_order,
+            genes=self.genes)
+
     def default_settings(self):
         default_state = {
             'chromosome': {
-                'sequence': self.sequence,
-                'promoters': self.templates,
-                'genes': self.genes,
                 'rnaps': [],
+                'rnap_id': 0,
+                'root_domain': 0,
                 'domains': {
                     0: {
                         'id': 0,
                         'lead': 0,
                         'lag': 0,
                         'children': []}}},
-            'molecules': {UNBOUND_RNAP_KEY: 10},
+            'molecules': {},
+            'proteins': {UNBOUND_RNAP_KEY: 10},
             'factors': {
-                'tfA': 0.1,
-                'tfB': 1.0}}
+                key: 0.0
+                for key in self.transcription_factors}}
 
         default_state['molecules'].update({
             nucleotide: 100
             for nucleotide in self.monomer_ids})
 
-        chromosome = Chromosome(default_state['chromosome'])
+        chromosome = Chromosome(
+            self.chromosome_config(
+                default_state['chromosome']))
+
         operons = [operon.id for operon in chromosome.operons()]
 
         default_state['transcripts'] = {
             operon: 0
             for operon in operons}
 
+        default_state = deep_merge(
+            default_state,
+            self.parameters.get('initial_state', {}))
+
         default_emitter_keys = {
             'chromosome': ['rnaps'],
             'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
-        # schema
-        set_states = [
-            'sequence',
-            'genes',
-            'promoters',
-            'domains',
-            'root_domain',
-            'promoter_order',
-            'rnap_id',
-            'rnaps']
-
         schema = {
             'chromosome': {
                 state_id : {
                     'updater': 'set'}
-                for state_id in set_states}}
+                for state_id in self.ports['chromosome']}}
 
         return {
             'state': default_state,
@@ -156,14 +165,12 @@ class Transcription(Process):
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
-        chromosome = Chromosome(states['chromosome'])
+        chromosome = Chromosome(
+            self.chromosome_config(
+                states['chromosome']))
         molecules = states['molecules']
+        proteins = states['proteins']
         factors = states['factors'] # as concentrations
-
-        if self.sequences is None:
-            self.sequences = chromosome.sequences()
-
-            log.debug('sequences: {}'.format(self.sequences))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
@@ -193,7 +200,7 @@ class Transcription(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
         copy_numbers = chromosome.promoter_copy_numbers()
-        original_unbound_rnaps = molecules[UNBOUND_RNAP_KEY]
+        original_unbound_rnaps = proteins[UNBOUND_RNAP_KEY]
         monomer_limits = {
             monomer: molecules[monomer]
             for monomer in self.monomer_ids}
@@ -287,15 +294,19 @@ class Transcription(Process):
         # track how far elongation proceeded to start from next iteration
         self.elongation = elongation.elongation - int(elongation.elongation)
 
-        molecules = {
+        proteins = {
             UNBOUND_RNAP_KEY: unbound_rnaps - original_unbound_rnaps}
 
-        molecules.update({
+        molecules = {
             key: count * -1
-            for key, count in elongation.monomers.items()})
+            for key, count in elongation.monomers.items()}
 
+        chromosome_dict = chromosome.to_dict()
         update = {
-            'chromosome': chromosome.to_dict(),
+            'chromosome': {
+                key: chromosome_dict[key]
+                for key in self.ports['chromosome']},
+            'proteins': proteins,
             'molecules': molecules,
             'transcripts': elongation.complete_polymers}
 
@@ -308,12 +319,13 @@ def test_transcription():
     parameters = {
         'elongation_rate': 10.0}
 
-    chromosome = Chromosome(test_chromosome_config)
+    chromosome = Chromosome(toy_chromosome_config)
     transcription = Transcription(parameters)
 
     states = {
         'chromosome': chromosome.to_dict(),
-        'molecules': {UNBOUND_RNAP_KEY: 10},
+        'molecules': {},
+        'proteins': {UNBOUND_RNAP_KEY: 10},
         'factors': {'tfA': 0.2, 'tfB': 0.7}}
 
     states['molecules'].update({

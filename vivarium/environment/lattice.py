@@ -29,7 +29,7 @@ from vivarium.actor import filepath
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
 from vivarium.environment.make_media import Media
-from vivarium.actor.emitter import get_emitter
+from vivarium.compartment.emitter import get_emitter
 
 # Constants
 N_AVOGADRO = constants.N_A
@@ -151,6 +151,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter = config['emitter'].get('object')
         self.emit_fields = config.get('emit_fields', [])
         self.emit_indices = [self._molecule_ids.index(mol_id) for mol_id in self.emit_fields]
+        self.emit_frequency = config.get('emit_frequency', 0) # emit every N steps
+        self.emit_step = 0
         self.emit_configuration()
 
 
@@ -513,38 +515,40 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     # Emitters
     def emit_data(self):
+        if self.emit_step == self.emit_frequency:
+            self.emit_step = 0
 
-        # emit lattice data
-        emit_fields = {}
-        for index, molecule_id in zip(self.emit_indices, self.emit_fields):
-            emit_fields[molecule_id] = self.lattice[index].tolist()
-        data = {
-            'type': 'lattice-fields',
-            'fields': emit_fields,
-            'time': self.time()}
-        emit_config = {
-            'table': 'history',
-            'data': data}
-        self.emitter.emit(emit_config)
-
-        # emit data for each agent
-        for agent_id, simulation in self.simulations.items():
-            agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
-            agent_state = self.simulations[agent_id]['state']
+            # emit lattice data
+            emit_fields = {}
+            for index, molecule_id in zip(self.emit_indices, self.emit_fields):
+                emit_fields[molecule_id] = self.lattice[index].tolist()
             data = {
-                'type': 'lattice-agent',
-                'agent_id': agent_id,
-                'location': agent_location,
-                'volume': agent_state['volume'],
-                'width': agent_state['width'],
-                'length': agent_state['length'],
+                'type': 'lattice-fields',
+                'fields': emit_fields,
                 'time': self.time()}
-
             emit_config = {
                 'table': 'history',
                 'data': data}
-
             self.emitter.emit(emit_config)
+
+            # emit data for each agent
+            for agent_id, simulation in self.simulations.items():
+                agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
+                agent_state = self.simulations[agent_id]['state']
+                data = {
+                    'type': 'lattice-agent',
+                    'agent_id': agent_id,
+                    'location': agent_location,
+                    'volume': agent_state['volume'],
+                    'width': agent_state['width'],
+                    'length': agent_state['length'],
+                    'time': self.time()}
+                emit_config = {
+                    'table': 'history',
+                    'data': data}
+                self.emitter.emit(emit_config)
+        else:
+            self.emit_step += 1
 
     def emit_configuration(self):
         data = {

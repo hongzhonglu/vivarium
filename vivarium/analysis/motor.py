@@ -46,19 +46,19 @@ class Motor(Analysis):
         sim_id = compartment_data['sim_id']
         time_vec = compartment_data['time']  # convert to hours
 
-        # get the internal role. assumes there is only one in all agents.
-        internal_role = None
+        # get the internal port. assumes there is only one in all agents.
+        internal_port = None
         for agent_id, specs in experiment_config['agents'].items():
-            internal_role = specs['topology']['motor']['internal']
+            internal_port = specs['topology']['motor']['internal']
 
-        # TODO -- why can internal_role be incorrect in topology?
-        if internal_role not in compartment_data:
-            internal_role = 'cell'
+        # TODO -- why can internal_port be incorrect in topology?
+        if internal_port not in compartment_data:
+            internal_port = 'cell'
 
-        CheY_P_vec = compartment_data[internal_role]['CheY_P']
-        ccw_motor_bias_vec = compartment_data[internal_role]['ccw_motor_bias']
-        ccw_to_cw_vec = compartment_data[internal_role]['ccw_to_cw']
-        motor_state_vec = compartment_data[internal_role]['motor_state']
+        CheY_P_vec = compartment_data[internal_port]['CheY_P']
+        ccw_motor_bias_vec = compartment_data[internal_port]['ccw_motor_bias']
+        ccw_to_cw_vec = compartment_data[internal_port]['ccw_to_cw']
+        motor_state_vec = compartment_data[internal_port]['motor_state']
 
         # environment data for this sim
         env_time_vec = data['environment']['time']  # seconds

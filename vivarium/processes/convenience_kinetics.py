@@ -4,10 +4,10 @@ import os
 
 from scipy import constants
 
-from vivarium.actor.process import Process
-from vivarium.actor.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.process import Process
+from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
-from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.units import units
 
 EMPTY_ROLES = {
@@ -28,24 +28,24 @@ class ConvenienceKinetics(Process):
         self.reactions = initial_parameters.get('reactions', {})
         self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
         kinetic_parameters = initial_parameters.get('kinetic_parameters', {})
-        roles = initial_parameters.get('roles', EMPTY_ROLES)
+        ports = initial_parameters.get('ports', EMPTY_ROLES)
 
         # make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)
 
-        # roles
-        # fluxes role is used to pass constraints
+        # ports
+        # fluxes port is used to pass constraints
         # exchange is equivalent to external, for lattice_compartment
-        roles.update({
+        ports.update({
             'fluxes': self.kinetic_rate_laws.reaction_ids,
-            'exchange': roles['external'],
+            'exchange': ports['external'],
             'global': ['mmol_to_counts']})
 
         # parameters
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(ConvenienceKinetics, self).__init__(roles, parameters)
+        super(ConvenienceKinetics, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -76,39 +76,39 @@ class ConvenienceKinetics(Process):
         # get mmol_to_counts for converting flux to exchange counts
         mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
-        # kinetic rate law requires a flat dict with ('role', 'state') keys.
-        flattened_states = tuplify_role_dicts(states)
+        # kinetic rate law requires a flat dict with ('port', 'state') keys.
+        flattened_states = tuplify_port_dicts(states)
 
         # get flux
         fluxes = self.kinetic_rate_laws.get_fluxes(flattened_states)
 
         # make the update
         # add fluxes to update
-        update = {role: {} for role in self.roles.keys()}
+        update = {port: {} for port in self.ports.keys()}
         update.update({'fluxes': fluxes})
 
         # get exchange
         for reaction_id, flux in fluxes.items():
             stoichiometry = self.reactions[reaction_id]['stoichiometry']
-            for role_state_id, coeff in stoichiometry.items():
-                for role_id, state_list in self.roles.items():
-                    # separate the state_id and role_id
-                    if role_id in role_state_id:
-                        state_id = role_state_id[1]
-                        state_flux = (coeff * flux * timestep *
-                            units.mmol / units.L)
-                        if role_id == 'external':
+            for port_state_id, coeff in stoichiometry.items():
+                for port_id, state_list in self.ports.items():
+                    # separate the state_id and port_id
+                    if port_id in port_state_id:
+                        state_id = port_state_id[1]
+                        state_flux = coeff * flux * timestep
+
+                        if port_id == 'external':
                             # convert exchange fluxes to counts with mmol_to_counts
                             # TODO -- use deriver to get exchanges
                             delta_counts = int((state_flux * mmol_to_counts).magnitude)
                             update['exchange'][state_id] = delta_counts
                         else:
-                            update[role_id][state_id] = (
-                                update[role_id].get(state_id, 0)
-                                + state_flux.magnitude
+                            update[port_id][state_id] = (
+                                update[port_id].get(state_id, 0)
+                                + state_flux
                             )
 
-        # note: external and internal roles update change in mmol.
+        # note: external and internal ports update change in mmol.
         return update
 
 
@@ -169,7 +169,7 @@ def get_glc_lct_config():
             'EX_glc__D_e': 0.0,
             'EX_lac__D_e': 0.0}}
 
-    transport_roles = {
+    transport_ports = {
         'internal': [
             'g6p_c', 'pep_c', 'pyr_c', 'h_c', 'PTSG', 'LacY'],
         'external': [
@@ -179,7 +179,7 @@ def get_glc_lct_config():
         'reactions': transport_reactions,
         'kinetic_parameters': transport_kinetics,
         'initial_state': transport_initial_state,
-        'roles': transport_roles}
+        'ports': transport_ports}
 
 def get_toy_config():
     toy_reactions = {
@@ -196,7 +196,7 @@ def get_toy_config():
                 ('external', 'B'): 0.2,
                 'kcat_f': 5e1}}}
 
-    toy_roles = {
+    toy_ports = {
         'internal': ['A', 'enzyme1'],
         'external': ['B']}
 
@@ -213,7 +213,7 @@ def get_toy_config():
         'reactions': toy_reactions,
         'kinetic_parameters': toy_kinetics,
         'initial_state': toy_initial_state,
-        'roles': toy_roles}
+        'ports': toy_ports}
 
 # test
 def test_convenience_kinetics(end_time=10):
@@ -222,8 +222,8 @@ def test_convenience_kinetics(end_time=10):
     kinetic_process = ConvenienceKinetics(config)
 
     settings = {
-        'environment_role': 'external',
-        'exchange_role': 'exchange',
+        'environment_port': 'external',
+        'exchange_port': 'exchange',
         'environment_volume': 1e-13,  # L
         'timestep': 1,
         'total_time': end_time}

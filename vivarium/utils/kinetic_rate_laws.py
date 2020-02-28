@@ -15,7 +15,7 @@ import os
 
 import numpy as np
 
-from vivarium.utils.dict_utils import tuplify_role_dicts
+from vivarium.utils.dict_utils import tuplify_port_dicts
 
 
 
@@ -368,7 +368,7 @@ toy_initial_state = {
 
 def test_kinetics():
     kinetic_rate_laws = KineticFluxModel(toy_reactions, toy_kinetics)
-    flattened_toy_states = tuplify_role_dicts(toy_initial_state)
+    flattened_toy_states = tuplify_port_dicts(toy_initial_state)
     flux = kinetic_rate_laws.get_fluxes(flattened_toy_states)
 
     print(flux)
