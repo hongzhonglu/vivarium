@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import random
+import copy
 
 import numpy as np
 from numpy import linspace
@@ -122,7 +123,7 @@ class MotorActivity(Process):
         TODO -- add CheB phosphorylation
         '''
 
-        internal = states['internal']
+        internal = copy.copy(states['internal'])
         P_on = internal['chemoreceptor_activity']
         motor_state = internal['motor_state']
 
