@@ -101,7 +101,10 @@ class ConvenienceKinetics(Process):
                             # convert exchange fluxes to counts with mmol_to_counts
                             # TODO -- use deriver to get exchanges
                             delta_counts = int((state_flux * mmol_to_counts).magnitude)
-                            update['exchange'][state_id] = delta_counts
+                            update['exchange'][state_id] = (
+                                update['exchange'].get(state_id, 0)
+                                + delta_counts
+                            )
                         else:
                             update[port_id][state_id] = (
                                 update[port_id].get(state_id, 0)
