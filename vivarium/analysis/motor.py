@@ -90,7 +90,10 @@ class Motor(Analysis):
             previous_motor_state = m_state
 
         avg_speed = sum(speed_vec) / len(speed_vec)
-        avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+        try:
+            avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+        except:
+            avg_angle_between_runs = 0
 
         # get length of runs, tumbles
         run_lengths = []
