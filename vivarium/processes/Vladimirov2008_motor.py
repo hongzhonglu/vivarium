@@ -150,25 +150,25 @@ class MotorActivity(Process):
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
-                force, torque = tumble()
+                thrust, torque = tumble()
             else:
-                force, torque = run()
+                thrust, torque = run()
 
         elif motor_state == 1:  # 1 for tumble
             # switch to run?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
-                [force, torque] = run()
+                [thrust, torque] = run()
             else:
-                [force, torque] = tumble()
+                [thrust, torque] = tumble()
 
-        # TODO -- should force/torque accumulate over exchange timestep?
+        # TODO -- should thrust/torque accumulate over exchange timestep?
         update = {
             'internal': {
                 'ccw_motor_bias': ccw_motor_bias,
                 'ccw_to_cw': ccw_to_cw,
-                'motile_force': force,
+                'motile_force': thrust,
                 'motile_torque': torque,
                 'motor_state': motor_state,
                 'CheY_P': CheY_P
@@ -177,15 +177,18 @@ class MotorActivity(Process):
         return update
 
 def tumble():
-    force = 5e-3
-    tumble_jitter = 100
+    thrust = 5.0e-1  # pN
+    tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
-    return [force, torque]
+    return [thrust, torque]
 
 def run():
-    force = 2.5e-2
+    # average thrust = 0.57 pN according to:
+    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
+    # Swimming efficiency of bacterium Escherichia coli. PNAS
+    thrust  = 5.7e-1  # pN
     torque = 0.0
-    return [force, torque]
+    return [thrust, torque]
 
 
 def test_motor_control(total_time=10):

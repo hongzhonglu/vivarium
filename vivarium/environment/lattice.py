@@ -570,7 +570,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    thrust = 5.0e-1  # pN  TODO -- should be ~ 3 pN
+    thrust = 5.0e-1  # pN
     tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
