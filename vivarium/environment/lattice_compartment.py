@@ -200,8 +200,11 @@ def simulate_lattice_compartment(compartment, settings={}):
     while time < total_time:
         time += timestep
         compartment.update(timestep)
-        compartment.generate_inner_update()
         saved_state[time] = compartment.current_state()
+
+        values = compartment.generate_inner_update()
+        if 'division' in values:
+            break
 
     return saved_state
 
@@ -284,11 +287,7 @@ def divide_composite(config):
         'keys': {
             'cell': ['MASS']}})
 
-    # schema for states
-    schema = {}
-
     options = {
-        'schema': schema,
         'emitter': emitter,
         'topology': topology,
         'initial_time': 0.0,
@@ -314,6 +313,10 @@ def test_divide(composite=divide_composite):
         'total_time': 20}
 
     saved_state = simulate_lattice_compartment(lattice_compartment, settings)
+
+    # assert division
+    times = list(saved_state.keys())
+    assert saved_state[times[-1]]['cell']['division'] == 1
     return saved_state
 
 if __name__ == '__main__':
