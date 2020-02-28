@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from vivarium.compartment.process import Compartment, initialize_state, get_compartment_timestep
+from vivarium.compartment.process import Compartment, initialize_state, get_compartment_timestep, load_compartment, \
+    Process, Store
 from vivarium.compartment.emitter import get_emitter
 from vivarium.actor.inner import Simulation
 from vivarium.compartment.composition import get_derivers
@@ -51,8 +52,8 @@ class LatticeCompartment(Compartment, Simulation):
         self.division_port = False
         for port, state in states.items():
             state_ids = state.keys()
-            if 'volume' in state_ids:
-                self.volume_port = port
+            assert 'volume' in state_ids, 'no port includes volume'
+            self.volume_port = port
             if all(item in state_ids for item in ['motile_force', 'motile_torque']):
                 self.motile_port = port
             if 'division' in state_ids:
@@ -178,3 +179,147 @@ def generate_lattice_compartment(process, config):
 
     # create the lattice compartment
     return LatticeCompartment(processes_layers, states, options)
+
+
+
+## functions for testing
+def simulate_lattice_compartment(compartment, settings={}):
+    '''
+    run a compartment simulation
+    '''
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # save initial state
+    time = 0
+    saved_state = {}
+    saved_state[time] = compartment.current_state()
+
+    # run simulation
+    while time < total_time:
+        time += timestep
+        compartment.update(timestep)
+        saved_state[time] = compartment.current_state()
+
+        values = compartment.generate_inner_update()
+        if 'division' in values:
+            break
+
+    return saved_state
+
+
+def divide_composite(config):
+
+    def divide_condition(compartment):
+        division_port = compartment.division_port
+        division = compartment.states[division_port].state_for(['division'])
+        if division.get('division', 0) == 0:  # 0 means false
+            divide = False
+        else:
+            divide = True
+        return divide
+
+    # toy processes
+    class ToyGrowth(Process):
+        def __init__(self, initial_parameters={}):
+            ports = {'pool': ['MASS', 'volume']}
+            parameters = {
+                'growth_rate': 0.1}
+            parameters.update(initial_parameters)
+
+            super(ToyGrowth, self).__init__(ports, parameters)
+
+        def next_update(self, timestep, states):
+            mass = states['pool']['MASS']
+            volume = states['pool']['volume']
+            new_mass = mass * self.parameters['growth_rate'] * timestep
+            new_volume = volume * self.parameters['growth_rate'] * timestep
+            return {
+                'pool':
+                    {'MASS': new_mass,
+                     'volume': new_volume}}
+
+    class ToyDivide(Process):
+        def __init__(self, initial_parameters={}):
+            self.division = 0
+            ports = {'pool': ['MASS', 'division']}
+            parameters = {
+                'division_mass': 20}
+            parameters.update(initial_parameters)
+
+            super(ToyDivide, self).__init__(ports, parameters)
+
+        def next_update(self, timestep, states):
+            mass = states['pool']['MASS']
+
+            if mass >= self.parameters['division_mass']:
+                self.division = 1
+
+            return {
+                'pool': {
+                    'division': self.division}}
+
+    # declare processes in list
+    processes = [
+        {'growth': ToyGrowth()},
+        {'divide': ToyDivide()}]
+
+    # declare the states
+    states = {
+        'cell': Store(
+            initial_state={'MASS': 10, 'volume': 1, 'division': 0},
+            schema={
+                'division': {
+                    'updater': 'set',
+                    'divide': 'zero'}})}
+
+    # hook up the ports in each process to compartment states
+    topology = {
+        'growth': {
+            'pool': 'cell'},
+        'divide': {
+            'pool': 'cell'}}
+
+    # emitter that prints to the terminal
+    emitter = get_emitter({
+        'type': 'print',
+        'keys': {
+            'cell': ['MASS']}})
+
+    options = {
+        'emitter': emitter,
+        'topology': topology,
+        'initial_time': 0.0,
+        'divide_condition': divide_condition}
+
+    return {
+        'processes': processes,
+        'states': states,
+        'options': options}
+
+def test_divide(composite=divide_composite):
+    # set up the the composite
+    composite_config = composite({})
+    processes = composite_config['processes']
+    states = composite_config['states']
+    options = composite_config['options']
+    # topology = options['topology']
+
+    lattice_compartment = LatticeCompartment(processes, states, options)
+
+    settings = {
+        'timestep': 1,
+        'total_time': 20}
+
+    saved_state = simulate_lattice_compartment(lattice_compartment, settings)
+
+    # assert division
+    times = list(saved_state.keys())
+    assert saved_state[times[-1]]['cell']['division'] == 1
+    return saved_state
+
+if __name__ == '__main__':
+    saved_state = test_divide()
+    for time, state in saved_state.items():
+        print('{}: {}'.format(time,state))
