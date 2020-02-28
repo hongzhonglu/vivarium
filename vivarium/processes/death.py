@@ -4,17 +4,18 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.composition import (
+from vivarium.compartment.composition import (
     convert_to_timeseries,
     plot_simulation_output,
     simulate_compartment,
+    get_schema,
 )
-from vivarium.actor.process import (
+from vivarium.compartment.process import (
     Process,
     initialize_state,
     load_compartment,
+    COMPARTMENT_STATE,
 )
-from vivarium.actor.composition import COMPARTMENT_STATE, get_schema
 
 
 TOY_ANTIBIOTIC_THRESHOLD = 5.0
@@ -34,7 +35,7 @@ class CheckerInterface(object):
         '''Check whether the current state is survivable by the cell
 
         Arguments:
-            states: The states of each role in the cell, as a
+            states: The states of each port in the cell, as a
                 dictionary.
 
         Returns:
@@ -75,18 +76,18 @@ class DeathFreezeState(Process):
             for name, config_dict in initial_parameters.get(
                 'checkers', []).items()
         ]
-        roles = {
+        ports = {
             'internal': set(),
             'compartment': ['processes'],
         }
         for checker in self.checkers:
             needed_keys = checker.needed_state_keys
-            for role in needed_keys:
-                keys = roles.setdefault(role, set())
-                keys |= needed_keys[role]
-        for role, keys in roles.items():
-            roles[role] = list(keys)
-        super(DeathFreezeState, self).__init__(roles, initial_parameters)
+            for port in needed_keys:
+                keys = ports.setdefault(port, set())
+                keys |= needed_keys[port]
+        for port, keys in ports.items():
+            ports[port] = list(keys)
+        super(DeathFreezeState, self).__init__(ports, initial_parameters)
 
     def default_settings(self):
         default_settings = {
@@ -112,8 +113,8 @@ class ToyAntibioticInjector(Process):
     def __init__(self, initial_parameters={}):
         self.injection_rate = initial_parameters.get(
             'injection_rate', 1.0)
-        roles = {'internal': ['antibiotic']}
-        super(ToyAntibioticInjector, self).__init__(roles, initial_parameters)
+        ports = {'internal': ['antibiotic']}
+        super(ToyAntibioticInjector, self).__init__(ports, initial_parameters)
 
     def default_settings(self):
         default_settings = {

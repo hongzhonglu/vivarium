@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.composition import (
+from vivarium.compartment.composition import (
     convert_to_timeseries,
     plot_simulation_output,
     simulate_process_with_environment,
@@ -78,7 +78,7 @@ class Antibiotics(ConvenienceKinetics):
                 },
             },
             'initial_state': initial_state,
-            'roles': {
+            'ports': {
                 'internal': [
                     'antibiotic_importer',
                     'antibiotic_exporter',
@@ -117,8 +117,8 @@ def test_antibiotics():
     process = Antibiotics()
     settings = {
         'total_time': 4000,
-        'exchange_role': 'exchange',
-        'environment_role': 'external',
+        'exchange_port': 'exchange',
+        'environment_port': 'external',
         'environment_volume': 1e-15,  # Units of L
     }
     return simulate_process_with_environment(process, settings)
