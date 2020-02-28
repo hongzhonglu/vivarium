@@ -27,7 +27,7 @@ from vivarium.actor.inner import Inner
 from vivarium.actor.outer import Outer
 from vivarium.actor.boot import BootAgent
 from vivarium.actor.control import DEFAULT_EMITTER_CONFIG
-from vivarium.actor.emitter import get_emitter, configure_emitter
+from vivarium.compartment.emitter import get_emitter, configure_emitter
 
 # environment
 from vivarium.environment.lattice import EnvironmentSpatialLattice

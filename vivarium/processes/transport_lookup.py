@@ -1,10 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import csv
 from scipy import constants
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.environment.make_media import Media
 from vivarium.environment.look_up import LookUp
 from vivarium.utils.rate_law_utilities import load_reactions
@@ -70,7 +69,7 @@ class TransportLookup(Process):
         # make look up object
         self.look_up = LookUp()
 
-        roles = {
+        ports = {
             'internal': internal_molecule_ids,
             'external': self.external_molecule_ids,
             'exchange': self.external_molecule_ids,
@@ -78,7 +77,7 @@ class TransportLookup(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(TransportLookup, self).__init__(roles, parameters)
+        super(TransportLookup, self).__init__(ports, parameters)
 
 
     def default_settings(self):

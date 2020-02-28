@@ -2,9 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.processes.metabolism import Metabolism
+from vivarium.processes.metabolism import Metabolism, get_initial_global_state
 from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
 
 
 
@@ -19,23 +18,17 @@ def BiGGMetabolism(parameters):
     return Metabolism(parameters)
 
 def get_initial_state():
-    # internal state
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
-
-    internal = {
-            'mass': mass.magnitude,  # fg
-            'volume': volume.to('fL').magnitude}
+    # global state
+    global_state = get_initial_global_state()
 
     # external state
-    # TODO -- initial state is set to e_coli_core, needs to be generalized to whatever BiGG model is loaded
     make_media = Media()
     external = make_media.get_saved_media('ecoli_core_GLC')
+    initial_state = {'external': external}
 
-    return {
-        'internal': internal,
-        'external': external}
+    initial_state.update(global_state)
+
+    return initial_state
 
 
 
@@ -72,7 +65,7 @@ def kinetic_rate(mol_id, vmax, km=0.0):
 
 if __name__ == '__main__':
     from vivarium.processes.metabolism import simulate_metabolism, save_network
-    from vivarium.actor.composition import convert_to_timeseries, plot_simulation_output
+    from vivarium.compartment.composition import convert_to_timeseries, plot_simulation_output
 
     out_dir = os.path.join('out', 'tests', 'BiGG_metabolism')
     if not os.path.exists(out_dir):
@@ -95,7 +88,7 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 30,
         'remove_flat': True,
-        'skip_roles': ['exchange'],
+        'skip_ports': ['exchange'],
         'overlay': {'reactions': 'flux_bounds'}}
 
     saved_data = simulate_metabolism(simulation_config)

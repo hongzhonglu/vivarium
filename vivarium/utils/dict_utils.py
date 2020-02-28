@@ -43,30 +43,30 @@ def deep_merge(dct, merge_dct):
             dct[k] = merge_dct[k]
     return dct
 
-def flatten_role_dicts(dicts):
+def flatten_port_dicts(dicts):
     '''
     Input:
-        dicts (dict): embedded state dictionaries with the {'role_id': {'state_id': state_value}}
+        dicts (dict): embedded state dictionaries with the {'port_id': {'state_id': state_value}}
     Return:
-        merge (dict): flattened dictionary with {'state_id_role_id': value}
+        merge (dict): flattened dictionary with {'state_id_port_id': value}
     '''
     merge = {}
-    for role, states_dict in dicts.items():
+    for port, states_dict in dicts.items():
         for state, value in states_dict.items():
-            merge.update({state + '_' + role: value})
+            merge.update({state + '_' + port: value})
     return merge
 
-def tuplify_role_dicts(dicts):
+def tuplify_port_dicts(dicts):
     '''
     Input:
-        dicts (dict): embedded state dictionaries with the {'role_id': {'state_id': state_value}}
+        dicts (dict): embedded state dictionaries with the {'port_id': {'state_id': state_value}}
     Return:
-        merge (dict): tuplified dictionary with {(role_id','state_id'): value}
+        merge (dict): tuplified dictionary with {(port_id','state_id'): value}
     '''
     merge = {}
-    for role, states_dict in dicts.items():
+    for port, states_dict in dicts.items():
         for state, value in states_dict.items():
-            merge.update({(role, state): value})
+            merge.update({(port, state): value})
     return merge
 
 def tuple_to_str_keys(dictionary):
