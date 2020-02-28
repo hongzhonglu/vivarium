@@ -22,7 +22,6 @@ import random
 import numpy as np
 from scipy import constants
 from scipy.ndimage import convolve
-from scipy.stats import rv_continuous
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
@@ -570,20 +569,14 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
 # tests
-
-# probability density function for tumble angles
-class tumble_pdf(rv_continuous):
-    def _pdf(self,x):
-        return 0.5 * (1 + math.cos(x)) * math.sin(x)
-tumble_dist = tumble_pdf(a=0, b=PI)
-
 def tumble():
-    force = 1e-1  # pN
-    torque = np.random.choice([-1, 1]) * 1 * tumble_dist.rvs()
+    force = 1e-1  # pN  TODO -- should be ~ 3 pN
+    tumble_jitter = 0.3
+    torque = random.normalvariate(0, tumble_jitter)
     return [force, torque]
 
 def run():
-    force = 1e-1  # pN  TODO -- this should be ~ 3 pN
+    force = 1.2e-1  # pN  TODO --  should be ~ 3 pN
     torque = 0.0
     return [force, torque]
 
@@ -734,13 +727,13 @@ def test_lattice(config=motile_config):
     time = 0
     motor_state = 1 # 0 for run, 1 for tumble
     time_in_motor_state = 0
+    motile_force = run()
     while time < total_time:
 
         if motile_cells:
             # get forces
             if motor_state == 1: # tumble
                 if time_in_motor_state < tumble_time:
-                    motile_force = tumble()
                     time_in_motor_state += timestep
                 else:
                     # switch
@@ -750,7 +743,6 @@ def test_lattice(config=motile_config):
 
             elif motor_state == 0:  # run
                 if time_in_motor_state < run_time:
-                    motile_force = run()
                     time_in_motor_state += timestep
                 else:
                     # switch
@@ -789,7 +781,6 @@ def plot_motility(data, filename='motility', out_dir='out'):
     expected_angle_between_runs = 68 # degrees (Berg)
 
     saved_state = data['saved_state']
-    # timestep = data['timestep']
     locations = saved_state['location']
     motor_state = saved_state['motor_state'] # 0 for run, 1 for tumble
     times = saved_state['time']
@@ -836,7 +827,7 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(times, speed_vec)
+    ax1.plot(times[1:], speed_vec[1:])
     ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
     ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
     ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
@@ -844,7 +835,7 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # plot change in direction between runs
-    ax2.plot(angle_between_runs)
+    ax2.plot(angle_between_runs[1:])
     ax2.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
     ax2.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
     ax2.set_ylabel('angle \n between runs')
@@ -852,7 +843,7 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # motile force
-    ax3.plot(times, motor_state)
+    ax3.plot(times[1:], motor_state[1:])
     ax3.set_xlabel('time (s)')
     ax3.set_yticks([0.0, 1.0])
     ax3.set_yticklabels(["run", "tumble"])

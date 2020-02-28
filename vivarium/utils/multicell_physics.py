@@ -21,8 +21,8 @@ import pymunk.pygame_util
 PI = math.pi
 
 ELASTICITY = 0.95
-DAMPING = 0.1  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
-ANGULAR_DAMPING = 0.6  # less damping for angular velocity seems to improve behavior
+DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
+ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
 FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
 FORCE_SCALING = 83000  # scales from pN
