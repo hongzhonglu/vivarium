@@ -950,22 +950,22 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # # test jitter
-    # jitter_config = {
-    #     'total_time': 100,
-    #     'timestep': 0.1,
-    #     'edge_length': 5,
-    #     'jitter_force': 1e-1,
-    #     'patches_per_edge': 1,
-    #     'motile_cells': False,
-    #     'debug_multicell_physics': False}
-    #
-    # jitter_output = test_lattice(jitter_config)
-    # plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
-    #
-    # jitter_config.update({'timestep': 0.1})
-    # jitter_output = test_lattice(jitter_config)
-    # plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
+    # test jitter
+    jitter_config = {
+        'total_time': 100,
+        'timestep': 0.1,
+        'edge_length': 5,
+        'jitter_force': 1e-1,
+        'patches_per_edge': 1,
+        'motile_cells': False,
+        'debug_multicell_physics': False}
+
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
+
+    jitter_config.update({'timestep': 0.1})
+    jitter_output = test_lattice(jitter_config)
+    plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
 
     # test motility
     motile_config = {
@@ -986,6 +986,6 @@ if __name__ == '__main__':
     plot_motility(motile_output, 'motility_state_short_ts', out_dir)
     plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
 
-    # # test diffusion
-    # diffusion_out = test_diffusion()
-    # plot_field(diffusion_out, 'diffusion', out_dir)
+    # test diffusion
+    diffusion_out = test_diffusion()
+    plot_field(diffusion_out, 'diffusion', out_dir)
