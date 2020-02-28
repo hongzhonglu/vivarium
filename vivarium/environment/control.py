@@ -16,7 +16,7 @@ class ShepherdControl(ActorControl):
     def add_cell(self, agent_type, actor_config):
         # TODO(jerry): Bring back the --variant choice?
         self.add_agent(
-            str(uuid.uuid1()),
+            agent_type + '-' + str(uuid.uuid1()),
             agent_type,
             actor_config)
 
