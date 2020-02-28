@@ -5,7 +5,7 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers, get_schema
+from vivarium.compartment.composition import get_derivers
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
@@ -36,18 +36,23 @@ def compose_gene_expression(config):
         'transcription': {
             'chromosome': 'chromosome',
             'molecules': 'molecules',
+            'proteins': 'proteins',
             'transcripts': 'transcripts',
-            'factors': 'factors'},
+            'factors': 'concentrations'},
+
         'translation': {
             'ribosomes': 'ribosomes',
             'molecules': 'molecules',
             'transcripts': 'transcripts',
-            'proteins': 'proteins'},
+            'proteins': 'proteins',
+            'concentrations': 'concentrations'},
+
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
             'molecules': 'molecules',
             'global': 'global'},
+
         'division': {
             'global': 'global'}}
 
@@ -56,18 +61,14 @@ def compose_gene_expression(config):
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
-    # get schema
-    schema = get_schema(processes, topology)
-
     # initialize the states
-    states = initialize_state(processes, topology, schema, config.get('initial_state', {}))
+    states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
         'name': 'gene_expression_composite',
         'environment_port': 'environment',
         'exchange_port': 'exchange',
         'topology': topology,
-        'schema': schema,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition}
 
@@ -107,7 +108,7 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     # plot polymerases
     for poly_id in polymerase_ids:
-        ax1.plot(time, molecules[poly_id], label=poly_id)
+        ax1.plot(time, proteins[poly_id], label=poly_id)
     ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
     ax1.title.set_text('polymerases')
 
@@ -130,9 +131,10 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
     ax4.title.set_text('transcripts')
 
     # plot proteins
-    for protein_id, series in proteins.items():
-        ax5.plot(time, series, label=protein_id)
-    ax5.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    for protein_id in sorted(proteins.keys()):
+        if protein_id != UNBOUND_RIBOSOME_KEY:
+            ax5.plot(time, proteins[protein_id], label=protein_id)
+    ax5.legend(loc='center left', bbox_to_anchor=(1.5, 0.5))
     ax5.title.set_text('proteins')
 
     # adjust axes
@@ -165,7 +167,7 @@ if __name__ == '__main__':
 
     # run simulation
     sim_settings = {
-        'total_time': 60}
+        'total_time': 100}
     saved_state = simulate_compartment(gene_expression_compartment, sim_settings)
     del saved_state[0]
     timeseries = convert_to_timeseries(saved_state)

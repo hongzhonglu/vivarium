@@ -216,7 +216,7 @@ class ShepherdControl(ActorControl):
 
 class EnvironmentCommand(AgentCommand):
     """
-    Extend `AgentCommand` with new commands related to the lattice and ecoli experiments
+    Extend `AgentCommand` with new commands related to the experiments
     """
 
     def __init__(self, choices=[], description=''):

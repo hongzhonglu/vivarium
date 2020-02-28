@@ -157,16 +157,12 @@ def process_in_compartment(process, settings={}):
     # add deriver topology
     topology.update(deriver_topology)
 
-    # get schema
-    schema = get_schema(processes, topology)
-
     # make the state
     state_dict = process_settings['state']
-    states = initialize_state(processes, topology, schema, state_dict)
+    states = initialize_state(processes, topology, state_dict)
 
     options = {
-        'topology': topology,
-        'schema': schema}
+        'topology': topology}
 
     return Compartment(processes, states, options)
 

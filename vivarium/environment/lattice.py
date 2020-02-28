@@ -151,6 +151,8 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.emitter = config['emitter'].get('object')
         self.emit_fields = config.get('emit_fields', [])
         self.emit_indices = [self._molecule_ids.index(mol_id) for mol_id in self.emit_fields]
+        self.emit_frequency = config.get('emit_frequency', 0) # emit every N steps
+        self.emit_step = 0
         self.emit_configuration()
 
 
@@ -188,9 +190,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # update motile forces in multicell_physics
-            force = self.motile_forces[agent_id][0]
+            thrust = self.motile_forces[agent_id][0]
             torque = self.motile_forces[agent_id][1]
-            self.multicell_physics.apply_motile_force(agent_id, force, torque)
+            self.multicell_physics.update_motile_force(agent_id, thrust, torque)
 
         # run multicell physics
         self.multicell_physics.run_incremental(timestep)
@@ -513,38 +515,40 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
     # Emitters
     def emit_data(self):
+        if self.emit_step == self.emit_frequency:
+            self.emit_step = 0
 
-        # emit lattice data
-        emit_fields = {}
-        for index, molecule_id in zip(self.emit_indices, self.emit_fields):
-            emit_fields[molecule_id] = self.lattice[index].tolist()
-        data = {
-            'type': 'lattice-fields',
-            'fields': emit_fields,
-            'time': self.time()}
-        emit_config = {
-            'table': 'history',
-            'data': data}
-        self.emitter.emit(emit_config)
-
-        # emit data for each agent
-        for agent_id, simulation in self.simulations.items():
-            agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
-            agent_state = self.simulations[agent_id]['state']
+            # emit lattice data
+            emit_fields = {}
+            for index, molecule_id in zip(self.emit_indices, self.emit_fields):
+                emit_fields[molecule_id] = self.lattice[index].tolist()
             data = {
-                'type': 'lattice-agent',
-                'agent_id': agent_id,
-                'location': agent_location,
-                'volume': agent_state['volume'],
-                'width': agent_state['width'],
-                'length': agent_state['length'],
+                'type': 'lattice-fields',
+                'fields': emit_fields,
                 'time': self.time()}
-
             emit_config = {
                 'table': 'history',
                 'data': data}
-
             self.emitter.emit(emit_config)
+
+            # emit data for each agent
+            for agent_id, simulation in self.simulations.items():
+                agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
+                agent_state = self.simulations[agent_id]['state']
+                data = {
+                    'type': 'lattice-agent',
+                    'agent_id': agent_id,
+                    'location': agent_location,
+                    'volume': agent_state['volume'],
+                    'width': agent_state['width'],
+                    'length': agent_state['length'],
+                    'time': self.time()}
+                emit_config = {
+                    'table': 'history',
+                    'data': data}
+                self.emitter.emit(emit_config)
+        else:
+            self.emit_step += 1
 
     def emit_configuration(self):
         data = {
@@ -570,15 +574,18 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    force = 0.1  # pN
-    tumble_jitter = 30
+    thrust = 5.0e-1  # pN
+    tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
-    return [force, torque]
+    return [thrust, torque]
 
 def run():
-    force = 0.3  # pN
+    # average thrust = 0.57 pN according to:
+    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
+    # Swimming efficiency of bacterium Escherichia coli. PNAS
+    thrust  = 5.7e-1  # pN
     torque = 0.0
-    return [force, torque]
+    return [thrust, torque]
 
 # default configs for tests
 diffusion_config = {
@@ -727,13 +734,13 @@ def test_lattice(config=motile_config):
     time = 0
     motor_state = 1 # 0 for run, 1 for tumble
     time_in_motor_state = 0
+    motile_force = run()
     while time < total_time:
 
         if motile_cells:
             # get forces
             if motor_state == 1: # tumble
                 if time_in_motor_state < tumble_time:
-                    motile_force = tumble()
                     time_in_motor_state += timestep
                 else:
                     # switch
@@ -743,7 +750,6 @@ def test_lattice(config=motile_config):
 
             elif motor_state == 0:  # run
                 if time_in_motor_state < run_time:
-                    motile_force = run()
                     time_in_motor_state += timestep
                 else:
                     # switch
@@ -782,7 +788,6 @@ def plot_motility(data, filename='motility', out_dir='out'):
     expected_angle_between_runs = 68 # degrees (Berg)
 
     saved_state = data['saved_state']
-    # timestep = data['timestep']
     locations = saved_state['location']
     motor_state = saved_state['motor_state'] # 0 for run, 1 for tumble
     times = saved_state['time']
@@ -814,7 +819,10 @@ def plot_motility(data, filename='motility', out_dir='out'):
         previous_motor_state = m_state
 
     avg_speed = sum(speed_vec) / len(speed_vec)
-    avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+    try:
+        avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
+    except:
+        avg_angle_between_runs = 0
 
     # plot results
     cols = 1
@@ -826,23 +834,23 @@ def plot_motility(data, filename='motility', out_dir='out'):
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(times, speed_vec)
+    ax1.plot(times[1:], speed_vec[1:])
     ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
     ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
-    ax1.set_ylabel(u'speed (\u03bcm/sec)')
+    ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
     # ax1.set_xlabel('time')
     ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # plot change in direction between runs
-    ax2.plot(angle_between_runs)
+    ax2.plot(angle_between_runs[1:])
     ax2.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
     ax2.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
-    ax2.set_ylabel('angle between runs')
+    ax2.set_ylabel('angle \n between runs')
     ax2.set_xlabel('run #')
     ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # motile force
-    ax3.plot(times, motor_state)
+    ax3.plot(times[1:], motor_state[1:])
     ax3.set_xlabel('time (s)')
     ax3.set_yticks([0.0, 1.0])
     ax3.set_yticklabels(["run", "tumble"])
@@ -946,11 +954,11 @@ if __name__ == '__main__':
     jitter_config = {
         'total_time': 100,
         'timestep': 0.1,
-        'edge_length': 3,
+        'edge_length': 5,
         'jitter_force': 1e-1,
         'patches_per_edge': 1,
         'motile_cells': False,
-        'debug_multicell_physics': True}
+        'debug_multicell_physics': False}
 
     jitter_output = test_lattice(jitter_config)
     plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
@@ -961,12 +969,12 @@ if __name__ == '__main__':
 
     # test motility
     motile_config = {
-        'total_time': 100,
+        'total_time': 20,
         'timestep': 0.1,
-        'edge_length': 50,
-        'jitter_force': 1e-1,
+        'edge_length': 200,
+        'jitter_force': 0.0,
         'motile_cells': True,
-        'debug_multicell_physics': True}
+        'debug_multicell_physics': False}
 
     motile_output = test_lattice(motile_config)
     plot_motility(motile_output, 'motility_state', out_dir)

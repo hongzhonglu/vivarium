@@ -2,7 +2,7 @@ import random
 import copy
 import numpy as np
 
-from vivarium.data.chromosome import test_chromosome_config
+from vivarium.data.chromosomes.toy_chromosome import toy_chromosome_config
 from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Template, Elongation, polymerize_to, add_merge
@@ -363,7 +363,7 @@ class Chromosome(Datum):
 
 
 def test_chromosome():
-    chromosome = Chromosome(test_chromosome_config)
+    chromosome = Chromosome(toy_chromosome_config)
     print(chromosome.promoters['pA'].terminators[0].products)
     print(chromosome)
 
