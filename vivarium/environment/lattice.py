@@ -188,9 +188,9 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             self.multicell_physics.update_cell(agent_id, length, width, mass)
 
             # update motile forces in multicell_physics
-            force = self.motile_forces[agent_id][0]
+            thrust = self.motile_forces[agent_id][0]
             torque = self.motile_forces[agent_id][1]
-            self.multicell_physics.update_motile_force(agent_id, force, torque)
+            self.multicell_physics.update_motile_force(agent_id, thrust, torque)
 
         # run multicell physics
         self.multicell_physics.run_incremental(timestep)
@@ -570,15 +570,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    force = 1e-1  # pN  TODO -- should be ~ 3 pN
+    thrust = 1e-1  # pN  TODO -- should be ~ 3 pN
     tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
-    return [force, torque]
+    return [thrust, torque]
 
 def run():
-    force = 1.2e-1  # pN  TODO --  should be ~ 3 pN
+    thrust  = 1.2e-1  # pN  TODO --  should be ~ 3 pN
     torque = 0.0
-    return [force, torque]
+    return [thrust, torque]
 
 # default configs for tests
 diffusion_config = {

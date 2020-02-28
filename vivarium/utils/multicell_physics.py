@@ -119,13 +119,13 @@ class MultiCellPhysics(object):
         motile_location = (width / 2, 0)  # apply force at back end of body
         motile_force = [0.0, 0.0]
         if hasattr(body, 'motile_force'):
-            force, angle = body.motile_force
-            motile_force = [force, 0.0]
+            thrust, torque = body.motile_force
+            motile_force = [thrust, 0.0]
 
-            if angle != 0.0:
-                motile_force = get_force_with_angle(force, angle)
+            if torque != 0.0:
+                motile_force = get_force_with_angle(thrust, torque)
 
-        scaled_motile_force = [force * self.force_scaling for force in motile_force]
+        scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
