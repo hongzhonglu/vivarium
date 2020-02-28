@@ -14,9 +14,8 @@ class ShepherdControl(ActorControl):
         super(ShepherdControl, self).__init__(str(uuid.uuid1()), actor_config)
 
     def add_cell(self, agent_type, actor_config):
-        # TODO(jerry): Bring back the --variant choice?
         self.add_agent(
-            str(uuid.uuid1()),
+            agent_type + '-' + str(uuid.uuid1()),
             agent_type,
             actor_config)
 
@@ -25,38 +24,38 @@ class ShepherdControl(ActorControl):
         lattice_config = exp_config.get('lattice_config')
         environment_type = exp_config.get('environment_type')
         actor_config = exp_config.get('actor_config')
-        agent_type = exp_config.get('agent_type')
-        num_cells = exp_config.get('num_cells', 1)
         actor_config['boot_config'].update(lattice_config)
+        agents = exp_config['agents']
 
         # get from args
         experiment_id = args.get('experiment_id')
-        number = args.get('number')
-        if number == 0:
-            number = num_cells
         if not experiment_id:
             experiment_id = self.get_experiment_id(default_experiment_id)
 
-        print('Creating experiment id {}: {} {} agents in {} environment\n'.format(
-            experiment_id, number, agent_type, environment_type))
+        print('Creating experiment id {}: {} environment, with agents {}\n'.format(
+            experiment_id, environment_type, agents))
 
         # boot environment
         self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
         # boot agents
-        for index in range(number):
-            self.add_cell(agent_type or args['type'], dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
+        index = 0
+        for agent_type, number in agents.items():
+            for agent in range(number):
+                self.add_cell(agent_type or args['type'], dict(actor_config, **{
+                    'boot': 'vivarium.environment.boot',
+                    'outer_id': experiment_id,
+                    'working_dir': args['working_dir'],
+                    'seed': index}))
+                index += 1
 
     def lattice_experiment(self, args, actor_config):
         # define experiment: environment type and agent type
         experiment_id = 'lattice_experiment'
         environment_type = 'lattice'
-        agent_type = 'growth_division'
+        agents = {
+            'growth_division': 1}
 
         # overwrite default environment config
         lattice_config = {
@@ -68,8 +67,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 1}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -78,7 +76,8 @@ class ShepherdControl(ActorControl):
         # define experimental environment and agents
         experiment_id = 'growth_division'
         environment_type = 'lattice'
-        agent_type = 'growth_division'
+        agents = {
+            'growth_division': 1}
 
         # overwrite default environment config
         lattice_config = {
@@ -90,8 +89,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 1}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -100,7 +98,8 @@ class ShepherdControl(ActorControl):
         # define experiment: environment type and agent type
         experiment_id = 'gluc-lact'
         environment_type = 'ecoli_core_glc'
-        agent_type = 'shifter'
+        agents = {
+            'shifter': 2}
 
         # overwrite default environment config
         lattice_config = {
@@ -116,8 +115,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 2}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -125,7 +123,9 @@ class ShepherdControl(ActorControl):
         # define experiment: environment type and agent type
         experiment_id = 'chemotaxis'
         environment_type = 'measp'
-        agent_type = 'minimal_chemotaxis'
+        agents = {
+            'minimal_chemotaxis': 4}
+
 
         # overwrite default environment config
         lattice_config = {
@@ -139,8 +139,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 4}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -148,7 +147,8 @@ class ShepherdControl(ActorControl):
         # define experiment: environment type and agent type
         experiment_id = 'chemotaxis'
         environment_type = 'measp'
-        agent_type = 'minimal_chemotaxis'
+        agents = {
+            'minimal_chemotaxis': 4}
 
         # overwrite default environment config
         lattice_config = {
@@ -162,8 +162,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 4}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -171,7 +170,9 @@ class ShepherdControl(ActorControl):
         # define experiment: environment type and agent type
         experiment_id = 'chemotaxis'
         environment_type = 'measp_long'
-        agent_type = 'minimal_chemotaxis'
+        agents = {
+            'minimal_chemotaxis': 1,
+            'motor': 1}
 
         # overwrite default environment config
         lattice_config = {
@@ -185,8 +186,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 1}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
@@ -194,21 +194,20 @@ class ShepherdControl(ActorControl):
         # define experiment: environment type and agent type
         experiment_id = 'swarm'
         environment_type = 'measp_large'
-        agent_type = 'minimal_chemotaxis'
+        agents = {
+            'minimal_chemotaxis': 1}
 
         # overwrite default environment config
         lattice_config = {
             'name': 'swarm_experiment',
-            'description': 'a large experiment for running swarms of chemotactic cells',
-        }
+            'description': 'a large experiment for running swarms of chemotactic cells'}
 
         exp_config = {
             'default_experiment_id': experiment_id,
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 1}
+            'agents': agents}
 
         self.init_experiment(args, exp_config)
 
