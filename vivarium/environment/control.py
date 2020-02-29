@@ -126,33 +126,9 @@ class ShepherdControl(ActorControl):
         agents = {
             'minimal_chemotaxis': 4}
 
-
         # overwrite default environment config
         lattice_config = {
             'name': 'chemotaxis square experiment',
-            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
-
-        exp_config = {
-            'default_experiment_id': experiment_id,
-            'lattice_config': lattice_config,
-            'environment_type': environment_type,
-            'actor_config': actor_config,
-            'agents': agents}
-
-        self.init_experiment(args, exp_config)
-
-    def chemotaxis_square(self, args, actor_config):
-        # define experiment: environment type and agent type
-        experiment_id = 'chemotaxis'
-        environment_type = 'measp'
-        agents = {
-            'minimal_chemotaxis': 4}
-
-        # overwrite default environment config
-        lattice_config = {
-            'name': 'chemotaxis experiment square',
             'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
                'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
                'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
