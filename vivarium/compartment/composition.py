@@ -2,8 +2,14 @@ import copy
 import os
 
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
-from vivarium.utils.dict_utils import deep_merge, deep_merge_check
+from vivarium.utils.dict_utils import (
+    deep_merge,
+    deep_merge_check,
+    flatten_timeseries,
+)
 from vivarium.compartment.process import initialize_state, simulate_compartment, Compartment
 from vivarium.utils.units import units
 
@@ -11,6 +17,10 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+
+
+REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
+TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
@@ -371,3 +381,58 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     fig_path = os.path.join(out_dir, 'simulation')
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
+
+def save_timeseries(timeseries, out_dir='out'):
+    '''Save a timeseries as a CSV in out_dir'''
+
+    flattened = flatten_timeseries(timeseries)
+    df = pd.DataFrame(flattened)
+    df.to_csv(os.path.join(out_dir, 'simulation_data.csv'))
+
+def load_timeseries(path_to_csv):
+    '''Load a timeseries saved as a CSV using save_timeseries.
+
+    The timeseries is returned in flattened form.
+    '''
+    df = pd.read_csv(path_to_csv)
+    df_dict = df.to_dict()
+    return {
+        col_header: list(row_dict.values())
+        for col_header, row_dict in df_dict.items()
+    }
+
+def assert_timeseries_correlated(
+    timeseries1, timeseries2, keys=None,
+    default_threshold=(1 - 1e-10), thresholds={}
+):
+    '''Check that two timeseries are correlated.
+
+    Uses a Pearson correlation coefficient.
+
+    Arguments:
+        timeseries1: One timeseries. Must be flattened
+        timeseries2: The other timeseries. Must be flattened.
+        keys: Keys of the timeseries whose values will be checked for
+            correlation. If not specified, all keys present in both
+            timeseries are used.
+        default_threshold: The threshold correlation coefficient to use
+            when a threshold is not specified in thresholds.
+        thresholds: Dictionary of key-value pairs where the key is a key
+            in both timeseries and the value is the threshold
+            correlation coefficient to use when checking that key
+
+    Raises:
+        AssertionError: If a correlation is strictly below the
+            threshold.
+    '''
+    if keys is None:
+        keys = timeseries1.keys() & timeseries2.keys()
+    for key in keys:
+        corrcoef = np.corrcoef(timeseries1[key], timeseries2[key])[0][1]
+        threshold = thresholds.get(key, default_threshold)
+        if corrcoef < threshold:
+            raise AssertionError(
+                'The correlation coefficient for '
+                '{} is too small: {} < {}'.format(
+                    key, corrcoef, threshold)
+            )
