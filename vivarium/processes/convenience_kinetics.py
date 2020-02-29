@@ -5,7 +5,17 @@ import os
 from scipy import constants
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import (
+    simulate_process_with_environment,
+    convert_to_timeseries,
+    plot_simulation_output,
+    flatten_timeseries,
+    save_timeseries,
+    load_timeseries,
+    REFERENCE_DATA_DIR,
+    TEST_OUT_DIR,
+    assert_timeseries_correlated
+)
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.units import units
@@ -17,6 +27,7 @@ EMPTY_ROLES = {
 EMPTY_STATES = {
     'internal': {},
     'external': {}}
+NAME = 'convenience_kinetics'
 
 
 class ConvenienceKinetics(Process):
@@ -210,9 +221,8 @@ def get_toy_config():
         'initial_state': toy_initial_state,
         'ports': toy_ports}
 
-# test
-def test_convenience_kinetics(end_time=10):
-    # config = get_toy_config()
+
+def test_convenience_kinetics(end_time=1000):
     config = get_glc_lct_config()
     kinetic_process = ConvenienceKinetics(config)
 
@@ -227,14 +237,25 @@ def test_convenience_kinetics(end_time=10):
     return saved_state
 
 
+def test_convenience_kinetics_correlated_to_reference():
+    saved_data = test_convenience_kinetics()
+    del saved_data[0]
+    timeseries = convert_to_timeseries(saved_data)
+    flattened = flatten_timeseries(timeseries)
+    reference_timeseries = load_timeseries(
+        os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
+    assert_timeseries_correlated(flattened, reference_timeseries)
+
+
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'convenience_kinetics')
+    out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     plot_settings = {}
 
-    saved_data = test_convenience_kinetics(1000)
+    saved_data = test_convenience_kinetics()
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
+    save_timeseries(timeseries, out_dir)
