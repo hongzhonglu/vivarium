@@ -16,7 +16,7 @@ from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 #: Default initial concentrations
 DEFAULT_INITIAL_STATE = {
     'internal': {
-        'antibiotic_importer': 1.0,  # Membrane pore
+        'porin': 1.0,  # Membrane pore through which antibiotics enter
         'antibiotic_exporter': 1.0,  # Efflux pump
         'antibiotic': 0.0,
     },
@@ -51,7 +51,7 @@ class Antibiotics(ConvenienceKinetics):
                         ('external', 'antibiotic'): -1,
                     },
                     'is_reversible': False,
-                    'catalyzed by': [('internal', 'antibiotic_importer')],
+                    'catalyzed by': [('internal', 'porin')],
                 },
                 'antibiotic_export': {
                     'stoichiometry': {
@@ -65,7 +65,7 @@ class Antibiotics(ConvenienceKinetics):
             },
             'kinetic_parameters': {
                 'antibiotic_import': {
-                    ('internal', 'antibiotic_importer'): {
+                    ('internal', 'porin'): {
                         'kcat_f': 1e-4,
                         ('external', 'antibiotic'): 0.6,
                     },
@@ -80,7 +80,7 @@ class Antibiotics(ConvenienceKinetics):
             'initial_state': initial_state,
             'ports': {
                 'internal': [
-                    'antibiotic_importer',
+                    'porin',
                     'antibiotic_exporter',
                     'antibiotic',
                 ],
