@@ -17,7 +17,8 @@ from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 DEFAULT_INITIAL_STATE = {
     'internal': {
         'porin': 1.0,  # Membrane pore through which antibiotics enter
-        'antibiotic_exporter': 1.0,  # Efflux pump
+        # EcoCyc ID: TRANS-CPLX-201
+        'AcrAB-TolC': 1.0,  # Efflux pump complex
         'antibiotic': 0.0,
     },
     'external': {
@@ -60,7 +61,7 @@ class Antibiotics(ConvenienceKinetics):
                     },
                     'is_reversible': False,
                     'catalyzed by': [
-                        ('internal', 'antibiotic_exporter')],
+                        ('internal', 'AcrAB-TolC')],
                 },
             },
             'kinetic_parameters': {
@@ -71,7 +72,7 @@ class Antibiotics(ConvenienceKinetics):
                     },
                 },
                 'antibiotic_export': {
-                    ('internal', 'antibiotic_exporter'): {
+                    ('internal', 'AcrAB-TolC'): {
                         'kcat_f': 2e-4,
                         ('internal', 'antibiotic'): 0.6,
                     },
@@ -81,7 +82,7 @@ class Antibiotics(ConvenienceKinetics):
             'ports': {
                 'internal': [
                     'porin',
-                    'antibiotic_exporter',
+                    'AcrAB-TolC',
                     'antibiotic',
                 ],
                 'external': ['antibiotic'],

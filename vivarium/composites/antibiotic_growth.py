@@ -30,21 +30,21 @@ def compose_antibiotic_growth(config):
 
     # Expression Config
     transcription_config = config.setdefault('transcription_rates', {})
-    transcription_config.setdefault('antibiotic_exporter_RNA', 1e-3)
+    transcription_config.setdefault('AcrAB-TolC_RNA', 1e-3)
     translation_config = config.setdefault('translation_rates', {})
-    translation_config.setdefault('antibiotic_exporter', 1.0)
+    translation_config.setdefault('AcrAB-TolC', 1.0)
     degradation_config = config.setdefault('degradation_rates', {})
-    degradation_config.setdefault('antibiotic_exporter', 1.0)
-    degradation_config.setdefault('antibiotic_exporter_RNA', 1e-3)
+    degradation_config.setdefault('AcrAB-TolC', 1.0)
+    degradation_config.setdefault('AcrAB-TolC_RNA', 1e-3)
     protein_map = config.setdefault('protein_map', {})
     protein_map.setdefault(
-        'antibiotic_exporter', 'antibiotic_exporter_RNA')
+        'AcrAB-TolC', 'AcrAB-TolC_RNA')
 
     initial_state_config = config.setdefault(
         'initial_state', ANTIBIOTIC_DEFAULT_INITIAL_STATE)
     internal_initial_config = initial_state_config.setdefault(
         'internal', {})
-    internal_initial_config['antibiotic_exporter'] = 0.0
+    internal_initial_config['AcrAB-TolC'] = 0.0
 
     # Death Config
     checkers_config = config.setdefault('checkers', {})
@@ -134,13 +134,13 @@ def test_antibiotic_growth_composite():
     }
     config = {
         'transcription_rates': {
-            'antibiotic_exporter_RNA': 1e-3,
+            'AcrAB-TolC_RNA': 1e-3,
         },
         'degradation_rates': {
             # Set for on the order of 100 RNAs at equilibrium
-            'antibiotic_exporter_RNA': 1.0,
+            'AcrAB-TolC_RNA': 1.0,
             # Set so exporter concentration reaches equilibrium
-            'antibiotic_exporter': 1e-3,
+            'AcrAB-TolC': 1e-3,
         },
         'emitter': 'null',
         'checkers': {
