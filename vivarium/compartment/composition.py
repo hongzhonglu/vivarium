@@ -1,8 +1,8 @@
 import copy
+import csv
 import os
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 
 from vivarium.utils.dict_utils import (
@@ -384,22 +384,25 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
 
 def save_timeseries(timeseries, out_dir='out'):
     '''Save a timeseries as a CSV in out_dir'''
-
     flattened = flatten_timeseries(timeseries)
-    df = pd.DataFrame(flattened)
-    df.to_csv(os.path.join(out_dir, 'simulation_data.csv'))
+    rows = np.transpose(list(flattened.values())).tolist()
+    with open(os.path.join(out_dir, 'simulation_data.csv'), 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(flattened.keys())
+        writer.writerows(rows)
 
 def load_timeseries(path_to_csv):
     '''Load a timeseries saved as a CSV using save_timeseries.
 
     The timeseries is returned in flattened form.
     '''
-    df = pd.read_csv(path_to_csv)
-    df_dict = df.to_dict()
-    return {
-        col_header: list(row_dict.values())
-        for col_header, row_dict in df_dict.items()
-    }
+    with open(path_to_csv, 'r', newline='') as f:
+        reader = csv.DictReader(f)
+        timeseries = {}
+        for row in reader:
+            for header, elem in row.items():
+                timeseries.setdefault(header, []).append(float(elem))
+    return timeseries
 
 def assert_timeseries_correlated(
     timeseries1, timeseries2, keys=None,
