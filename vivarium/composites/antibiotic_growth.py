@@ -46,11 +46,6 @@ def compose_antibiotic_growth(config):
         'internal', {})
     internal_initial_config['antibiotic_exporter'] = 0.0
 
-    # Deriver Config
-    counted_molecules = config.setdefault('counted_molecules', [])
-    if 'antibiotic_exporter' not in counted_molecules:
-        counted_molecules.append('antibiotic_exporter')
-
     # Death Config
     checkers_config = config.setdefault('checkers', {})
     antibiotic_checker_config = checkers_config.setdefault(
