@@ -75,9 +75,8 @@ def random_body_position(body):
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, jitter_force, debug=False):
-        self.pygame_scale = 700 / bounds[0]
-        self.pygame_viz = debug
+    def __init__(self, bounds, jitter_force, debug=False, debug_scale=20):
+
         self.elasticity = ELASTICITY
         self.friction = FRICTION
         self.damping = DAMPING
@@ -91,9 +90,14 @@ class MultiCellPhysics(object):
         # Physics
         self.physics_dt = PHYSICS_TS
 
+        # Debugging with pygame
+        self.pygame_viz = debug
+        self.pygame_scale = 1
         if self.pygame_viz:
+            self.pygame_scale = debug_scale
             pygame.init()
-            self._screen = pygame.display.set_mode((710, 710))
+            self._screen = pygame.display.set_mode((
+                int(bounds[0]*self.pygame_scale), int(bounds[1]*self.pygame_scale)))
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
@@ -261,7 +265,11 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         corner_position = body.position
         angle = body.angle
-        front_position = front_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
+        front_position = front_from_corner(
+            width,
+            length,
+            corner_position,
+            angle)
         return np.array([front_position[0] / self.pygame_scale, front_position[1] / self.pygame_scale, angle])
 
     def get_center(self, cell_id):
@@ -276,8 +284,8 @@ class MultiCellPhysics(object):
         center_position = body.position
         angle = body.angle
         corner_position = corner_from_center(
-            width * self.pygame_scale,
-            length * self.pygame_scale,
+            width,
+            length,
             center_position,
             angle)
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
@@ -300,35 +308,8 @@ class MultiCellPhysics(object):
         self.space.add(static_lines)
 
 
+
 # testing functions
-def set_motile_force(physics, agent_id, object_id):
-    body, shape = physics.cells[agent_id]
-    obj_body, obj_shape = physics.cells[object_id]
-
-    obj_position = physics.get_center(object_id)  # obj_body.position
-    position = physics.get_front(agent_id)
-    angle = body.angle
-
-    obj_distance = obj_position - position
-    obj_angle = math.atan2(obj_distance[1],obj_distance[0])
-    obj_relative_angle = obj_angle - angle
-
-    # run/tumble
-    if abs(obj_relative_angle) < PI/4:
-        # run
-        force = 15000.0
-        torque = 0.0
-        print('RUN!')
-    else:
-        # tumble
-        force = 5000.0
-        torque = random.normalvariate(0, 0.02)  #random.uniform(-0.005, 0.005)  #random.uniform(-50000.0, 50000.0)  # random.normalvariate(0, 5000.0) #5000.0 #random.uniform(0.0, 2*PI)
-        print('TUMBLE!')
-
-    physics.update_motile_force(agent_id, force, torque)
-
-
-# For testing with pygame
 if __name__ == '__main__':
 
     total_time = 100
@@ -348,7 +329,7 @@ if __name__ == '__main__':
     agent_ids = list(range(n_agents))
 
     # agent initial conditions
-    growth = 0.01
+    growth = 0.1
     volume = 1.0
     width = 0.5
     length = 2.0
@@ -380,6 +361,4 @@ if __name__ == '__main__':
             (width, length) = body.dimensions
             length += growth
             physics.update_cell(agent_id, length, width, mass)
-            # set_motile_force(physics, agent_id, object_id)
-
             physics.run_incremental(time_step)
