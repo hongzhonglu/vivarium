@@ -27,10 +27,27 @@ FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
 FORCE_SCALING = 17000  # scales from pN
 
+
 def get_force_with_angle(force, angle):
     x = force * math.cos(angle)
     y = force * math.sin(angle)
     return [x, y]
+
+def front_from_corner(width, length, corner_position, angle):
+    half_width = width/2
+    dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
+    dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+    front_position = [corner_position[0] + dx, corner_position[1] + dy]
+    return np.array([front_position[0], front_position[1], angle])
+
+def corner_from_center(width, length, center_position, angle):
+    half_length = length/2
+    half_width = width/2
+    dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+    dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+    corner_position = [center_position[0] - dx, center_position[1] - dy]
+
+    return np.array([corner_position[0], corner_position[1], angle])
 
 def random_body_position(body):
     ''' pick a random point along the boundary'''
@@ -244,7 +261,7 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         corner_position = body.position
         angle = body.angle
-        front_position = self.front_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
+        front_position = front_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
         return np.array([front_position[0] / self.pygame_scale, front_position[1] / self.pygame_scale, angle])
 
     def get_center(self, cell_id):
@@ -258,28 +275,12 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         center_position = body.position
         angle = body.angle
-        corner_position = self.corner_from_center(
+        corner_position = corner_from_center(
             width * self.pygame_scale,
             length * self.pygame_scale,
             center_position,
             angle)
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
-
-    def front_from_corner(self, width, length, corner_position, angle):
-        half_width = width/2
-        dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
-        dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        front_position = [corner_position[0] + dx, corner_position[1] + dy]
-        return np.array([front_position[0], front_position[1], angle])
-
-    def corner_from_center(self, width, length, center_position, angle):
-        half_length = length/2
-        half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
-        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        corner_position = [center_position[0] - dx, center_position[1] - dy]
-
-        return np.array([corner_position[0], corner_position[1], angle])
 
     def add_barriers(self, bounds):
         """ Create static barriers """
