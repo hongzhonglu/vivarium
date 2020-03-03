@@ -216,7 +216,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         volume = self.simulations[agent_id]['state']['volume']
         width = self.cell_radius * 2
         length = self.volume_to_length(volume, self.cell_radius)
-        mass = volume * self.cell_density  # TODO -- get units to work
+        mass = volume * self.cell_density  # TODO -- pass mass to environment. don't hardcode density.
 
         # add length, width to state, for use by visualization
         self.simulations[agent_id]['state']['length'] = length
@@ -574,16 +574,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 # tests
 def tumble():
-    thrust = 5.0e-1  # pN
-    tumble_jitter = 0.3
+    thrust = 100  # pN
+    tumble_jitter = 0.1
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
-    # average thrust = 0.57 pN according to:
-    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
-    # Swimming efficiency of bacterium Escherichia coli. PNAS
-    thrust  = 5.7e-1  # pN
+    # average thrust = 200 pN according to:
+    # Berg, Howard C. E. coli in Motion. Under "Torque-Speed Dependence"
+    thrust  = 200  # pN
     torque = 0.0
     return [thrust, torque]
 
@@ -712,7 +711,7 @@ def test_lattice(config=motile_config):
     # add an agent
     agent_id = '1'
     simulation = simulations.setdefault(agent_id, {})
-    agent_state = {'volume': 1.0}
+    agent_state = {'volume': 1.22}
     agent_config = {
         'location': np.array([0.0, 0.0]),
         'orientation': np.array([0.0]),
@@ -950,22 +949,22 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # test jitter
-    jitter_config = {
-        'total_time': 100,
-        'timestep': 0.1,
-        'edge_length': 5,
-        'jitter_force': 1e-1,
-        'patches_per_edge': 1,
-        'motile_cells': False,
-        'debug_multicell_physics': False}
-
-    jitter_output = test_lattice(jitter_config)
-    plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
-
-    jitter_config.update({'timestep': 0.1})
-    jitter_output = test_lattice(jitter_config)
-    plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
+    # # test jitter
+    # jitter_config = {
+    #     'total_time': 100,
+    #     'timestep': 0.1,
+    #     'edge_length': 5,
+    #     'jitter_force': 1e-1,
+    #     'patches_per_edge': 1,
+    #     'motile_cells': False,
+    #     'debug_multicell_physics': False}
+    #
+    # jitter_output = test_lattice(jitter_config)
+    # plot_trajectory(jitter_output, 'jitter_trajectory', out_dir)
+    #
+    # jitter_config.update({'timestep': 0.1})
+    # jitter_output = test_lattice(jitter_config)
+    # plot_trajectory(jitter_output, 'jitter_trajectory_short_ts', out_dir)
 
     # test motility
     motile_config = {
@@ -977,15 +976,23 @@ if __name__ == '__main__':
         'debug_multicell_physics': False}
 
     motile_output = test_lattice(motile_config)
-    plot_motility(motile_output, 'motility_state', out_dir)
-    plot_trajectory(motile_output, 'motility_trajectory', out_dir)
+    plot_motility(motile_output, 'motility', out_dir)
+    plot_trajectory(motile_output, 'trajectory', out_dir)
 
-    # test motility short ts
-    motile_config.update({'timestep': 0.01})
-    motile_output = test_lattice(motile_config)
-    plot_motility(motile_output, 'motility_state_short_ts', out_dir)
-    plot_trajectory(motile_output, 'motility_trajectory_short_ts', out_dir)
+    # # test motility short ts
+    # motile_short_ts_config = motile_config.copy()
+    # motile_short_ts_config.update({'timestep': 0.01})
+    # motile_output = test_lattice(motile_short_ts_config)
+    # plot_motility(motile_output, 'motility_short_ts', out_dir)
+    # plot_trajectory(motile_output, 'trajectory_short_ts', out_dir)
 
-    # test diffusion
-    diffusion_out = test_diffusion()
-    plot_field(diffusion_out, 'diffusion', out_dir)
+    # # test motility large env
+    # motile_large_env_config = motile_config.copy()
+    # motile_large_env_config.update({'edge_length': 2000})
+    # motile_output = test_lattice(motile_large_env_config)
+    # plot_motility(motile_output, 'motility_large_env', out_dir)
+    # plot_trajectory(motile_output, 'trajectory_large_env', out_dir)
+
+    # # test diffusion
+    # diffusion_out = test_diffusion()
+    # plot_field(diffusion_out, 'diffusion', out_dir)

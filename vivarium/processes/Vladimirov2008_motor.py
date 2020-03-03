@@ -123,9 +123,9 @@ class MotorActivity(Process):
         TODO -- add CheB phosphorylation
         '''
 
-        internal = copy.copy(states['internal'])
+        internal = states['internal']
         P_on = internal['chemoreceptor_activity']
-        motor_state = internal['motor_state']
+        motor_state_current = internal['motor_state']
 
         # parameters
         adaptPrecision = self.parameters['adaptPrecision']
@@ -146,48 +146,45 @@ class MotorActivity(Process):
         ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)  # (1/s)
         ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
 
-        if motor_state == 0:  # 0 for run
+        if motor_state_current == 0:  # 0 for run
             # switch to tumble?
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
                 thrust, torque = tumble()
             else:
+                motor_state = 0
                 thrust, torque = run()
 
-        elif motor_state == 1:  # 1 for tumble
+        elif motor_state_current == 1:  # 1 for tumble
             # switch to run?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
                 [thrust, torque] = run()
             else:
+                motor_state = 1
                 [thrust, torque] = tumble()
 
-        # TODO -- should thrust/torque accumulate over exchange timestep?
-        update = {
+        return {
             'internal': {
                 'ccw_motor_bias': ccw_motor_bias,
                 'ccw_to_cw': ccw_to_cw,
                 'motile_force': thrust,
                 'motile_torque': torque,
                 'motor_state': motor_state,
-                'CheY_P': CheY_P
-            }
-        }
-        return update
+                'CheY_P': CheY_P}}
 
 def tumble():
-    thrust = 5.0e-1  # pN
-    tumble_jitter = 0.3
+    thrust = 100  # pN
+    tumble_jitter = 0.1
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
-    # average thrust = 0.57 pN according to:
-    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
-    # Swimming efficiency of bacterium Escherichia coli. PNAS
-    thrust  = 5.7e-1  # pN
+    # average thrust = 200 pN according to:
+    # Berg, Howard C. E. coli in Motion. Under "Torque-Speed Dependence"
+    thrust  = 200  # pN
     torque = 0.0
     return [thrust, torque]
 
