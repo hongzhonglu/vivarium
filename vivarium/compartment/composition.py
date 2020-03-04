@@ -404,17 +404,28 @@ def load_timeseries(path_to_csv):
                 timeseries.setdefault(header, []).append(float(elem))
     return timeseries
 
+def timeseries_to_ndarray(timeseries, keys=None):
+    if keys is None:
+        keys = timeseries.keys()
+    filtered = {key: timeseries[key] for key in keys}
+    array = np.array(list(filtered.values()))
+    return array
+
 def assert_timeseries_correlated(
     timeseries1, timeseries2, keys=None,
-    default_threshold=(1 - 1e-10), thresholds={}
+    default_threshold=(1 - 1e-10), thresholds={},
+    required_frac_checked=0.9,
 ):
     '''Check that two timeseries are correlated.
 
-    Uses a Pearson correlation coefficient.
+    Uses a Pearson correlation coefficient. Only the data from
+    timepoints common to both timeseries are compared.
 
     Arguments:
-        timeseries1: One timeseries. Must be flattened
-        timeseries2: The other timeseries. Must be flattened.
+        timeseries1: One timeseries. Must be flattened and include times
+            under the 'time' key.
+        timeseries2: The other timeseries. Same requirements as
+            timeseries1.
         keys: Keys of the timeseries whose values will be checked for
             correlation. If not specified, all keys present in both
             timeseries are used.
@@ -423,15 +434,45 @@ def assert_timeseries_correlated(
         thresholds: Dictionary of key-value pairs where the key is a key
             in both timeseries and the value is the threshold
             correlation coefficient to use when checking that key
+        required_frac_checked: The required fraction of timepoints in a
+            timeseries that must be checked. If this requirement is not
+            satisfied, which might occur if the two timeseries share few
+            timepoints, the test wll fail.
 
     Raises:
         AssertionError: If a correlation is strictly below the
-            threshold.
+            threshold or if too few timepoints are common to both
+            timeseries.
     '''
+    if 'time' not in timeseries1 or 'time' not in timeseries2:
+        raise AssertionError('Both timeseries must have key "time"')
     if keys is None:
         keys = timeseries1.keys() & timeseries2.keys()
-    for key in keys:
-        corrcoef = np.corrcoef(timeseries1[key], timeseries2[key])[0][1]
+    else:
+        if 'time' not in keys:
+            keys.append('time')
+    keys = list(keys)
+    time_index = keys.index('time')
+    shared_times = set(timeseries1['time']) & set(timeseries2['time'])
+    frac_timepoints_checked = (
+        len(shared_times)
+        / min(len(timeseries1), len(timeseries2))
+    )
+    if frac_timepoints_checked < required_frac_checked:
+        raise AssertionError(
+            'The timeseries share too few timepoints: '
+            '{} < {}'.format(
+                frac_timepoints_checked, required_frac_checked)
+        )
+    array1 = timeseries_to_ndarray(timeseries1, keys)
+    array2 = timeseries_to_ndarray(timeseries2, keys)
+    shared_times_mask1 = np.isin(array1[time_index], list(shared_times))
+    shared_times_mask2 = np.isin(array2[time_index], list(shared_times))
+    for index, key in enumerate(keys):
+        corrcoef = np.corrcoef(
+            array1[index][shared_times_mask1],
+            array2[index][shared_times_mask2],
+        )[0][1]
         threshold = thresholds.get(key, default_threshold)
         if corrcoef < threshold:
             raise AssertionError(
