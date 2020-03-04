@@ -10,7 +10,13 @@ from vivarium.utils.dict_utils import (
     deep_merge_check,
     flatten_timeseries,
 )
-from vivarium.compartment.process import initialize_state, simulate_compartment, Compartment
+from vivarium.compartment.process import (
+    initialize_state,
+    simulate_compartment,
+    Compartment,
+    COMPARTMENT_STATE,
+    Process,
+)
 from vivarium.utils.units import units
 
 # processes
@@ -112,13 +118,45 @@ def get_derivers(process_list, topology):
         'deriver_processes': processes,
         'deriver_topology': deriver_topology}
 
-def process_in_compartment(process):
+def get_schema(process_list, topology):
+    schema = {}
+    for level in process_list:
+        for process_id, process in level.items():
+            process_settings = process.default_settings()
+            process_schema = process_settings.get('schema', {})
+            try:
+                port_map = topology[process_id]
+            except:
+                print('{} topology port mismatch'.format(process_id))
+                raise
+
+            # go through each port, and get the schema
+            for process_port, settings in process_schema.items():
+                compartment_port = port_map[process_port]
+                compartment_schema = {
+                    compartment_port: settings}
+
+                ## TODO -- check for mismatch
+                deep_merge_check(schema, compartment_schema)
+
+    return schema
+
+def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
-    process_ports = list(process.ports.keys())
+    compartment_state_port = settings.get('compartment_state_port')
 
     processes = [{'process': process}]
-    topology = {'process': {port: port for port in process.ports}}
+    topology = {
+        'process': {
+            port: port for port in process.ports
+            if (not compartment_state_port
+                or port != compartment_state_port)
+        }
+    }
+
+    if compartment_state_port:
+        topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
@@ -128,7 +166,6 @@ def process_in_compartment(process):
     processes.extend(deriver_processes)
 
     # add deriver topology
-    topology = {'process': {key: key for key in process_ports}}
     topology.update(deriver_topology)
 
     # make the state
@@ -142,12 +179,12 @@ def process_in_compartment(process):
 
 def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
-    compartment = process_in_compartment(process)
+    compartment = process_in_compartment(process, settings)
     return simulate_with_environment(compartment, settings)
 
 def simulate_process(process, settings={}):
     ''' simulate a process in a compartment with no environment '''
-    compartment = process_in_compartment(process)
+    compartment = process_in_compartment(process, settings)
     return simulate_compartment(compartment, settings)
 
 def simulate_with_environment(compartment, settings={}):
@@ -382,6 +419,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
+
 def save_timeseries(timeseries, out_dir='out'):
     '''Save a timeseries as a CSV in out_dir'''
     flattened = flatten_timeseries(timeseries)
@@ -390,6 +428,7 @@ def save_timeseries(timeseries, out_dir='out'):
         writer = csv.writer(f)
         writer.writerow(flattened.keys())
         writer.writerows(rows)
+
 
 def load_timeseries(path_to_csv):
     '''Load a timeseries saved as a CSV using save_timeseries.
@@ -404,12 +443,14 @@ def load_timeseries(path_to_csv):
                 timeseries.setdefault(header, []).append(float(elem))
     return timeseries
 
+
 def timeseries_to_ndarray(timeseries, keys=None):
     if keys is None:
         keys = timeseries.keys()
     filtered = {key: timeseries[key] for key in keys}
     array = np.array(list(filtered.values()))
     return array
+
 
 def _prepare_timeseries_for_comparison(
     timeseries1, timeseries2, keys=None,
@@ -521,6 +562,7 @@ def assert_timeseries_correlated(
                     key, corrcoef, threshold)
             )
 
+
 def assert_timeseries_close(
     timeseries1, timeseries2, keys=None,
     default_tolerance=(1 - 1e-10), tolerances={},
@@ -566,3 +608,63 @@ def assert_timeseries_close(
                 'The data for {} differed by more than {}'.format(
                     key, tolerance)
             )
+
+
+# TESTS
+
+
+class ToyLinearGrowthDeathProcess(Process):
+
+    GROWTH_RATE = 1.0
+    THRESHOLD = 5.0
+
+    def __init__(self, initial_parameters={}):
+        ports = {
+            'compartment': ['processes'],
+            'global': ['mass'],
+        }
+        super(ToyLinearGrowthDeathProcess, self).__init__(
+            ports, initial_parameters)
+
+    def default_settings(self):
+        default_settings = {
+            'state': {
+                'global': {
+                    'mass': 0.0
+                }
+            },
+        }
+        return default_settings
+
+    def next_update(self, timestep, states):
+        mass = states['global']['mass']
+        mass_grown = (
+            ToyLinearGrowthDeathProcess.GROWTH_RATE * timestep)
+        update = {
+            'global': {'mass': mass_grown},
+        }
+        if mass > ToyLinearGrowthDeathProcess.THRESHOLD:
+            update['compartment'] = {
+                'processes': [],
+            }
+        return update
+
+
+class TestSimulateProcess:
+
+    def test_compartment_state_port(self):
+        '''Check that compartment state ports are handled'''
+        process = ToyLinearGrowthDeathProcess()
+        settings = {
+            'compartment_state_port': 'compartment',
+        }
+        saved_total_states = simulate_process(
+            process, settings)
+        timeseries = convert_to_timeseries(
+            saved_total_states)
+        expected_masses = [
+            # Mass stops increasing the iteration after mass > 5 because
+            # cell dies
+            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
+        masses = timeseries['global']['mass']
+        assert masses == expected_masses

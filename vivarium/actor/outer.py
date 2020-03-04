@@ -315,7 +315,7 @@ class Outer(Actor):
             else:
                 # compare the length of each simulation's run
                 ran = np.sort([
-                    math.ceil(simulation['time'])
+                    simulation['time']
                     for simulation
                     in self.simulations.values()])
 
