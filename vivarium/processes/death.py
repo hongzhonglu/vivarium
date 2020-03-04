@@ -73,8 +73,11 @@ class DeathFreezeState(Process):
         self.checkers = [
             CHECKER_CLASSES[name](**config_dict)
             for name, config_dict in initial_parameters.get(
-                'checkers', []).items()
+                'checkers', {}).items()
         ]
+        # List of names of processes that will remain after death
+        self.enduring_processes = initial_parameters.get(
+            'enduring_processes', [])
         ports = {
             'internal': set(),
             'compartment': ['processes'],
@@ -103,7 +106,17 @@ class DeathFreezeState(Process):
     def next_update(self, timestep, states):
         for checker in self.checkers:
             if not checker.check_can_survive(states):
-                return {'compartment': {'processes': []}}
+                cur_processes = states['compartment']['processes'][0]
+                return {
+                    'compartment': {
+                        'processes': [
+                            {
+                                process_name: cur_processes[process_name]
+                                for process_name in self.enduring_processes
+                            }
+                        ]
+                    }
+                }
         return {}
 
 
@@ -112,23 +125,25 @@ class ToyAntibioticInjector(Process):
     def __init__(self, initial_parameters={}):
         self.injection_rate = initial_parameters.get(
             'injection_rate', 1.0)
-        ports = {'internal': ['antibiotic']}
+        self.antibiotic_name = initial_parameters.get(
+            'antibiotic_name', 'antibiotic')
+        ports = {'internal': [self.antibiotic_name]}
         super(ToyAntibioticInjector, self).__init__(ports, initial_parameters)
 
     def default_settings(self):
         default_settings = {
             'state': {
                 'internal': {
-                    'antibiotic': 0.0
+                    self.antibiotic_name: 0.0
                 }
             },
-            'emitter_keys': {'antibiotic'},
+            'emitter_keys': {self.antibiotic_name},
         }
         return default_settings
 
     def next_update(self, timestep, states):
         delta = timestep * self.injection_rate
-        return {'internal': {'antibiotic': delta}}
+        return {'internal': {self.antibiotic_name: delta}}
 
 
 def compose_toy_death(config):
@@ -137,17 +152,24 @@ def compose_toy_death(config):
             'antibiotic': {
                 'antibiotic_threshold': TOY_ANTIBIOTIC_THRESHOLD,
             }
-        }
+        },
+        'enduring_processes': ['enduring_injector'],
     }
     death_process = DeathFreezeState(death_parameters)
     injector_parameters = {
         'injection_rate': TOY_INJECTION_RATE,
     }
     injector_process = ToyAntibioticInjector(injector_parameters)
+    enduring_parameters = {
+        'injection_rate': TOY_INJECTION_RATE,
+        'antibiotic_name': 'enduring_antibiotic'
+    }
+    enduring_process = ToyAntibioticInjector(enduring_parameters)
     processes = [
         {
             'death': death_process,
             'injector': injector_process,
+            'enduring_injector': enduring_process,
         },
     ]
     topology = {
@@ -157,11 +179,15 @@ def compose_toy_death(config):
         },
         'injector': {
             'internal': 'cell',
-        }
+        },
+        'enduring_injector': {
+            'internal': 'cell',
+        },
     }
     init_state = {
         'cell': {
-            'antibiotic': 0.0
+            'antibiotic': 0.0,
+            'enduring_antibiotic': 0.0,
         }
     }
     states = initialize_state(processes, topology, init_state)
@@ -198,7 +224,8 @@ def test_death_freeze_state(end_time=10, asserts=True):
                         # so their updates are applied after both have
                         # finished.
                         else (expected_death + 1) * TOY_INJECTION_RATE
-                    )
+                    ),
+                    'enduring_antibiotic': time * TOY_INJECTION_RATE,
                 }
             }
             for time in range(end_time + 1)
