@@ -6,15 +6,16 @@ import numpy as np
 from scipy.ndimage import convolve
 
 from vivarium.compartment.process import Process
-from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
 from vivarium.compartment.composition import (
     process_in_compartment,
     simulate_with_environment,
-    convert_to_timeseries,
-    plot_simulation_output)
+    convert_to_timeseries)
+
+
 
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
+
 
 
 class Diffusion(Process):
@@ -23,17 +24,25 @@ class Diffusion(Process):
 
     def __init__(self, initial_parameters={}):
 
+        # initial state
+        initial_state = initial_parameters.get('initial_state', {})
+        self.initial_sites = initial_state.get('sites', {})
+        self.initial_membrane = initial_state.get('membrane', {})
+
         # locations
         self.molecules = initial_parameters.get('molecules', {'glc': 1})
         self.molecule_ids = list(self.molecules.keys())
-        self.membranes = initial_parameters.get('membranes', [])
 
-        # diffusion parameters
+        # membranes
+        self.membranes = initial_parameters.get('membranes', [])
+        self.channels = initial_parameters.get('channels', {})
+
+        # parameters
         self.length_x = initial_parameters.get('length_x', 2)
         self.bins_x = initial_parameters.get('bins_x', 2)
         self.length_y = initial_parameters.get('length_y', 1)
         self.bins_y = initial_parameters.get('bins_y', 1)
-        self.diffusion = initial_parameters.get('diffusion', 1e3)
+        self.diffusion = initial_parameters.get('diffusion', 1e-1)
 
         self.dx = self.length_x / self.bins_x
         self.dy = self.length_y / self.bins_y
@@ -43,13 +52,35 @@ class Diffusion(Process):
         # make fields
         fields = self.fill_fields(self.molecules)
 
-        # make ports
+        # make ports from fields
         ports = self.make_ports(fields)
+        ports.update(
+            {'membrane': list(self.channels.keys())})
 
         parameters = {}
         parameters.update(initial_parameters)
 
         super(Diffusion, self).__init__(ports, parameters)
+
+
+    def default_settings(self):
+        initial_state = {
+            'membrane': self.initial_membrane}
+        initial_state.update(self.initial_sites)
+
+        return {
+            'state': initial_state}
+
+    def next_update(self, timestep, states):
+        sites = {
+            state_id: concs
+            for state_id, concs in states.items() if state_id is not 'membrane'}
+        fields = self.make_fields(sites)
+        field_update = self.run_diffusion(fields, timestep)
+        ports_update = self.make_ports(field_update)
+
+        return ports_update
+
 
     def make_ports(self, fields):
         ports = {}
@@ -76,21 +107,6 @@ class Diffusion(Process):
             fields[index].fill(molecules[molecule_id])
         return fields
 
-    def default_settings(self):
-        default_settings = {
-            'state': {},
-        }
-        return default_settings
-
-    def next_update(self, timestep, states):
-        fields = self.make_fields(states)
-        self.run_diffusion(fields, timestep)
-
-        import ipdb;
-        ipdb.set_trace()
-
-        update = {}
-        return update
 
 
     # diffusion functions
@@ -100,30 +116,62 @@ class Diffusion(Process):
         return change_field
 
     def run_diffusion(self, fields, timestep):
+        change_field = np.zeros((len(self.molecule_ids), self.bins_x, self.bins_y), dtype=np.float64)
         for index in range(len(fields)):
-            molecule = fields[index]
-            # run diffusion if molecule field is not uniform
-            if len(set(molecule.flatten())) != 1:
+            field = fields[index]
+            # run diffusion if field is not uniform
+            if len(set(field.flatten())) != 1:
                 t = 0.0
                 while t < timestep:
-                    molecule += self.diffusion_timestep(molecule, self.diffusion_dt)
+                    change_field[index] += self.diffusion_timestep(field, self.diffusion_dt)
                     t += self.diffusion_dt
+
+        return change_field
 
 
 # testing
+def get_two_compartment_config():
+    initial_state = {
+        'membrane': {
+            'porin': 1},
+        'sites': {
+            (0, 0): {
+                'glc': 20.0},
+            (1, 0): {
+                'glc': 0.0}
+        }}
+
+    return {
+        'initial_state': initial_state,
+        'molecules': {
+            'glc': 1
+        },
+        'membranes': [
+            ((0,0),(1,0))
+        ],
+        'channels':{
+            'porin': 1e-1  # diffusion rate through porin
+        },
+        'length_x': 2,
+        'bins_x': 2,
+        'length_y': 1,
+        'bins_y': 1,
+        'diffusion': 1e-1}
+
 def get_cell_config():
     return {
-    'molecules': {
-        'glc': 1},
-    'membranes': [],
-    'length_x': 10,
-    'bins_x': 10,
-    'length_y': 4,
-    'bins_y': 4,
-    'diffusion': 1e3}
+        'molecules': {
+            'glc': 1},
+        'membranes': [],
+        'length_x': 10,
+        'bins_x': 10,
+        'length_y': 4,
+        'bins_y': 4,
+        'diffusion': 1e-1}
 
 def test_diffusion(time=10):
-    config = get_cell_config()
+    # config = get_cell_config()
+    config = get_two_compartment_config()
 
     # load process
     diffusion = Diffusion(config)
@@ -138,6 +186,9 @@ def test_diffusion(time=10):
     return simulate_with_environment(compartment, settings)
 
 
+def plot_diffusion_output(timeseries, settings, out_dir):
+    pass
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'diffusion')
     if not os.path.exists(out_dir):
@@ -146,4 +197,7 @@ if __name__ == '__main__':
     saved_data = test_diffusion(20)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
-    plot_simulation_output(timeseries, {}, out_dir)
+
+    import ipdb; ipdb.set_trace()
+
+    plot_diffusion_output(timeseries, {}, out_dir)
