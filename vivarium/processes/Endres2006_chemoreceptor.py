@@ -4,6 +4,8 @@ import os
 import math
 import copy
 
+import matplotlib.pyplot as plt
+
 from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 
@@ -34,7 +36,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 1,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 10,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 
@@ -154,9 +156,7 @@ class ReceptorCluster(Process):
 
 
 # tests and analyses of process
-def test_receptor():
-    # TODO -- add asserts for test
-    # define timeline with (time (s), ligand concentration (mmol/L))
+def get_pulse_timeline():
     timeline = [
         (0, 0.0),
         (200, 0.01),
@@ -165,8 +165,29 @@ def test_receptor():
         (1400, 0.0),
         (1800, 1.0),
         (2200, 0.0),
-        (2400, 0.0),
-    ]
+        (2400, 0.0)]
+    return timeline
+
+def get_linear_step_timeline(config):
+    time = config.get('time', 2400)
+    slope = config.get('slope', 2e-3)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+    timeline = [(t, conc_0 + slope*t*speed) for t in range(time)]
+    return timeline
+
+def get_exponential_step_timeline(config):
+    time = config.get('time', 2400)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+    timeline = [(t, conc_0 + base**(t*speed)) for t in range(time)]
+    return timeline
+
+def test_receptor(timeline=get_pulse_timeline()):
+    # TODO -- add asserts for test
+    # define timeline with (time (s), ligand concentration (mmol/L))
+    end_time = timeline[-1][0]
     time = 0
     timestep = 1
 
@@ -180,15 +201,16 @@ def test_receptor():
     ligand_vec = []
     receptor_activity_vec = []
     n_methyl_vec = []
-    while time < timeline[-1][0]:
+    ligand_conc=timeline[0][1]
+    while time < end_time:
         time += timestep
-        for (t, conc) in timeline:
-            if time < t:
-                pass
-            else:
-                ligand_conc = conc
-                state['external'][ligand_id] = ligand_conc
-                continue
+
+        timeline_steps = [index for index, (t, conc) in enumerate(timeline) if t < time]
+        if len(timeline_steps) > 0:
+            step = timeline_steps[-1]
+            ligand_conc = timeline[step][1]
+            state['external'][ligand_id] = ligand_conc
+            del timeline[0:step+1]
 
         # run step
         update = receptor.next_update(timestep, state)
@@ -209,9 +231,7 @@ def test_receptor():
         'receptor_activity_vec': receptor_activity_vec,
         'n_methyl_vec': n_methyl_vec}
 
-def plot_output(output, out_dir='out'):
-    import matplotlib.pyplot as plt
-
+def plot_output(output, out_dir='out', filename='response'):
     ligand_vec = output['ligand_vec']
     receptor_activity_vec = output['receptor_activity_vec']
     n_methyl_vec = output['n_methyl_vec']
@@ -234,7 +254,7 @@ def plot_output(output, out_dir='out'):
     ax1.spines['top'].set_visible(False)
     ax1.tick_params(right=False, top=False)
     ax1.set_ylabel("external ligand \n log(mM) ", fontsize=10)
-    ax1.set_yscale('log')
+    # ax1.set_yscale('log')
 
     ax2.set_xticklabels([])
     ax2.spines['right'].set_visible(False)
@@ -248,14 +268,35 @@ def plot_output(output, out_dir='out'):
     ax3.set_xlabel("time (s)", fontsize=12)
     ax3.set_ylabel("average \n methylation", fontsize=10)
 
-    fig_path = os.path.join(out_dir, 'response')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
-    output = test_receptor()
     out_dir = os.path.join('out', 'tests', 'Endres2006_chemoreceptor')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    plot_output(output, out_dir)
+
+    # timeline = get_pulse_timeline()
+    # output = test_receptor(timeline)
+    # filename = 'pulse'
+    # plot_output(output, out_dir, filename)
+
+    linear_config = {
+        'time': 2400,
+        'slope': 1e2,
+        'speed': 14}
+    timeline2 = get_linear_step_timeline(linear_config)
+    output2 = test_receptor(timeline2)
+    filename2 = 'linear'
+    plot_output(output2, out_dir, filename2)
+
+    exponential_config = {
+        'time': 2400,
+        'base': 1+2e-4,
+        'speed': 14}
+    timeline3 = get_exponential_step_timeline(exponential_config)
+    output3 = test_receptor(timeline3)
+    filename3 = 'exponential'
+    plot_output(output3, out_dir, filename3)
