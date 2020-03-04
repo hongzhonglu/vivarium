@@ -44,6 +44,14 @@ class Diffusion(Process):
         fields = self.fill_fields(self.molecules)
 
         # make ports
+        ports = self.make_ports(fields)
+
+        parameters = {}
+        parameters.update(initial_parameters)
+
+        super(Diffusion, self).__init__(ports, parameters)
+
+    def make_ports(self, fields):
         ports = {}
         for x in range(self.bins_x):
             for y in range(self.bins_y):
@@ -51,17 +59,18 @@ class Diffusion(Process):
                     mol_id: fields[mol_index][x][y]
                     for mol_index, mol_id in enumerate(self.molecule_ids)}
                 ports[(x,y)]= concs
+        return ports
 
-        parameters = {}
-        parameters.update(initial_parameters)
-
-        super(Diffusion, self).__init__(ports, parameters)
+    def make_fields(self, ports):
+        fields = np.empty((len(self.molecule_ids), self.bins_x, self.bins_y), dtype=np.float64)
+        for (x,y), conc_dict in ports.items():
+            concs = [conc_dict[mol_id] for mol_id in self.molecule_ids]
+            fields[:,x,y] = concs
+        return fields
 
     def fill_fields(self, molecules={}):
         # Create lattice and fill each site with concentrations dictionary
         # Molecule identities are defined along the major axis, with spatial dimensions along the other two axes.
-
-
         fields = np.empty((len(self.molecule_ids), self.bins_x, self.bins_y), dtype=np.float64)
         for index, molecule_id in enumerate(self.molecule_ids):
             fields[index].fill(molecules[molecule_id])
@@ -74,11 +83,15 @@ class Diffusion(Process):
         return default_settings
 
     def next_update(self, timestep, states):
-        import ipdb; ipdb.set_trace()
+        fields = self.make_fields(states)
+        self.run_diffusion(fields, timestep)
 
+        import ipdb;
+        ipdb.set_trace()
 
         update = {}
         return update
+
 
     # diffusion functions
     def diffusion_timestep(self, field, dt):
@@ -86,9 +99,9 @@ class Diffusion(Process):
         change_field = self.diffusion * dt * convolve(field, LAPLACIAN_2D, mode='reflect') / self.dx2
         return change_field
 
-    def run_diffusion(self, timestep):
-        for index in range(len(self.fields)):
-            molecule = self.fields[index]
+    def run_diffusion(self, fields, timestep):
+        for index in range(len(fields)):
+            molecule = fields[index]
             # run diffusion if molecule field is not uniform
             if len(set(molecule.flatten())) != 1:
                 t = 0.0
@@ -99,9 +112,15 @@ class Diffusion(Process):
 
 # testing
 def get_cell_config():
-
-
-    return {}
+    return {
+    'molecules': {
+        'glc': 1},
+    'membranes': [],
+    'length_x': 10,
+    'bins_x': 10,
+    'length_y': 4,
+    'bins_y': 4,
+    'diffusion': 1e3}
 
 def test_diffusion(time=10):
     config = get_cell_config()
