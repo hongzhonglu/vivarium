@@ -95,7 +95,8 @@ class Diffusion(Process):
         self.dx = self.length_x / bins_x
         self.dy = self.length_y / bins_y
         self.dx2 = self.dx * self.dy
-        self.diffusion_dt = 0.5 * self.dx ** 2 * self.dy ** 2 / (2 * self.diffusion * (self.dx ** 2 + self.dy ** 2))
+        diffusion_dt = 0.5 * self.dx ** 2 * self.dy ** 2 / (2 * self.diffusion * (self.dx ** 2 + self.dy ** 2))
+        self.diffusion_dt = min(diffusion_dt, 1)
 
         # make fields
         fields = make_fields(self.molecules, self.n_bins)
@@ -141,6 +142,7 @@ class Diffusion(Process):
             t = 0.0
             while t < timestep:
                 field += self.diffusion_timestep(field)
+
                 t += self.diffusion_dt
             delta -= field
             fields_change[mol_id] = delta
@@ -171,11 +173,11 @@ def get_two_compartment_config():
         'channels':{
             'porin': 1e-1  # diffusion rate through porin
         },
-        'length_x': 2,
+        'length_x': 2e-2,
         'bins_x': 2,
-        'length_y': 1,
+        'length_y': 1e-2,
         'bins_y': 1,
-        'diffusion': 1e-1}
+        'diffusion': 1e-4}
 
 def get_cell_config():
     initial_state = {
@@ -193,11 +195,11 @@ def get_cell_config():
         'molecules': {
             'glc': 1},
         'membranes': [],
-        'length_x': 10,
+        'length_x': 10e-1,
         'bins_x': 10,
-        'length_y': 4,
+        'length_y': 4e-1,
         'bins_y': 4,
-        'diffusion': 1e-1}
+        'diffusion': 1e1}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
     # load process
@@ -237,7 +239,6 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
      # plot fields
     time_vec = times
     plot_steps = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int).tolist()
-    snapshot_times = [time_vec[i] for i in plot_steps]
 
     # make figure
     fig = plt.figure(figsize=(20 * n_snapshots, 10*n_fields))
@@ -256,15 +257,15 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
             ax.set_yticklabels([])
             ax.set_xticklabels([])
 
-            plt.imshow(this_field,
+            plt.imshow(np.rot90(this_field),
                        # vmin=0,
                        # vmax=15.0,
                        origin='lower',
-                       # extent=[0, length_y, 0, length_x],
+                       extent=[0, length_x, 0, length_y],
                        interpolation='nearest',
                        cmap='YlGn')
 
-    plt.colorbar()
+    # plt.colorbar()
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path, bbox_inches='tight')
