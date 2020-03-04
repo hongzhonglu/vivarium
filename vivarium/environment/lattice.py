@@ -198,17 +198,27 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
+        edge_jitter = 0.2  # TODO -- add to globals
         for agent_id, location in self.locations.items():
             # set location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
-            # enforce boundaries # TODO (Eran) -- make pymunk handle this
-            self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
-            if self.locations[agent_id][0] > self.edge_length_x:
+            # enforce boundaries
+            # TODO (Eran) -- make pymunk handle this
+            if self.locations[agent_id][0] >= self.edge_length_x:
                 self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
-            if self.locations[agent_id][1] > self.edge_length_y:
+                self.locations[agent_id][2] += random.normalvariate(0, edge_jitter)  # give a little rotational jitter
+            elif self.locations[agent_id][0] <= 0.0:
+                self.locations[agent_id][0] = 0.0
+                self.locations[agent_id][2] += random.normalvariate(0, edge_jitter)  # give a little rotational jitter
+
+            if self.locations[agent_id][1] >= self.edge_length_y:
                 self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
+                self.locations[agent_id][2] += random.normalvariate(0, edge_jitter)  # give a little rotational jitter
+            elif self.locations[agent_id][1] <= 0.0:
+                self.locations[agent_id][1] = 0.0
+                self.locations[agent_id][2] += random.normalvariate(0, edge_jitter)  # give a little rotational jitter
 
     def add_cell_to_physics(self, agent_id, position, angle):
         ''' Add body to multi-cell physics simulation'''

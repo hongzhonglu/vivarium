@@ -28,12 +28,14 @@ DEFAULT_PARAMETERS = {
 INITIAL_STATE = {
     # response regulator proteins
     'CheY_tot': 9.7,  # (uM) #0.0097,  # (mM) 9.7 uM = 0.0097 mM
-    'CheY_P': 0.0,
+    'CheY_P': 0.5,
     'CheZ': 0.01*100,  # (uM) #phosphatase 100 uM = 0.1 mM (0.01 scaling from RapidCell1.4.2)
     'CheA': 0.01*100,  # (uM) #100 uM = 0.1 mM (0.01 scaling from RapidCell1.4.2)
     # sensor activity
     'chemoreceptor_activity': 1/3,
     # motor activity
+    'ccw_motor_bias': 0.5,
+    'ccw_to_cw': 0.5,
     'motile_force': 0,
     'motile_torque': 0,
     'motor_state': 1,  # motor_state 1 for tumble, 0 for run
@@ -147,7 +149,7 @@ class MotorActivity(Process):
         ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
 
         if motor_state_current == 0:  # 0 for run
-            # switch to tumble?
+            # switch to tumble (cw)?
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
@@ -157,7 +159,7 @@ class MotorActivity(Process):
                 thrust, torque = run()
 
         elif motor_state_current == 1:  # 1 for tumble
-            # switch to run?
+            # switch to run (ccw)?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
@@ -177,7 +179,7 @@ class MotorActivity(Process):
 
 def tumble():
     thrust = 100  # pN
-    tumble_jitter = 0.1
+    tumble_jitter = 0.3
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
@@ -191,16 +193,7 @@ def run():
 
 def test_motor_control(total_time=10):
     # TODO -- add asserts for test
-
-    initial_params = {
-        # 'adaptPrecision': 1,
-        # motor
-        'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
-        'n_motors': 5,
-        'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
-    }
-
-    motor = MotorActivity(initial_params)
+    motor = MotorActivity({})
     settings = motor.default_settings()
     state = settings['state']
     receptor_activity = 1./3.

@@ -51,7 +51,10 @@ class Motor(Analysis):
         for agent_id, specs in experiment_config['agents'].items():
             internal_port = specs['topology']['motor']['internal']
 
-        # TODO -- why can internal_port be incorrect in topology?
+        internal_port = 'internal'
+        # TODO -- why can internal_port be incorrect in topology???
+        # TODO -- are there multiple topologies being used?
+
         if internal_port not in compartment_data:
             internal_port = 'cell'
 
@@ -130,24 +133,25 @@ class Motor(Analysis):
         ax2.plot(ccw_motor_bias_vec, 'b', label='ccw_motor_bias')
         ax2.plot(ccw_to_cw_vec, 'g', label='ccw_to_cw')
         ax3.plot(speed_vec)
-        ax3.axhline(y=avg_speed, color='r', linestyle='dashed', label='mean')
-        ax3.axhline(y=expected_speed, color='b', linestyle='dashed', label='expected mean')
+        ax3.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
+        ax3.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
 
         # plot change in direction between runs
         ax4.plot(angle_between_runs)
-        ax4.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean angle between runs')
-        ax4.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='exp. angle between runs')
+        ax4.axhline(y=avg_angle_between_runs, color='b', linestyle='dashed', label='mean')
+        ax4.axhline(y=expected_angle_between_runs, color='r', linestyle='dashed', label='expected mean')
 
         # plot run/tumble distributions
-        max_length = max(run_lengths + tumble_lengths)
-        bins = np.linspace(0, max_length, 10)
-        logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
-        ax5.hist([run_lengths, tumble_lengths], bins=logbins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
+        if len(run_lengths) > 1 and len(tumble_lengths) > 1:
+            max_length = max(run_lengths + tumble_lengths)
+            bins = np.linspace(0, max_length, 10)
+            logbins = np.logspace(0, np.log10(bins[-1]), len(bins))
+            ax5.hist([run_lengths, tumble_lengths], bins=logbins, label=['run_lengths', 'tumble_lengths'], color=['b', 'm'])
 
-        # plot expected values
-        ax5.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
-        ax5.axvline(x=expected_run, color='b', linestyle='dashed', label='expected run')
-        ax5.axvline(x=expected_run_chemotax, color='c', linestyle='dashed', label='expected chemotaxis run')
+            # plot expected values
+            ax5.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
+            ax5.axvline(x=expected_run, color='r', linestyle='dashed', label='expected run')
+            ax5.axvline(x=expected_run_chemotax, color='orange', linestyle='dashed', label='expected chemotaxis run')
 
 
         # labels
@@ -165,7 +169,6 @@ class Motor(Analysis):
         ax5.set_xlabel("motor state length (sec)")
         ax5.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax5.set_xscale('log')
-
 
         plt.savefig(output_dir + '/motor', bbox_inches='tight')
         plt.close(fig)
