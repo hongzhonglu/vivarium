@@ -114,6 +114,7 @@ def test_complexation():
     state = settings['state']
 
     update = complexation.next_update(1.0, state)
+    print('initial state: {}'.format(state))
     print('complexation update: {}'.format(update))
 
 if __name__ == '__main__':
