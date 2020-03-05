@@ -29,5 +29,5 @@ pytest==4.6.5
 pytest-benchmark==3.2.2
 scipy==1.4.1
 scs==2.0.2
-stochastic-arrow==0.3.0
+stochastic-arrow==0.3.1
 swiglpk==1.4.4
