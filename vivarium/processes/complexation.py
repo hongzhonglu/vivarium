@@ -10,8 +10,8 @@ from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 chromosome = FlagellaChromosome()
 
 default_complexation_parameters = {
-    'monomer_ids': ['fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'MotA', 'MotB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE'],
-    'complex_ids': ['flagellar motor switch','flagellum', 'flagellar export apparatus', 'flagellar motor'],
+    'monomer_ids': chromosome.complexation_monomer_ids,
+    'complex_ids': chromosome.complexation_complex_ids,
     'stoichiometry': chromosome.complexation_stoichiometry,
     'rates': chromosome.complexation_rates}
 
