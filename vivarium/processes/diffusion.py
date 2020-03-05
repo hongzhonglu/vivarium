@@ -13,30 +13,12 @@ from vivarium.compartment.composition import (
     convert_to_timeseries)
 
 
+DIFFUSION_CONSTANT = 1e-2
 
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
 
-def make_fields(molecules, n_bins):
-    # Create lattice and fill each site with concentrations dictionary
-    # Molecule identities are defined along the major axis, with spatial dimensions along the other two axes.
-    fields = {}
-    for molecule_id, conc in molecules.items():
-        fields[molecule_id] = np.full((n_bins), conc, dtype=np.float64)
-    return fields
-
-def fields_to_locations(fields, n_bins):
-    bins_x = n_bins[0]
-    bins_y = n_bins[1]
-    locations = {}
-    for x in range(bins_x):
-        for y in range(bins_y):
-            concs = {
-                mol_id: field[x][y]
-                for mol_id, field in fields.items()}
-            locations[(x,y)]= concs
-    return locations
 
 def locations_to_fields(locations, molecule_ids, n_bins):
     fields = {}
@@ -63,6 +45,45 @@ def field_from_locations_series(locations_series, molecule_ids, n_bins, times):
             field_series[molecule_id][time_index] = field
     return field_series
 
+def check_in_set(set_list, set):
+    in_set = False
+    for edge in set_list:
+        if set[0] in edge and set[1] in edge:
+            in_set = True
+    return in_set
+
+def make_location_network(molecules, n_bins):
+    bins_x = n_bins[0]
+    bins_y = n_bins[1]
+    locations = []
+    adjacent_edges = set()
+
+    # make location dict
+    for x in range(bins_x):
+        for y in range(bins_y):
+            locations.append((x,y))
+
+    # make adjacency list
+    for x in range(bins_x):
+        for y in range(bins_y):
+            if y > 0:
+                south = ((x, y), (x, y-1))
+                if not check_in_set(adjacent_edges, south):
+                    adjacent_edges.add(south)
+            if y < bins_y-1:
+                north = ((x, y), (x, y+1))
+                if not check_in_set(adjacent_edges, north):
+                    adjacent_edges.add(north)
+            if x > 0:
+                west = ((x, y), (x-1, y))
+                if not check_in_set(adjacent_edges, west):
+                    adjacent_edges.add(west)
+            if x < bins_x-1:
+                east = ((x, y), (x+1, y))
+                if not check_in_set(adjacent_edges, east):
+                    adjacent_edges.add(east)
+
+    return locations, adjacent_edges
 
 
 class Diffusion(Process):
@@ -73,34 +94,37 @@ class Diffusion(Process):
 
         # initial state
         initial_state = initial_parameters.get('initial_state', {})
-        self.initial_sites = initial_state.get('sites', {})
         self.initial_membrane = initial_state.get('membrane_composition', {})
-
-        # locations
-        self.molecules = initial_parameters.get('molecules', {'glc': 1})
-        self.molecule_ids = list(self.molecules.keys())
+        self.initial_sites = initial_state.get('sites', {})
 
         # membranes
-        self.membrane_locations = initial_parameters.get('membranes', [])
+        self.membrane_locations = initial_parameters.get('membrane_locations', [])
         self.channels = initial_parameters.get('channels', {})
 
         # parameters
-        self.length_x = initial_parameters.get('length_x', 2)
-        self.length_y = initial_parameters.get('length_y', 1)
-        bins_x = initial_parameters.get('bins_x', 2)
-        bins_y = initial_parameters.get('bins_y', 1)
-        self.n_bins = (bins_x, bins_y)
-        self.diffusion = initial_parameters.get('diffusion', 1e-1)
+        n_bins = initial_parameters.get('n_bins', (2,1))
+        size = initial_parameters.get('size', (2, 1))
+        bins_x = n_bins[0]
+        bins_y = n_bins[1]
+        length_x = size[0]
+        length_y = size[1]
 
-        self.dx = self.length_x / bins_x
-        self.dy = self.length_y / bins_y
+        ## make diffusion network
+        molecule_ids = initial_parameters.get('molecules', ['glc'])
+        diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
+        locations, edges = make_location_network(molecule_ids, n_bins)
+        self.diffusion_network = DiffusionNetwork(locations, edges, molecule_ids, diffusion)
+
+        self.dx = length_x / bins_x
+        self.dy = length_y / bins_y
         self.dx2 = self.dx * self.dy
-        diffusion_dt = 0.5 * self.dx ** 2 * self.dy ** 2 / (2 * self.diffusion * (self.dx ** 2 + self.dy ** 2))
+        diffusion_dt = 0.5 * self.dx ** 2 * self.dy ** 2 / (2 * diffusion * (self.dx ** 2 + self.dy ** 2))
         self.diffusion_dt = min(diffusion_dt, 1)
 
-        # make fields
-        fields = make_fields(self.molecules, self.n_bins)
-        ports = fields_to_locations(fields, self.n_bins)
+        # make ports from locations and membrane channels
+        ports = {
+            site: molecule_ids
+            for site in locations}
         ports.update(
             {'membrane_composition': list(self.channels.keys())})
 
@@ -119,35 +143,40 @@ class Diffusion(Process):
             'state': initial_state}
 
     def next_update(self, timestep, states):
-        locations = {
+        concentrations = {
             state_id: concs
             for state_id, concs in states.items() if state_id is not 'membrane_composition'}
-        fields = locations_to_fields(locations, self.molecule_ids, self.n_bins)
 
-        # run diffusion
-        field_update = self.run_diffusion(fields, timestep)
-        locations_update = fields_to_locations(field_update, self.n_bins)
+        diffusion_delta = self.diffusion_network.diffusion_delta(concentrations, timestep)
 
-        return locations_update
+        return diffusion_delta
 
-    # diffusion functions
-    def diffusion_timestep(self, field):
-        change_field = self.diffusion * self.diffusion_dt * convolve(field, LAPLACIAN_2D, mode='reflect') / self.dx2
-        return change_field
 
-    def run_diffusion(self, fields, timestep):
-        fields_change = {}
-        for mol_id, field in fields.items():
-            delta = field.copy()
-            t = 0.0
-            while t < timestep:
-                field += self.diffusion_timestep(field)
+class DiffusionNetwork(object):
 
-                t += self.diffusion_dt
-            delta -= field
-            fields_change[mol_id] = delta
-        return fields_change
+    def __init__(self, nodes, edges, molecule_ids, diffusion):
+        self.nodes = nodes
+        self.edges = edges
+        self.molecule_ids = molecule_ids
+        self.diffusion = diffusion
 
+    def diffusion_delta(self, concentrations, timestep):
+        diffusion_delta = {
+            site: {mol_id: 0 for mol_id in self.molecule_ids}
+            for site in self.nodes}
+
+        for edge in self.edges:
+            node1 = edge[0]
+            node2 = edge[1]
+            concs1 = concentrations[node1]
+            concs2 = concentrations[node2]
+            for mol_id in self.molecule_ids:
+                delta1 = self.diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
+                delta2 = -delta1
+                diffusion_delta[node1][mol_id] += delta1
+                diffusion_delta[node2][mol_id] += delta2
+
+        return diffusion_delta
 
 
 # testing functions
@@ -164,20 +193,14 @@ def get_two_compartment_config():
 
     return {
         'initial_state': initial_state,
-        'molecules': {
-            'glc': 1
-        },
-        'membranes': [
-            ((0,0),(1,0))
-        ],
+        'molecules': ['glc'],
+        'membrane_locations': [((0,0),(1,0))],
         'channels':{
             'porin': 1e-1  # diffusion rate through porin
         },
-        'length_x': 2e-2,
-        'bins_x': 2,
-        'length_y': 1e-2,
-        'bins_y': 1,
-        'diffusion': 1e-4}
+        'n_bins': (2, 1),
+        'size': (2e-2, 1e-2),
+        'diffusion': 1e-1}
 
 def get_cell_config():
     initial_state = {
@@ -192,14 +215,11 @@ def get_cell_config():
 
     return {
         'initial_state': initial_state,
-        'molecules': {
-            'glc': 1},
-        'membranes': [],
-        'length_x': 10e-1,
-        'bins_x': 10,
-        'length_y': 4e-1,
-        'bins_y': 4,
-        'diffusion': 1e1}
+        'molecules': ['glc'],
+        'membrane_locations': [],
+        'n_bins': (10, 4),
+        'size': (10e-1, 4e-1),
+        'diffusion': 1e-1}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
     # load process
@@ -209,24 +229,25 @@ def test_diffusion(config = get_two_compartment_config(), time=10):
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
-        'environment_volume': 1e-12}
+        'environment_volume': 1e-2}
 
     compartment = process_in_compartment(diffusion)
     return simulate_with_environment(compartment, settings)
 
 def plot_diffusion_output(data, config, out_dir='out', filename='field'):
-
     n_snapshots = 6
 
     # parameters
     molecules = config.get('molecules')
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
-    length_x = config.get('length_x')
-    length_y = config.get('length_y')
-    bins_x = config.get('bins_x')
-    bins_y = config.get('bins_y')
-    n_bins = (bins_x, bins_y)
+
+    n_bins = config.get('n_bins')
+    size = config.get('size')
+    bins_x = n_bins[0]
+    bins_y = n_bins[1]
+    length_x = size[0]
+    length_y = size[1]
 
     # data
     times = data.get('time')
@@ -247,6 +268,8 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
 
     for mol_idx, mol_id in enumerate(molecule_ids):
         field_data = field_series[mol_id]
+        vmin = np.amin(field_data)
+        vmax = np.amax(field_data)
 
         for time_index, time_step in enumerate(plot_steps, 0):
             this_field = field_data[time_index]
@@ -258,8 +281,8 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
             ax.set_xticklabels([])
 
             plt.imshow(np.rot90(this_field),
-                       # vmin=0,
-                       # vmax=15.0,
+                       vmin=vmin,
+                       vmax=vmax,
                        origin='lower',
                        extent=[0, length_x, 0, length_y],
                        interpolation='nearest',
@@ -279,6 +302,5 @@ if __name__ == '__main__':
     # config = get_two_compartment_config()
     config = get_cell_config()
     saved_data = test_diffusion(config, 10)
-    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_diffusion_output(timeseries, config, out_dir)
