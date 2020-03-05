@@ -81,6 +81,7 @@ class DeathFreezeState(Process):
         ports = {
             'internal': set(),
             'compartment': ['processes'],
+            'global': ['dead'],
         }
         for checker in self.checkers:
             needed_keys = checker.needed_state_keys
@@ -95,10 +96,14 @@ class DeathFreezeState(Process):
         default_settings = {
             'state': {
                 'internal': {},
+                'global': {
+                    'dead': 0,
+                },
             },
             'emitter_keys': {},
             'updaters': {
                 'compartment': {'processes': 'set'},
+                'global': {'dead': 'set'},
             },
         }
         return default_settings
@@ -115,7 +120,10 @@ class DeathFreezeState(Process):
                                 for process_name in self.enduring_processes
                             }
                         ]
-                    }
+                    },
+                    'global': {
+                        'dead': 1,
+                    },
                 }
         return {}
 
@@ -176,6 +184,7 @@ def compose_toy_death(config):
         'death': {
             'internal': 'cell',
             'compartment': COMPARTMENT_STATE,
+            'global': 'global',
         },
         'injector': {
             'internal': 'cell',
@@ -188,7 +197,10 @@ def compose_toy_death(config):
         'cell': {
             'antibiotic': 0.0,
             'enduring_antibiotic': 0.0,
-        }
+        },
+        'global': {
+            'dead': 0,
+        },
     }
     states = initialize_state(processes, topology, init_state)
     options = {
@@ -226,7 +238,10 @@ def test_death_freeze_state(end_time=10, asserts=True):
                         else (expected_death + 1) * TOY_INJECTION_RATE
                     ),
                     'enduring_antibiotic': time * TOY_INJECTION_RATE,
-                }
+                },
+                'global': {
+                    'dead': 0 if time <= expected_death else 1,
+                },
             }
             for time in range(end_time + 1)
         }
