@@ -328,19 +328,16 @@ def initialize_measp_long(boot_config):
         'emit_frequency': 20,
         'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
         'gradient': {
-            'type': 'linear',
+            'type': 'exponential',
             'molecules': {
-                # linear gradient of 1E-5 mM/um (1E-2 mM/mm) is used in
-                # Vladimirov, N., Lovdok, L., Lebiedz, D., & Sourjik, V.(2008).
-                # Dependence of bacterial chemotaxis on gradient shape and adaptation rate.
                 'GLC': {
                     'center': [0.0, 0.5],
-                    'slope': 2e-3},
+                    'base': 1+5e-3},
                 'MeAsp': {
                     'center': [0.0, 0.5],
-                    'slope': 2e-1}
+                    'base': 1+5e-3}
             }},
-        'jitter_force': 1e-4,
+        'jitter_force': 1e0,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
         'patches_per_edge_x': 100}

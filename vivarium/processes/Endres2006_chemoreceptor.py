@@ -36,7 +36,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 10,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 4,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 

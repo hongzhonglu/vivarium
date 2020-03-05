@@ -268,7 +268,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
     def add_gradient(self, gradient):
         if gradient.get('type') == 'gaussian':
             """
-            gaussian gradient multiplies the basal concentration of the given molecule
+            gaussian gradient multiplies the base concentration of the given molecule
             by a gaussian function of distance from center and deviation
 
             'gradient': {
@@ -301,7 +301,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
         elif gradient.get('type') == 'linear':
             """
-            linear gradient adds to the basal concentration of the given molecule
+            linear gradient adds to the base concentration of the given molecule
             as a function of distance from center and slope.
 
             'gradient': {
@@ -334,6 +334,41 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
 
+        elif gradient.get('type') == 'exponential':
+             """
+             exponential gradient adds a delta (d) to the base concentration (c) 
+             of the given molecule as a function of distance  (x) from center and base (b), 
+             with d=c+x^d.
+ 
+             'gradient': {
+                 'type': 'exponential',
+                 'molecules': {
+                     'mol_id1':{
+                         'center': [0.0, 0.0],
+                         'base': 1+2e-4},
+                     'mol_id2': {
+                         'center': [1.0, 1.0],
+                         'base': 1+2e-4}
+                 }},
+             """
+
+             for molecule_id, specs in gradient['molecules'].items():
+                 mol_index = self._molecule_ids.index(molecule_id)
+                 center = [specs['center'][0] * self.edge_length_x,
+                           specs['center'][1] * self.edge_length_y]
+                 base = specs['base']
+
+                 for x_patch in range(self.patches_per_edge_x):
+                     for y_patch in range(self.patches_per_edge_y):
+                         dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
+                         dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
+                         distance = np.sqrt(dx ** 2 + dy ** 2)
+                         added = base**distance - 1
+
+                         # add to base concentration
+                         self.lattice[mol_index][x_patch][y_patch] += added
+
+                 self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
 
     def run_diffusion(self, timestep):
         for index in range(len(self.lattice)):
