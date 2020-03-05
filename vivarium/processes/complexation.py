@@ -61,8 +61,6 @@ class Complexation(Process):
             self.monomer_ids,
             self.complex_ids)
 
-        print(self.complexation_stoichiometry)
-
         self.complexation = StochasticSystem(self.complexation_stoichiometry)
 
         self.ports = {
@@ -94,8 +92,6 @@ class Complexation(Process):
             substrate,
             self.complexation_rates)
 
-        print(result)
-
         outcome = result['outcome'] - substrate
 
         monomers_update = {
@@ -110,8 +106,6 @@ class Complexation(Process):
             'monomers': monomers_update,
             'complexes': complexes_update}
 
-        print('complexation update: {}'.format(update))
-
         return update
 
 def test_complexation():
@@ -120,7 +114,7 @@ def test_complexation():
     state = settings['state']
 
     update = complexation.next_update(1.0, state)
-    print(update)
+    print('complexation update: {}'.format(update))
 
 if __name__ == '__main__':
     test_complexation()
