@@ -44,6 +44,10 @@ class Antibiotics(ConvenienceKinetics):
             initial_state = initial_parameters['initial_state']
         if 'fluxes' not in initial_state:
             initial_state['fluxes'] = DEFAULT_INITIAL_FLUXES
+        porin_kcat = initial_parameters.get('porin_kcat', 1e-4)
+        porin_km = initial_parameters.get('porin_km', 0.6)
+        acrABTolC_kcat = initial_parameters.get('acrABTolC_kcat', 2e-4)
+        acrABTolC_km = initial_parameters.get('acrABTolC_km', 0.6)
         parameters = {
             'reactions': {
                 'antibiotic_import': {
@@ -67,14 +71,14 @@ class Antibiotics(ConvenienceKinetics):
             'kinetic_parameters': {
                 'antibiotic_import': {
                     ('internal', 'porin'): {
-                        'kcat_f': 1e-4,
-                        ('external', 'antibiotic'): 0.6,
+                        'kcat_f': porin_kcat,
+                        ('external', 'antibiotic'): porin_km,
                     },
                 },
                 'antibiotic_export': {
                     ('internal', 'AcrAB-TolC'): {
-                        'kcat_f': 2e-4,
-                        ('internal', 'antibiotic'): 0.6,
+                        'kcat_f': acrABTolC_kcat,
+                        ('internal', 'antibiotic'): acrABTolC_km,
                     },
                 },
             },
