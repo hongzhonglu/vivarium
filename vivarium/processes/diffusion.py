@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,22 +12,8 @@ from vivarium.compartment.composition import (
     convert_to_timeseries)
 
 
+
 DIFFUSION_CONSTANT = 1e-2
-
-# laplacian kernel for diffusion
-LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
-
-
-
-def locations_to_fields(locations, molecule_ids, n_bins):
-    fields = {}
-    for molecule_id in molecule_ids:
-        field = np.empty((n_bins), dtype=np.float64)
-        for x in range(n_bins[0]):
-            for y in range(n_bins[1]):
-                field[x,y] = locations[(x,y)][molecule_id]
-        fields[molecule_id] = field
-    return fields
 
 def field_from_locations_series(locations_series, molecule_ids, n_bins, times):
     n_times = len(times)
@@ -52,7 +37,7 @@ def check_in_set(set_list, set):
             in_set = True
     return in_set
 
-def make_location_network(molecules, n_bins):
+def make_location_network(n_bins):
     bins_x = n_bins[0]
     bins_y = n_bins[1]
     locations = []
@@ -107,27 +92,27 @@ class Diffusion(Process):
         # make diffusion network
         molecule_ids = initial_parameters.get('molecules', ['glc'])
         diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
-        locations, edges = make_location_network(molecule_ids, n_bins)
+        locations, edges = make_location_network(n_bins)
 
         # membranes
         membrane_locations = initial_parameters.get('membrane_locations', [])
         channels = initial_parameters.get('channels', {})
 
+        # diffusion settings
+        dx = length_x / bins_x
+        dy = length_y / bins_y
+        dx2 = dx * dy
+        # diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * diffusion * (dx ** 2 + dy ** 2))
+
         diffusion_config = {
             'nodes': locations,
             'edges': edges,
             'molecule_ids': molecule_ids,
-            'diffusion': diffusion,
+            'diffusion': diffusion/dx2,
             'membrane_locations': membrane_locations,
             'channels': channels}
 
         self.diffusion_network = DiffusionNetwork(diffusion_config)
-
-        self.dx = length_x / bins_x
-        self.dy = length_y / bins_y
-        self.dx2 = self.dx * self.dy
-        diffusion_dt = 0.5 * self.dx ** 2 * self.dy ** 2 / (2 * diffusion * (self.dx ** 2 + self.dy ** 2))
-        self.diffusion_dt = min(diffusion_dt, 1)
 
         # make ports from locations and membrane channels
         ports = {
@@ -146,7 +131,6 @@ class Diffusion(Process):
         initial_state = {
             'membrane_composition': self.initial_membrane}
         initial_state.update(self.initial_sites)
-
         return {
             'state': initial_state}
 
@@ -182,10 +166,11 @@ class DiffusionNetwork(object):
             concs1 = locations[node1]
             concs2 = locations[node2]
 
-            if edge in self.membrane_locations:
+            if edge in self.membrane_locations or (edge[1], edge[0]) in self.membrane_locations:
                 diffusion = 0
                 for channel_id, channel_conc in membrane.items():
                     diffusion += channel_conc * self.channel_diffusion[channel_id]
+                diffusion = min(diffusion, self.diffusion)
             else:
                 diffusion = self.diffusion
 
@@ -216,7 +201,7 @@ def get_two_compartment_config():
         'molecules': ['glc'],
         'membrane_locations': [((0,0),(1,0))],
         'channels':{
-            'porin': 2e-2  # diffusion rate through porin
+            'porin': 5e-2  # diffusion rate through porin
         },
         'n_bins': (2, 1),
         'size': (2e-2, 1e-2),
@@ -225,7 +210,7 @@ def get_two_compartment_config():
 def get_grid_config():
     initial_state = {
         'membrane_composition': {
-            'porin': 1},
+            'porin': 1e2},
         'sites': {
             (2, 1): {
                 'glc': 20.0},
@@ -254,7 +239,7 @@ def get_grid_config():
             'porin': 1e-3  # diffusion rate through porin
         },
         'n_bins': (10, 4),
-        'size': (10e-1, 4e-1),
+        'size': (10, 4),
         'diffusion': 5e-2}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
