@@ -292,3 +292,57 @@ class FlagellaChromosome(object):
             for operon in self.config['genes'].keys()}
 
         self.transcription_factors = ['flhD', 'CsgD', 'CRP', 'GadE', 'H-NS']
+
+        self.complexation_monomer_ids = [
+            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'MotA', 'MotB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
+
+        self.complexation_complex_ids = [
+            'flagellar motor switch','flagellum', 'flagellar export apparatus', 'flagellar motor']
+
+        self.complexation_stoichiometry = {
+            'flagellar motor switch reaction': {
+                'flagellar motor switch': 1.0,
+                'fliG': -26.0,
+                'fliM': -34.0,
+                'fliN': -1.0},
+            'flagellar export apparatus reaction': {
+                'flagellar export apparatus': 1.0,
+                'flhA': -1.0,
+                'flhB': -1.0,
+                'fliO': -1.0,
+                'fliP': -1.0,
+                'fliQ': -1.0,
+                'fliR': -1.0,
+                'fliJ': -1.0,
+                'fliI': -6.0,
+                'fliH': -12.0},
+            'flagellar motor reaction': {
+                'flagellar motor': 1.0,
+                'flagellar motor switch': -1.0,
+                'fliL': -2.0,
+                'flgH': -1.0,
+                'MotA': -1.0,
+                'MotB': -1.0,
+                'flgB': -1.0,
+                'flgC': -1.0,
+                'flgF': -1.0,
+                'flgG': -1.0,
+                'flgI': -1.0,
+                'fliF': -1.0,
+                'fliE': -1.0},
+            'flagellum reaction': {
+                'flagellum': 1.0,
+                'flagellar export apparatus': -1.0,
+                'flagellar motor': -1.0,
+                'fliC': -1.0,
+                'flgL': -1.0,
+                'flgK': -1.0,
+                'fliD': -5.0,
+                'flgE': -120.0}}
+
+        reaction_default = 1e-30
+        self.complexation_rates = {
+            'flagellar motor switch reaction': reaction_default,
+            'flagellar export apparatus reaction': reaction_default,
+            'flagellar motor reaction': reaction_default,
+            'flagellum reaction': reaction_default}

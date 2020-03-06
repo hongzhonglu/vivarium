@@ -1,9 +1,15 @@
 import copy
+import csv
 import os
 
 import matplotlib.pyplot as plt
+import numpy as np
 
-from vivarium.utils.dict_utils import deep_merge, deep_merge_check
+from vivarium.utils.dict_utils import (
+    deep_merge,
+    deep_merge_check,
+    flatten_timeseries,
+)
 from vivarium.compartment.process import (
     initialize_state,
     simulate_compartment,
@@ -17,6 +23,10 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+
+
+REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
+TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
@@ -408,6 +418,196 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
     fig_path = os.path.join(out_dir, 'simulation')
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
+
+
+def save_timeseries(timeseries, out_dir='out'):
+    '''Save a timeseries as a CSV in out_dir'''
+    flattened = flatten_timeseries(timeseries)
+    rows = np.transpose(list(flattened.values())).tolist()
+    with open(os.path.join(out_dir, 'simulation_data.csv'), 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(flattened.keys())
+        writer.writerows(rows)
+
+
+def load_timeseries(path_to_csv):
+    '''Load a timeseries saved as a CSV using save_timeseries.
+
+    The timeseries is returned in flattened form.
+    '''
+    with open(path_to_csv, 'r', newline='') as f:
+        reader = csv.DictReader(f)
+        timeseries = {}
+        for row in reader:
+            for header, elem in row.items():
+                timeseries.setdefault(header, []).append(float(elem))
+    return timeseries
+
+
+def timeseries_to_ndarray(timeseries, keys=None):
+    if keys is None:
+        keys = timeseries.keys()
+    filtered = {key: timeseries[key] for key in keys}
+    array = np.array(list(filtered.values()))
+    return array
+
+
+def _prepare_timeseries_for_comparison(
+    timeseries1, timeseries2, keys=None,
+    required_frac_checked=0.9,
+):
+    '''Prepare two timeseries for comparison
+
+    Arguments:
+        timeseries1: One timeseries. Must be flattened and include times
+            under the 'time' key.
+        timeseries2: The other timeseries. Same requirements as
+            timeseries1.
+        keys: Keys of the timeseries whose values will be checked for
+            correlation. If not specified, all keys present in both
+            timeseries are used.
+        required_frac_checked: The required fraction of timepoints in a
+            timeseries that must be checked. If this requirement is not
+            satisfied, which might occur if the two timeseries share few
+            timepoints, the test wll fail.
+
+    Returns:
+        A tuple of an ndarray for each of the two timeseries and a list of
+        the keys for the rows of the arrays. Each ndarray has a row for
+        each key, in the order of keys. The ndarrays have only the
+        columns corresponding to the timepoints common to both
+        timeseries.
+
+    Raises:
+        AssertionError: If a correlation is strictly below the
+            threshold or if too few timepoints are common to both
+            timeseries.
+    '''
+    if 'time' not in timeseries1 or 'time' not in timeseries2:
+        raise AssertionError('Both timeseries must have key "time"')
+    if keys is None:
+        keys = timeseries1.keys() & timeseries2.keys()
+    else:
+        if 'time' not in keys:
+            keys.append('time')
+    keys = list(keys)
+    time_index = keys.index('time')
+    shared_times = set(timeseries1['time']) & set(timeseries2['time'])
+    frac_timepoints_checked = (
+        len(shared_times)
+        / min(len(timeseries1), len(timeseries2))
+    )
+    if frac_timepoints_checked < required_frac_checked:
+        raise AssertionError(
+            'The timeseries share too few timepoints: '
+            '{} < {}'.format(
+                frac_timepoints_checked, required_frac_checked)
+        )
+    array1 = timeseries_to_ndarray(timeseries1, keys)
+    array2 = timeseries_to_ndarray(timeseries2, keys)
+    shared_times_mask1 = np.isin(array1[time_index], list(shared_times))
+    shared_times_mask2 = np.isin(array2[time_index], list(shared_times))
+    return (
+        array1[:, shared_times_mask1],
+        array2[:, shared_times_mask2],
+        keys,
+    )
+
+
+def assert_timeseries_correlated(
+    timeseries1, timeseries2, keys=None,
+    default_threshold=(1 - 1e-10), thresholds={},
+    required_frac_checked=0.9,
+):
+    '''Check that two timeseries are correlated.
+
+    Uses a Pearson correlation coefficient. Only the data from
+    timepoints common to both timeseries are compared.
+
+    Arguments:
+        timeseries1: One timeseries. Must be flattened and include times
+            under the 'time' key.
+        timeseries2: The other timeseries. Same requirements as
+            timeseries1.
+        keys: Keys of the timeseries whose values will be checked for
+            correlation. If not specified, all keys present in both
+            timeseries are used.
+        default_threshold: The threshold correlation coefficient to use
+            when a threshold is not specified in thresholds.
+        thresholds: Dictionary of key-value pairs where the key is a key
+            in both timeseries and the value is the threshold
+            correlation coefficient to use when checking that key
+        required_frac_checked: The required fraction of timepoints in a
+            timeseries that must be checked. If this requirement is not
+            satisfied, which might occur if the two timeseries share few
+            timepoints, the test wll fail.
+
+    Raises:
+        AssertionError: If a correlation is strictly below the
+            threshold or if too few timepoints are common to both
+            timeseries.
+    '''
+    array1, array2, keys = _prepare_timeseries_for_comparison(
+        timeseries1, timeseries2, keys, required_frac_checked)
+    for index, key in enumerate(keys):
+        corrcoef = np.corrcoef(
+            array1[index],
+            array2[index],
+        )[0][1]
+        threshold = thresholds.get(key, default_threshold)
+        if corrcoef < threshold:
+            raise AssertionError(
+                'The correlation coefficient for '
+                '{} is too small: {} < {}'.format(
+                    key, corrcoef, threshold)
+            )
+
+
+def assert_timeseries_close(
+    timeseries1, timeseries2, keys=None,
+    default_tolerance=(1 - 1e-10), tolerances={},
+    required_frac_checked=0.9,
+):
+    '''Check that two timeseries are similar.
+
+    Ensures that each pair of data points between the two timeseries are
+    within a tolerance of each other, after filtering out timepoints not
+    common to both timeseries.
+
+    Arguments:
+        timeseries1: One timeseries. Must be flattened and include times
+            under the 'time' key.
+        timeseries2: The other timeseries. Same requirements as
+            timeseries1.
+        keys: Keys of the timeseries whose values will be checked for
+            correlation. If not specified, all keys present in both
+            timeseries are used.
+        default_tolerance: The tolerance to use when not specified in
+            tolerances.
+        tolerances: Dictionary of key-value pairs where the key is a key
+            in both timeseries and the value is the tolerance to use
+            when checking that key.
+        required_frac_checked: The required fraction of timepoints in a
+            timeseries that must be checked. If this requirement is not
+            satisfied, which might occur if the two timeseries share few
+            timepoints, the test wll fail.
+
+    Raises:
+        AssertionError: If a pair of data points have a difference
+            strictly above the tolerance threshold or if too few
+            timepoints are common to both timeseries.
+    '''
+    array1, array2, keys = _prepare_timeseries_for_comparison(
+        timeseries1, timeseries2, keys, required_frac_checked)
+    for index, key in enumerate(keys):
+        tolerance = tolerances.get(key, default_tolerance)
+        if not np.allclose(
+            array1[index], array2[index], atol=tolerance
+        ):
+            raise AssertionError(
+                'The data for {} differed by more than {}'.format(
+                    key, tolerance)
+            )
 
 
 # TESTS
