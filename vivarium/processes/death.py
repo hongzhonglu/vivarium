@@ -21,8 +21,8 @@ TOY_ANTIBIOTIC_THRESHOLD = 5.0
 TOY_INJECTION_RATE = 2.0
 
 
-class CheckerInterface(object):
-    '''Interface that should be subclassed by all survivability checkers
+class DetectorInterface(object):
+    '''Interface that should be subclassed by all death detectors
 
     Each subclass should check for a condition that might kill the cell.
     '''
@@ -41,15 +41,15 @@ class CheckerInterface(object):
             True if the cell can survive, False if it cannot.
         '''
         raise NotImplementedError(
-            'Checker should implement check_can_survive')
+            'Detector should implement check_can_survive')
 
 
-class AntibioticChecker(CheckerInterface):
+class AntibioticDetector(DetectorInterface):
 
     def __init__(
         self, antibiotic_threshold=0.9, antibiotic_key='antibiotic'
     ):
-        super(AntibioticChecker, self).__init__()
+        super(AntibioticDetector, self).__init__()
         self.threshold = antibiotic_threshold
         self.key = antibiotic_key
         self.needed_state_keys.setdefault(
@@ -62,18 +62,18 @@ class AntibioticChecker(CheckerInterface):
         return True
 
 
-CHECKER_CLASSES = {
-    'antibiotic': AntibioticChecker,
+DETECTOR_CLASSES = {
+    'antibiotic': AntibioticDetector,
 }
 
 
 class DeathFreezeState(Process):
 
     def __init__(self, initial_parameters={}):
-        self.checkers = [
-            CHECKER_CLASSES[name](**config_dict)
+        self.detectors = [
+            DETECTOR_CLASSES[name](**config_dict)
             for name, config_dict in initial_parameters.get(
-                'checkers', {}).items()
+                'detectors', {}).items()
         ]
         # List of names of processes that will remain after death
         self.enduring_processes = initial_parameters.get(
@@ -83,8 +83,8 @@ class DeathFreezeState(Process):
             'compartment': ['processes'],
             'global': ['dead'],
         }
-        for checker in self.checkers:
-            needed_keys = checker.needed_state_keys
+        for detector in self.detectors:
+            needed_keys = detector.needed_state_keys
             for port in needed_keys:
                 keys = ports.setdefault(port, set())
                 keys |= needed_keys[port]
@@ -109,8 +109,8 @@ class DeathFreezeState(Process):
         return default_settings
 
     def next_update(self, timestep, states):
-        for checker in self.checkers:
-            if not checker.check_can_survive(states):
+        for detector in self.detectors:
+            if not detector.check_can_survive(states):
                 cur_processes = states['compartment']['processes'][0]
                 return {
                     'compartment': {
@@ -156,7 +156,7 @@ class ToyAntibioticInjector(Process):
 
 def compose_toy_death(config):
     death_parameters = {
-        'checkers': {
+        'detectors': {
             'antibiotic': {
                 'antibiotic_threshold': TOY_ANTIBIOTIC_THRESHOLD,
             }
