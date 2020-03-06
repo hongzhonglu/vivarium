@@ -152,11 +152,6 @@ class EnvironmentActor(Outer):
             'lattice': lattice,
             'simulations': simulations}
 
-    def update_state(self):
-        self.send(
-            self.topics['visualization_receive'],
-            self.build_state(),
-            print_send=False)
 
 # Define environment initialization functions
 def initialize_lattice(boot_config):
@@ -314,7 +309,7 @@ def initialize_measp_long(boot_config):
     media = {'GLC': 5.0,  # assumes mmol/L
              'MeAsp': 5.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 600 end'.format(media_id)
+    timeline_str = '0 {}, 1000 end'.format(media_id)
     lattice_config = {
         'name': 'measp_long',
         'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
@@ -332,15 +327,15 @@ def initialize_measp_long(boot_config):
             'molecules': {
                 'GLC': {
                     'center': [0.0, 0.5],
-                    'base': 1+1e-4},
+                    'base': 1+4e-4},
                 'MeAsp': {
                     'center': [0.0, 0.5],
-                    'base': 1+1e-4}
+                    'base': 1+4e-4}
             }},
         'jitter_force': 1e-1,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
-        'patches_per_edge_x': 100}
+        'patches_per_edge_x': 1000}
 
     lattice_config.update(boot_config)
     return lattice_config

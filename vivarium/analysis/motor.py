@@ -68,56 +68,58 @@ class Motor(Analysis):
         environment_data = data['environment'][sim_id]
         location_vec = environment_data['location']
 
-        # get speed
-        speed_vec = [0]
+        ## get speed, length of runs, tumbles
         previous_time = env_time_vec[0]
         previous_loc = location_vec[0]
-        previous_motor_state = motor_state_vec[0]
+        prior_state = motor_state_vec[0]
         run_angle = 0
+        state_start_time = 0
+
+        # initialize lists
+        speed_vec = [0]
         angle_between_runs = []
+        run_lengths = []
+        tumble_lengths = []
+
         for time, location, m_state in zip(env_time_vec[1:], location_vec[1:], motor_state_vec[1:]):
             dt = time - previous_time
             distance = ((location[0] - previous_loc[0])**2 + (location[1] - previous_loc[1])**2)**0.5
             speed_vec.append(distance/dt)  # um/sec
 
-            # get change in angles between motor states
-            if m_state == 0 and previous_motor_state == 1:
-                angle_change = abs(location[2] - run_angle) / np.pi * 180 % 360  # convert to absolute degrees
-                angle_between_runs.append(angle_change)
-            elif m_state == 0:
-                run_angle = location[2]
+            if m_state == 0:
+                # current run
+                if prior_state != 0:
+                    # new run
+                    tumble_lengths.append(time - state_start_time)
+                    state_start_time = time
+                    angle_change = abs(location[2] - run_angle) / np.pi * 180 % 360
+                    angle_between_runs.append(angle_change)
+                else:
+                    run_angle = location[2]
+
+            elif m_state == 1:
+                # current tumble
+                if prior_state != 1:
+                    # new tumble
+                    run_lengths.append(time - state_start_time)
+                    state_start_time = time
 
             # update previous states
             previous_time = time
             previous_loc = location
-            previous_motor_state = m_state
+            prior_state = m_state
 
+        # get avg speed and angle between runs
         avg_speed = sum(speed_vec) / len(speed_vec)
-        try:
+        if len(angle_between_runs) > 0:
             avg_angle_between_runs = sum(angle_between_runs) / len(angle_between_runs)
-        except:
+        else:
             avg_angle_between_runs = 0
-
-        # get length of runs, tumbles
-        run_lengths = []
-        tumble_lengths = []
-        prior_state = 0
-        state_start_time = 0
-        for state, time in zip(motor_state_vec, time_vec):
-            if state == 0:  # run
-                if prior_state != 0:
-                    tumble_lengths.append(time - state_start_time)
-                    state_start_time = time
-            elif state == 1:  # tumble
-                if prior_state != 1:
-                    run_lengths.append(time - state_start_time)
-                    state_start_time = time
-            prior_state = state
 
         # make figure
         n_cols = 1
         n_rows = 5
-        fig = plt.figure(figsize=(6 * n_cols, 2 * n_rows))
+        fig = plt.figure(figsize=(6 * n_cols, 1.8 * n_rows))
         plt.rcParams.update({'font.size': 10})
         fig.suptitle('{}'.format(sim_id))
 
@@ -170,5 +172,6 @@ class Motor(Analysis):
         ax5.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax5.set_xscale('log')
 
+        plt.subplots_adjust(wspace=0.7, hspace=0.2)
         plt.savefig(output_dir + '/motor', bbox_inches='tight')
         plt.close(fig)
