@@ -44,7 +44,7 @@ from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
-from vivarium.processes.antibiotics import Antibiotics
+from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.transcription import Transcription
 
 # composites
@@ -54,8 +54,8 @@ from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 from vivarium.composites.variable_flagella import compose_variable_flagella
-from vivarium.composites.antibiotic_growth import (
-    compose_antibiotic_growth,
+from vivarium.composites.antibiotics import (
+    compose_antibiotics,
 )
 
 
@@ -462,8 +462,8 @@ class BootEnvironment(BootAgent):
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
-            'antibiotic': wrap_boot(
-                wrap_init_basic(Antibiotics), {'volume': 1.0}),
+            'antibiotic_transport': wrap_boot(
+                wrap_init_basic(AntibioticTransport), {'volume': 1.0}),
             'transcription': wrap_boot(wrap_init_basic(Transcription), {'volume': 1.0}),
 
             # composite compartments
@@ -474,7 +474,7 @@ class BootEnvironment(BootAgent):
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
             'antibiotic_composite': wrap_boot(
-                wrap_init_composite(compose_antibiotic_growth),
+                wrap_init_composite(compose_antibiotics),
                 {'volume': 1.0},
             ),
         }

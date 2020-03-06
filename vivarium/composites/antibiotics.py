@@ -13,8 +13,8 @@ from vivarium.compartment.process import (
     COMPARTMENT_STATE,
     load_compartment,
 )
-from vivarium.processes.antibiotics import Antibiotics
-from vivarium.processes.antibiotics import (
+from vivarium.processes.antibiotic_transport import AntibioticTransport
+from vivarium.processes.antibiotic_transport import (
     DEFAULT_INITIAL_STATE as ANTIBIOTIC_DEFAULT_INITIAL_STATE,
 )
 from vivarium.processes.death import DeathFreezeState
@@ -26,7 +26,7 @@ from vivarium.processes.growth import Growth
 from vivarium.processes.ode_expression import ODE_expression
 
 
-def compose_antibiotic_growth(config):
+def compose_antibiotics(config):
 
     # Expression Config
     transcription_config = config.setdefault('transcription_rates', {})
@@ -53,7 +53,7 @@ def compose_antibiotic_growth(config):
     antibiotic_checker_config.setdefault('antibiotic_threshold', 0.09)
 
     # declare the processes
-    antibiotic_transport = Antibiotics(config)
+    antibiotic_transport = AntibioticTransport(config)
     growth = Growth(config)
     expression = ODE_expression(config)
     death = DeathFreezeState(config)
@@ -96,6 +96,7 @@ def compose_antibiotic_growth(config):
         'death': {
             'internal': 'cell',
             'compartment': COMPARTMENT_STATE,
+            'global': 'global',
         },
     }
 
@@ -124,7 +125,7 @@ def compose_antibiotic_growth(config):
 
 
 def test_antibiotic_growth_composite():
-    options = compose_antibiotic_growth({})['options']
+    options = compose_antibiotics({})['options']
     settings = {
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
@@ -150,7 +151,7 @@ def test_antibiotic_growth_composite():
             },
         },
     }
-    compartment = load_compartment(compose_antibiotic_growth, config)
+    compartment = load_compartment(compose_antibiotics, config)
     saved_state = simulate_with_environment(compartment, settings)
     return saved_state
 

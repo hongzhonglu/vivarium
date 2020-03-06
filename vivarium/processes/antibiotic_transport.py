@@ -36,7 +36,7 @@ DEFAULT_INITIAL_FLUXES = {
 }
 
 
-class Antibiotics(ConvenienceKinetics):
+class AntibioticTransport(ConvenienceKinetics):
     def __init__(self, initial_parameters={}):
         if 'initial_state' not in initial_parameters:
             initial_state = DEFAULT_INITIAL_STATE
@@ -93,13 +93,13 @@ class Antibiotics(ConvenienceKinetics):
             },
         }
 
-        super(Antibiotics, self).__init__(parameters)
+        super(AntibioticTransport, self).__init__(parameters)
 
     def default_settings(self):
-        default_settings = super(Antibiotics, self).default_settings()
+        default_settings = super(AntibioticTransport, self).default_settings()
         default_settings.update(
             {
-                'process_id': 'antibiotics',
+                'process_id': 'antibiotic_transport',
                 'emitter_keys': {
                     'internal': ['antibiotic'],
                     'external': ['antibiotic'],
@@ -118,8 +118,8 @@ class Antibiotics(ConvenienceKinetics):
         return default_settings
 
 
-def test_antibiotics():
-    process = Antibiotics()
+def test_antibiotic_transport():
+    process = AntibioticTransport()
     settings = {
         'total_time': 4000,
         'exchange_port': 'exchange',
@@ -130,10 +130,10 @@ def test_antibiotics():
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'antibiotics')
+    out_dir = os.path.join('out', 'tests', 'antibiotic_transport')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    saved_data = test_antibiotics()
+    saved_data = test_antibiotic_transport()
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_settings = {}
