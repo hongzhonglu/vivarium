@@ -215,7 +215,9 @@ def get_grid_config():
             (2, 1): {
                 'glc': 20.0},
             (2, 2): {
-                'glc': 10.0},
+                'glc': 20.0},
+            (3, 1): {
+                'glc': 20.0},
             (3, 2): {
                 'glc': 20.0},
             (6, 1): {
@@ -236,11 +238,11 @@ def get_grid_config():
             ((6, 2), (6, 3)),
         ],
         'channels': {
-            'porin': 1e-3  # diffusion rate through porin
+            'porin': 5e-4  # diffusion rate through porin
         },
         'n_bins': (10, 4),
         'size': (10, 4),
-        'diffusion': 5e-2}
+        'diffusion': 2e-1}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
     diffusion = Diffusion(config)
