@@ -332,12 +332,12 @@ def initialize_measp_long(boot_config):
             'molecules': {
                 'GLC': {
                     'center': [0.0, 0.5],
-                    'base': 1+5e-3},
+                    'base': 1+1e-4},
                 'MeAsp': {
                     'center': [0.0, 0.5],
-                    'base': 1+5e-3}
+                    'base': 1+1e-4}
             }},
-        'jitter_force': 1e0,
+        'jitter_force': 1e-1,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
         'patches_per_edge_x': 100}

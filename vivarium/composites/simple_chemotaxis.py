@@ -19,7 +19,11 @@ from vivarium.processes.Vladimirov2008_motor import MotorActivity
 
 def compose_simple_chemotaxis(config):
 
-    receptor_parameters = {'ligand': 'MeAsp'}
+    ligand_id = 'MeAsp'
+    initial_ligand = config['concentrations'][ligand_id]
+    receptor_parameters = {
+        'ligand': ligand_id,
+        'initial_ligand': initial_ligand}
     receptor_parameters.update(config)
 
     # declare the processes

@@ -413,7 +413,12 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
             in self.simulations.items()])
         time = max(self._time, latest)
 
+        # get local concentrations
+        update = self.generate_outer_update(time)
+        concentrations = update[agent_id]['concentrations']
+
         return {
+            'concentrations': concentrations,
             'time': time}
 
     def simulation_state(self, agent_id):

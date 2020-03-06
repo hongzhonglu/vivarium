@@ -63,7 +63,7 @@ class ReceptorCluster(Process):
     def __init__(self, initial_parameters={}):
 
         self.ligand_id = initial_parameters.get('ligand', LIGAND_ID)
-        self.initial_ligand = initial_parameters.get('initial_ligand', 0.1)
+        self.initial_ligand = initial_parameters.get('initial_ligand', 5.0)
         ports = {
             'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
             'external': [self.ligand_id]}
