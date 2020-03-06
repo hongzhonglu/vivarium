@@ -309,7 +309,7 @@ def initialize_measp_long(boot_config):
     media = {'GLC': 5.0,  # assumes mmol/L
              'MeAsp': 5.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 1000 end'.format(media_id)
+    timeline_str = '0 {}, 60 end'.format(media_id)
     lattice_config = {
         'name': 'measp_long',
         'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
@@ -317,7 +317,7 @@ def initialize_measp_long(boot_config):
                        'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
         'new_media': new_media,
         'timeline_str': timeline_str,
-        'emit_fields': ['GLC','MeAsp'],
+        'emit_fields': ['MeAsp'],
         'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
         'emit_frequency': 20,
@@ -332,7 +332,7 @@ def initialize_measp_long(boot_config):
                     'center': [0.0, 0.5],
                     'base': 1+4e-4}
             }},
-        'jitter_force': 1e-1,
+        'jitter_force': 1e-2,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
         'patches_per_edge_x': 1000}

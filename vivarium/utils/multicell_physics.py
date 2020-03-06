@@ -143,8 +143,12 @@ class MultiCellPhysics(object):
             thrust, torque = body.motile_force
             motile_force = [thrust, 0.0]
 
-            if torque != 0.0:
-                motile_force = get_force_with_angle(thrust, torque)
+            # add directly to angular velocity
+            body.angular_velocity += torque
+
+            ## force-based torque
+            # if torque != 0.0:
+            #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
         body.apply_force_at_local_point(scaled_motile_force, motile_location)

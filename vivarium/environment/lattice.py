@@ -198,6 +198,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
+        displace_from_edge = self.dx / 2  # TODO -- set this in init
         for agent_id, location in self.locations.items():
             # set location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
@@ -205,11 +206,15 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
             # enforce boundaries
             # TODO (Eran) -- make pymunk handle this
-            self.locations[agent_id][0:2][self.locations[agent_id][0:2] < 0] = 0.0
             if self.locations[agent_id][0] > self.edge_length_x:
-                self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
+                self.locations[agent_id][0] = self.edge_length_x - self.dx / 2 - displace_from_edge
+            elif self.locations[agent_id][0] <= 0.0:
+                self.locations[agent_id][0] = 0.0 + displace_from_edge
+
             if self.locations[agent_id][1] > self.edge_length_y:
-                self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
+                self.locations[agent_id][1] = self.edge_length_y - self.dy / 2 - displace_from_edge
+            elif self.locations[agent_id][1] <= 0.0:
+                self.locations[agent_id][1] = 0.0 + displace_from_edge
 
 
     def add_cell_to_physics(self, agent_id, position, angle):
@@ -617,7 +622,7 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 # tests
 def tumble():
     thrust = 100  # pN
-    tumble_jitter = 0.1
+    tumble_jitter = 2.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
@@ -1021,19 +1026,19 @@ if __name__ == '__main__':
     plot_motility(motile_output, 'motility', out_dir)
     plot_trajectory(motile_output, 'trajectory', out_dir)
 
-    # # test motility short ts
-    # motile_short_ts_config = motile_config.copy()
-    # motile_short_ts_config.update({'timestep': 0.01})
-    # motile_output = test_lattice(motile_short_ts_config)
-    # plot_motility(motile_output, 'motility_short_ts', out_dir)
-    # plot_trajectory(motile_output, 'trajectory_short_ts', out_dir)
+    # test motility short ts
+    motile_short_ts_config = motile_config.copy()
+    motile_short_ts_config.update({'timestep': 0.01})
+    motile_output = test_lattice(motile_short_ts_config)
+    plot_motility(motile_output, 'motility_short_ts', out_dir)
+    plot_trajectory(motile_output, 'trajectory_short_ts', out_dir)
 
-    # # test motility large env
-    # motile_large_env_config = motile_config.copy()
-    # motile_large_env_config.update({'edge_length': 2000})
-    # motile_output = test_lattice(motile_large_env_config)
-    # plot_motility(motile_output, 'motility_large_env', out_dir)
-    # plot_trajectory(motile_output, 'trajectory_large_env', out_dir)
+    # test motility large env
+    motile_large_env_config = motile_config.copy()
+    motile_large_env_config.update({'edge_length': 2000})
+    motile_output = test_lattice(motile_large_env_config)
+    plot_motility(motile_output, 'motility_large_env', out_dir)
+    plot_trajectory(motile_output, 'trajectory_large_env', out_dir)
 
     # # test diffusion
     # diffusion_out = test_diffusion()
