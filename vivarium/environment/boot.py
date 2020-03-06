@@ -293,7 +293,7 @@ def initialize_measp(boot_config):
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['MeAsp'],
-        'run_for': 1.0,
+        'run_for': 0.1,
         'static_concentrations': True,
         'emit_frequency': 20,
         'gradient': {
@@ -327,7 +327,7 @@ def initialize_measp_long(boot_config):
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['GLC','MeAsp'],
-        'run_for': 0.05,  # high coupling between cell and env requires short exchange timestep
+        'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
         'emit_frequency': 20,
         'cell_placement': [0.05, 0.5],  # place cells at bottom of gradient
@@ -401,7 +401,7 @@ def initialize_measp_large(boot_config):
         'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'timeline_str': timeline_str,
         'new_media': new_media,
-        'run_for': 2.0,
+        'run_for': 0.1,
         'emit_fields': ['MeAsp', 'GLC'],
         'static_concentrations': False,
         'diffusion': 0.001,

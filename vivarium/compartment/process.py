@@ -95,9 +95,9 @@ class Store(object):
 
         # get updaters from schema
         updaters = {}
-        for state in self.state.keys():
-            if state in schema:
-                updater = schema[state].get('updater')
+        for state, state_schema in schema.items():
+            updater = state_schema.get('updater')
+            if updater:
                 updaters.update({state: updater})
         self.updaters = updaters
 
