@@ -127,4 +127,4 @@ if __name__ == '__main__':
     del saved_data[0] # remove first state
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, {}, out_dir)
-    
+
