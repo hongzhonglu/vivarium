@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 import copy
+import random
 
 import matplotlib.pyplot as plt
 
@@ -37,7 +38,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 4,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 2,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 def run_step(receptor, state, timestep):
@@ -205,11 +206,27 @@ def get_exponential_step_timeline(config):
     timeline = [(t, conc_0 + base**(t*speed) - 1) for t in range(time)]
     return timeline
 
-def test_receptor(timeline=get_pulse_timeline()):
+def get_exponential_random_timeline(config):
+    # exponential space with random direction changes
+    time = config.get('time', 100)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+
+    conc = conc_0
+    timeline = [(0, conc)]
+    for t in range(time):
+        conc += base**(random.choice((-1, 1)) * speed) - 1
+        if conc<0:
+            conc = 0
+        timeline.append((t, conc))
+
+    return timeline
+
+def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
 
     end_time = timeline[-1][0]
     time = 0
-    timestep = 1
 
     # initialize process
     config = {
@@ -224,6 +241,7 @@ def test_receptor(timeline=get_pulse_timeline()):
     ligand_vec = []
     receptor_activity_vec = []
     n_methyl_vec = []
+    time_vec = []
     ligand_conc=timeline[0][1]
     while time < end_time:
         time += timestep
@@ -246,16 +264,19 @@ def test_receptor(timeline=get_pulse_timeline()):
         ligand_vec.append(ligand_conc)
         receptor_activity_vec.append(P_on)
         n_methyl_vec.append(n_methyl)
+        time_vec.append(time)
 
     return {
         'ligand_vec': ligand_vec,
         'receptor_activity_vec': receptor_activity_vec,
-        'n_methyl_vec': n_methyl_vec}
+        'n_methyl_vec': n_methyl_vec,
+        'time_vec': time_vec}
 
 def plot_output(output, out_dir='out', filename='response'):
     ligand_vec = output['ligand_vec']
     receptor_activity_vec = output['receptor_activity_vec']
     n_methyl_vec = output['n_methyl_vec']
+    time_vec = output['time_vec']
 
     # plot results
     cols = 1
@@ -266,9 +287,9 @@ def plot_output(output, out_dir='out', filename='response'):
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(ligand_vec, 'b')
-    ax2.plot(receptor_activity_vec, 'b')
-    ax3.plot(n_methyl_vec, 'b')
+    ax1.plot(time_vec, ligand_vec, 'b')
+    ax2.plot(time_vec, receptor_activity_vec, 'b')
+    ax3.plot(time_vec, n_methyl_vec, 'b')
 
     ax1.set_xticklabels([])
     ax1.spines['right'].set_visible(False)
@@ -299,22 +320,30 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeline = get_pulse_timeline()
-    output = test_receptor(timeline)
-    plot_output(output, out_dir, 'pulse')
+    # timeline = get_pulse_timeline()
+    # output = test_receptor(timeline)
+    # plot_output(output, out_dir, 'pulse')
+    #
+    # linear_config = {
+    #     'time': 10,
+    #     'slope': 1e-3,
+    #     'speed': 14}
+    # timeline2 = get_linear_step_timeline(linear_config)
+    # output2 = test_receptor(timeline2)
+    # plot_output(output2, out_dir, 'linear')
 
-    linear_config = {
-        'time': 30,
-        'slope': 1e-3,
-        'speed': 14}
-    timeline2 = get_linear_step_timeline(linear_config)
-    output2 = test_receptor(timeline2)
-    plot_output(output2, out_dir, 'linear')
+    # exponential_config = {
+    #     'time': 10,
+    #     'base': 1+4e-4,
+    #     'speed': 14}
+    # timeline3 = get_exponential_step_timeline(exponential_config)
+    # output3 = test_receptor(timeline3)
+    # plot_output(output3, out_dir, 'exponential_4e-4')
 
-    exponential_config = {
-        'time': 30,
-        'base': 1+1e-4,
+    exponential_random_config = {
+        'time': 60,
+        'base': 1+4e-4,
         'speed': 14}
-    timeline3 = get_exponential_step_timeline(exponential_config)
-    output3 = test_receptor(timeline3)
-    plot_output(output3, out_dir, 'exponential')
+    timeline4 = get_exponential_random_timeline(exponential_random_config)
+    output4 = test_receptor(timeline4, 0.1)
+    plot_output(output4, out_dir, 'exponential_random')
