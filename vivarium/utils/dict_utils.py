@@ -69,6 +69,18 @@ def tuplify_port_dicts(dicts):
             merge.update({(port, state): value})
     return merge
 
+def flatten_timeseries(timeseries):
+    '''Flatten a timeseries in the style of flatten_port_dicts'''
+    flat = {}
+    for port, store_dict in timeseries.items():
+        if port == 'time':
+            flat[port] = timeseries[port]
+            continue
+        for variable_name, values in store_dict.items():
+            key = "{}_{}".format(port, variable_name)
+            flat[key] = values
+    return flat
+
 def tuple_to_str_keys(dictionary):
     # take a dict with tuple keys, and convert them to strings with tuple_separator as a delimiter
     new_dict = copy.deepcopy(dictionary)
