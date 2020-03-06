@@ -159,17 +159,17 @@ class ReceptorCluster(Process):
 def get_pulse_timeline():
     timeline = [
         (0, 0.0),
-        (200, 0.01),
+        (100, 0.01),
+        (200, 0.0),
+        (300, 0.1),
+        (400, 0.0),
+        (500, 1.0),
         (600, 0.0),
-        (1000, 0.1),
-        (1400, 0.0),
-        (1800, 1.0),
-        (2200, 0.0),
-        (2400, 0.0)]
+        (700, 0.0)]
     return timeline
 
 def get_linear_step_timeline(config):
-    time = config.get('time', 2400)
+    time = config.get('time', 100)
     slope = config.get('slope', 2e-3)  # mM/um
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
@@ -177,16 +177,20 @@ def get_linear_step_timeline(config):
     return timeline
 
 def get_exponential_step_timeline(config):
-    time = config.get('time', 2400)
+    time = config.get('time', 100)
     base = config.get('base', 1+1e-4)  # mM/um
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
-    timeline = [(t, conc_0 + base**(t*speed)) for t in range(time)]
+    timeline = [(t, conc_0 + base**(t*speed) - 1) for t in range(time)]
     return timeline
 
+def run_step(receptor, state, timestep):
+    update = receptor.next_update(timestep, state)
+    state['internal']['chemoreceptor_activity'] = update['internal']['chemoreceptor_activity']
+    state['internal']['n_methyl'] = update['internal']['n_methyl']
+
 def test_receptor(timeline=get_pulse_timeline()):
-    # TODO -- add asserts for test
-    # define timeline with (time (s), ligand concentration (mmol/L))
+
     end_time = timeline[-1][0]
     time = 0
     timestep = 1
@@ -197,6 +201,18 @@ def test_receptor(timeline=get_pulse_timeline()):
     state = settings['state']
     ligand_id = receptor.ligand_id
 
+    # run to steady state
+    P_on = state['internal']['chemoreceptor_activity']
+    n_methyl = state['internal']['n_methyl']
+    delta = 1
+    while delta > 0.01:
+        run_step(receptor, state, timestep)
+        d_P_on = P_on - state['internal']['chemoreceptor_activity']
+        d_n_methyl = n_methyl - state['internal']['n_methyl']
+        delta = (d_P_on**2 + d_n_methyl**2)**0.5
+        P_on = state['internal']['chemoreceptor_activity']
+        n_methyl = state['internal']['n_methyl']
+
     # run simulation
     ligand_vec = []
     receptor_activity_vec = []
@@ -205,7 +221,9 @@ def test_receptor(timeline=get_pulse_timeline()):
     while time < end_time:
         time += timestep
 
-        timeline_steps = [index for index, (t, conc) in enumerate(timeline) if t < time]
+        # update ligand from timeline
+        timeline_steps = [
+            index for index, (t, conc) in enumerate(timeline) if t < time]
         if len(timeline_steps) > 0:
             step = timeline_steps[-1]
             ligand_conc = timeline[step][1]
@@ -213,13 +231,9 @@ def test_receptor(timeline=get_pulse_timeline()):
             del timeline[0:step+1]
 
         # run step
-        update = receptor.next_update(timestep, state)
-        P_on = update['internal']['chemoreceptor_activity']
-        n_methyl = update['internal']['n_methyl']
-
-        # update state
-        state['internal']['chemoreceptor_activity'] = P_on
-        state['internal']['n_methyl'] = n_methyl
+        run_step(receptor, state, timestep)
+        P_on = state['internal']['chemoreceptor_activity']
+        n_methyl = state['internal']['n_methyl']
 
         # save state
         ligand_vec.append(ligand_conc)
@@ -278,14 +292,14 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # timeline = get_pulse_timeline()
-    # output = test_receptor(timeline)
-    # filename = 'pulse'
-    # plot_output(output, out_dir, filename)
+    timeline = get_pulse_timeline()
+    output = test_receptor(timeline)
+    filename = 'pulse'
+    plot_output(output, out_dir, filename)
 
     linear_config = {
-        'time': 2400,
-        'slope': 1e2,
+        'time': 30,
+        'slope': 1e-1,
         'speed': 14}
     timeline2 = get_linear_step_timeline(linear_config)
     output2 = test_receptor(timeline2)
@@ -293,8 +307,8 @@ if __name__ == '__main__':
     plot_output(output2, out_dir, filename2)
 
     exponential_config = {
-        'time': 2400,
-        'base': 1+2e-4,
+        'time': 30,
+        'base': 1+2e-3,
         'speed': 14}
     timeline3 = get_exponential_step_timeline(exponential_config)
     output3 = test_receptor(timeline3)
