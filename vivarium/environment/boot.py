@@ -358,12 +358,12 @@ def initialize_antibiotic(boot_config):
     lattice_config = {
         'name': 'measp_long',
         'new_media': new_media,
-        'timeline_str': '0 {}, 2000 end'.format(media_id),
+        'timeline_str': '0 {}, 7200 end'.format(media_id),
         'emit_fields': ['antibiotic'],
         'run_for': 1.0,  # timestep, in sec
         'rotation_jitter': 0.005,
-        'edge_length_x': 5.0,  # µm
-        'edge_length_y': 5.0,  # µm
+        'edge_length_x': 10.0,  # µm
+        'edge_length_y': 10.0,  # µm
         'depth': 1.0,  # µm
         # Patches discretize space for diffusion
         'patches_per_edge_x': 1,

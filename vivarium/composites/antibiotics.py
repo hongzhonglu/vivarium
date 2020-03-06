@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import math
 import os
 
 from vivarium.compartment.composition import (
@@ -7,6 +8,12 @@ from vivarium.compartment.composition import (
     plot_simulation_output,
     simulate_with_environment,
     get_derivers,
+    flatten_timeseries,
+    save_timeseries,
+    load_timeseries,
+    REFERENCE_DATA_DIR,
+    TEST_OUT_DIR,
+    assert_timeseries_close,
 )
 from vivarium.compartment.process import (
     initialize_state,
@@ -26,7 +33,14 @@ from vivarium.processes.growth import Growth
 from vivarium.processes.ode_expression import ODE_expression
 
 
+NAME = 'antibiotics_composite'
+NUM_DIVISIONS = 3
+DIVISION_TIME = 2400  # seconds to divide
+
+
 def compose_antibiotics(config):
+
+    division_time = config.get('cell_cycle_division_time', 2400)
 
     # Expression Config
     transcription_config = config.setdefault('transcription_rates', {})
@@ -51,6 +65,11 @@ def compose_antibiotics(config):
     antibiotic_checker_config = checkers_config.setdefault(
         'antibiotic', {})
     antibiotic_checker_config.setdefault('antibiotic_threshold', 0.09)
+
+    # Growth Config
+    # Growth rate calculated so that 2 = exp(DIVISION_TIME * rate)
+    # because division process divides once cell doubles in size
+    config.setdefault('growth_rate', math.log(2) / division_time)
 
     # declare the processes
     antibiotic_transport = AntibioticTransport(config)
@@ -124,14 +143,14 @@ def compose_antibiotics(config):
         'options': options}
 
 
-def test_antibiotic_growth_composite():
+def run_antibiotics_composite():
     options = compose_antibiotics({})['options']
     settings = {
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
-        'environment_volume': 1e-6,  # L
+        'environment_volume': 1e-5,  # L
         'timestep': 1,
-        'total_time': 2000,
+        'total_time': DIVISION_TIME * NUM_DIVISIONS,
     }
     config = {
         'transcription_rates': {
@@ -147,7 +166,7 @@ def test_antibiotic_growth_composite():
         'checkers': {
             'antibiotic': {
                 # Set so cell dies after first division
-                'antibiotic_threshold': 0.09,
+                'antibiotic_threshold': 10.0,
             },
         },
     }
@@ -156,8 +175,17 @@ def test_antibiotic_growth_composite():
     return saved_state
 
 
+def test_antibiotics_composite_similar_to_reference():
+    saved_data = run_antibiotics_composite()
+    timeseries = convert_to_timeseries(saved_data)
+    flattened = flatten_timeseries(timeseries)
+    reference = load_timeseries(
+        os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
+    assert_timeseries_close(flattened, reference)
+
+
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'antibiotic_growth_composite')
+    out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -166,7 +194,8 @@ if __name__ == '__main__':
         'skip_ports': ['prior_state'],
     }
 
-    saved_state = test_antibiotic_growth_composite()
+    saved_state = run_antibiotics_composite()
     del saved_state[0]  # Delete first record, where everything is 0
     timeseries = convert_to_timeseries(saved_state)
     plot_simulation_output(timeseries, plot_settings, out_dir)
+    save_timeseries(timeseries, out_dir)

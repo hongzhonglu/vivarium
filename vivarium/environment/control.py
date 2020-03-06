@@ -96,7 +96,7 @@ class ShepherdControl(ActorControl):
     def antibiotic_experiment(self, args, actor_config):
         experiment_id = 'antibiotic'
         environment_type = 'antibiotic_environment'
-        agent_type = 'antibiotic_composite'
+        agents = {'antibiotic_composite': 3}
 
         # overwrite default environment config
         lattice_config = {
@@ -112,8 +112,7 @@ class ShepherdControl(ActorControl):
             'lattice_config': lattice_config,
             'environment_type': environment_type,
             'actor_config': actor_config,
-            'agent_type': agent_type,
-            'num_cells': 1
+            'agents': agents,
         }
 
         self.init_experiment(args, exp_config)
