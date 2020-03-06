@@ -184,7 +184,7 @@ def test_antibiotics_composite_similar_to_reference():
     assert_timeseries_close(flattened, reference)
 
 
-if __name__ == '__main__':
+def main():
     out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -199,3 +199,7 @@ if __name__ == '__main__':
     timeseries = convert_to_timeseries(saved_state)
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
+
+
+if __name__ == '__main__':
+    main()

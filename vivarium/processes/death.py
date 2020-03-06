@@ -69,7 +69,9 @@ DETECTOR_CLASSES = {
 
 class DeathFreezeState(Process):
 
-    def __init__(self, initial_parameters={}):
+    def __init__(self, initial_parameters=None):
+        if initial_parameters is None:
+            initial_parameters = {}
         self.detectors = [
             DETECTOR_CLASSES[name](**config_dict)
             for name, config_dict in initial_parameters.get(
@@ -130,7 +132,9 @@ class DeathFreezeState(Process):
 
 class ToyAntibioticInjector(Process):
 
-    def __init__(self, initial_parameters={}):
+    def __init__(self, initial_parameters=None):
+        if initial_parameters is None:
+            initial_parameters = {}
         self.injection_rate = initial_parameters.get(
             'injection_rate', 1.0)
         self.antibiotic_name = initial_parameters.get(

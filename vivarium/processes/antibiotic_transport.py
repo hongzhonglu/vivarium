@@ -37,7 +37,9 @@ DEFAULT_INITIAL_FLUXES = {
 
 
 class AntibioticTransport(ConvenienceKinetics):
-    def __init__(self, initial_parameters={}):
+    def __init__(self, initial_parameters=None):
+        if initial_parameters is None:
+            initial_parameters = {}
         if 'initial_state' not in initial_parameters:
             initial_state = DEFAULT_INITIAL_STATE
         else:
