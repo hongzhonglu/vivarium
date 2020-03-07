@@ -47,7 +47,7 @@ class Compartment(Analysis):
             del data_dict[key1][key2]
 
         data_keys = [key for key in data_dict.keys() if key not in skip_keys]
-        time_vec = [t / 3600 for t in data_dict['time']]  # convert to hours
+        time_vec = data_dict['time']  #[t / 3600 for t in data_dict['time']]  # convert to hours
 
         # limit number of rows to max_rows by adding new columns
         n_data = [len(data_dict[key].keys()) for key in data_keys]
