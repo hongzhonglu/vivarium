@@ -24,25 +24,26 @@ class CellularPotts(Process):
 
         grid_size = initial_parameters.get('grid_size', (10, 10))
         n_initial = initial_parameters.get('n_agents', 1)
+        target_volume = initial_parameters.get('target_volume', 10)
 
         # configure CPM
         cpm_config = {
             'n_initial': n_initial,
-            'grid_size': grid_size}
+            'grid_size': grid_size,
+            'target_volume': target_volume}
         self.cpm = CPM(cpm_config)
 
         # animate (for debugging)
         self.animate = initial_parameters.get('animate', False)
         if self.animate:
             plt.ion()
-            fig = plt.figure()
             self.animate_frame()
 
         # make ports
         ports = {
             agent_id: [
                 'volume',
-                'vol_targetume']
+                'volume_target']
                 for agent_id in self.cpm.agent_ids}
 
         # parameters
@@ -54,8 +55,8 @@ class CellularPotts(Process):
     def default_settings(self):
         initial_state = {agent_id: {
             'volume': volume,
-            'vol_targetume': 10}  # TODO -- configure this
-            for agent_id, volume in self.cpm.get_agents_volumes().items()}
+            'volume_target': 15}  # TODO -- configure this
+            for agent_id, volume in self.cpm.get_agents_volumes(self.cpm.grid).items()}
 
         return {
             'state': initial_state}
@@ -68,9 +69,12 @@ class CellularPotts(Process):
 
     def next_update(self, timestep, states):
 
+        volume_target = {
+            agent_id: states[agent_id]['volume_target']
+            for agent_id in self.cpm.agent_ids}  # TODO -- get target volumes from state
+        self.cpm.update_target_volumes(volume_target)
         self.cpm.update()
         self.animate_frame()
-
 
 
         # import ipdb; ipdb.set_trace()
@@ -84,7 +88,7 @@ class CPM(object):
 
         # CPM parameters
         self.temperature = config.get('temperature', 1)
-        self.lambda_volume = 40
+        self.vol_constant = config.get('volume_constant', 40)
         self.adhesion_matrix = [[60, 60], [60, 1]]
 
         # make the grid
@@ -94,6 +98,7 @@ class CPM(object):
 
         # make agents, place in grid
         n_initial = config.get('n_initial')
+        target_volume = config.get('target_volume')
         self.agent_ids = [
             agent_id for agent_id in range(1, n_initial+1)]
 
@@ -110,6 +115,11 @@ class CPM(object):
                     for neighbor in neighbors:
                         self.grid[neighbor[0],neighbor[1]] = agent_id
                     filled = True
+
+        # target volumes
+        self.target_volumes = {
+            agent_id: target_volume for agent_id in self.agent_ids}
+
 
     def random_site(self):
         x = random.randint(0, self.grid_size[0] - 1)
@@ -135,13 +145,13 @@ class CPM(object):
         neighbors = self.neighbor_sites(site)
         return random.choice(neighbors)
 
-    def get_agent_volume(self, agent_id):
-        return np.count_nonzero(self.grid == agent_id)
+    def get_agent_volume(self, agent_id, grid):
+        return np.count_nonzero(grid == agent_id)
 
-    def get_agents_volumes(self):
+    def get_agents_volumes(self, grid):
         volumes = {}
         for agent_id in self.agent_ids:
-            volumes[agent_id] = self.get_agent_volume(agent_id)
+            volumes[agent_id] = self.get_agent_volume(agent_id, grid)
         return volumes
 
     def inverse_kronecker_delta(self, value1, value2):
@@ -174,7 +184,16 @@ class CPM(object):
         for x in range(self.grid_size[0]):
             for y in range(self.grid_size[1]):
                 site = (x, y)
+
+                # add interaction constraints
                 hamiltonian += self.get_interactions(site, grid)
+
+                # add volume constraints
+                volumes = self.get_agents_volumes(grid)
+                volume_constraints = [
+                    self.vol_constant*(volumes[agent_id] - self.target_volumes[agent_id])**2
+                    for agent_id in self.agent_ids]
+                hamiltonian += sum(volume_constraints)
 
         return hamiltonian
 
@@ -215,6 +234,9 @@ class CPM(object):
         else:
             return False
 
+    def update_target_volumes(self, volumes):
+        self.target_volumes.update(volumes)
+
     def update(self):
         """
         Metropolis Monte Carlo.
@@ -240,8 +262,8 @@ class CPM(object):
 # test functions
 def get_cpm_config():
     config = {
-        'n_agents': 1,
-        'grid_size': (10, 10),
+        'n_agents': 2,
+        'grid_size': (20, 20),
         'animate': True
     }
 
