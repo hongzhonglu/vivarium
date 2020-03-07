@@ -321,7 +321,6 @@ def initialize_measp_long(boot_config):
         'emit_fields': [],  # don't emit fields due to large lattice size
         'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
-        # 'emit_frequency': 20,
         'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
         'gradient': {
             'type': 'exponential',
