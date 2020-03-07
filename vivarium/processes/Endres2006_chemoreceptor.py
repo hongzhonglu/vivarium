@@ -84,7 +84,6 @@ class ReceptorCluster(Process):
             'external': external,
             'internal': internal}
         run_to_steady_state(self, state, 1.0)
-        default_state = state
 
         # default emitter keys
         default_emitter_keys = {
@@ -101,7 +100,7 @@ class ReceptorCluster(Process):
 
         default_settings = {
             'process_id': 'receptor',
-            'state': default_state,
+            'state': state,
             'emitter_keys': default_emitter_keys,
             'schema': schema,
             'time_step': 1.0}

@@ -76,7 +76,7 @@ def get_exponential_random_timeline(config):
     conc_0 = config.get('initial_conc', 0)  # mM
 
     conc = conc_0
-    timeline = [(0, {'environment': {LIGAND_ID: conc}})]
+    timeline = []
     for t in range(time):
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
@@ -93,21 +93,8 @@ if __name__ == '__main__':
     boot_config = {'emitter': 'null'}
     compartment = load_compartment(compose_simple_chemotaxis, boot_config)
 
-    # settings for simulation and plot
+    # set up simulations
     options = compartment.configuration
-    # timeline = [(10, {})]
-
-    exponential_random_config = {
-        'time': 60,
-        'base': 1+4e-4,
-        'speed': 14}
-    timeline = get_exponential_random_timeline(exponential_random_config)
-
-    settings = {
-        'environment_port': options['environment_port'],
-        'environment_volume': 1e-13,  # L
-        'timeline': timeline}
-
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
@@ -115,10 +102,34 @@ if __name__ == '__main__':
             'reactions': 'flux'},
         'skip_ports': ['prior_state', 'null', 'global']}
 
-    # saved_state = simulate_compartment(compartment, settings)
+    # # null timeline simulation
+    # timeline = [(20, {})]
+    # settings = {
+    #     'environment_port': options['environment_port'],
+    #     'environment_volume': 1e-13,  # L
+    #     'timeline': timeline}
+    #
+    # saved_data = simulate_with_environment(compartment, settings)
+    # del saved_data[0]
+    # timeseries = convert_to_timeseries(saved_data)
+    # plot_simulation_output(timeseries, plot_settings, out_dir, 'null_timeline')
+
+
+    # exponential random timeline simulation
+    exponential_random_config = {
+        'time': 60,
+        'base': 1+4e-4,
+        'speed': 14}
+    timeline = get_exponential_random_timeline(exponential_random_config)
+    settings = {
+        'environment_port': options['environment_port'],
+        'environment_volume': 1e-13,  # L
+        'timeline': timeline}
+
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
-    volume_ts = timeseries['global']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_simulation_output(timeseries, plot_settings, out_dir, 'exponential_timeline')
+
+
+
