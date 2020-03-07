@@ -6,11 +6,17 @@ import random
 import numpy as np
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import process_in_compartment, simulate_with_environment
+from vivarium.compartment.composition import (
+    process_in_compartment,
+    simulate_with_environment
+)
 
 
 
 class CellularPotts(Process):
+    """
+    Cellular Potts model
+    """
     def __init__(self, initial_parameters={}):
 
         grid_size = initial_parameters.get('grid_size', (10, 10))
@@ -39,7 +45,7 @@ class CellularPotts(Process):
         initial_state = {agent_id: {
             'volume': volume,
             'vol_targetume': 10}  # TODO -- configure this
-            for agent_id, volume in self.cpm.get_agent_volumes().items()}
+            for agent_id, volume in self.cpm.get_agents_volumes().items()}
 
         return {
             'state': initial_state}
@@ -78,6 +84,11 @@ class CPM(object):
                 x, y = self.random_site()
                 if self.grid[x][y] == 0:
                     self.grid[x][y] = agent_id
+                    neighbors = self.neighbor_sites((x, y))
+
+                    # set all neighbors to same agent_id
+                    for neighbor in neighbors:
+                        self.grid[neighbor[0],neighbor[1]] = agent_id
                     filled = True
 
     def random_site(self):
@@ -85,60 +96,98 @@ class CPM(object):
         y = random.randint(0, self.grid_size[1] - 1)
         return (x, y)
 
-    def random_neighbor(self, x, y):
+    def neighbor_sites(self, site):
+        x, y = site
+        neighbors = [
+            (n_x, n_y)
+            for n_x in range(x-1,x+2)
+            for n_y in range(y-1,y+2)
+            if n_x>=0 and n_x<self.grid_size[0] and n_y>=0 and n_y<self.grid_size[1]]
+        return neighbors
+
+    def random_neighbor(self, site):
         """
         return a random neighbor, without wrapping
         """
-        if x == self.grid_size[0]:
-            # exclude north
-            choice = random.choice([1, 2, 3])
-        elif x == 0:
-            # exclude south
-            choice = random.choice([0, 2, 3])
-        elif y == self.grid_size[1]:
-            # exclude east
-            choice = random.choice([0, 1, 3])
-        elif y == 0:
-            # exclude west
-            choice = random.choice([0, 1, 2])
-        else:
-            choice = random.choice([0, 1, 2, 3])
+        neighbors = self.neighbor_sites(site)
+        return random.choice(neighbors)
 
-        if choice == 0:
-            return (x, y+1) # north
-        elif choice == 1:
-            return (x, y-1) # south
-        elif choice == 2:
-            return (x+1, y) # east
-        elif choice == 3:
-            return (x-1, y) # west
+    def get_agent_volume(self, agent_id):
+        return np.count_nonzero(self.grid == agent_id)
 
-    def get_agent_volumes(self):
+    def get_agents_volumes(self):
         volumes = {}
         for agent_id in self.agent_ids:
-            n_sites = np.count_nonzero(self.grid == agent_id)
-            volumes[agent_id] = n_sites
+            volumes[agent_id] = self.get_agent_volume(agent_id)
         return volumes
 
-    def effective_energy_delta(self, volume, adhesion):
-        vol_target = volume.get('target')
-        vol_before = volume.get('before')
-        vol_after = volume.get('after')
-        adhesion_before = adhesion.get('before')
-        adhesion_after = adhesion.get('after')
+    def inverse_kronecker_delta(self, value1, value2):
+        """
+        Returns 0 if the values are the same, and 1 if they are different.
+        Keeps neighboring sites with the same value from contributing to the effective energy
+        """
+        if value1 == value2:
+            return 0
+        else:
+            return 1
 
-        H_before = adhesion_before + self.lambda_volume * ((vol_before - vol_target)**2)
-        H_after = adhesion_after + self.lambda_volume * ((vol_after - vol_target)**2)
+    def neighbor_values(self, site, grid):
+        x, y = site
 
-        return H_after - H_before
+        dir = [-1, 1, -1, 1]
+        if x == self.grid_size[0]:
+            # exclude north
+            dir[1] = 0
+        elif x == 0:
+            # exclude south
+            dir[0] = 0
+        if y == self.grid_size[1]:
+            # exclude east
+            dir[3] = 0
+        elif y == 0:
+            # exclude west
+            dir[2] = 0
+
+        values = grid[x-dir[0]:x+dir[1]+1, y-dir[2]:y+dir[3]+1]
+        return values.flatten()
+
+    def get_interactions(self, site, grid):
+        interactions = 0
+        site_value = grid[site]
+        neighbor_values = self.neighbor_values(site, grid)
+        for value in neighbor_values:
+            interactions += self.inverse_kronecker_delta(site_value, value)
+            # TODO -- use interaction matrix
+
+        return interactions
+
+    def effective_energy(self, grid):
+        hamiltonian = 0.0
+        for x in range(self.grid_size[0]):
+            for y in range(self.grid_size[1]):
+                site = (x, y)
+                hamiltonian += self.get_interactions(site, grid)
+
+        return hamiltonian
+
+    # def effective_energy_delta(self, volume, adhesion):
+    #     vol_target = volume.get('target')
+    #     vol_before = volume.get('before')
+    #     vol_after = volume.get('after')
+    #     adhesion_before = adhesion.get('before')
+    #     adhesion_after = adhesion.get('after')
+    #
+    #     H_before = adhesion_before + self.lambda_volume * ((vol_before - vol_target)**2)
+    #     H_after = adhesion_after + self.lambda_volume * ((vol_after - vol_target)**2)
+    #
+    #     return H_after - H_before
 
     def boltzmann_acceptance_function(self, energy):
         accept = False
         if energy < 0:
             accept = True
-        elif np.rand() < np.exp(-energy / self.temperature):
+        elif random.random() < np.exp(-energy / self.temperature):
             accept = True
-
         return accept
 
     def mutate(self, grid):
@@ -148,7 +197,7 @@ class CPM(object):
         If a successful mutation is made, return True
         """
         x, y = self.random_site()
-        n_x, n_y = self.random_neighbor(x, y)
+        n_x, n_y = self.random_neighbor((x, y))
 
         value = grid[x][y]
         n_value = grid[n_x][n_y]
@@ -164,20 +213,19 @@ class CPM(object):
         Attempt as many updates as there are sites in the grid
         """
         grid_copy = self.grid.copy()
+        H_before = self.effective_energy(grid_copy)
 
         for update in range(self.n_sites):
             if self.mutate(grid_copy):
+                H_after = self.effective_energy(grid_copy)
 
-                import ipdb; ipdb.set_trace()
-
-                dH = self.effective_energy_delta()
+                # change in effective energy
+                dH = H_after - H_before
 
                 if self.boltzmann_acceptance_function(dH):
                     # update grid
                     self.grid = grid_copy
-
-
-
+                    H_before = H_after
 
 
 
