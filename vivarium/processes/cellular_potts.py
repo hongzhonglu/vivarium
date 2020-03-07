@@ -11,8 +11,7 @@ import matplotlib.pyplot as plt
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     process_in_compartment,
-    simulate_with_environment
-)
+    simulate_with_environment)
 
 
 
@@ -24,13 +23,13 @@ class CellularPotts(Process):
 
         grid_size = initial_parameters.get('grid_size', (10, 10))
         n_initial = initial_parameters.get('n_agents', 1)
-        target_volume = initial_parameters.get('target_volume', 10)
+        self.init_target_area = initial_parameters.get('target_area', 10)
 
         # configure CPM
         cpm_config = {
             'n_initial': n_initial,
             'grid_size': grid_size,
-            'target_volume': target_volume}
+            'target_area': self.init_target_area}
         self.cpm = CPM(cpm_config)
 
         # animate (for debugging)
@@ -42,8 +41,8 @@ class CellularPotts(Process):
         # make ports
         ports = {
             agent_id: [
-                'volume',
-                'volume_target']
+                'area',
+                'area_target']
                 for agent_id in self.cpm.agent_ids}
 
         # parameters
@@ -54,9 +53,9 @@ class CellularPotts(Process):
 
     def default_settings(self):
         initial_state = {agent_id: {
-            'volume': volume,
-            'volume_target': 15}  # TODO -- configure this
-            for agent_id, volume in self.cpm.get_agents_volumes(self.cpm.grid).items()}
+            'area': area,
+            'area_target': self.init_target_area}  # TODO -- configure this
+            for agent_id, area in self.cpm.get_agents_areas(self.cpm.grid).items()}
 
         return {
             'state': initial_state}
@@ -69,27 +68,25 @@ class CellularPotts(Process):
 
     def next_update(self, timestep, states):
 
-        volume_target = {
-            agent_id: states[agent_id]['volume_target']
-            for agent_id in self.cpm.agent_ids}  # TODO -- get target volumes from state
-        self.cpm.update_target_volumes(volume_target)
+        area_target = {
+            agent_id: states[agent_id]['area_target']
+            for agent_id in self.cpm.agent_ids}  # TODO -- get target areas from state
+        self.cpm.update_target_areas(area_target)
         self.cpm.update()
         self.animate_frame()
 
-
-        # import ipdb; ipdb.set_trace()
-
         return {}
+
 
 
 class CPM(object):
 
     def __init__(self, config):
-
         # CPM parameters
-        self.temperature = config.get('temperature', 1)
-        self.vol_constant = config.get('volume_constant', 40)
-        self.adhesion_matrix = [[60, 60], [60, 1]]
+        self.temperature = config.get('temperature', 1e2)
+        self.area_constant = config.get('area_constant', 40)
+        self.adhesion_baseline = 60
+        self.adhesion_matrix = np.array([])
 
         # make the grid
         self.grid_size = config.get('grid_size')
@@ -98,7 +95,7 @@ class CPM(object):
 
         # make agents, place in grid
         n_initial = config.get('n_initial')
-        target_volume = config.get('target_volume')
+        target_area = config.get('target_area')
         self.agent_ids = [
             agent_id for agent_id in range(1, n_initial+1)]
 
@@ -116,10 +113,17 @@ class CPM(object):
                         self.grid[neighbor[0],neighbor[1]] = agent_id
                     filled = True
 
-        # target volumes
-        self.target_volumes = {
-            agent_id: target_volume for agent_id in self.agent_ids}
+        # target areas
+        self.target_areas = {
+            agent_id: target_area for agent_id in self.agent_ids}
 
+        # make adhesion matrix for agent_ids and medium
+        self.update_adhesion_matrix()
+
+    def update_adhesion_matrix(self):
+        self.adhesion_matrix = np.full((len(self.agent_ids)+1, len(self.agent_ids)+1), self.adhesion_baseline)
+        for agent_id in self.agent_ids:
+            self.adhesion_matrix[agent_id, agent_id] = 1  # TODO -- set self-adhesion
 
     def random_site(self):
         x = random.randint(0, self.grid_size[0] - 1)
@@ -145,14 +149,14 @@ class CPM(object):
         neighbors = self.neighbor_sites(site)
         return random.choice(neighbors)
 
-    def get_agent_volume(self, agent_id, grid):
+    def get_agent_area(self, agent_id, grid):
         return np.count_nonzero(grid == agent_id)
 
-    def get_agents_volumes(self, grid):
-        volumes = {}
+    def get_agents_areas(self, grid):
+        areas = {}
         for agent_id in self.agent_ids:
-            volumes[agent_id] = self.get_agent_volume(agent_id, grid)
-        return volumes
+            areas[agent_id] = self.get_agent_area(agent_id, grid)
+        return areas
 
     def inverse_kronecker_delta(self, value1, value2):
         """
@@ -174,9 +178,7 @@ class CPM(object):
         site_value = grid[site]
         neighbor_values = self.neighbor_values(site, grid)
         for value in neighbor_values:
-            interactions += self.inverse_kronecker_delta(site_value, value)
-            # TODO -- use interaction matrix
-
+            interactions += self.adhesion_matrix[site_value, value] * self.inverse_kronecker_delta(site_value, value)
         return interactions
 
     def effective_energy(self, grid):
@@ -185,29 +187,17 @@ class CPM(object):
             for y in range(self.grid_size[1]):
                 site = (x, y)
 
-                # add interaction constraints
+                # interaction constraints
                 hamiltonian += self.get_interactions(site, grid)
 
-                # add volume constraints
-                volumes = self.get_agents_volumes(grid)
-                volume_constraints = [
-                    self.vol_constant*(volumes[agent_id] - self.target_volumes[agent_id])**2
+                # area constraints
+                areas = self.get_agents_areas(grid)
+                area_constraints = [
+                    self.area_constant*(areas[agent_id] - self.target_areas[agent_id])**2
                     for agent_id in self.agent_ids]
-                hamiltonian += sum(volume_constraints)
+                hamiltonian += sum(area_constraints)
 
         return hamiltonian
-
-    # def effective_energy_delta(self, volume, adhesion):
-    #     vol_target = volume.get('target')
-    #     vol_before = volume.get('before')
-    #     vol_after = volume.get('after')
-    #     adhesion_before = adhesion.get('before')
-    #     adhesion_after = adhesion.get('after')
-    #
-    #     H_before = adhesion_before + self.lambda_volume * ((vol_before - vol_target)**2)
-    #     H_after = adhesion_after + self.lambda_volume * ((vol_after - vol_target)**2)
-    #
-    #     return H_after - H_before
 
     def boltzmann_acceptance_function(self, energy):
         accept = False
@@ -234,26 +224,23 @@ class CPM(object):
         else:
             return False
 
-    def update_target_volumes(self, volumes):
-        self.target_volumes.update(volumes)
+    def update_target_areas(self, areas):
+        self.target_areas.update(areas)
 
     def update(self):
         """
         Metropolis Monte Carlo.
         Attempt as many updates as there are sites in the grid
         """
-        grid_copy = self.grid.copy()
-        H_before = self.effective_energy(grid_copy)
-
+        H_before = self.effective_energy(self.grid)
         for update in range(self.n_sites):
+            grid_copy = self.grid.copy()
             if self.mutate(grid_copy):
                 H_after = self.effective_energy(grid_copy)
 
                 # change in effective energy
                 dH = H_after - H_before
-
                 if self.boltzmann_acceptance_function(dH):
-                    # update grid
                     self.grid = grid_copy
                     H_before = H_after
 
@@ -261,13 +248,11 @@ class CPM(object):
 
 # test functions
 def get_cpm_config():
-    config = {
-        'n_agents': 2,
-        'grid_size': (20, 20),
-        'animate': True
-    }
-
-    return config
+    return {
+        'n_agents': 4,
+        'grid_size': (30, 30),
+        'target_area': 25,
+        'animate': True}
 
 def test_CPM(cpm_config = get_cpm_config(), time=10):
 
@@ -278,7 +263,7 @@ def test_CPM(cpm_config = get_cpm_config(), time=10):
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
-        'environment_volume': 1e-12}
+        'environment_area': 1e-12}
 
     compartment = process_in_compartment(expression)
     return simulate_with_environment(compartment, settings)
@@ -290,5 +275,5 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     cpm_config = get_cpm_config()
-    saved_data = test_CPM(cpm_config, 20)
+    saved_data = test_CPM(cpm_config, 30)
 
