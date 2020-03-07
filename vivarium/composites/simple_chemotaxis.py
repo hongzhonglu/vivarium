@@ -72,14 +72,17 @@ def compose_simple_chemotaxis(config):
 # testing function
 def get_exponential_random_timeline(config):
     # exponential space with random direction changes
-    time = config.get('time', 100)
+    time_total = config.get('time', 100)
+    timestep = config.get('timestep', 1)
     base = config.get('base', 1+1e-4)  # mM/um
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
 
     conc = conc_0
-    timeline = []
-    for t in range(time):
+    t = 0
+    timeline = [(t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}})]
+    while t<=time_total:
+        t += timestep
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
             conc = 0
@@ -103,6 +106,7 @@ if __name__ == '__main__':
     # exponential random timeline simulation
     exponential_random_config = {
         'time': 60,
+        'timestep': 0.1,
         'base': 1+4e-4,
         'speed': 14}
     timeline = get_exponential_random_timeline(exponential_random_config)
@@ -122,21 +126,21 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir, 'exponential_timeline')
 
 
-    # null timeline simulation
-    null_timeline = [
-        (0, {ENVIRONMENT_PORT: {LIGAND_ID: 0.0}}),
-        (20, {})]
-    null_boot_config = {
-        'initial_ligand': null_timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
-        'emitter': 'null'}
-    compartment2 = load_compartment(compose_simple_chemotaxis, null_boot_config)
-
-    null_settings = {
-        'environment_port': ENVIRONMENT_PORT,
-        'environment_volume': 1e-13,  # L
-        'timeline': null_timeline}
-
-    null_saved_data = simulate_with_environment(compartment2, null_settings)
-    del null_saved_data[0]
-    null_timeseries = convert_to_timeseries(null_saved_data)
-    plot_simulation_output(null_timeseries, plot_settings, out_dir, 'null_timeline')
+    # # null timeline simulation
+    # null_timeline = [
+    #     (0, {ENVIRONMENT_PORT: {LIGAND_ID: 0.0}}),
+    #     (20, {})]
+    # null_boot_config = {
+    #     'initial_ligand': null_timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
+    #     'emitter': 'null'}
+    # compartment2 = load_compartment(compose_simple_chemotaxis, null_boot_config)
+    #
+    # null_settings = {
+    #     'environment_port': ENVIRONMENT_PORT,
+    #     'environment_volume': 1e-13,  # L
+    #     'timeline': null_timeline}
+    #
+    # null_saved_data = simulate_with_environment(compartment2, null_settings)
+    # del null_saved_data[0]
+    # null_timeseries = convert_to_timeseries(null_saved_data)
+    # plot_simulation_output(null_timeseries, plot_settings, out_dir, 'null_timeline')

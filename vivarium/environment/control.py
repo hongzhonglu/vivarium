@@ -60,7 +60,9 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'lattice_experiment',
-            'description': 'minimal growth_division agents are placed in a lattice environment'}
+            'description': (
+                'minimal growth_division agents are placed '
+                'in a lattice environment')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -82,7 +84,9 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'growth_division_experiment',
-            'description': 'minimal growth_division agents are placed in a lattice environment'}
+            'description': (
+                'minimal growth_division agents are placed '
+                'in a lattice environment')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -129,11 +133,15 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'ecoli_core_glc_lct',
-            'description': 'glucose-lactose diauxic shifters are placed in a shallow environment with glucose and '
-                           'lactose. They start off with no LacY, and so uptake only glucose, but LacY is expressed '
-                           'upon depletion of glucose and they begin to uptake lactose. Cells have an e_coli_core '
-                           'BiGG metabolism, kinetic transport of glucose and lactose, and ode-based gene expression '
-                           'of LacY'}
+            'description': (
+                'glucose-lactose diauxic shifters are placed in '
+                'a shallow environment with glucose and  lactose. '
+                'They start off with no LacY, and so uptake only '
+                'glucose, but LacY is expressed upon depletion of '
+                'glucose and they begin to uptake lactose. Cells '
+                'have an e_coli_core BiGG metabolism, kinetic '
+                'transport of glucose and lactose, and ode-based '
+                'gene expression of LacY')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -154,9 +162,13 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'chemotaxis square experiment',
-            'description': 'a square environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+            'description': (
+                'a square environment with a static gradient of '
+                'glucose and a-methyl-DL-aspartic acid (MeAsp) '
+                'for observing chemotactic cells in action. Optimal '
+                'chemotaxis is observed in a narrow range of CheA '
+                'activity, where concentration of CheY-P falls into '
+                'the operating range of flagellar motors.')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -178,9 +190,13 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'chemotaxis_experiment',
-            'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-               'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-               'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.'}
+            'description': (
+                'a long environment with a static gradient of glucose '
+                'and a-methyl-DL-aspartic acid (MeAsp) for observing '
+                'chemotactic cells in action. Optimal chemotaxis is '
+                'observed in a narrow range of CheA activity, where '
+                'concentration of CheY-P falls into the operating range '
+                'of flagellar motors.')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
@@ -201,7 +217,8 @@ class ShepherdControl(ActorControl):
         # overwrite default environment config
         lattice_config = {
             'name': 'swarm_experiment',
-            'description': 'a large experiment for running swarms of chemotactic cells'}
+            'description': (
+                'a large experiment for running swarms of chemotactic cells')}
 
         exp_config = {
             'default_experiment_id': experiment_id,
