@@ -102,7 +102,7 @@ class CPM(object):
             (n_x, n_y)
             for n_x in range(x-1,x+2)
             for n_y in range(y-1,y+2)
-            if n_x>=0 and n_x<self.grid_size[0] and n_y>=0 and n_y<self.grid_size[1]]
+            if n_x>=0 and n_x<self.grid_size[0] and n_y>=0 and n_y<self.grid_size[1] and (n_x, n_y) != site]
         return neighbors
 
     def random_neighbor(self, site):
@@ -132,24 +132,9 @@ class CPM(object):
             return 1
 
     def neighbor_values(self, site, grid):
-        x, y = site
-
-        dir = [-1, 1, -1, 1]
-        if x == self.grid_size[0]:
-            # exclude north
-            dir[1] = 0
-        elif x == 0:
-            # exclude south
-            dir[0] = 0
-        if y == self.grid_size[1]:
-            # exclude east
-            dir[3] = 0
-        elif y == 0:
-            # exclude west
-            dir[2] = 0
-
-        values = grid[x-dir[0]:x+dir[1]+1, y-dir[2]:y+dir[3]+1]
-        return values.flatten()
+        neighbors = self.neighbor_sites(site)
+        values = [grid[site] for site in neighbors]
+        return values
 
     def get_interactions(self, site, grid):
         interactions = 0
