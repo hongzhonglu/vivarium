@@ -3,12 +3,16 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 import copy
+import random
+
+import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 
 
 LIGAND_ID = 'MeAsp'
+STEADY_STATE_DELTA = 1e-3
 
 INITIAL_STATE = {
     'n_methyl': 2.0,  # initial number of methyl groups on receptor cluster (0 to 8)
@@ -34,18 +38,36 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 1,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 2,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
+
+def run_step(receptor, state, timestep):
+    update = receptor.next_update(timestep, state)
+    state['internal']['chemoreceptor_activity'] = update['internal']['chemoreceptor_activity']
+    state['internal']['n_methyl'] = update['internal']['n_methyl']
+
+def run_to_steady_state(receptor, state, timestep):
+    P_on = state['internal']['chemoreceptor_activity']
+    n_methyl = state['internal']['n_methyl']
+    delta = 1
+    while delta > STEADY_STATE_DELTA:
+        run_step(receptor, state, timestep)
+        d_P_on = P_on - state['internal']['chemoreceptor_activity']
+        d_n_methyl = n_methyl - state['internal']['n_methyl']
+        delta = (d_P_on**2 + d_n_methyl**2)**0.5
+        P_on = state['internal']['chemoreceptor_activity']
+        n_methyl = state['internal']['n_methyl']
+
 
 
 class ReceptorCluster(Process):
     def __init__(self, initial_parameters={}):
 
         self.ligand_id = initial_parameters.get('ligand', LIGAND_ID)
+        self.initial_ligand = initial_parameters.get('initial_ligand', 5.0)
         ports = {
             'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
-            'external': [self.ligand_id]
-        }
+            'external': [self.ligand_id]}
         parameters = DEFAULT_PARAMETERS
         parameters.update(initial_parameters)
 
@@ -55,12 +77,14 @@ class ReceptorCluster(Process):
 
         set_keys = ['chemoreceptor_activity', 'n_methyl']
 
-        # default state
+        # get default state by running to steady state
         internal = INITIAL_STATE
-        external = {self.ligand_id: 0.1}
-        default_state = {
+        external = {self.ligand_id: self.initial_ligand}
+        state = {
             'external': external,
             'internal': internal}
+        run_to_steady_state(self, state, 1.0)
+        default_state = state
 
         # default emitter keys
         default_emitter_keys = {
@@ -154,67 +178,105 @@ class ReceptorCluster(Process):
 
 
 # tests and analyses of process
-def test_receptor():
-    # TODO -- add asserts for test
-    # define timeline with (time (s), ligand concentration (mmol/L))
+def get_pulse_timeline():
     timeline = [
         (0, 0.0),
-        (200, 0.01),
+        (100, 0.01),
+        (200, 0.0),
+        (300, 0.1),
+        (400, 0.0),
+        (500, 1.0),
         (600, 0.0),
-        (1000, 0.1),
-        (1400, 0.0),
-        (1800, 1.0),
-        (2200, 0.0),
-        (2400, 0.0),
-    ]
+        (700, 0.0)]
+    return timeline
+
+def get_linear_step_timeline(config):
+    time = config.get('time', 100)
+    slope = config.get('slope', 2e-3)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+    timeline = [(t, conc_0 + slope*t*speed) for t in range(time)]
+    return timeline
+
+def get_exponential_step_timeline(config):
+    time = config.get('time', 100)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+    timeline = [(t, conc_0 + base**(t*speed) - 1) for t in range(time)]
+    return timeline
+
+def get_exponential_random_timeline(config):
+    # exponential space with random direction changes
+    time = config.get('time', 100)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+
+    conc = conc_0
+    timeline = [(0, conc)]
+    for t in range(time):
+        conc += base**(random.choice((-1, 1)) * speed) - 1
+        if conc<0:
+            conc = 0
+        timeline.append((t, conc))
+
+    return timeline
+
+def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
+
+    end_time = timeline[-1][0]
     time = 0
-    timestep = 1
 
     # initialize process
-    receptor = ReceptorCluster()
+    config = {
+        'initial_ligand': timeline[0][1]}
+    receptor = ReceptorCluster(config)
     settings = receptor.default_settings()
     state = settings['state']
     ligand_id = receptor.ligand_id
+    state['external'][ligand_id] = timeline[0][1]
 
     # run simulation
     ligand_vec = []
     receptor_activity_vec = []
     n_methyl_vec = []
-    while time < timeline[-1][0]:
+    time_vec = []
+    ligand_conc=timeline[0][1]
+    while time < end_time:
         time += timestep
-        for (t, conc) in timeline:
-            if time < t:
-                pass
-            else:
-                ligand_conc = conc
-                state['external'][ligand_id] = ligand_conc
-                continue
+
+        # update ligand from timeline
+        timeline_steps = [
+            index for index, (t, conc) in enumerate(timeline) if t < time]
+        if len(timeline_steps) > 0:
+            step = timeline_steps[-1]
+            ligand_conc = timeline[step][1]
+            state['external'][ligand_id] = ligand_conc
+            del timeline[0:step+1]
 
         # run step
-        update = receptor.next_update(timestep, state)
-        P_on = update['internal']['chemoreceptor_activity']
-        n_methyl = update['internal']['n_methyl']
-
-        # update state
-        state['internal']['chemoreceptor_activity'] = P_on
-        state['internal']['n_methyl'] = n_methyl
+        run_step(receptor, state, timestep)
+        P_on = state['internal']['chemoreceptor_activity']
+        n_methyl = state['internal']['n_methyl']
 
         # save state
         ligand_vec.append(ligand_conc)
         receptor_activity_vec.append(P_on)
         n_methyl_vec.append(n_methyl)
+        time_vec.append(time)
 
     return {
         'ligand_vec': ligand_vec,
         'receptor_activity_vec': receptor_activity_vec,
-        'n_methyl_vec': n_methyl_vec}
+        'n_methyl_vec': n_methyl_vec,
+        'time_vec': time_vec}
 
-def plot_output(output, out_dir='out'):
-    import matplotlib.pyplot as plt
-
+def plot_output(output, out_dir='out', filename='response'):
     ligand_vec = output['ligand_vec']
     receptor_activity_vec = output['receptor_activity_vec']
     n_methyl_vec = output['n_methyl_vec']
+    time_vec = output['time_vec']
 
     # plot results
     cols = 1
@@ -225,16 +287,16 @@ def plot_output(output, out_dir='out'):
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(ligand_vec, 'b')
-    ax2.plot(receptor_activity_vec, 'b')
-    ax3.plot(n_methyl_vec, 'b')
+    ax1.plot(time_vec, ligand_vec, 'b')
+    ax2.plot(time_vec, receptor_activity_vec, 'b')
+    ax3.plot(time_vec, n_methyl_vec, 'b')
 
     ax1.set_xticklabels([])
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.tick_params(right=False, top=False)
     ax1.set_ylabel("external ligand \n log(mM) ", fontsize=10)
-    ax1.set_yscale('log')
+    # ax1.set_yscale('log')
 
     ax2.set_xticklabels([])
     ax2.spines['right'].set_visible(False)
@@ -248,14 +310,40 @@ def plot_output(output, out_dir='out'):
     ax3.set_xlabel("time (s)", fontsize=12)
     ax3.set_ylabel("average \n methylation", fontsize=10)
 
-    fig_path = os.path.join(out_dir, 'response')
-    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.2)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
 
 if __name__ == '__main__':
-    output = test_receptor()
     out_dir = os.path.join('out', 'tests', 'Endres2006_chemoreceptor')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    plot_output(output, out_dir)
+
+    # timeline = get_pulse_timeline()
+    # output = test_receptor(timeline)
+    # plot_output(output, out_dir, 'pulse')
+    #
+    # linear_config = {
+    #     'time': 10,
+    #     'slope': 1e-3,
+    #     'speed': 14}
+    # timeline2 = get_linear_step_timeline(linear_config)
+    # output2 = test_receptor(timeline2)
+    # plot_output(output2, out_dir, 'linear')
+
+    # exponential_config = {
+    #     'time': 10,
+    #     'base': 1+4e-4,
+    #     'speed': 14}
+    # timeline3 = get_exponential_step_timeline(exponential_config)
+    # output3 = test_receptor(timeline3)
+    # plot_output(output3, out_dir, 'exponential_4e-4')
+
+    exponential_random_config = {
+        'time': 60,
+        'base': 1+4e-4,
+        'speed': 14}
+    timeline4 = get_exponential_random_timeline(exponential_random_config)
+    output4 = test_receptor(timeline4, 0.1)
+    plot_output(output4, out_dir, 'exponential_random')

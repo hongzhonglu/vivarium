@@ -25,7 +25,7 @@ DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds nu
 ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
 FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
-FORCE_SCALING = 17000  # scales from pN
+FORCE_SCALING = 15  # scales from pN
 
 
 def get_force_with_angle(force, angle):
@@ -143,8 +143,12 @@ class MultiCellPhysics(object):
             thrust, torque = body.motile_force
             motile_force = [thrust, 0.0]
 
-            if torque != 0.0:
-                motile_force = get_force_with_angle(thrust, torque)
+            # add directly to angular velocity
+            body.angular_velocity += torque
+
+            ## force-based torque
+            # if torque != 0.0:
+            #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
