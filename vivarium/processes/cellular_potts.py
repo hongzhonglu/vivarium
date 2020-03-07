@@ -4,6 +4,9 @@ import os
 import random
 
 import numpy as np
+import matplotlib
+matplotlib.use('TKAgg')
+import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
@@ -28,6 +31,13 @@ class CellularPotts(Process):
             'grid_size': grid_size}
         self.cpm = CPM(cpm_config)
 
+        # animate (for debugging)
+        self.animate = initial_parameters.get('animate', False)
+        if self.animate:
+            plt.ion()
+            fig = plt.figure()
+            self.animate_frame()
+
         # make ports
         ports = {
             agent_id: [
@@ -50,10 +60,20 @@ class CellularPotts(Process):
         return {
             'state': initial_state}
 
+    def animate_frame(self):
+        if self.animate:
+            plt.imshow(self.cpm.grid)
+            plt.axis('off')
+            plt.pause(0.0001)
+
     def next_update(self, timestep, states):
 
         self.cpm.update()
-        import ipdb; ipdb.set_trace()
+        self.animate_frame()
+
+
+
+        # import ipdb; ipdb.set_trace()
 
         return {}
 
@@ -97,6 +117,9 @@ class CPM(object):
         return (x, y)
 
     def neighbor_sites(self, site):
+        """
+        return the (x, y) of all neighboring sites
+        """
         x, y = site
         neighbors = [
             (n_x, n_y)
@@ -218,7 +241,8 @@ class CPM(object):
 def get_cpm_config():
     config = {
         'n_agents': 1,
-        'grid_size': (10, 10)
+        'grid_size': (10, 10),
+        'animate': True
     }
 
     return config
