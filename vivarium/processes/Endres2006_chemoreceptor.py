@@ -168,6 +168,10 @@ class ReceptorCluster(Process):
         cluster_free_energy = Tar_free_energy + Tsr_free_energy  #  free energy of the cluster
         P_on = 1.0/(1.0 + math.exp(cluster_free_energy))  # probability that receptor cluster is ON (CheA is phosphorylated). Higher free energy --> activity less probably
 
+
+        print('ligand: {}, P_on: {}'.format(ligand_conc, P_on))
+
+
         update = {
             'internal': {
                 'chemoreceptor_activity': P_on,

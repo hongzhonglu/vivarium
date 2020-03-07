@@ -168,6 +168,9 @@ class MotorActivity(Process):
                 motor_state = 1
                 [thrust, torque] = tumble()
 
+
+        print('motile forces: {}'.format([thrust, torque]))
+
         return {
             'internal': {
                 'ccw_motor_bias': ccw_motor_bias,
@@ -178,7 +181,7 @@ class MotorActivity(Process):
                 'CheY_P': CheY_P}}
 
 def tumble():
-    thrust = 100  # pN
+    thrust = 150  # pN
     tumble_jitter = 2.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]

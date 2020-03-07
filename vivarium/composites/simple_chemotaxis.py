@@ -73,7 +73,7 @@ def compose_simple_chemotaxis(config):
 def get_exponential_random_timeline(config):
     # exponential space with random direction changes
     time_total = config.get('time', 100)
-    timestep = config.get('timestep', 1)
+    time_step = config.get('time_step', 1)
     base = config.get('base', 1+1e-4)  # mM/um
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
@@ -82,7 +82,7 @@ def get_exponential_random_timeline(config):
     t = 0
     timeline = [(t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}})]
     while t<=time_total:
-        t += timestep
+        t += time_step
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
             conc = 0
@@ -104,14 +104,16 @@ if __name__ == '__main__':
         'skip_ports': ['prior_state', 'null', 'global']}
 
     # exponential random timeline simulation
+    time_step = 0.01
     exponential_random_config = {
         'time': 60,
-        'timestep': 0.1,
-        'base': 1+4e-4,
+        'time_step': time_step,
+        'base': 1+4e-5,
         'speed': 14}
     timeline = get_exponential_random_timeline(exponential_random_config)
     boot_config = {
         'initial_ligand': timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
+        'time_step': time_step,
         'emitter': 'null'}
     compartment = load_compartment(compose_simple_chemotaxis, boot_config)
 
@@ -123,7 +125,11 @@ if __name__ == '__main__':
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
-    plot_simulation_output(timeseries, plot_settings, out_dir, 'exponential_timeline')
+    plot_simulation_output(
+        timeseries,
+        plot_settings,
+        out_dir,
+        'exponential_timeline')
 
 
     # # null timeline simulation
@@ -143,4 +149,8 @@ if __name__ == '__main__':
     # null_saved_data = simulate_with_environment(compartment2, null_settings)
     # del null_saved_data[0]
     # null_timeseries = convert_to_timeseries(null_saved_data)
-    # plot_simulation_output(null_timeseries, plot_settings, out_dir, 'null_timeline')
+    # plot_simulation_output(
+    #   null_timeseries,
+    #   plot_settings,
+    #   out_dir,
+    #   'null_timeline')
