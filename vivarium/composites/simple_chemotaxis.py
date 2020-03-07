@@ -17,6 +17,8 @@ from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 
 LIGAND_ID = 'MeAsp'
+ENVIRONMENT_PORT = 'environment'
+
 
 
 def compose_simple_chemotaxis(config):
@@ -40,10 +42,10 @@ def compose_simple_chemotaxis(config):
     # for each process, map process ports to store ids
     topology = {
         'receptor': {
-            'external': 'environment',
+            'external': ENVIRONMENT_PORT,
             'internal': 'cell'},
         'motor': {
-            'external': 'environment',
+            'external': ENVIRONMENT_PORT,
             'internal': 'cell'}}
 
     # add derivers
@@ -81,7 +83,7 @@ def get_exponential_random_timeline(config):
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
             conc = 0
-        timeline.append((t, {'environment': {LIGAND_ID: conc}}))
+        timeline.append((t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}}))
 
     return timeline
 
@@ -90,11 +92,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
-    compartment = load_compartment(compose_simple_chemotaxis, boot_config)
-
-    # set up simulations
-    options = compartment.configuration
+    # plot settings for the simulations
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
@@ -102,27 +100,19 @@ if __name__ == '__main__':
             'reactions': 'flux'},
         'skip_ports': ['prior_state', 'null', 'global']}
 
-    # # null timeline simulation
-    # timeline = [(20, {})]
-    # settings = {
-    #     'environment_port': options['environment_port'],
-    #     'environment_volume': 1e-13,  # L
-    #     'timeline': timeline}
-    #
-    # saved_data = simulate_with_environment(compartment, settings)
-    # del saved_data[0]
-    # timeseries = convert_to_timeseries(saved_data)
-    # plot_simulation_output(timeseries, plot_settings, out_dir, 'null_timeline')
-
-
     # exponential random timeline simulation
     exponential_random_config = {
         'time': 60,
         'base': 1+4e-4,
         'speed': 14}
     timeline = get_exponential_random_timeline(exponential_random_config)
+    boot_config = {
+        'initial_ligand': timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
+        'emitter': 'null'}
+    compartment = load_compartment(compose_simple_chemotaxis, boot_config)
+
     settings = {
-        'environment_port': options['environment_port'],
+        'environment_port': ENVIRONMENT_PORT,
         'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
@@ -132,4 +122,21 @@ if __name__ == '__main__':
     plot_simulation_output(timeseries, plot_settings, out_dir, 'exponential_timeline')
 
 
+    # null timeline simulation
+    null_timeline = [
+        (0, {ENVIRONMENT_PORT: {LIGAND_ID: 0.0}}),
+        (20, {})]
+    null_boot_config = {
+        'initial_ligand': null_timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
+        'emitter': 'null'}
+    compartment2 = load_compartment(compose_simple_chemotaxis, null_boot_config)
 
+    null_settings = {
+        'environment_port': ENVIRONMENT_PORT,
+        'environment_volume': 1e-13,  # L
+        'timeline': null_timeline}
+
+    null_saved_data = simulate_with_environment(compartment2, null_settings)
+    del null_saved_data[0]
+    null_timeseries = convert_to_timeseries(null_saved_data)
+    plot_simulation_output(null_timeseries, plot_settings, out_dir, 'null_timeline')

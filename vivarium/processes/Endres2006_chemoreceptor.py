@@ -12,7 +12,7 @@ from vivarium.utils.units import units
 
 
 LIGAND_ID = 'MeAsp'
-STEADY_STATE_DELTA = 1e-3
+STEADY_STATE_DELTA = 1e-6
 
 INITIAL_STATE = {
     'n_methyl': 2.0,  # initial number of methyl groups on receptor cluster (0 to 8)
