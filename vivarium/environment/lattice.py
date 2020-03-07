@@ -198,23 +198,21 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
         self.multicell_physics.run_incremental(timestep)
 
         # set new agent location
-        displace_from_edge = self.dx / 2  # TODO -- set this in init
         for agent_id, location in self.locations.items():
             # set location
             self.locations[agent_id] = self.multicell_physics.get_center(agent_id)
             self.corner_locations[agent_id] = self.multicell_physics.get_corner(agent_id)
 
-            # enforce boundaries
-            # TODO (Eran) -- make pymunk handle this
+            # enforce boundaries # TODO (Eran) -- make pymunk handle this
             if self.locations[agent_id][0] > self.edge_length_x:
-                self.locations[agent_id][0] = self.edge_length_x - self.dx / 2 - displace_from_edge
+                self.locations[agent_id][0] = self.edge_length_x - self.dx / 2
             elif self.locations[agent_id][0] <= 0.0:
-                self.locations[agent_id][0] = 0.0 + displace_from_edge
+                self.locations[agent_id][0] = 0.0
 
             if self.locations[agent_id][1] > self.edge_length_y:
-                self.locations[agent_id][1] = self.edge_length_y - self.dy / 2 - displace_from_edge
+                self.locations[agent_id][1] = self.edge_length_y - self.dy / 2
             elif self.locations[agent_id][1] <= 0.0:
-                self.locations[agent_id][1] = 0.0 + displace_from_edge
+                self.locations[agent_id][1] = 0.0
 
 
     def add_cell_to_physics(self, agent_id, position, angle):

@@ -44,26 +44,16 @@ class Motor(Analysis):
         # compartment data
         compartment_data = data['compartment']
         sim_id = compartment_data['sim_id']
-        time_vec = compartment_data['time']  # convert to hours
+        time_vec = compartment_data['time']
 
-        # get the internal port. assumes there is only one in all agents.
-        internal_port = None
-        for agent_id, specs in experiment_config['agents'].items():
-            internal_port = specs['topology']['motor']['internal']
-
-        internal_port = 'internal'
-        # TODO -- why can internal_port be incorrect in topology???
-        # TODO -- are there multiple topologies being used?
-
-        if internal_port not in compartment_data:
-            internal_port = 'cell'
-
+        # get states from the motor process's internal port
+        internal_port = experiment_config['agents'][sim_id]['topology']['motor']['internal']
         CheY_P_vec = compartment_data[internal_port]['CheY_P']
         ccw_motor_bias_vec = compartment_data[internal_port]['ccw_motor_bias']
         ccw_to_cw_vec = compartment_data[internal_port]['ccw_to_cw']
         motor_state_vec = compartment_data[internal_port]['motor_state']
 
-        # environment data for this sim
+        # environment data
         env_time_vec = data['environment']['time']  # seconds
         environment_data = data['environment'][sim_id]
         location_vec = environment_data['location']
@@ -116,7 +106,7 @@ class Motor(Analysis):
         else:
             avg_angle_between_runs = 0
 
-        # make figure
+        ## make the figure
         n_cols = 1
         n_rows = 5
         fig = plt.figure(figsize=(6 * n_cols, 1.8 * n_rows))
@@ -154,7 +144,6 @@ class Motor(Analysis):
             ax5.axvline(x=expected_tumble, color='m', linestyle='dashed', label='expected tumble')
             ax5.axvline(x=expected_run, color='r', linestyle='dashed', label='expected run')
             ax5.axvline(x=expected_run_chemotax, color='orange', linestyle='dashed', label='expected chemotaxis run')
-
 
         # labels
         ax1.set_xticklabels([])
