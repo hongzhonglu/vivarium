@@ -38,7 +38,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 2,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adaptRate': 4,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 def run_step(receptor, state, timestep):
@@ -167,10 +167,6 @@ class ReceptorCluster(Process):
         # free energy of receptor clusters
         cluster_free_energy = Tar_free_energy + Tsr_free_energy  #  free energy of the cluster
         P_on = 1.0/(1.0 + math.exp(cluster_free_energy))  # probability that receptor cluster is ON (CheA is phosphorylated). Higher free energy --> activity less probably
-
-
-        print('ligand: {}, P_on: {}'.format(ligand_conc, P_on))
-
 
         update = {
             'internal': {

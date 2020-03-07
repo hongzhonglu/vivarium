@@ -535,12 +535,6 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
                 update[agent_id]['media_id'] = self.media_id
 
-
-            print('location: {}'.format(self.locations[agent_id]))
-            print('patch_site: {}'.format(patch_site))
-            print('concentrations: {}'.format(update[agent_id]['concentrations']))
-
-
         return update
 
     def shutdown_environment(self, now):

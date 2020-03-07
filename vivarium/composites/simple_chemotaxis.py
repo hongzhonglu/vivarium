@@ -76,6 +76,9 @@ def get_exponential_random_timeline(config):
     time_step = config.get('time_step', 1)
     base = config.get('base', 1+1e-4)  # mM/um
     speed = config.get('speed', 14)     # um/s
+    forward_prob = config.get('forward_probability', 0.5)
+    reverse_prob = 1 - forward_prob
+    assert 0 <= forward_prob <= 1
     conc_0 = config.get('initial_conc', 0)  # mM
 
     conc = conc_0
@@ -83,7 +86,10 @@ def get_exponential_random_timeline(config):
     timeline = [(t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}})]
     while t<=time_total:
         t += time_step
-        conc += base**(random.choice((-1, 1)) * speed) - 1
+        direction = random.choices(
+            population=[1, -1],
+            weights=[forward_prob, reverse_prob])
+        conc += base**(direction[0] * speed) - 1
         if conc<0:
             conc = 0
         timeline.append((t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}}))
@@ -104,12 +110,14 @@ if __name__ == '__main__':
         'skip_ports': ['prior_state', 'null', 'global']}
 
     # exponential random timeline simulation
-    time_step = 0.01
+    time_step = 0.1
     exponential_random_config = {
         'time': 60,
         'time_step': time_step,
-        'base': 1+4e-5,
-        'speed': 14}
+        'initial_conc': 0.01,
+        'base': 1+6e-4,
+        'speed': 14,
+        'forward_probability': 0.52}
     timeline = get_exponential_random_timeline(exponential_random_config)
     boot_config = {
         'initial_ligand': timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline

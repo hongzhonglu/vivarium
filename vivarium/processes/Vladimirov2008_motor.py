@@ -168,9 +168,6 @@ class MotorActivity(Process):
                 motor_state = 1
                 [thrust, torque] = tumble()
 
-
-        print('motile forces: {}'.format([thrust, torque]))
-
         return {
             'internal': {
                 'ccw_motor_bias': ccw_motor_bias,
@@ -181,15 +178,15 @@ class MotorActivity(Process):
                 'CheY_P': CheY_P}}
 
 def tumble():
-    thrust = 150  # pN
-    tumble_jitter = 2.5  # added to angular velocity
+    thrust = 100  # pN
+    tumble_jitter = 1.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
     # average thrust = 200 pN according to:
     # Berg, Howard C. E. coli in Motion. Under "Torque-Speed Dependence"
-    thrust  = 200  # pN
+    thrust  = 250  # pN
     torque = 0.0
     return [thrust, torque]
 
@@ -222,9 +219,6 @@ def test_motor_control(total_time=10):
 
         # update motor state
         state['internal']['motor_state'] = motor_state
-
-        # print('t: {} | motor: {}'.format(time, motor_state)) # 0 for run, 1 for tumble
-
         CheY_P_vec.append(CheY_P)
         ccw_motor_bias_vec.append(ccw_motor_bias)
         ccw_to_cw_vec.append(ccw_to_cw)

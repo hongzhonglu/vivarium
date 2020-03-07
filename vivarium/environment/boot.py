@@ -310,8 +310,8 @@ def initialize_measp(boot_config):
 
 def initialize_measp_long(boot_config):
     media_id = 'MeAsp_media'
-    media = {'GLC': 5.0,  # assumes mmol/L
-             'MeAsp': 5.0}
+    media = {'GLC': 0.01,  # assumes mmol/L
+             'MeAsp': 0.01}
     new_media = {media_id: media}
     timeline_str = '0 {}, 100 end'.format(media_id)
     lattice_config = {
@@ -328,10 +328,10 @@ def initialize_measp_long(boot_config):
             'molecules': {
                 'GLC': {
                     'center': [0.0, 0.5],
-                    'base': 1+4e-4},
+                    'base': 1+6e-4},
                 'MeAsp': {
                     'center': [0.0, 0.5],
-                    'base': 1+4e-4}
+                    'base': 1+6e-4}
             }},
         'jitter_force': 1e-2,
         'edge_length_x': 4000.0,
