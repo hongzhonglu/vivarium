@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import random
 
 from vivarium.compartment.composition import get_derivers
 from vivarium.compartment.process import (
     initialize_state,
-    load_compartment,
-    get_compartment_timestep)
+    load_compartment)
 from vivarium.compartment.composition import (
     simulate_with_environment,
     convert_to_timeseries,
@@ -16,13 +16,14 @@ from vivarium.compartment.composition import (
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 
+LIGAND_ID = 'MeAsp'
+
 
 def compose_simple_chemotaxis(config):
 
-    ligand_id = 'MeAsp'
-    initial_ligand = config['concentrations'][ligand_id]
+    initial_ligand = config.get('concentrations', {}).get(LIGAND_ID, 0.1)
     receptor_parameters = {
-        'ligand': ligand_id,
+        'ligand': LIGAND_ID,
         'initial_ligand': initial_ligand}
     receptor_parameters.update(config)
 
@@ -66,6 +67,24 @@ def compose_simple_chemotaxis(config):
         'options': options}
 
 
+# testing function
+def get_exponential_random_timeline(config):
+    # exponential space with random direction changes
+    time = config.get('time', 100)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    conc_0 = config.get('initial_conc', 0)  # mM
+
+    conc = conc_0
+    timeline = [(0, {'environment': {LIGAND_ID: conc}})]
+    for t in range(time):
+        conc += base**(random.choice((-1, 1)) * speed) - 1
+        if conc<0:
+            conc = 0
+        timeline.append((t, {'environment': {LIGAND_ID: conc}}))
+
+    return timeline
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'simple_chemotaxis_composite')
     if not os.path.exists(out_dir):
@@ -76,7 +95,13 @@ if __name__ == '__main__':
 
     # settings for simulation and plot
     options = compartment.configuration
-    timeline = [(10, {})]
+    # timeline = [(10, {})]
+
+    exponential_random_config = {
+        'time': 60,
+        'base': 1+4e-4,
+        'speed': 14}
+    timeline = get_exponential_random_timeline(exponential_random_config)
 
     settings = {
         'environment_port': options['environment_port'],
@@ -88,7 +113,7 @@ if __name__ == '__main__':
         'remove_zeros': True,
         'overlay': {
             'reactions': 'flux'},
-        'skip_ports': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null', 'global']}
 
     # saved_state = simulate_compartment(compartment, settings)
     saved_data = simulate_with_environment(compartment, settings)
