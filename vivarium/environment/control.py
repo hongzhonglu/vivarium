@@ -93,6 +93,31 @@ class ShepherdControl(ActorControl):
 
         self.init_experiment(args, exp_config)
 
+    def antibiotic_experiment(self, args, actor_config):
+        experiment_id = 'antibiotic'
+        environment_type = 'antibiotic_environment'
+        agents = {'antibiotic_composite': 3}
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'antibiotic_experiment',
+            'description': (
+                'antibiotic_composite agents are placed in '
+                'an environment with antibiotics'
+            ),
+        }
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents,
+        }
+
+        self.init_experiment(args, exp_config)
+
+
     def ecoli_core_experiment(self, args, actor_config):
 
         # define experiment: environment type and agent type
@@ -197,7 +222,7 @@ class EnvironmentCommand(AgentCommand):
     def __init__(self, choices=[], description=''):
         full_description = '''
     Run an agent for the environmental context simulation.
-    
+
     The commands are:
     `add --id OUTER_ID [--type T] [--config C]` ask the Shepherd to add an agent of
         type T with JSON configuration C to the environment OUTER_ID,
@@ -222,6 +247,7 @@ class EnvironmentCommand(AgentCommand):
             'chemotaxis-square',
             'chemotaxis-experiment',
             'swarm-experiment',
+            'antibiotic_experiment',
             ] + choices
 
         super(EnvironmentCommand, self).__init__(
@@ -263,6 +289,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.swarm_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def antibiotic_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.antibiotic_experiment(args, self.actor_config)
         control.shutdown()
 
     def add_arguments(self, parser):

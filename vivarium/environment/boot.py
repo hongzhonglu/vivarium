@@ -44,6 +44,7 @@ from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
+from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.transcription import Transcription
 
 # composites
@@ -53,6 +54,9 @@ from vivarium.composites.growth_division import compose_growth_division
 from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
 from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
 from vivarium.composites.variable_flagella import compose_variable_flagella
+from vivarium.composites.antibiotics import (
+    compose_antibiotics,
+)
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -340,6 +344,30 @@ def initialize_measp_long(boot_config):
     lattice_config.update(boot_config)
     return lattice_config
 
+def initialize_antibiotic(boot_config):
+    media_id = 'antibiotic_media'
+    media = {
+        'antibiotic': 1.0,  # mmol/L
+    }
+    new_media = {media_id: media}
+    lattice_config = {
+        'name': 'measp_long',
+        'new_media': new_media,
+        'timeline_str': '0 {}, 7200 end'.format(media_id),
+        'emit_fields': ['antibiotic'],
+        'run_for': 1.0,  # timestep, in sec
+        'rotation_jitter': 0.005,
+        'edge_length_x': 10.0,  # µm
+        'edge_length_y': 10.0,  # µm
+        'depth': 1.0,  # µm
+        # Patches discretize space for diffusion
+        'patches_per_edge_x': 1,
+    }
+
+    boot_config.update(lattice_config)
+    return boot_config
+
+
 def initialize_measp_large(boot_config):
     ## Make media: GLC_G6P with MeAsp
     # get GLC_G6P media
@@ -418,6 +446,7 @@ class BootEnvironment(BootAgent):
             'measp_long': wrap_boot_environment(initialize_measp_long),
             'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
+            'antibiotic_environment': wrap_boot_environment(initialize_antibiotic),
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
@@ -428,6 +457,8 @@ class BootEnvironment(BootAgent):
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
+            'antibiotic_transport': wrap_boot(
+                wrap_init_basic(AntibioticTransport), {'volume': 1.0}),
             'transcription': wrap_boot(wrap_init_basic(Transcription), {'volume': 1.0}),
 
             # composite compartments
@@ -437,7 +468,11 @@ class BootEnvironment(BootAgent):
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
             'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
-            }
+            'antibiotic_composite': wrap_boot(
+                wrap_init_composite(compose_antibiotics),
+                {'volume': 1.0},
+            ),
+        }
 
 def run():
     boot = BootEnvironment()

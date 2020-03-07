@@ -12,6 +12,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 COMPARTMENT_STATE = '__compartment_state__'
 
+
 class topologyError(Exception):
     pass
 
@@ -364,7 +365,6 @@ class Compartment(Store):
             'table': 'configuration',
             'data': data}
         self.emitter.emit(emit_config)
-
 
     def divide_state(self):
         daughter_states = [{}, {}]
