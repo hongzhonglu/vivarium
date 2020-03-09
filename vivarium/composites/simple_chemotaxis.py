@@ -138,27 +138,3 @@ if __name__ == '__main__':
         plot_settings,
         out_dir,
         'exponential_timeline')
-
-
-    # # null timeline simulation
-    # null_timeline = [
-    #     (0, {ENVIRONMENT_PORT: {LIGAND_ID: 0.0}}),
-    #     (20, {})]
-    # null_boot_config = {
-    #     'initial_ligand': null_timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
-    #     'emitter': 'null'}
-    # compartment2 = load_compartment(compose_simple_chemotaxis, null_boot_config)
-    #
-    # null_settings = {
-    #     'environment_port': ENVIRONMENT_PORT,
-    #     'environment_volume': 1e-13,  # L
-    #     'timeline': null_timeline}
-    #
-    # null_saved_data = simulate_with_environment(compartment2, null_settings)
-    # del null_saved_data[0]
-    # null_timeseries = convert_to_timeseries(null_saved_data)
-    # plot_simulation_output(
-    #   null_timeseries,
-    #   plot_settings,
-    #   out_dir,
-    #   'null_timeline')
