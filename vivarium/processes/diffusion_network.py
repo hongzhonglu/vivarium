@@ -72,9 +72,9 @@ def make_location_network(n_bins):
     return locations, adjacent_edges
 
 
+
 class DiffusionNetwork(Process):
-    '''
-    '''
+    ''''''
     def __init__(self, initial_parameters={}):
 
         # parameters

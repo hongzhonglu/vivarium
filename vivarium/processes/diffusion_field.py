@@ -12,6 +12,8 @@ from vivarium.compartment.composition import (
     simulate_with_environment,
     convert_to_timeseries)
 
+
+
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
@@ -19,14 +21,6 @@ DIFFUSION_CONSTANT = 5e-1
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
-
-def make_fields(molecule_ids, n_bins):
-    bins_x = n_bins[0]
-    bins_y = n_bins[1]
-    fields = {}
-    for molecule_id in molecule_ids:
-        fields[molecule_id] = np.empty((bins_x, bins_y), dtype=np.float64)
-    return fields
 
 def make_gradient(gradient, n_bins, size):
     bins_x = n_bins[0]
@@ -143,10 +137,9 @@ def make_gradient(gradient, n_bins, size):
     return fields
 
 
-class DiffusionField(Process):
-    '''
-    '''
 
+class DiffusionField(Process):
+    ''''''
     def __init__(self, initial_parameters={}):
 
         # initial state
@@ -170,8 +163,7 @@ class DiffusionField(Process):
         self.diffusion_dt = 0.01
         # self.diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * self.diffusion * (dx ** 2 + dy ** 2))
 
-        # make fields
-        # fields = make_fields(molecule_ids, n_bins)
+        # initialize gradient fields
         gradient = initial_parameters.get('gradient', {})
         if gradient:
             gradient_fields = make_gradient(gradient, n_bins, size)
@@ -192,7 +184,6 @@ class DiffusionField(Process):
                 'fields': self.initial_state}}
 
     def next_update(self, timestep, states):
-        # fields = self.make_fields(states)
         fields = states['fields']
         delta_fields = self.diffuse(fields, timestep)
         return {
