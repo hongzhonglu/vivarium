@@ -17,6 +17,131 @@ LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
 DIFFUSION_CONSTANT = 5e-1
 
+def gaussian(deviation, distance):
+    return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
+
+def make_fields(molecule_ids, n_bins):
+    bins_x = n_bins[0]
+    bins_y = n_bins[1]
+    fields = {}
+    for molecule_id in molecule_ids:
+        fields[molecule_id] = np.empty((bins_x, bins_y), dtype=np.float64)
+    return fields
+
+
+def make_gradient(gradient, n_bins, size):
+    bins_x = n_bins[0]
+    bins_y = n_bins[1]
+    length_x = size[0]
+    length_y = size[1]
+    fields = {}
+    
+    if gradient.get('type') == 'gaussian':
+        """
+        gaussian gradient multiplies the base concentration of the given molecule
+        by a gaussian function of distance from center and deviation
+
+        'gradient': {
+            'type': 'gradient',
+            'molecules': {
+                'mol_id1':{
+                    'center': [0.25, 0.5],
+                    'deviation': 30},
+                'mol_id2': {
+                    'center': [0.75, 0.5],
+                    'deviation': 30}
+            }},
+        """
+
+        for molecule_id, specs in gradient['molecules'].items():
+            field = np.ones((bins_x, bins_y), dtype=np.float64)
+            center = [specs['center'][0] * length_x,
+                      specs['center'][1] * length_y]
+            deviation = specs['deviation']
+
+            for x_patch in range(bins_x):
+                for y_patch in range(bins_y):
+                    # distance from middle of patch to center coordinates
+                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+                    distance = np.sqrt(dx ** 2 + dy ** 2)
+                    scale = gaussian(deviation, distance)
+                    # multiply gradient by scale
+                    field[x_patch][y_patch] *= scale
+            fields[molecule_id] = field
+
+    elif gradient.get('type') == 'linear':
+        """
+        linear gradient adds to the base concentration of the given molecule
+        as a function of distance from center and slope.
+
+        'gradient': {
+            'type': 'linear',
+            'molecules': {
+                'mol_id1':{
+                    'center': [0.0, 0.0],
+                    'slope': -10},
+                'mol_id2': {
+                    'center': [1.0, 1.0],
+                    'slope': -5}
+            }},
+        """
+
+        for molecule_id, specs in gradient['molecules'].items():
+            mol_index = self._molecule_ids.index(molecule_id)
+            center = [specs['center'][0] * length_x,
+                      specs['center'][1] * length_y]
+            slope = specs['slope']
+
+            for x_patch in range(bins_x):
+                for y_patch in range(bins_y):
+                    # distance from middle of patch to center coordinates
+                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+                    distance = np.sqrt(dx ** 2 + dy ** 2)
+                    added = distance * slope
+                    # add gradient to basal concentration
+                    self.lattice[mol_index][x_patch][y_patch] += added
+
+            self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+
+    elif gradient.get('type') == 'exponential':
+        """
+        exponential gradient adds a delta (d) to the base concentration (c)
+        of the given molecule as a function of distance  (x) from center and base (b),
+        with d=c+x^d.
+
+        'gradient': {
+            'type': 'exponential',
+            'molecules': {
+                'mol_id1':{
+                    'center': [0.0, 0.0],
+                    'base': 1+2e-4},
+                'mol_id2': {
+                    'center': [1.0, 1.0],
+                    'base': 1+2e-4}
+            }},
+        """
+
+        for molecule_id, specs in gradient['molecules'].items():
+            mol_index = self._molecule_ids.index(molecule_id)
+            center = [specs['center'][0] * length_x,
+                      specs['center'][1] * length_y]
+            base = specs['base']
+
+            for x_patch in range(bins_x):
+                for y_patch in range(bins_y):
+                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+                    distance = np.sqrt(dx ** 2 + dy ** 2)
+                    added = base ** distance - 1
+
+                    # add to base concentration
+                    self.lattice[mol_index][x_patch][y_patch] += added
+
+            self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+
+    return fields
 
 
 class DiffusionField(Process):
@@ -47,7 +172,11 @@ class DiffusionField(Process):
         # self.diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * self.diffusion * (dx ** 2 + dy ** 2))
 
         # make fields
-        fields = self.make_fields(molecule_ids, n_bins)
+        # fields = make_fields(molecule_ids, n_bins)
+        gradient = initial_parameters.get('gradient', {})
+        if gradient:
+            gradient_fields = make_gradient(gradient, n_bins, size)
+            self.initial_state.update(gradient_fields)
 
         # make ports
         ports = {
@@ -57,31 +186,6 @@ class DiffusionField(Process):
         parameters.update(initial_parameters)
 
         super(DiffusionField, self).__init__(ports, parameters)
-
-    # def make_ports(self, fields):
-    #     ports = {}
-    #     for x in range(self.bins_x):
-    #         for y in range(self.bins_y):
-    #             concs = {
-    #                 mol_id: fields[mol_index][x][y]
-    #                 for mol_index, mol_id in enumerate(self.molecule_ids)}
-    #             ports[(x,y)]= concs
-    #     return ports
-    #
-    # def make_fields(self, ports):
-    #     fields = np.empty((len(self.molecule_ids), self.bins_x, self.bins_y), dtype=np.float64)
-    #     for (x,y), conc_dict in ports.items():
-    #         concs = [conc_dict[mol_id] for mol_id in self.molecule_ids]
-    #         fields[:,x,y] = concs
-    #     return fields
-
-    def make_fields(self, molecule_ids, n_bins):
-        bins_x = n_bins[0]
-        bins_y = n_bins[1]
-        fields = {}
-        for molecule_id in molecule_ids:
-            fields[molecule_id] = np.empty((bins_x, bins_y), dtype=np.float64)
-        return fields
 
     def default_settings(self):
         return {
@@ -120,112 +224,6 @@ class DiffusionField(Process):
 
         return delta_fields
 
-    def make_gradient(self, gradient):
-        if gradient.get('type') == 'gaussian':
-            """
-            gaussian gradient multiplies the base concentration of the given molecule
-            by a gaussian function of distance from center and deviation
-
-            'gradient': {
-                'type': 'gradient',
-                'molecules': {
-                    'mol_id1':{
-                        'center': [0.25, 0.5],
-                        'deviation': 30},
-                    'mol_id2': {
-                        'center': [0.75, 0.5],
-                        'deviation': 30}
-                }},
-            """
-
-            for molecule_id, specs in gradient['molecules'].items():
-                mol_index = self._molecule_ids.index(molecule_id)
-                center = [specs['center'][0] * self.edge_length_x,
-                          specs['center'][1] * self.edge_length_y]
-                deviation = specs['deviation']
-
-                for x_patch in range(self.patches_per_edge_x):
-                    for y_patch in range(self.patches_per_edge_y):
-                        # distance from middle of patch to center coordinates
-                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
-                        distance = np.sqrt(dx ** 2 + dy ** 2)
-                        scale = gaussian(deviation, distance)
-                        # multiply gradient by scale
-                        self.lattice[mol_index][x_patch][y_patch] *= scale
-
-        elif gradient.get('type') == 'linear':
-            """
-            linear gradient adds to the base concentration of the given molecule
-            as a function of distance from center and slope.
-
-            'gradient': {
-                'type': 'linear',
-                'molecules': {
-                    'mol_id1':{
-                        'center': [0.0, 0.0],
-                        'slope': -10},
-                    'mol_id2': {
-                        'center': [1.0, 1.0],
-                        'slope': -5}
-                }},
-            """
-
-            for molecule_id, specs in gradient['molecules'].items():
-                mol_index = self._molecule_ids.index(molecule_id)
-                center = [specs['center'][0] * self.edge_length_x,
-                          specs['center'][1] * self.edge_length_y]
-                slope = specs['slope']
-
-                for x_patch in range(self.patches_per_edge_x):
-                    for y_patch in range(self.patches_per_edge_y):
-                        # distance from middle of patch to center coordinates
-                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
-                        distance = np.sqrt(dx ** 2 + dy ** 2)
-                        added = distance * slope
-                        # add gradient to basal concentration
-                        self.lattice[mol_index][x_patch][y_patch] += added
-
-                self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
-
-        elif gradient.get('type') == 'exponential':
-            """
-            exponential gradient adds a delta (d) to the base concentration (c)
-            of the given molecule as a function of distance  (x) from center and base (b),
-            with d=c+x^d.
-
-            'gradient': {
-                'type': 'exponential',
-                'molecules': {
-                    'mol_id1':{
-                        'center': [0.0, 0.0],
-                        'base': 1+2e-4},
-                    'mol_id2': {
-                        'center': [1.0, 1.0],
-                        'base': 1+2e-4}
-                }},
-            """
-
-            for molecule_id, specs in gradient['molecules'].items():
-                mol_index = self._molecule_ids.index(molecule_id)
-                center = [specs['center'][0] * self.edge_length_x,
-                          specs['center'][1] * self.edge_length_y]
-                base = specs['base']
-
-                for x_patch in range(self.patches_per_edge_x):
-                    for y_patch in range(self.patches_per_edge_y):
-                        dx = (x_patch + 0.5) * self.edge_length_x / self.patches_per_edge_x - center[0]
-                        dy = (y_patch + 0.5) * self.edge_length_y / self.patches_per_edge_y - center[1]
-                        distance = np.sqrt(dx ** 2 + dy ** 2)
-                        added = base ** distance - 1
-
-                        # add to base concentration
-                        self.lattice[mol_index][x_patch][y_patch] += added
-
-                self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
-
-
 
 
 # testing
@@ -237,10 +235,8 @@ def plot_field_output(data, config, out_dir='out', filename='field'):
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
 
-    n_bins = config.get('n_bins')
+    # n_bins = config.get('n_bins')
     size = config.get('size')
-    bins_x = n_bins[0]
-    bins_y = n_bins[1]
     length_x = size[0]
     length_y = size[1]
 
@@ -293,6 +289,22 @@ def get_field_config():
         'n_bins': n_bins,
         'size': n_bins}
 
+def get_gaussian_config():
+    n_bins = (10, 10)
+    return {
+        'molecules': ['glc'],
+        'n_bins': n_bins,
+        'size': n_bins,
+        'gradient': {
+            'type': 'gaussian',
+            'molecules': {
+                'glc': {
+                    'center': [0.5, 0.5],
+                    'deviation': 1},
+            }},
+    }
+
+
 def test_diffusion(config, time=10):
     diffusion = DiffusionField(config)
     settings = {
@@ -310,7 +322,12 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = get_field_config()
-    saved_data = test_diffusion(config, 10)
-    timeseries = convert_to_timeseries(saved_data)
-    plot_field_output(timeseries, config, out_dir, 'field')
+    # config = get_field_config()
+    # saved_data = test_diffusion(config, 10)
+    # timeseries = convert_to_timeseries(saved_data)
+    # plot_field_output(timeseries, config, out_dir, 'field')
+
+    gaussian_config = get_gaussian_config()
+    gaussian_data = test_diffusion(gaussian_config, 10)
+    gaussian_timeseries = convert_to_timeseries(gaussian_data)
+    plot_field_output(gaussian_timeseries, gaussian_config, out_dir, 'gaussian_field')

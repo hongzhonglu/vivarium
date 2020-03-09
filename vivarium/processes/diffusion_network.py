@@ -95,7 +95,7 @@ class DiffusionNetwork(Process):
         locations, edges = make_location_network(n_bins)
 
         # membranes
-        membrane_locations = initial_parameters.get('membrane_locations', [])
+        membrane_edges = initial_parameters.get('membrane_edges', [])
         channels = initial_parameters.get('channels', {})
 
         # diffusion settings
@@ -109,7 +109,7 @@ class DiffusionNetwork(Process):
             'edges': edges,
             'molecule_ids': molecule_ids,
             'diffusion': diffusion/dx2,
-            'membrane_locations': membrane_locations,
+            'membrane_edges': membrane_edges,
             'channels': channels}
 
         self.diffusion_network = Network(diffusion_config)
@@ -152,7 +152,7 @@ class Network(object):
         self.edges = config.get('edges')
         self.molecule_ids = config.get('molecule_ids')
         self.diffusion = config.get('diffusion')
-        self.membrane_locations = config.get('membrane_locations')
+        self.membrane_edges = config.get('membrane_edges')
         self.channel_diffusion = config.get('channels')
 
     def diffusion_delta(self, locations, membrane, timestep):
@@ -166,7 +166,7 @@ class Network(object):
             concs1 = locations[node1]
             concs2 = locations[node2]
 
-            if edge in self.membrane_locations or (edge[1], edge[0]) in self.membrane_locations:
+            if edge in self.membrane_edges or (edge[1], edge[0]) in self.membrane_edges:
                 diffusion = 0
                 for channel_id, channel_conc in membrane.items():
                     diffusion += channel_conc * self.channel_diffusion[channel_id]
@@ -199,7 +199,7 @@ def get_two_compartment_config():
     return {
         'initial_state': initial_state,
         'molecules': ['glc'],
-        'membrane_locations': [((0,0),(1,0))],
+        'membrane_edges': [((0,0),(1,0))],
         'channels':{
             'porin': 5e-2  # diffusion rate through porin
         },
@@ -229,7 +229,7 @@ def get_grid_config():
     return {
         'initial_state': initial_state,
         'molecules': ['glc'],
-        'membrane_locations': [
+        'membrane_edges': [
             # left
             ((0, 1), (1, 1)),
             ((0, 2), (1, 2)),
@@ -272,7 +272,7 @@ def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     molecules = config.get('molecules', {})
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
-    membrane_locations = config.get('membrane_locations')
+    membrane_edges = config.get('membrane_edges')
 
     n_bins = config.get('n_bins')
     size = config.get('size')
@@ -323,7 +323,7 @@ def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
                        cmap='YlGn')
 
             # plot membrane
-            for membrane in membrane_locations:
+            for membrane in membrane_edges:
                 site1 = membrane[0]
                 site2 = membrane[1]
                 middle = (
