@@ -17,7 +17,7 @@ DEFAULT_PARAMETERS = {
     'k_z': 30.0,  # / CheZ,
     'gamma_Y': 0.1,
     'k_s': 0.45,  # scaling coefficient
-    'adaptPrecision': 3,
+    'adapt_precision': 3,  # scales CheY_P to cluster activity
     # motor
     'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
     'n_motors': 5,
@@ -130,18 +130,17 @@ class MotorActivity(Process):
         motor_state_current = internal['motor_state']
 
         # parameters
-        adaptPrecision = self.parameters['adaptPrecision']
+        adapt_precision = self.parameters['adapt_precision']
         k_y = self.parameters['k_y']
         k_s = self.parameters['k_s']
         k_z = self.parameters['k_z']
-        gamma_Y  =self.parameters['gamma_Y']
+        gamma_Y = self.parameters['gamma_Y']
         mb_0 = self.parameters['mb_0']
         cw_to_ccw = self.parameters['cw_to_ccw']
 
         ## Kinase activity
         # relative steady-state concentration of phosphorylated CheY.
-        scaling = 1.  # 1.66889  # 19.3610  # scales CheY_P linearly so that CheY_P=1 at rest (P_on=1/3)
-        CheY_P = adaptPrecision * scaling * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
+        CheY_P = adapt_precision * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
 
         ## Motor switching
         # CCW corresponds to run. CW corresponds to tumble
@@ -179,14 +178,14 @@ class MotorActivity(Process):
 
 def tumble():
     thrust = 100  # pN
-    tumble_jitter = 2.5  # added to angular velocity
+    tumble_jitter = 1.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
     # average thrust = 200 pN according to:
     # Berg, Howard C. E. coli in Motion. Under "Torque-Speed Dependence"
-    thrust  = 200  # pN
+    thrust  = 250  # pN
     torque = 0.0
     return [thrust, torque]
 
@@ -219,9 +218,6 @@ def test_motor_control(total_time=10):
 
         # update motor state
         state['internal']['motor_state'] = motor_state
-
-        # print('t: {} | motor: {}'.format(time, motor_state)) # 0 for run, 1 for tumble
-
         CheY_P_vec.append(CheY_P)
         ccw_motor_bias_vec.append(ccw_motor_bias)
         ccw_to_cw_vec.append(ccw_to_cw)

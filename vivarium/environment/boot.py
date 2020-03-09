@@ -310,36 +310,33 @@ def initialize_measp(boot_config):
 
 def initialize_measp_long(boot_config):
     media_id = 'MeAsp_media'
-    media = {'GLC': 5.0,  # assumes mmol/L
-             'MeAsp': 5.0}
+    media = {'GLC': 0.01,  # assumes mmol/L
+             'MeAsp': 0.01}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 60 end'.format(media_id)
+    timeline_str = '0 {}, 100 end'.format(media_id)
     lattice_config = {
         'name': 'measp_long',
-        'description': 'a long environment with a static gradient of glucose and a-methyl-DL-aspartic acid (MeAsp) '
-                       'for observing chemotactic cells in action. Optimal chemotaxis is observed in a narrow range '
-                       'of CheA activity, where concentration of CheY-P falls into the operating range of flagellar motors.',
         'new_media': new_media,
         'timeline_str': timeline_str,
-        'emit_fields': ['MeAsp'],
+        'emit_fields': [],  # don't emit fields due to large lattice size
         'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
         'static_concentrations': True,
-        'emit_frequency': 20,
         'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
         'gradient': {
             'type': 'exponential',
             'molecules': {
                 'GLC': {
                     'center': [0.0, 0.5],
-                    'base': 1+4e-4},
+                    'base': 1+6e-4},
                 'MeAsp': {
                     'center': [0.0, 0.5],
-                    'base': 1+4e-4}
+                    'base': 1+6e-4}
             }},
         'jitter_force': 1e-2,
         'edge_length_x': 4000.0,
         'edge_length_y': 800.0,
-        'patches_per_edge_x': 1000}
+        'patches_per_edge_x': 4000  # need high resolution for receptors to detect change
+    }
 
     lattice_config.update(boot_config)
     return lattice_config

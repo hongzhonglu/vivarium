@@ -559,39 +559,43 @@ class EnvironmentSpatialLattice(EnvironmentSimulation):
 
 
     # Emitters
-    def emit_data(self):
-        if self.emit_step == self.emit_frequency:
-            self.emit_step = 0
+    def emit_lattice_fields(self):
+        # emit lattice data
+        emit_fields = {}
+        for index, molecule_id in zip(self.emit_indices, self.emit_fields):
+            emit_fields[molecule_id] = self.lattice[index].tolist()
+        data = {
+            'type': 'lattice-fields',
+            'fields': emit_fields,
+            'time': self.time()}
+        emit_config = {
+            'table': 'history',
+            'data': data}
+        self.emitter.emit(emit_config)
 
-            # emit lattice data
-            emit_fields = {}
-            for index, molecule_id in zip(self.emit_indices, self.emit_fields):
-                emit_fields[molecule_id] = self.lattice[index].tolist()
+    def emit_lattice_agents(self):
+        # emit data for each agent
+        for agent_id, simulation in self.simulations.items():
+            agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
+            agent_state = self.simulations[agent_id]['state']
             data = {
-                'type': 'lattice-fields',
-                'fields': emit_fields,
+                'type': 'lattice-agent',
+                'agent_id': agent_id,
+                'location': agent_location,
+                'volume': agent_state['volume'],
+                'width': agent_state['width'],
+                'length': agent_state['length'],
                 'time': self.time()}
             emit_config = {
                 'table': 'history',
                 'data': data}
             self.emitter.emit(emit_config)
 
-            # emit data for each agent
-            for agent_id, simulation in self.simulations.items():
-                agent_location = self.locations[agent_id].tolist()  # [x, y, theta]
-                agent_state = self.simulations[agent_id]['state']
-                data = {
-                    'type': 'lattice-agent',
-                    'agent_id': agent_id,
-                    'location': agent_location,
-                    'volume': agent_state['volume'],
-                    'width': agent_state['width'],
-                    'length': agent_state['length'],
-                    'time': self.time()}
-                emit_config = {
-                    'table': 'history',
-                    'data': data}
-                self.emitter.emit(emit_config)
+    def emit_data(self):
+        if self.emit_step == self.emit_frequency:
+            self.emit_step = 0
+            self.emit_lattice_fields()
+            self.emit_lattice_agents()
         else:
             self.emit_step += 1
 
