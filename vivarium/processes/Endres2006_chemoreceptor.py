@@ -38,7 +38,7 @@ DEFAULT_PARAMETERS = {
     # k_CheB = 0.0364  # effective catalytic rate of CheB
     'k_meth': 0.0625,  # Catalytic rate of methylation
     'k_demeth': 0.0714,  # Catalytic rate of demethylation
-    'adaptRate': 4,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
+    'adapt_rate': 4,  # adaptation rate relative to wild-type. cell-to-cell variation cause by variability in [CheR, CheB]
 }
 
 def run_step(receptor, state, timestep):
@@ -130,7 +130,7 @@ class ReceptorCluster(Process):
         K_Tar_on = self.parameters['K_Tar_on']
         K_Tsr_off = self.parameters['K_Tsr_off']
         K_Tsr_on = self.parameters['K_Tsr_on']
-        adaptRate = self.parameters['adaptRate']
+        adapt_rate = self.parameters['adapt_rate']
         k_meth = self.parameters['k_meth']
         k_demeth = self.parameters['k_demeth']
 
@@ -139,7 +139,7 @@ class ReceptorCluster(Process):
         elif n_methyl > 8:
             n_methyl = 8
         else:
-            d_methyl = adaptRate * (k_meth * CheR * (1.0 - P_on) - k_demeth * CheB * P_on) * timestep
+            d_methyl = adapt_rate * (k_meth * CheR * (1.0 - P_on) - k_demeth * CheB * P_on) * timestep
             n_methyl += d_methyl
 
         # get free-energy offsets from methylation

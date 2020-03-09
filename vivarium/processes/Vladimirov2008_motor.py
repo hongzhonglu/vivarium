@@ -17,7 +17,7 @@ DEFAULT_PARAMETERS = {
     'k_z': 30.0,  # / CheZ,
     'gamma_Y': 0.1,
     'k_s': 0.45,  # scaling coefficient
-    'adaptPrecision': 3,
+    'adapt_precision': 3,  # scales CheY_P to cluster activity
     # motor
     'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
     'n_motors': 5,
@@ -130,18 +130,17 @@ class MotorActivity(Process):
         motor_state_current = internal['motor_state']
 
         # parameters
-        adaptPrecision = self.parameters['adaptPrecision']
+        adapt_precision = self.parameters['adapt_precision']
         k_y = self.parameters['k_y']
         k_s = self.parameters['k_s']
         k_z = self.parameters['k_z']
-        gamma_Y  =self.parameters['gamma_Y']
+        gamma_Y = self.parameters['gamma_Y']
         mb_0 = self.parameters['mb_0']
         cw_to_ccw = self.parameters['cw_to_ccw']
 
         ## Kinase activity
         # relative steady-state concentration of phosphorylated CheY.
-        scaling = 1.  # 1.66889  # 19.3610  # scales CheY_P linearly so that CheY_P=1 at rest (P_on=1/3)
-        CheY_P = adaptPrecision * scaling * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
+        CheY_P = adapt_precision * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
 
         ## Motor switching
         # CCW corresponds to run. CW corresponds to tumble
