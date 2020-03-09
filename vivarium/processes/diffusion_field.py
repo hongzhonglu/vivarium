@@ -28,7 +28,6 @@ def make_fields(molecule_ids, n_bins):
         fields[molecule_id] = np.empty((bins_x, bins_y), dtype=np.float64)
     return fields
 
-
 def make_gradient(gradient, n_bins, size):
     bins_x = n_bins[0]
     bins_y = n_bins[1]
@@ -88,7 +87,7 @@ def make_gradient(gradient, n_bins, size):
         """
 
         for molecule_id, specs in gradient['molecules'].items():
-            mol_index = self._molecule_ids.index(molecule_id)
+            field = np.ones((bins_x, bins_y), dtype=np.float64)
             center = [specs['center'][0] * length_x,
                       specs['center'][1] * length_y]
             slope = specs['slope']
@@ -101,9 +100,9 @@ def make_gradient(gradient, n_bins, size):
                     distance = np.sqrt(dx ** 2 + dy ** 2)
                     added = distance * slope
                     # add gradient to basal concentration
-                    self.lattice[mol_index][x_patch][y_patch] += added
-
-            self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+                    field[x_patch][y_patch] += added
+            fields[fields <= 0.0] = 0.0
+            fields[molecule_id] = field
 
     elif gradient.get('type') == 'exponential':
         """
@@ -124,7 +123,7 @@ def make_gradient(gradient, n_bins, size):
         """
 
         for molecule_id, specs in gradient['molecules'].items():
-            mol_index = self._molecule_ids.index(molecule_id)
+            field = np.ones((bins_x, bins_y), dtype=np.float64)
             center = [specs['center'][0] * length_x,
                       specs['center'][1] * length_y]
             base = specs['base']
@@ -137,9 +136,9 @@ def make_gradient(gradient, n_bins, size):
                     added = base ** distance - 1
 
                     # add to base concentration
-                    self.lattice[mol_index][x_patch][y_patch] += added
-
-            self.lattice[mol_index][self.lattice[mol_index] <= 0.0] = 0.0
+                    field[x_patch][y_patch] += added
+            fields[fields <= 0.0] = 0.0
+            fields[molecule_id] = field
 
     return fields
 
@@ -322,10 +321,10 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # config = get_field_config()
-    # saved_data = test_diffusion(config, 10)
-    # timeseries = convert_to_timeseries(saved_data)
-    # plot_field_output(timeseries, config, out_dir, 'field')
+    config = get_field_config()
+    saved_data = test_diffusion(config, 10)
+    timeseries = convert_to_timeseries(saved_data)
+    plot_field_output(timeseries, config, out_dir, 'field')
 
     gaussian_config = get_gaussian_config()
     gaussian_data = test_diffusion(gaussian_config, 10)
