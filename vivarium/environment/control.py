@@ -135,7 +135,7 @@ class ShepherdControl(ActorControl):
             'name': 'ecoli_core_glc_lct',
             'description': (
                 'glucose-lactose diauxic shifters are placed in '
-                'a shallow environment with glucose and  lactose. '
+                'a shallow environment with glucose and lactose. '
                 'They start off with no LacY, and so uptake only '
                 'glucose, but LacY is expressed upon depletion of '
                 'glucose and they begin to uptake lactose. Cells '

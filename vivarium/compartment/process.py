@@ -632,7 +632,7 @@ def load_compartment(composite=toy_composite, boot_config={}):
     options = composite_config['options']
     options.update({
         'emitter': boot_config.get('emitter'),
-        'time_step': boot_config.get('time_step')})
+        'time_step': boot_config.get('time_step', 1.0)})
 
     compartment = Compartment(processes, states, options)
     # print('current_parameters: {}'.format(compartment.current_parameters()))
