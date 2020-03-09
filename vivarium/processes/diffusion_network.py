@@ -71,7 +71,7 @@ def make_location_network(n_bins):
     return locations, adjacent_edges
 
 
-class Diffusion(Process):
+class DiffusionNetwork(Process):
     '''
     '''
     def __init__(self, initial_parameters={}):
@@ -112,7 +112,7 @@ class Diffusion(Process):
             'membrane_locations': membrane_locations,
             'channels': channels}
 
-        self.diffusion_network = DiffusionNetwork(diffusion_config)
+        self.diffusion_network = Network(diffusion_config)
 
         # make ports from locations and membrane channels
         ports = {
@@ -124,7 +124,7 @@ class Diffusion(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(Diffusion, self).__init__(ports, parameters)
+        super(DiffusionNetwork, self).__init__(ports, parameters)
 
 
     def default_settings(self):
@@ -145,7 +145,7 @@ class Diffusion(Process):
         return diffusion_delta
 
 
-class DiffusionNetwork(object):
+class Network(object):
 
     def __init__(self, config):
         self.nodes = config.get('nodes')
@@ -245,7 +245,7 @@ def get_grid_config():
         'diffusion': 2e-1}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
-    diffusion = Diffusion(config)
+    diffusion = DiffusionNetwork(config)
     settings = {
         'total_time': time,
         # 'exchange_port': 'exchange',
@@ -255,11 +255,11 @@ def test_diffusion(config = get_two_compartment_config(), time=10):
     compartment = process_in_compartment(diffusion)
     return simulate_with_environment(compartment, settings)
 
-def plot_diffusion_output(data, config, out_dir='out', filename='field'):
+def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
 
     # parameters
-    molecules = config.get('molecules')
+    molecules = config.get('molecules', {})
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
     membrane_locations = config.get('membrane_locations')
@@ -341,16 +341,16 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
     plt.close(fig)
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'diffusion')
+    out_dir = os.path.join('out', 'tests', 'diffusion_network')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     config = get_two_compartment_config()
     saved_data = test_diffusion(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-    plot_diffusion_output(timeseries, config, out_dir, '2_sites')
+    plot_diffusion_field_output(timeseries, config, out_dir, '2_sites')
 
     config = get_grid_config()
     saved_data = test_diffusion(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-    plot_diffusion_output(timeseries, config, out_dir, 'grid')
+    plot_diffusion_field_output(timeseries, config, out_dir, 'grid')
