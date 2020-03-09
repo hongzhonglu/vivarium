@@ -212,6 +212,10 @@ def get_grid_config():
         'membrane_composition': {
             'porin': 1e2},
         'sites': {
+            (1, 1): {
+                'glc': 20.0},
+            (1, 2): {
+                'glc': 20.0},
             (2, 1): {
                 'glc': 20.0},
             (2, 2): {
@@ -220,29 +224,35 @@ def get_grid_config():
                 'glc': 20.0},
             (3, 2): {
                 'glc': 20.0},
-            (6, 1): {
-                'glc': 20.0}
         }}
 
     return {
         'initial_state': initial_state,
         'molecules': ['glc'],
         'membrane_locations': [
-            ((1, 0), (2, 0)),
-            ((1, 1), (2, 1)),
-            ((1, 2), (2, 2)),
+            # left
+            ((0, 1), (1, 1)),
+            ((0, 2), (1, 2)),
+            # top
+            ((1, 3), (1, 2)),
             ((2, 3), (2, 2)),
             ((3, 3), (3, 2)),
-            ((4, 3), (4, 2)),
-            ((5, 3), (5, 2)),
-            ((6, 2), (6, 3)),
+            # ((4, 3), (4, 2)),
+            #right
+            ((4, 2), (5, 2)),
+            ((4, 1), (5, 1)),
+            ((1, 0), (1, 1)),
+            ((2, 0), (2, 1)),
+            #bottom
+            ((3, 0), (3, 1)),
+            ((4, 0), (4, 1)),
         ],
         'channels': {
-            'porin': 5e-4  # diffusion rate through porin
+            'porin': 1e-4  # diffusion rate through porin
         },
-        'n_bins': (10, 4),
-        'size': (10, 4),
-        'diffusion': 2e-1}
+        'n_bins': (6, 4),
+        'size': (6, 4),
+        'diffusion': 3e-1}
 
 def test_diffusion(config = get_two_compartment_config(), time=10):
     diffusion = DiffusionNetwork(config)
@@ -351,6 +361,6 @@ if __name__ == '__main__':
     plot_diffusion_field_output(timeseries, config, out_dir, '2_sites')
 
     config = get_grid_config()
-    saved_data = test_diffusion(config, 20)
+    saved_data = test_diffusion(config, 30)
     timeseries = convert_to_timeseries(saved_data)
     plot_diffusion_field_output(timeseries, config, out_dir, 'grid')
