@@ -111,15 +111,12 @@ class DiffusionNetwork(Process):
             edges = network.get('edges')
             membrane_edges = network.get('membrane_edges', [])
 
-        diffusion_config = {
-            'nodes': locations,
-            'edges': edges,
-            'molecule_ids': molecule_ids,
-            'diffusion': diffusion,
-            'membrane_edges': membrane_edges,
-            'channels': channels}
-
-        self.diffusion_network = Network(diffusion_config)
+        self.nodes = locations
+        self.edges = edges
+        self.molecule_ids = molecule_ids
+        self.diffusion = diffusion
+        self.membrane_edges = membrane_edges
+        self.channel_diffusion = channels
 
         # make ports from locations and membrane channels
         ports = {
@@ -147,20 +144,9 @@ class DiffusionNetwork(Process):
             for state_id, concs in states.items() if state_id is not 'membrane_composition'}
         membrane = states['membrane_composition']
 
-        diffusion_delta = self.diffusion_network.diffusion_delta(concentrations, membrane, timestep)
+        diffusion_delta = self.diffusion_delta(concentrations, membrane, timestep)
 
         return diffusion_delta
-
-
-class Network(object):
-
-    def __init__(self, config):
-        self.nodes = config.get('nodes')
-        self.edges = config.get('edges')
-        self.molecule_ids = config.get('molecule_ids')
-        self.diffusion = config.get('diffusion')
-        self.membrane_edges = config.get('membrane_edges')
-        self.channel_diffusion = config.get('channels')
 
     def diffusion_delta(self, locations, membrane, timestep):
         diffusion_delta = {
