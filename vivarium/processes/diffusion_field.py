@@ -12,7 +12,6 @@ from vivarium.compartment.composition import (
     convert_to_timeseries)
 
 
-
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 

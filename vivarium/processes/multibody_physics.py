@@ -11,6 +11,9 @@ from pygame.color import *
 import random
 import math
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.colors import hsv_to_rgb
 
 # pymunk imports
 import pymunkoptions
@@ -34,7 +37,11 @@ PHYSICS_TS = 0.005
 FORCE_SCALING = 15  # scales from pN
 JITTER_FORCE = 1e-3  # pN
 
+DEFAULT_BOUNDS = [10, 10]
 
+# colors for phylogeny initial agents
+PHYLOGENY_HUES = [hue/360 for hue in np.linspace(0,360,30)]
+DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 
 def get_force_with_angle(force, angle):
     x = force * math.cos(angle)
@@ -100,7 +107,7 @@ class Multibody(Process):
 
         # Static barriers
         # TODO -- mother machine configuration
-        bounds = initial_parameters.get('bounds', [10, 10])
+        bounds = initial_parameters.get('bounds', DEFAULT_BOUNDS)
         self.add_barriers(bounds)
 
         # initialize bodies
@@ -126,7 +133,17 @@ class Multibody(Process):
         bodies = {
             body_id: self.get_body_specs(body_id)
                 for body_id in self.bodies.keys()}
-        return {'state': bodies}
+
+        schema = {
+            body_id: {
+                state_id : {
+                    'updater': 'set'}
+                for state_id in body.keys()}
+                for body_id, body in bodies.items()}
+
+        return {
+            'state': bodies,
+            'schema': schema,}
 
     def next_update(self, timestep, states):
         agents = states
@@ -308,9 +325,6 @@ class Multibody(Process):
         # angle = body.angle
         # mass = body.mass
 
-
-
-
         # TODO -- velocity? angular velocity?
         return {
             'location': [position[0], position[1]],
@@ -326,7 +340,7 @@ class Multibody(Process):
 
 
 # test functions
-def one_body():
+def one_body_config():
     bodies = {
         '1': {
             'location': [0.5, 0.5],
@@ -342,10 +356,92 @@ def one_body():
     return {
         'bodies': bodies,
         'bounds': [10, 10],
+        'jitter_force': 1e1,
     }
 
 
-def test_multibody(config=one_body(), time=1):
+def plot_agent(ax, data, color):
+
+    # location, orientation, length
+    # volume = data['volume']
+    x_center = data['location'][0]
+    y_center = data['location'][1]
+    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
+    length = data['length']
+    width = data['width']
+
+    # get bottom left position
+    x_offset = (width / 2)
+    y_offset = (length / 2)
+    theta_rad = math.radians(theta)
+    dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
+    dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+
+    x = x_center - dx
+    y = y_center - dy
+
+    # get color, convert to rgb
+    rgb = hsv_to_rgb(color)
+
+    # Create a rectangle
+    rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+
+    ax.add_patch(rect)
+
+
+def plot_snapshots(data, config, out_dir='out', filename='multibody'):
+    n_snapshots = 6
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+
+    # time steps that will be used
+    time_vec = data['time']
+    time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
+    snapshot_times = [time_vec[i] for i in time_indices]
+
+    # get agents
+    agents = {port: series for port, series in data.items() if port not in ['time', 'global']}
+    agent_colors = {}
+    for agent_id in agents:
+        hue = random.choice(PHYLOGENY_HUES)  # select random initial hue
+        color = [hue] + DEFAULT_SV
+        agent_colors[agent_id] = color
+
+    # make the figure
+    n_rows = 1
+    n_cols = n_snapshots + 1  # one column for the colorbar
+    fig = plt.figure(figsize=(12 * n_cols, 12 * n_rows))
+    grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
+    plt.rcParams.update({'font.size': 36})
+
+    # plot snapshot data in each subsequent column
+    for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
+        row_idx = 0
+        ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
+        for agent_id, series in agents.items():
+            agent_data = {
+                'location': series['location'][time_idx],
+                'angle': series['angle'][time_idx],
+                'length': series['length'][time_idx],
+                'width': series['width'][time_idx]}
+            color = agent_colors[agent_id]
+            plot_agent(ax, agent_data, color)
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
+def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
+    ax = fig.add_subplot(grid[row_idx, col_idx])
+    if row_idx == 0:
+        plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
+        plt.title(plot_title, y=1.08)
+    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    return ax
+
+def test_multibody(config=one_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
@@ -360,7 +456,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = one_body()
+    config = one_body_config()
     saved_data = test_multibody(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-    # plot_simulation_output(timeseries, {}, out_dir, '2_sites')
+    plot_snapshots(timeseries, config, out_dir, 'one_body')
