@@ -9,6 +9,12 @@ from vivarium.compartment.composition import (
     convert_to_timeseries,
     plot_simulation_output,
     simulate_process_with_environment,
+    flatten_timeseries,
+    save_timeseries,
+    load_timeseries,
+    REFERENCE_DATA_DIR,
+    TEST_OUT_DIR,
+    assert_timeseries_close,
 )
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 
@@ -34,6 +40,8 @@ DEFAULT_INITIAL_FLUXES = {
     'antibiotic_import': 0.0,
     'antibiotic_export': 0.0,
 }
+
+NAME = 'antibiotic_transport'
 
 
 class AntibioticTransport(ConvenienceKinetics):
@@ -120,7 +128,7 @@ class AntibioticTransport(ConvenienceKinetics):
         return default_settings
 
 
-def test_antibiotic_transport():
+def run_antibiotic_transport():
     process = AntibioticTransport()
     settings = {
         'total_time': 4000,
@@ -131,12 +139,26 @@ def test_antibiotic_transport():
     return simulate_process_with_environment(process, settings)
 
 
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'antibiotic_transport')
+def test_antibiotic_transport():
+    data = run_antibiotic_transport()
+    timeseries = convert_to_timeseries(data)
+    flattened = flatten_timeseries(timeseries)
+    reference = load_timeseries(
+        os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
+    assert_timeseries_close(flattened, reference)
+
+
+def main():
+    out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    saved_data = test_antibiotic_transport()
+    saved_data = run_antibiotic_transport()
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_settings = {}
     plot_simulation_output(timeseries, plot_settings, out_dir)
+    save_timeseries(timeseries, out_dir)
+
+
+if __name__ == '__main__':
+    main()
