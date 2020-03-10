@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process,
     convert_to_timeseries)
 
 
@@ -18,6 +17,8 @@ from vivarium.compartment.composition import (
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 
 DIFFUSION_CONSTANT = 5e-1
+DEFAULT_DEPTH = 3000.0  # um
+
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
@@ -147,10 +148,11 @@ class DiffusionField(Process):
         self.initial_state = initial_parameters.get('initial_state', {})
 
         # parameters
-        n_bins = initial_parameters.get('n_bins', (2,1))
-        size = initial_parameters.get('size', (2, 1))
+        n_bins = initial_parameters.get('n_bins', [10,10])
+        size = initial_parameters.get('size', [10, 10])
+        depth = initial_parameters.get('depth', DEFAULT_DEPTH)  # um
 
-        # diffusion settings
+        # diffusion
         diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
         bins_x = n_bins[0]
         bins_y = n_bins[1]
@@ -162,6 +164,10 @@ class DiffusionField(Process):
         self.diffusion = diffusion / dx2
         self.diffusion_dt = 0.01
         # self.diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * self.diffusion * (dx ** 2 + dy ** 2))
+
+        # volume, to convert between counts and concentration
+        total_volume = (depth * length_x * length_y) * 1e-15 # (L)
+        bin_volume = total_volume / (length_x * length_y)
 
         # initialize gradient fields
         gradient = initial_parameters.get('gradient', {})
@@ -303,8 +309,7 @@ def test_diffusion(config, time=10):
         'environment_port': 'external',
         'environment_volume': 1e-12}
 
-    compartment = process_in_compartment(diffusion)
-    return simulate_with_environment(compartment, settings)
+    return simulate_process(diffusion, settings)
 
 
 if __name__ == '__main__':

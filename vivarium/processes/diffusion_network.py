@@ -7,8 +7,7 @@ import numpy as np
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process_with_environment,
     convert_to_timeseries,
     plot_simulation_output)
 
@@ -276,8 +275,7 @@ def test_diffusion_network(config = get_two_compartment_config(), time=10):
         'environment_port': 'external',
         'environment_volume': 1e-2}
 
-    compartment = process_in_compartment(diffusion)
-    return simulate_with_environment(compartment, settings)
+    return simulate_process_with_environment(diffusion, settings)
 
 def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
