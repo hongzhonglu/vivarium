@@ -338,24 +338,25 @@ class Multibody(Process):
 
 
 
-
 # test functions
-def one_body_config():
+def n_body_config(n_bodies=10, bounds=[10, 10]):
     bodies = {
-        '1': {
-            'location': [0.5, 0.5],
+        body_id: {
+            'location': [
+                np.random.uniform(0, bounds[0]),
+                np.random.uniform(0, bounds[1])],
             'angle': np.random.uniform(0, 2 * PI),
             'volume': 1,
             'length': 1.0,
             'width': 0.5,
             'mass': 1,
-            'forces': [0, 0]
-        },
+            'forces': [0, 0]}
+        for body_id in range(n_bodies)
     }
 
     return {
         'bodies': bodies,
-        'bounds': [10, 10],
+        'bounds': bounds,
         'jitter_force': 1e1,
     }
 
@@ -456,7 +457,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = one_body_config()
+    config = n_body_config(10)
     saved_data = test_multibody(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-    plot_snapshots(timeseries, config, out_dir, 'one_body')
+    plot_snapshots(timeseries, config, out_dir, 'bodies')

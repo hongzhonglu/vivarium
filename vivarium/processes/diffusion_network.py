@@ -182,10 +182,9 @@ class Network(object):
                 diffusion = self.diffusion
 
             for mol_id in self.molecule_ids:
-                delta1 = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
-                delta2 = -delta1
-                diffusion_delta[node1][mol_id] += delta1
-                diffusion_delta[node2][mol_id] += delta2
+                delta = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
+                diffusion_delta[node1][mol_id] += delta
+                diffusion_delta[node2][mol_id] -= delta
 
         return diffusion_delta
 
