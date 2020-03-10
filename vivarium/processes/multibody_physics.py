@@ -1,25 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame
-from pygame.locals import *
-from pygame.color import *
 
-# python imports
 import random
 import math
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
-
-# pymunk imports
-import pymunkoptions
-pymunkoptions.options["debug"] = False
 import pymunk
-import pymunk.pygame_util
 
 # vivarium imports
 from vivarium.compartment.process import Process
@@ -28,6 +19,7 @@ from vivarium.compartment.composition import (
     convert_to_timeseries)
 
 
+# constants
 PI = math.pi
 ELASTICITY = 0.95
 DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
@@ -40,29 +32,8 @@ JITTER_FORCE = 1e-3  # pN
 DEFAULT_BOUNDS = [10, 10]
 
 # colors for phylogeny initial agents
-PHYLOGENY_HUES = [hue/360 for hue in np.linspace(0,360,30)]
+HUES = [hue/360 for hue in np.linspace(0,360,30)]
 DEFAULT_SV = [100.0/100.0, 70.0/100.0]
-
-def get_force_with_angle(force, angle):
-    x = force * math.cos(angle)
-    y = force * math.sin(angle)
-    return [x, y]
-
-def front_from_corner(width, length, corner_position, angle):
-    half_width = width/2
-    dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
-    dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-    front_position = [corner_position[0] + dx, corner_position[1] + dy]
-    return np.array([front_position[0], front_position[1], angle])
-
-def corner_from_center(width, length, center_position, angle):
-    half_length = length/2
-    half_width = width/2
-    dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
-    dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-    corner_position = [center_position[0] - dx, center_position[1] - dy]
-
-    return np.array([corner_position[0], corner_position[1], angle])
 
 def random_body_position(body):
     ''' pick a random point along the boundary'''
@@ -83,7 +54,6 @@ def random_body_position(body):
         else:
             # force on the top end
             location = (width, random.uniform(0, length))
-
     return location
 
 
@@ -156,16 +126,15 @@ class Multibody(Process):
                 # add body
                 self.add_body_from_center(agent_id, specs)
 
-
+        # run multibody simulation
         self.run(timestep)
 
-        # get new body variables
-        body_specs = {
+        # get new bodies
+        new_bodies = {
             body_id: self.get_body_specs(body_id)
                 for body_id in self.bodies.keys()}
 
-
-        return body_specs
+        return new_bodies
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -194,7 +163,6 @@ class Multibody(Process):
 
             # add directly to angular velocity
             body.angular_velocity += torque
-
             ## force-based torque
             # if torque != 0.0:
             #     motile_force = get_force_with_angle(thrust, torque)
@@ -203,7 +171,6 @@ class Multibody(Process):
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
-        # jitter forces
         jitter_location = random_body_position(body)
         jitter_force = [
             random.normalvariate(0, self.jitter_force),
@@ -234,18 +201,6 @@ class Multibody(Process):
         self.space.add(static_lines)
 
     def add_body_from_center(self, body_id, body):
-        '''
-        add a cell to the physics engine by specifying a dictionary with values:
-            - body_id (str): the cell's id
-            - width (float)
-            - length (float)
-            - mass (float)
-            - center_position (float)
-            - angle (float)
-            - angular_velocity (float) -- this value is optional, if it is not given, it is set to 0.
-        '''
-
-        # body_id = body['body_id']
         width = body['width']
         length = body['length']
         mass = body['mass']
@@ -403,7 +358,7 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     agents = {port: series for port, series in data.items() if port not in ['time', 'global']}
     agent_colors = {}
     for agent_id in agents:
-        hue = random.choice(PHYLOGENY_HUES)  # select random initial hue
+        hue = random.choice(HUES)  # select random initial hue
         color = [hue] + DEFAULT_SV
         agent_colors[agent_id] = color
 
@@ -442,7 +397,7 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def test_multibody(config=one_body_config(), time=1):
+def test_multibody(config=n_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
