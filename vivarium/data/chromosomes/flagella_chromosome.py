@@ -1,3 +1,4 @@
+
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
@@ -24,8 +25,8 @@ class FlagellaChromosome(object):
                 'fliD': ['fliD', 'fliS', 'fliT'],
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
-                # 'meche': [],
-                # 'mocha': [],
+                'tarp': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
+                'motAp': ['motA', 'motB', 'cheA', 'cheW'],
                 'flgM': ['flgM', 'flgN']},
             'promoters': {
                 'flhDp': {
@@ -194,18 +195,36 @@ class FlagellaChromosome(object):
                             'position': 2003606,
                             'strength': 1.0,
                             'products': ['fliC']}]},
-                # 'meche': {
-                #     'id': 'meche',
-                #     'position': 0,
-                #     'direction': 1,
-                #     'sites': [],
-                #     'terminators': []},
-                # 'mocha': {
-                #     'id': 'mocha',
-                #     'position': 0,
-                #     'direction': 1,
-                #     'sites': [],
-                #     'terminators': []},
+                'tarp': {
+                    'id': 'tarp',
+                    'position': 1972691,
+                    'direction': -1,
+                    'sites': [
+                        {
+                            'position': 0,
+                            'length': 0,
+                            'thresholds': [
+                                ('Fnr', 0.1)]}],
+                    'terminators': [
+                        {
+                            'position': 1971030,
+                            'strength': 1.0,
+                            'products': ['tarp']}]},
+                'motAp': {
+                    'id': 'motAp',
+                    'position': 1977139,
+                    'direction': -1,
+                    'sites': [
+                        {
+                            'position': 0,
+                            'length': 0,
+                            'thresholds': [
+                                ('CpxR', 0.1)]}],
+                    'terminators': [
+                        {
+                            'position': 1976252,
+                            'strength': 1.0,
+                            'products': ['motAp']}]},
                 'flgMp': {
                     'id': 'flgMp',
                     'position': 1130128,
@@ -241,8 +260,8 @@ class FlagellaChromosome(object):
             'fliDp',
             'flgKp',
             'fliCp',
-            # 'meche',
-            # 'mocha',
+            'tarp',
+            'motAp'
             'flgMp']
 
         self.flhD_activated = [
@@ -291,10 +310,11 @@ class FlagellaChromosome(object):
             operon: 0.01
             for operon in self.config['genes'].keys()}
 
-        self.transcription_factors = ['flhD', 'CsgD', 'CRP', 'GadE', 'H-NS']
+        self.transcription_factors = [
+            'flhD', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
 
         self.complexation_monomer_ids = [
-            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'MotA', 'MotB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
+            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'motA', 'motB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
 
         self.complexation_complex_ids = [
             'flagellar motor switch','flagellum', 'flagellar export apparatus', 'flagellar motor']
@@ -321,8 +341,8 @@ class FlagellaChromosome(object):
                 'flagellar motor switch': -1.0,
                 'fliL': -2.0,
                 'flgH': -1.0,
-                'MotA': -1.0,
-                'MotB': -1.0,
+                'motA': -1.0,
+                'motB': -1.0,
                 'flgB': -1.0,
                 'flgC': -1.0,
                 'flgF': -1.0,
