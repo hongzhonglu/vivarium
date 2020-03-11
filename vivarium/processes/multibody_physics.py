@@ -31,7 +31,7 @@ JITTER_FORCE = 1e-3  # pN
 
 DEFAULT_BOUNDS = [10, 10]
 
-# colors for phylogeny initial agents
+# colors for phylogeny initial bodies
 HUES = [hue/360 for hue in np.linspace(0,360,30)]
 DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 
@@ -62,22 +62,23 @@ class Multibody(Process):
     ''''''
     def __init__(self, initial_parameters={}):
 
+        # hardcoded parameters
         self.elasticity = ELASTICITY
         self.friction = FRICTION
         self.damping = DAMPING
         self.angular_damping = ANGULAR_DAMPING
         self.force_scaling = FORCE_SCALING
-        self.jitter_force = initial_parameters.get('jitter_force', JITTER_FORCE)
-
-        # Space
-        self.space = pymunk.Space()
-
-        # Physics
         self.physics_dt = PHYSICS_TS
 
-        # Static barriers
-        # TODO -- mother machine configuration
+        # configured parameters
+        self.jitter_force = initial_parameters.get('jitter_force', JITTER_FORCE)
         bounds = initial_parameters.get('bounds', DEFAULT_BOUNDS)
+
+        # initialize pymunk space
+        self.space = pymunk.Space()
+
+        # add static barriers
+        # TODO -- mother machine configuration
         self.add_barriers(bounds)
 
         # initialize bodies
@@ -87,12 +88,8 @@ class Multibody(Process):
             self.add_body_from_center(body_id, specs)
 
         # make ports
-        body_specs = {
-            body_id: self.get_body_specs(body_id)
-                for body_id in self.bodies.keys()}
-
         # TODO -- need option to add/remove ports throughout simulation
-        ports = {body_id: list(specs.keys()) for body_id, specs in body_specs.items()}
+        ports = {'bodies': list(self.bodies.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -100,41 +97,35 @@ class Multibody(Process):
         super(Multibody, self).__init__(ports, parameters)
 
     def default_settings(self):
-        bodies = {
-            body_id: self.get_body_specs(body_id)
-                for body_id in self.bodies.keys()}
+        bodies = {body_id: self.get_body_specs(body_id)
+            for body_id in self.bodies.keys()}
 
-        schema = {
-            body_id: {
-                state_id : {
-                    'updater': 'set'}
-                for state_id in body.keys()}
-                for body_id, body in bodies.items()}
+        schema = {'bodies': {body_id : {'updater': 'set'}
+            for body_id, body in bodies.items()}}
 
         return {
-            'state': bodies,
+            'state': {'bodies': bodies},
             'schema': schema,}
 
     def next_update(self, timestep, states):
-        agents = states
+        bodies = states['bodies']
 
         # TODO -- check if any body has been removed?
-        for agent_id, specs in agents.items():
-            if agent_id in self.bodies:
-                self.update_body(agent_id, specs)
+        for body_id, specs in bodies.items():
+            if body_id in self.bodies:
+                self.update_body(body_id, specs)
             else:
-                # add body
-                self.add_body_from_center(agent_id, specs)
+                self.add_body_from_center(body_id, specs)
 
-        # run multibody simulation
+        # run simulation
         self.run(timestep)
 
-        # get new bodies
+        # get new bodies specs
         new_bodies = {
             body_id: self.get_body_specs(body_id)
                 for body_id in self.bodies.keys()}
 
-        return new_bodies
+        return {'bodies': new_bodies}
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -149,6 +140,7 @@ class Multibody(Process):
                 self.apply_motile_force(body)
                 self.apply_viscous_force(body)
 
+            # run for a physics timestep
             self.space.step(self.physics_dt)
 
     def apply_motile_force(self, body):
@@ -232,7 +224,7 @@ class Multibody(Process):
         # add body and shape to space
         self.space.add(body, shape)
 
-        # add body
+        # add body to bodies dictionary
         self.bodies[body_id] = (body, shape)
 
     def update_body(self, body_id, specs):
@@ -277,19 +269,14 @@ class Multibody(Process):
         body, shape = self.bodies[body_id]
         width, length = body.dimensions
         position = body.position
-        # angle = body.angle
-        # mass = body.mass
 
-        # TODO -- velocity? angular velocity?
+        # TODO -- velocity? angular velocity? forces?
         return {
             'location': [position[0], position[1]],
             'angle': body.angle,
-            # 'volume': body.volume,
             'length': length,
             'width': width,
-            'mass': body.mass,
-            # 'forces': forces,
-        }
+            'mass': body.mass}
 
 
 
@@ -306,20 +293,17 @@ def n_body_config(n_bodies=10, bounds=[10, 10]):
             'width': 0.5,
             'mass': 1,
             'forces': [0, 0]}
-        for body_id in range(n_bodies)
-    }
+        for body_id in range(n_bodies)}
 
     return {
         'bodies': bodies,
         'bounds': bounds,
-        'jitter_force': 1e1,
-    }
+        'jitter_force': 1e1}
 
 
-def plot_agent(ax, data, color):
+def plot_body(ax, data, color):
 
     # location, orientation, length
-    # volume = data['volume']
     x_center = data['location'][0]
     y_center = data['location'][1]
     theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
@@ -340,7 +324,8 @@ def plot_agent(ax, data, color):
     rgb = hsv_to_rgb(color)
 
     # Create a rectangle
-    rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+    rect = patches.Rectangle(
+        (x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
 
     ax.add_patch(rect)
 
@@ -354,13 +339,14 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
-    # get agents
-    agents = {port: series for port, series in data.items() if port not in ['time', 'global']}
-    agent_colors = {}
-    for agent_id in agents:
+    # get bodies
+    bodies = data['bodies']
+
+    body_colors = {}
+    for body_id in bodies:
         hue = random.choice(HUES)  # select random initial hue
         color = [hue] + DEFAULT_SV
-        agent_colors[agent_id] = color
+        body_colors[body_id] = color
 
     # make the figure
     n_rows = 1
@@ -373,14 +359,14 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
         row_idx = 0
         ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
-        for agent_id, series in agents.items():
-            agent_data = {
-                'location': series['location'][time_idx],
-                'angle': series['angle'][time_idx],
-                'length': series['length'][time_idx],
-                'width': series['width'][time_idx]}
-            color = agent_colors[agent_id]
-            plot_agent(ax, agent_data, color)
+        for body_id, series in bodies.items():
+            body_data = {
+                'location': series[time_idx]['location'],
+                'angle': series[time_idx]['angle'],
+                'length': series[time_idx]['length'],
+                'width': series[time_idx]['width']}
+            color = body_colors[body_id]
+            plot_body(ax, body_data, color)
 
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
@@ -401,7 +387,6 @@ def test_multibody(config=n_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
-        # 'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-2}
     return simulate_process(multibody, settings)
