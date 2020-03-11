@@ -340,22 +340,34 @@ def get_gaussian_config(n_bins=(10, 10)):
                     'center': [0.5, 0.5],
                     'deviation': 1}}}}
 
-def get_secretion_body_config(n_bins=(10, 10)):
-    size = n_bins
-    molecules = ['glc']
-
+def get_secretion_body_config(molecules=['glc'], n_bins=[10, 10]):
     body = {
-        'location': [size[0]/4, size[1]/4],
+        'location': [n_bins[0]/4, n_bins[1]/4],
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}
+    bodies = {'1': body}
 
+    config = {
+        'molecules': molecules,
+        'n_bins': n_bins,
+        'size': n_bins,
+        'bodies': bodies}
+
+    return exchange_body_config(config)
+
+def exchange_body_config(config):
+    molecules = config['molecules']
+    size = config['size']
+    n_bins = config['n_bins']
+    bodies = config['bodies']
     return {
         'molecules': molecules,
         'initial_state': {
-            'glc': np.ones((n_bins[0], n_bins[1]))},
+            mol_id: np.ones((n_bins[0], n_bins[1]))
+            for mol_id in molecules},
         'n_bins': n_bins,
         'size': size,
-        'bodies': {'1': body}}
+        'bodies': bodies}
 
 def test_diffusion_field(config, time=10):
     diffusion = DiffusionField(config)
