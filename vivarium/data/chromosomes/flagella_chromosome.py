@@ -25,8 +25,8 @@ class FlagellaChromosome(object):
                 'fliD': ['fliD', 'fliS', 'fliT'],
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
-                'tarp': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
-                'motAp': ['motA', 'motB', 'cheA', 'cheW'],
+                'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
+                'motA': ['motA', 'motB', 'cheA', 'cheW'],
                 'flgM': ['flgM', 'flgN']},
             'promoters': {
                 'flhDp': {
@@ -209,7 +209,7 @@ class FlagellaChromosome(object):
                         {
                             'position': 1971030,
                             'strength': 1.0,
-                            'products': ['tarp']}]},
+                            'products': ['tar']}]},
                 'motAp': {
                     'id': 'motAp',
                     'position': 1977139,
@@ -224,7 +224,7 @@ class FlagellaChromosome(object):
                         {
                             'position': 1976252,
                             'strength': 1.0,
-                            'products': ['motAp']}]},
+                            'products': ['motA']}]},
                 'flgMp': {
                     'id': 'flgMp',
                     'position': 1130128,
