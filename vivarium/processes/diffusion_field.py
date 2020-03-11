@@ -3,21 +3,22 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import numpy as np
+from scipy import constants
 from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process,
     convert_to_timeseries)
-
 
 
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
-
+AVOGADRO = constants.N_A
 DIFFUSION_CONSTANT = 5e-1
+DEFAULT_DEPTH = 3000.0  # um
+
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
@@ -28,7 +29,7 @@ def make_gradient(gradient, n_bins, size):
     length_x = size[0]
     length_y = size[1]
     fields = {}
-    
+
     if gradient.get('type') == 'gaussian':
         """
         gaussian gradient multiplies the base concentration of the given molecule
@@ -143,19 +144,20 @@ class DiffusionField(Process):
     def __init__(self, initial_parameters={}):
 
         # initial state
-        molecule_ids = initial_parameters.get('molecules', ['glc'])
+        self.molecule_ids = initial_parameters.get('molecules', ['glc'])
         self.initial_state = initial_parameters.get('initial_state', {})
 
         # parameters
-        n_bins = initial_parameters.get('n_bins', (2,1))
-        size = initial_parameters.get('size', (2, 1))
+        self.n_bins = initial_parameters.get('n_bins', [10,10])
+        self.size = initial_parameters.get('size', [10, 10])
+        depth = initial_parameters.get('depth', DEFAULT_DEPTH)
 
-        # diffusion settings
+        # diffusion
         diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
-        bins_x = n_bins[0]
-        bins_y = n_bins[1]
-        length_x = size[0]
-        length_y = size[1]
+        bins_x = self.n_bins[0]
+        bins_y = self.n_bins[1]
+        length_x = self.size[0]
+        length_y = self.size[1]
         dx = length_x / bins_x
         dy = length_y / bins_y
         dx2 = dx * dy
@@ -163,15 +165,24 @@ class DiffusionField(Process):
         self.diffusion_dt = 0.01
         # self.diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * self.diffusion * (dx ** 2 + dy ** 2))
 
+        # volume, to convert between counts and concentration
+        total_volume = (depth * length_x * length_y) * 1e-15 # (L)
+        self.bin_volume = total_volume / (length_x * length_y)
+
         # initialize gradient fields
         gradient = initial_parameters.get('gradient', {})
         if gradient:
-            gradient_fields = make_gradient(gradient, n_bins, size)
+            gradient_fields = make_gradient(gradient, self.n_bins, self.size)
             self.initial_state.update(gradient_fields)
+
+        # bodies
+        # todo -- support adaptive ports for bodies
+        self.initial_bodies = initial_parameters.get('bodies', {})
 
         # make ports
         ports = {
-            'fields': molecule_ids}
+            'fields': self.molecule_ids,
+            'bodies': list(self.initial_bodies.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -181,13 +192,52 @@ class DiffusionField(Process):
     def default_settings(self):
         return {
             'state': {
-                'fields': self.initial_state}}
+                'fields': self.initial_state,
+                'bodies': self.initial_bodies}}
 
     def next_update(self, timestep, states):
-        fields = states['fields']
+        fields = states['fields'].copy()
+        bodies = states['bodies']
+
+        # uptake/secretion from bodies
+        delta_exchanges = self.apply_exchanges(bodies)
+        for field_id, delta in delta_exchanges.items():
+            fields[field_id] += delta
+
+        # diffuse field
         delta_fields = self.diffuse(fields, timestep)
+
         return {
             'fields': delta_fields}
+
+    def count_to_concentration(self, count):
+        return count / (self.bin_volume * AVOGADRO)
+
+    def apply_single_exchange(self, delta_fields, specs):
+        location = specs['location']
+        exchange = specs['exchange']
+
+        patch = np.array([
+            location[0] * self.n_bins[0] / self.size[0],
+            location[1] * self.n_bins[1] / self.size[1]])
+        patch_site = tuple(np.floor(patch).astype(int))
+
+        for mol_id, count in exchange.items():
+            concentration = self.count_to_concentration(count)
+            delta_fields[mol_id][patch_site[0], patch_site[1]] += concentration
+
+    def apply_exchanges(self, bodies):
+
+        # initialize delta_fields with zero array
+        delta_fields = {
+            mol_id: np.zeros((self.n_bins[0], self.n_bins[1]), dtype=np.float64)
+            for mol_id in self.molecule_ids}
+
+        # apply exchanges to delta_fields
+        for body_id, specs in bodies.items():
+            self.apply_single_exchange(delta_fields, specs)
+
+        return delta_fields
 
     # diffusion functions
     def diffusion_delta(self, field, timestep):
@@ -270,8 +320,7 @@ def plot_field_output(data, config, out_dir='out', filename='field'):
     plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
-def get_field_config():
-    n_bins = (10, 10)
+def get_random_field_config(n_bins=(10, 10)):
     return {
         'molecules': ['glc'],
         'initial_state': {
@@ -279,8 +328,7 @@ def get_field_config():
         'n_bins': n_bins,
         'size': n_bins}
 
-def get_gaussian_config():
-    n_bins = (10, 10)
+def get_gaussian_config(n_bins=(10, 10)):
     return {
         'molecules': ['glc'],
         'n_bins': n_bins,
@@ -290,21 +338,33 @@ def get_gaussian_config():
             'molecules': {
                 'glc': {
                     'center': [0.5, 0.5],
-                    'deviation': 1},
-            }},
-    }
+                    'deviation': 1}}}}
 
+def get_secretion_body_config(n_bins=(10, 10)):
+    size = n_bins
+    molecules = ['glc']
 
-def test_diffusion(config, time=10):
+    body = {
+        'location': [size[0]/4, size[1]/4],
+        'exchange': {
+            mol_id: 1e2 for mol_id in molecules}}
+
+    return {
+        'molecules': molecules,
+        'initial_state': {
+            'glc': np.ones((n_bins[0], n_bins[1]))},
+        'n_bins': n_bins,
+        'size': size,
+        'bodies': {'1': body}}
+
+def test_diffusion_field(config, time=10):
     diffusion = DiffusionField(config)
     settings = {
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-12}
-
-    compartment = process_in_compartment(diffusion)
-    return simulate_with_environment(compartment, settings)
+    return simulate_process(diffusion, settings)
 
 
 if __name__ == '__main__':
@@ -312,12 +372,17 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = get_field_config()
-    saved_data = test_diffusion(config, 10)
+    config = get_random_field_config()
+    saved_data = test_diffusion_field(config, 10)
     timeseries = convert_to_timeseries(saved_data)
-    plot_field_output(timeseries, config, out_dir, 'field')
+    plot_field_output(timeseries, config, out_dir, 'random_field')
 
     gaussian_config = get_gaussian_config()
-    gaussian_data = test_diffusion(gaussian_config, 10)
+    gaussian_data = test_diffusion_field(gaussian_config, 10)
     gaussian_timeseries = convert_to_timeseries(gaussian_data)
     plot_field_output(gaussian_timeseries, gaussian_config, out_dir, 'gaussian_field')
+
+    secretion_config = get_secretion_body_config()
+    secretion_data = test_diffusion_field(secretion_config, 10)
+    secretion_timeseries = convert_to_timeseries(secretion_data)
+    plot_field_output(secretion_timeseries, secretion_config, out_dir, 'secretion')

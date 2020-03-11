@@ -7,8 +7,7 @@ import numpy as np
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process_with_environment,
     convert_to_timeseries,
     plot_simulation_output)
 
@@ -112,15 +111,12 @@ class DiffusionNetwork(Process):
             edges = network.get('edges')
             membrane_edges = network.get('membrane_edges', [])
 
-        diffusion_config = {
-            'nodes': locations,
-            'edges': edges,
-            'molecule_ids': molecule_ids,
-            'diffusion': diffusion,
-            'membrane_edges': membrane_edges,
-            'channels': channels}
-
-        self.diffusion_network = Network(diffusion_config)
+        self.nodes = locations
+        self.edges = edges
+        self.molecule_ids = molecule_ids
+        self.diffusion = diffusion
+        self.membrane_edges = membrane_edges
+        self.channel_diffusion = channels
 
         # make ports from locations and membrane channels
         ports = {
@@ -148,20 +144,9 @@ class DiffusionNetwork(Process):
             for state_id, concs in states.items() if state_id is not 'membrane_composition'}
         membrane = states['membrane_composition']
 
-        diffusion_delta = self.diffusion_network.diffusion_delta(concentrations, membrane, timestep)
+        diffusion_delta = self.diffusion_delta(concentrations, membrane, timestep)
 
         return diffusion_delta
-
-
-class Network(object):
-
-    def __init__(self, config):
-        self.nodes = config.get('nodes')
-        self.edges = config.get('edges')
-        self.molecule_ids = config.get('molecule_ids')
-        self.diffusion = config.get('diffusion')
-        self.membrane_edges = config.get('membrane_edges')
-        self.channel_diffusion = config.get('channels')
 
     def diffusion_delta(self, locations, membrane, timestep):
         diffusion_delta = {
@@ -183,10 +168,9 @@ class Network(object):
                 diffusion = self.diffusion
 
             for mol_id in self.molecule_ids:
-                delta1 = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
-                delta2 = -delta1
-                diffusion_delta[node1][mol_id] += delta1
-                diffusion_delta[node2][mol_id] += delta2
+                delta = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
+                diffusion_delta[node1][mol_id] += delta
+                diffusion_delta[node2][mol_id] -= delta
 
         return diffusion_delta
 
@@ -276,8 +260,7 @@ def test_diffusion_network(config = get_two_compartment_config(), time=10):
         'environment_port': 'external',
         'environment_volume': 1e-2}
 
-    compartment = process_in_compartment(diffusion)
-    return simulate_with_environment(compartment, settings)
+    return simulate_process_with_environment(diffusion, settings)
 
 def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
