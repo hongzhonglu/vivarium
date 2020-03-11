@@ -53,7 +53,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 1e-05)]}],
+                                ('flhDC', 1e-05)]}],
                     'terminators': [
                         {
                             'position': 2023678,
@@ -68,7 +68,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 1.5e-05)]}],
+                                ('flhDC', 1.5e-05)]}],
                     'terminators': [
                         {
                             'position': 2012700,
@@ -83,7 +83,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 2e-05)]}],
+                                ('flhDC', 2e-05)]}],
                     'terminators': [
                         {
                             'position': 2019513,
@@ -98,7 +98,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 2.5e-05)]}],
+                                ('flhDC', 2.5e-05)]}],
                     'terminators': [
                         {
                             'position': 1129414,
@@ -113,7 +113,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 3e-05)]}],
+                                ('flhDC', 3e-05)]}],
                     'terminators': [
                         {
                             'position': 1138312,
@@ -128,7 +128,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 3.5e-05)]}],
+                                ('flhDC', 3.5e-05)]}],
                     'terminators': [
                         {
                             'position': 1962580,
@@ -143,7 +143,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 4e-05)]}],
+                                ('flhDC', 4e-05)]}],
                     'terminators': [
                         {
                             'position': 1999585,
@@ -158,7 +158,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 4.5e-05)]}],
+                                ('flhDC', 4.5e-05)]}],
                     'terminators': [
                         {
                             'position': 2006078,
@@ -173,7 +173,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('flhD', 5e-05)]}],
+                                ('flhDC', 5e-05)]}],
                     'terminators': [
                         {
                             'position': 1140986,
@@ -204,7 +204,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('Fnr', 0.1)]}],
+                                ('Fnr', 1e-5)]}],
                     'terminators': [
                         {
                             'position': 1971030,
@@ -219,7 +219,7 @@ class FlagellaChromosome(object):
                             'position': 0,
                             'length': 0,
                             'thresholds': [
-                                ('CpxR', 0.1)]}],
+                                ('CpxR', 1e-5)]}],
                     'terminators': [
                         {
                             'position': 1976252,
@@ -281,10 +281,14 @@ class FlagellaChromosome(object):
 
         self.promoter_affinities[('fliCp', None)] = 0.0
         self.promoter_affinities[('flgMp', None)] = 0.0
+        self.promoter_affinities[('tarp', None)] = 0.0
+        self.promoter_affinities[('tarp', 'Fnr')] = 0.0
+        self.promoter_affinities[('motAp', None)] = 0.0
+        self.promoter_affinities[('motAp', 'CpxR')] = 1.0
 
         for promoter in self.flhD_activated:
             self.promoter_affinities[(promoter, None)] = 0.0
-            self.promoter_affinities[(promoter, 'flhD')] = 1.0
+            self.promoter_affinities[(promoter, 'flhDC')] = 1.0
 
         self.transcripts = [
             product
@@ -311,15 +315,23 @@ class FlagellaChromosome(object):
             for operon in self.config['genes'].keys()}
 
         self.transcription_factors = [
-            'flhD', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
+            'flhDC', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
 
         self.complexation_monomer_ids = [
-            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'motA', 'motB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
+            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'flhD', 'flhC', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'motA', 'motB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
 
         self.complexation_complex_ids = [
-            'flagellar motor switch','flagellum', 'flagellar export apparatus', 'flagellar motor']
+            'flhDC',
+            'flagellar motor switch',
+            'flagellum',
+            'flagellar export apparatus',
+            'flagellar motor']
 
         self.complexation_stoichiometry = {
+            'flhDC': {
+                'flhD': -4.0,
+                'flhC': -2.0,
+                'flhDC': 1.0},
             'flagellar motor switch reaction': {
                 'flagellar motor switch': 1.0,
                 'fliG': -26.0,
@@ -360,8 +372,9 @@ class FlagellaChromosome(object):
                 'fliD': -5.0,
                 'flgE': -120.0}}
 
-        reaction_default = 1e-30
+        reaction_default = 1e-5
         self.complexation_rates = {
+            'flhDC': reaction_default,
             'flagellar motor switch reaction': reaction_default,
             'flagellar export apparatus reaction': reaction_default,
             'flagellar motor reaction': reaction_default,

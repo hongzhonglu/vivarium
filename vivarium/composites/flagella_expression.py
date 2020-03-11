@@ -49,7 +49,7 @@ def generate_flagella_compartment(config):
 
             'sequences': flagella.operon_sequences,
             'templates': flagella.transcript_templates,
-            'concentration_keys': ['CRP'],
+            'concentration_keys': ['CRP', 'flhDC'],
             'transcript_affinities': flagella.transcript_affinities,
 
             'elongation_rate': 22,
@@ -72,7 +72,9 @@ def generate_flagella_compartment(config):
                 gene: 0
                 for gene in flagella.config['genes'].keys()},
             'proteins': {
+                'CpxR': 10,
                 'CRP': 10,
+                'Fnr': 10,
                 'endoRNAse': 1,
                 UNBOUND_RIBOSOME_KEY: 10,
                 UNBOUND_RNAP_KEY: 10}}}
