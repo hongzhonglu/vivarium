@@ -269,7 +269,7 @@ def plot_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
 
     # parameters
-    molecules = data['fields'].keys()
+    molecules = config.get('molecules', {})
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
 
