@@ -2,31 +2,41 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
+from vivarium.compartment.process import (
+    initialize_state,
+    load_compartment,
+)
 from vivarium.compartment.composition import (
     simulate_compartment,
     convert_to_timeseries
 )
 
 # processes
-from vivarium.processes.multibody_physics import Multibody, n_body_config
-from vivarium.processes.diffusion_field import DiffusionField, exchange_body_config
+from vivarium.processes.multibody_physics import (
+    Multibody,
+    n_body_config,
+    plot_snapshots,
+)
+from vivarium.processes.diffusion_field import (
+    DiffusionField,
+    exchange_body_config,
+    plot_field_output,
+)
 
 
 def compose_lattice_environment(config):
     """"""
+    n_bodies = config.get('n_bodies', 10)
+    bounds = config.get('bounds', [10, 10])
+    size = config.get('size', [10, 10])
+    molecules = config.get('molecules', ['glc'])
 
-    # Declare the processes.
-
+    ## Declare the processes.
     # multibody physics
-    n_bodies = 10
-    bounds = [10, 10]
     multibody_config = n_body_config(n_bodies, bounds)
     multibody = Multibody(multibody_config)
 
     # diffusion field
-    molecules = ['glc']
-    # TODO -- get bodies from multibody
     bodies = {
         body_id: {
         'location': [bounds[0]/4, bounds[1]/4],
@@ -34,30 +44,29 @@ def compose_lattice_environment(config):
             mol_id: 1e2 for mol_id in molecules}}
             for body_id in range(n_bodies)}
 
-    import ipdb; ipdb.set_trace()
-
-    config = {
+    exchange_config = {
         'molecules': molecules,
         'n_bins': bounds,
-        'size': bounds,
+        'size': size,
         'bodies': bodies}
-    diffusion_config = exchange_body_config(config)
+    diffusion_config = exchange_body_config(exchange_config)
     diffusion = DiffusionField(diffusion_config)
 
     # Place processes in layers
     processes = [
-        {'multibody': multibody},
-        {'diffusion': diffusion}]
-
-    import ipdb; ipdb.set_trace()
-    # TODO -- link up locations to same ports
+        {'multibody': multibody,
+        'diffusion': diffusion}]
 
     # topology
     topology = {
-        'diffusion': {},
-        'multibody': {}}
+        'multibody': {
+            'bodies': 'bodies',
+        },
+        'diffusion': {
+            'bodies': 'bodies',
+            'fields': 'fields'}}
 
-    # Initialize the states
+    # initialize the states
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -74,11 +83,15 @@ def compose_lattice_environment(config):
 
 # toy functions/ defaults
 def get_lattice_config():
-
-    return {}
+    return {
+        'molecules': ['glc'],
+        'n_bodies': 10,
+        'bounds': [10, 10],
+        'size': [10, 10]}
 
 def test_lattice_environment(config=get_lattice_config(), time=10):
-    lattice_environment = compose_lattice_environment(config)
+    boot_config = {'emitter': 'null'}
+    lattice_environment = load_compartment(compose_lattice_environment, boot_config)
     settings = {
         'total_time': time,
         # 'exchange_port': 'exchange',
@@ -96,28 +109,5 @@ if __name__ == '__main__':
     config = get_lattice_config()
     saved_data = test_lattice_environment(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-
-    # # settings for simulation and plot
-    # options = compartment.configuration
-    # timeline = [(2520, {})]
-    #
-    # settings = {
-    #     'environment_port': options['environment_port'],
-    #     'exchange_port': options['exchange_port'],
-    #     'environment_volume': 1e-13,  # L
-    #     'timeline': timeline}
-    #
-    # plot_settings = {
-    #     'max_rows': 20,
-    #     'remove_zeros': True,
-    #     'overlay': {
-    #         'reactions': 'flux'},
-    #     'skip_ports': ['prior_state', 'null']}
-    #
-    # # saved_state = simulate_compartment(compartment, settings)
-    # saved_data = simulate_with_environment(compartment, settings)
-    # del saved_data[0]
-    # timeseries = convert_to_timeseries(saved_data)
-    # volume_ts = timeseries['global']['volume']
-    # print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_field_output(timeseries, config, out_dir, 'lattice_field')
+    plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')

@@ -190,10 +190,9 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        return {
-            'state': {
-                'fields': self.initial_state,
-                'bodies': self.initial_bodies}}
+        return {'state': {
+            'fields': self.initial_state,
+            'bodies': self.initial_bodies}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -207,15 +206,14 @@ class DiffusionField(Process):
         # diffuse field
         delta_fields = self.diffuse(fields, timestep)
 
-        return {
-            'fields': delta_fields}
+        return {'fields': delta_fields}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
 
     def apply_single_exchange(self, delta_fields, specs):
         location = specs['location']
-        exchange = specs['exchange']
+        exchange = specs.get('exchange', {})
 
         patch = np.array([
             location[0] * self.n_bins[0] / self.size[0],
@@ -271,7 +269,7 @@ def plot_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
 
     # parameters
-    molecules = config.get('molecules', {})
+    molecules = data['fields'].keys()
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
 

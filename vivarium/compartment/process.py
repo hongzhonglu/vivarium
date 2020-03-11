@@ -26,19 +26,27 @@ def npize(d):
     return keys, values
 
 
-# updater functions
+## updater functions
+# these function take in a variable key, the entire store's dict,
+# the variable's current value, the variable's current update,
+# and returns a new value, and other updates
 def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
+def update_merge(key, state_dict, current_value, new_value):
+    return deep_merge(dict(current_value), new_value), {}
+
 updater_library = {
     'accumulate': update_accumulate,
-    'set': update_set}
+    'set': update_set,
+    'merge': update_merge}
 
 
-# divider functions
+## divider functions
+# these functions take in a value, are return two values for each daughter
 def default_divide_condition(compartment):
     return False
 

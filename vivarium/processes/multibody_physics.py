@@ -100,7 +100,7 @@ class Multibody(Process):
         bodies = {body_id: self.get_body_specs(body_id)
             for body_id in self.bodies.keys()}
 
-        schema = {'bodies': {body_id : {'updater': 'set'}
+        schema = {'bodies': {body_id : {'updater': 'merge'}
             for body_id, body in bodies.items()}}
 
         return {
