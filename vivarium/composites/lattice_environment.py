@@ -92,11 +92,7 @@ def get_lattice_config():
 def test_lattice_environment(config=get_lattice_config(), time=10):
     boot_config = {'emitter': 'null'}
     lattice_environment = load_compartment(compose_lattice_environment, boot_config)
-    settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-2}
+    settings = {'total_time': time}
     return simulate_compartment(lattice_environment, settings)
 
 
@@ -111,3 +107,4 @@ if __name__ == '__main__':
     timeseries = convert_to_timeseries(saved_data)
     plot_field_output(timeseries, config, out_dir, 'lattice_field')
     plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')
+    
