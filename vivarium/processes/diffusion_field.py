@@ -190,10 +190,9 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        return {
-            'state': {
-                'fields': self.initial_state,
-                'bodies': self.initial_bodies}}
+        return {'state': {
+            'fields': self.initial_state,
+            'bodies': self.initial_bodies}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -207,15 +206,14 @@ class DiffusionField(Process):
         # diffuse field
         delta_fields = self.diffuse(fields, timestep)
 
-        return {
-            'fields': delta_fields}
+        return {'fields': delta_fields}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
 
     def apply_single_exchange(self, delta_fields, specs):
         location = specs['location']
-        exchange = specs['exchange']
+        exchange = specs.get('exchange', {})
 
         patch = np.array([
             location[0] * self.n_bins[0] / self.size[0],
@@ -340,22 +338,34 @@ def get_gaussian_config(n_bins=(10, 10)):
                     'center': [0.5, 0.5],
                     'deviation': 1}}}}
 
-def get_secretion_body_config(n_bins=(10, 10)):
-    size = n_bins
-    molecules = ['glc']
-
+def get_secretion_body_config(molecules=['glc'], n_bins=[10, 10]):
     body = {
-        'location': [size[0]/4, size[1]/4],
+        'location': [n_bins[0]/4, n_bins[1]/4],
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}
+    bodies = {'1': body}
 
+    config = {
+        'molecules': molecules,
+        'n_bins': n_bins,
+        'size': n_bins,
+        'bodies': bodies}
+
+    return exchange_body_config(config)
+
+def exchange_body_config(config):
+    molecules = config['molecules']
+    size = config['size']
+    n_bins = config['n_bins']
+    bodies = config['bodies']
     return {
         'molecules': molecules,
         'initial_state': {
-            'glc': np.ones((n_bins[0], n_bins[1]))},
+            mol_id: np.ones((n_bins[0], n_bins[1]))
+            for mol_id in molecules},
         'n_bins': n_bins,
         'size': size,
-        'bodies': {'1': body}}
+        'bodies': bodies}
 
 def test_diffusion_field(config, time=10):
     diffusion = DiffusionField(config)
