@@ -1,16 +1,17 @@
 import os
-from vivarium.utils.units import units
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
-from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
+from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
-from vivarium.processes.translation import generate_template, UNBOUND_RIBOSOME_KEY
+from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
-from vivarium.environment.make_media import Media
 
-from vivarium.processes.derive_globals import AVOGADRO
+
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -81,6 +82,50 @@ def generate_flagella_compartment(config):
 
     return compose_gene_expression(flagella_expression_config)
 
+
+def plot_flagella_just_in_time(timeseries, config, out_dir='out'):
+
+    name = config.get('name', 'gene_expression')
+    ports = config.get('ports', {})
+    transcripts = timeseries[ports['transcripts']]
+    time = timeseries['time']
+
+    # make timeseries heatmap
+    transcript_ids = list(transcripts.keys())
+    transcript_ids.reverse()  # reverse to get proper labeling with imshow
+    n_transcripts = len(transcript_ids)
+    transcripts_ts_map = [
+        [value/ max(max(series), 1)
+            for value in series]
+            for transcript, series in transcripts.items()]
+
+    # make figure
+    fig = plt.figure(figsize=(5, 0.6*len(transcript_ids)))
+    ax = fig.add_subplot(1,1,1)
+    im = ax.imshow(transcripts_ts_map,
+        extent=[time[0], time[-1], 0, n_transcripts],
+        interpolation='nearest',
+        aspect='auto',
+        cmap='cividis'
+        )
+    ax.locator_params(axis='y', nbins=n_transcripts)
+
+    # set y ticks locations and labels
+    y_tick_locs = np.asarray([loc+0.5 for loc in range(n_transcripts)])
+    ax.set_yticks(y_tick_locs)
+    ax.set_yticklabels(transcript_ids)
+    ax.set_xlabel('time (s)')
+
+    # colorbar
+    cbar = fig.colorbar(im)
+    cbar.set_label('relative flourescence', rotation=270, labelpad=20)
+
+    # save figure
+    fig_path = os.path.join(out_dir, name)
+    plt.savefig(fig_path, bbox_inches='tight')
+
+
+
 if __name__ == '__main__':
     from vivarium.compartment.process import load_compartment, simulate_compartment
     from vivarium.compartment.composition import convert_to_timeseries
@@ -94,7 +139,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 800}
+        'total_time': 1000}
     saved_state = simulate_compartment(flagella_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
@@ -109,4 +154,13 @@ if __name__ == '__main__':
     plot_gene_expression_output(
         timeseries,
         plot_config,
+        out_dir)
+
+    # just-in-time figure
+    plot_config2 = plot_config.copy()
+    plot_config2.update({'name': 'flagella_just_in_time'})
+
+    plot_flagella_just_in_time(
+        timeseries,
+        plot_config2,
         out_dir)
