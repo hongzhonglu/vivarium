@@ -175,14 +175,14 @@ class DiffusionField(Process):
             gradient_fields = make_gradient(gradient, self.n_bins, self.size)
             self.initial_state.update(gradient_fields)
 
-        # bodies
-        # todo -- support adaptive ports for bodies
-        self.initial_bodies = initial_parameters.get('bodies', {})
+        # agents
+        # todo -- support adaptive ports for agents
+        self.initial_agents = initial_parameters.get('agents', {})
 
         # make ports
         ports = {
             'fields': self.molecule_ids,
-            'bodies': list(self.initial_bodies.keys())}
+            'agents': list(self.initial_agents.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -192,14 +192,14 @@ class DiffusionField(Process):
     def default_settings(self):
         return {'state': {
             'fields': self.initial_state,
-            'bodies': self.initial_bodies}}
+            'agents': self.initial_agents}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        bodies = states['bodies']
+        agents = states['agents']
 
-        # uptake/secretion from bodies
-        delta_exchanges = self.apply_exchanges(bodies)
+        # uptake/secretion from agents
+        delta_exchanges = self.apply_exchanges(agents)
         for field_id, delta in delta_exchanges.items():
             fields[field_id] += delta
 
@@ -224,7 +224,7 @@ class DiffusionField(Process):
             concentration = self.count_to_concentration(count)
             delta_fields[mol_id][patch_site[0], patch_site[1]] += concentration
 
-    def apply_exchanges(self, bodies):
+    def apply_exchanges(self, agents):
 
         # initialize delta_fields with zero array
         delta_fields = {
@@ -232,7 +232,7 @@ class DiffusionField(Process):
             for mol_id in self.molecule_ids}
 
         # apply exchanges to delta_fields
-        for body_id, specs in bodies.items():
+        for agent_id, specs in agents.items():
             self.apply_single_exchange(delta_fields, specs)
 
         return delta_fields
@@ -338,26 +338,26 @@ def get_gaussian_config(n_bins=(10, 10)):
                     'center': [0.5, 0.5],
                     'deviation': 1}}}}
 
-def get_secretion_body_config(molecules=['glc'], n_bins=[10, 10]):
-    body = {
+def get_secretion_agent_config(molecules=['glc'], n_bins=[10, 10]):
+    agent = {
         'location': [n_bins[0]/4, n_bins[1]/4],
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}
-    bodies = {'1': body}
+    agents = {'1': agent}
 
     config = {
         'molecules': molecules,
         'n_bins': n_bins,
         'size': n_bins,
-        'bodies': bodies}
+        'agents': agents}
 
-    return exchange_body_config(config)
+    return exchange_agent_config(config)
 
-def exchange_body_config(config):
+def exchange_agent_config(config):
     molecules = config['molecules']
     size = config['size']
     n_bins = config['n_bins']
-    bodies = config['bodies']
+    agents = config['agents']
     return {
         'molecules': molecules,
         'initial_state': {
@@ -365,7 +365,7 @@ def exchange_body_config(config):
             for mol_id in molecules},
         'n_bins': n_bins,
         'size': size,
-        'bodies': bodies}
+        'agents': agents}
 
 def test_diffusion_field(config, time=10):
     diffusion = DiffusionField(config)
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     gaussian_timeseries = convert_to_timeseries(gaussian_data)
     plot_field_output(gaussian_timeseries, gaussian_config, out_dir, 'gaussian_field')
 
-    secretion_config = get_secretion_body_config()
+    secretion_config = get_secretion_agent_config()
     secretion_data = test_diffusion_field(secretion_config, 10)
     secretion_timeseries = convert_to_timeseries(secretion_data)
     plot_field_output(secretion_timeseries, secretion_config, out_dir, 'secretion')
