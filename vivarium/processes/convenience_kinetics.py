@@ -240,6 +240,7 @@ def test_convenience_kinetics(end_time=1000):
     settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
+        'emit_timeseries': True,
         'environment_volume': 1e-13,  # L
         'timestep': 1,
         'total_time': end_time}
@@ -249,8 +250,7 @@ def test_convenience_kinetics(end_time=1000):
 
 
 def test_convenience_kinetics_correlated_to_reference():
-    saved_data = test_convenience_kinetics()
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_convenience_kinetics()
     flattened = flatten_timeseries(timeseries)
     reference_timeseries = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
@@ -264,7 +264,6 @@ if __name__ == '__main__':
 
     plot_settings = {}
 
-    saved_data = test_convenience_kinetics()
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_convenience_kinetics()
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)

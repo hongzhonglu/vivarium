@@ -215,6 +215,9 @@ def simulate_with_environment(compartment, settings={}):
     end_time = timeline[-1][0]
     timestep = compartment.time_step
 
+    # data settings
+    emit_timeseries = settings.get('emit_timeseries', False)
+
     ## run simulation
     time = 0
     while time < end_time:
@@ -241,7 +244,10 @@ def simulate_with_environment(compartment, settings={}):
             reset_exchange = {key: 0 for key in exchange_ids}
             exchange.assign_values(reset_exchange)
 
-    return compartment.emitter.get_data()
+    if emit_timeseries:
+        return compartment.emitter.get_timeseries()
+    else:
+        return compartment.emitter.get_data()
 
 def convert_to_timeseries(sim_output):
     '''
