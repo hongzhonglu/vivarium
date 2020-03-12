@@ -53,15 +53,15 @@ def make_gradient(gradient, n_bins, size):
                       specs['center'][1] * length_y]
             deviation = specs['deviation']
 
-            for x_patch in range(bins_x):
-                for y_patch in range(bins_y):
-                    # distance from middle of patch to center coordinates
-                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
-                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+            for x_bin in range(bins_x):
+                for y_bin in range(bins_y):
+                    # distance from middle of bin to center coordinates
+                    dx = (x_bin + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_bin + 0.5) * length_y / bins_y - center[1]
                     distance = np.sqrt(dx ** 2 + dy ** 2)
                     scale = gaussian(deviation, distance)
                     # multiply gradient by scale
-                    field[x_patch][y_patch] *= scale
+                    field[x_bin][y_bin] *= scale
             fields[molecule_id] = field
 
     elif gradient.get('type') == 'linear':
@@ -87,15 +87,15 @@ def make_gradient(gradient, n_bins, size):
                       specs['center'][1] * length_y]
             slope = specs['slope']
 
-            for x_patch in range(bins_x):
-                for y_patch in range(bins_y):
-                    # distance from middle of patch to center coordinates
-                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
-                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+            for x_bin in range(bins_x):
+                for y_bin in range(bins_y):
+                    # distance from middle of bin to center coordinates
+                    dx = (x_bin + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_bin + 0.5) * length_y / bins_y - center[1]
                     distance = np.sqrt(dx ** 2 + dy ** 2)
                     added = distance * slope
                     # add gradient to basal concentration
-                    field[x_patch][y_patch] += added
+                    field[x_bin][y_bin] += added
             fields[fields <= 0.0] = 0.0
             fields[molecule_id] = field
 
@@ -123,15 +123,15 @@ def make_gradient(gradient, n_bins, size):
                       specs['center'][1] * length_y]
             base = specs['base']
 
-            for x_patch in range(bins_x):
-                for y_patch in range(bins_y):
-                    dx = (x_patch + 0.5) * length_x / bins_x - center[0]
-                    dy = (y_patch + 0.5) * length_y / bins_y - center[1]
+            for x_bin in range(bins_x):
+                for y_bin in range(bins_y):
+                    dx = (x_bin + 0.5) * length_x / bins_x - center[0]
+                    dy = (y_bin + 0.5) * length_y / bins_y - center[1]
                     distance = np.sqrt(dx ** 2 + dy ** 2)
                     added = base ** distance - 1
 
                     # add to base concentration
-                    field[x_patch][y_patch] += added
+                    field[x_bin][y_bin] += added
             fields[fields <= 0.0] = 0.0
             fields[molecule_id] = field
 
@@ -190,9 +190,15 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        return {'state': {
-            'fields': self.initial_state,
-            'agents': self.initial_agents}}
+        schema = {
+            'agents': {agent_id : {'updater': 'merge'}
+                for agent_id in self.ports['agents']}}
+
+        return {
+            'schema': schema,
+            'state': {
+                'fields': self.initial_state,
+                'agents': self.initial_agents}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -206,34 +212,48 @@ class DiffusionField(Process):
         # diffuse field
         delta_fields = self.diffuse(fields, timestep)
 
-
-
-        # TODO -- give each agent its local environment
-        agents = {}
-
+        # get each agent's local environment
+        local_environments = self.get_local_environments(agents, fields)
+        agent_update = {
+            agent_id: {'local_environment': local_env}
+                for agent_id, local_env in local_environments.items()}
 
         return {
             'fields': delta_fields,
-            'agents': agents}
+            'agents': agent_update}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
 
-    def apply_single_exchange(self, delta_fields, specs):
-        location = specs['location']
-        exchange = specs.get('exchange', {})
-
-        patch = np.array([
+    def get_bin_site(self, location):
+        bin = np.array([
             location[0] * self.n_bins[0] / self.size[0],
             location[1] * self.n_bins[1] / self.size[1]])
-        patch_site = tuple(np.floor(patch).astype(int))
+        bin_site = tuple(np.floor(bin).astype(int))
+        return bin_site
+
+    def get_single_local_environments(self, specs, fields):
+        bin_site = self.get_bin_site(specs['location'])
+        local_environment = {}
+        for mol_id, field in fields.items():
+            local_environment[mol_id] = field[bin_site]
+        return local_environment
+
+    def get_local_environments(self, agents, fields):
+        local_environments = {}
+        for agent_id, specs in agents.items():
+            local_environments[agent_id] = self.get_single_local_environments(specs, fields)
+        return local_environments
+
+    def apply_single_exchange(self, delta_fields, specs):
+        exchange = specs.get('exchange', {})
+        bin_site = self.get_bin_site(specs['location'])
 
         for mol_id, count in exchange.items():
             concentration = self.count_to_concentration(count)
-            delta_fields[mol_id][patch_site[0], patch_site[1]] += concentration
+            delta_fields[mol_id][bin_site[0], bin_site[1]] += concentration
 
     def apply_exchanges(self, agents):
-
         # initialize delta_fields with zero array
         delta_fields = {
             mol_id: np.zeros((self.n_bins[0], self.n_bins[1]), dtype=np.float64)
@@ -375,7 +395,7 @@ def exchange_agent_config(config):
         'size': size,
         'agents': agents}
 
-def test_diffusion_field(config, time=10):
+def test_diffusion_field(config=get_random_field_config(), time=10):
     diffusion = DiffusionField(config)
     settings = {
         'total_time': time,
