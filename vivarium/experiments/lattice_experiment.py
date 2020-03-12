@@ -18,7 +18,14 @@ def compose_lattice_experiment(config):
     lattice_config = {}
 
     # make the compartments
-    growth_division_compartment = load_compartment(compose_growth_division, growth_division_config)
+    n_agents = config.get('n_agents', 0)
+
+    agents = {}
+    for agent in range(n_agents):
+        # TODO -- uuid?
+        agents[agent] = load_compartment(compose_growth_division, growth_division_config)
+
+    # TODO -- load agent ids in lattice
     lattice_compartment = load_compartment(compose_lattice_environment, lattice_config)
 
 
@@ -30,18 +37,20 @@ def get_ecoli_core_glc_config():
     timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
     lattice_config = {
         'name': 'ecoli_core',
-        'timeline_str': timeline_str,
-        'edge_length_x': 15.0,
-        'patches_per_edge_x': 10,
-        'run_for': 5.0,
+        'timeline_str': timeline_str,  # todo -- implement timeline
+        'size': (15, 15),
+        'n_bins': (10, 10),
         'diffusion': 1e-3,
         'depth': 2e-2,
-        'translation_jitter': 1e-1,
-        'emit_fields': [
-            'co2_e',
-            'o2_e',
-            'glc__D_e',
-            'lac__D_e']}
+        'jitter_force': 1e-1,
+        'n_agents': 1,
+        # 'run_for': 5.0,
+        # 'emit_fields': [
+        #     'co2_e',
+        #     'o2_e',
+        #     'glc__D_e',
+        #     'lac__D_e']
+    }
 
     return lattice_config
 
