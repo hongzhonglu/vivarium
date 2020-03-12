@@ -162,7 +162,6 @@ def run_antibiotics_composite():
             # Set so exporter concentration reaches equilibrium
             'AcrAB-TolC': 1e-3,
         },
-        'emitter': 'null',
         'checkers': {
             'antibiotic': {
                 # Set so cell dies after first division
@@ -195,7 +194,6 @@ def main():
     }
 
     saved_state = run_antibiotics_composite()
-    del saved_state[0]  # Delete first record, where everything is 0
     timeseries = convert_to_timeseries(saved_state)
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)

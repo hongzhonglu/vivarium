@@ -64,7 +64,10 @@ class ConvenienceKinetics(Process):
         default_state = self.initial_state
 
         # default emitter keys
-        default_emitter_keys = {}
+        emit_ports = ['internal', 'external']
+        default_emitter_keys = {
+            port: state_list
+            for port, state_list in self.ports.items() if port in emit_ports}
 
         # schema
         schema = {
@@ -247,7 +250,6 @@ def test_convenience_kinetics(end_time=1000):
 
 def test_convenience_kinetics_correlated_to_reference():
     saved_data = test_convenience_kinetics()
-    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     flattened = flatten_timeseries(timeseries)
     reference_timeseries = load_timeseries(
@@ -263,7 +265,6 @@ if __name__ == '__main__':
     plot_settings = {}
 
     saved_data = test_convenience_kinetics()
-    del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)

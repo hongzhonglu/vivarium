@@ -117,7 +117,7 @@ class TimeSeriesEmitter(Emitter):
 
     def get_data(self):
         return self.saved_data
-    
+
     def get_timeseries(self):
         time_vec = list(self.saved_data.keys())
         initial_state = self.saved_data[time_vec[0]]
