@@ -72,7 +72,7 @@ def make_location_network(n_bins):
 
 
 
-class DiffusionNetwork(Process):
+class ReactionDiffusionNetwork(Process):
     ''''''
     def __init__(self, initial_parameters={}):
 
@@ -128,7 +128,7 @@ class DiffusionNetwork(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(DiffusionNetwork, self).__init__(ports, parameters)
+        super(ReactionDiffusionNetwork, self).__init__(ports, parameters)
 
 
     def default_settings(self):
@@ -177,6 +177,86 @@ class DiffusionNetwork(Process):
 
 
 # testing functions
+def get_min_system_config():
+    '''
+    The main ODE of the Min system.
+
+    units: [D_ADP], [D_ATP], [E_c] = 1/um^3; [D_m], [DE_m] = 1/um^2;
+    units: k1, k5: 1/sec; k3, k4: um^3/sec; k2: um/sec
+
+    d[D_ADP]/dt = - k1[D_ADP] + "k5[DE_m]"
+    d[D_ATP]/dt = k1[D_ADP] - "k2[D_ATP]" - "k3[D_ATP]([D_m] + [DE_m])"
+    d[D_m]/dt = k2[D_ATP] + k3[D_ATP]([D_m] + [DE_m]) - k4[E_c][D_m]
+    d[E_c]/dt = - "k4[E_c][D_m]" + "k5[DE_m]"
+    d[DE_m]/dt = k4[E_c][D_m] - k5[DE_m]
+
+    kinetic parameters:
+        k1 = 1.0  # unit: 1/sec
+        k2 = 0.025  # unit: um/sec
+        k3 = 0.0015  # unit: um^3/sec
+        k4 = 0.093  # unit: um^3/sec
+        k5 = 0.7  # unit: 1/sec
+
+    Ref:
+    Proc. Natl. Acad. Sci. U. S. A. (2003). doi:10.1073/pnas.2135445100
+    '''
+
+    ## Model parameters
+    # cell size
+    length = 10.0  # micrometers
+    radius = 0.5  # micrometers
+    diameter = 2 * radius
+
+    # chemical parameters
+    params = {
+        'diffusion': 2.5,  # micrometer**2/sec
+        'k_ADP_ATP': 1,  # sec**-1. Conversion rate of MinD:ADP to MinD:ATP
+        'k_D': 0.025,  # micrometer/sec. Spontaneous attachment rate of MinD:ATP to membrane
+        'k_dD': 0.0015,  # micrometer**3/sec. Recruitment of MinD:ATP to membrane by attached MinD
+        'k_de': 0.7 * 3,
+    # sec**-1. Rate of ATP hydrolysis in MinE:MinD:ATP complex, breaks apart complex and releases phosphate
+        'k_E': 0.093 * 3,  # micrometer**3/sec. Rate of MinE attachment to membrane-associated MinD:ATP complex
+    }
+
+
+    # molecule indices
+    index = {
+        'MinD-ADP[c]': 0,
+        'MinD-ATP[c]': 1,
+        'MinE[c]': 2,
+        'MinD-ATP[m]': 0,
+        'MinE-MinD-ATP[m]': 1,
+    }
+
+
+
+    initial_state = {
+        'concentrations': {
+            'membrane': {
+                'glc': 20.0},
+            'internal': {
+                'min_d': 1000,  # unit: 1000/um
+                'min_e': 350  # unit: 350/um
+            }
+        }
+    }
+
+    return {
+        'initial_state': initial_state,
+        'molecules': ['glc'],
+        'network': {
+            'type': 'grid',
+            'n_bins': (6, 4),
+            'size': (6, 4),
+            'membrane_edges': [],
+        },
+        'channels': {
+            'porin': 1e-4  # diffusion rate through porin
+        },
+        'diffusion': 3e-1}
+
+
+
 def get_two_compartment_config():
     initial_state = {
         'membrane_composition': {
@@ -253,7 +333,7 @@ def get_grid_config():
         'diffusion': 3e-1}
 
 def test_diffusion_network(config = get_two_compartment_config(), time=10):
-    diffusion = DiffusionNetwork(config)
+    diffusion = ReactionDiffusionNetwork(config)
     settings = {
         'total_time': time,
         # 'exchange_port': 'exchange',
