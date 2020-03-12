@@ -395,7 +395,7 @@ def exchange_agent_config(config):
         'size': size,
         'agents': agents}
 
-def test_diffusion_field(config=get_random_field_config(), time=10):
+def test_diffusion_field(config=get_gaussian_config(), time=10):
     diffusion = DiffusionField(config)
     settings = {
         'total_time': time,
