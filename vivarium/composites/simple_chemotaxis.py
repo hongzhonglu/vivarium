@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import random
 
 from vivarium.compartment.composition import get_derivers
 from vivarium.compartment.process import (
     initialize_state,
-    load_compartment,
-    get_compartment_timestep)
+    load_compartment)
 from vivarium.compartment.composition import (
     simulate_with_environment,
     convert_to_timeseries,
@@ -16,10 +16,17 @@ from vivarium.compartment.composition import (
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 
+LIGAND_ID = 'MeAsp'
+ENVIRONMENT_PORT = 'environment'
+
+
 
 def compose_simple_chemotaxis(config):
 
-    receptor_parameters = {'ligand': 'MeAsp'}
+    initial_ligand = config.get('concentrations', {}).get(LIGAND_ID, 0.1)
+    receptor_parameters = {
+        'ligand': LIGAND_ID,
+        'initial_ligand': initial_ligand}
     receptor_parameters.update(config)
 
     # declare the processes
@@ -35,10 +42,10 @@ def compose_simple_chemotaxis(config):
     # for each process, map process ports to store ids
     topology = {
         'receptor': {
-            'external': 'environment',
+            'external': ENVIRONMENT_PORT,
             'internal': 'cell'},
         'motor': {
-            'external': 'environment',
+            'external': ENVIRONMENT_PORT,
             'internal': 'cell'}}
 
     # add derivers
@@ -62,34 +69,72 @@ def compose_simple_chemotaxis(config):
         'options': options}
 
 
+# testing function
+def get_exponential_random_timeline(config):
+    # exponential space with random direction changes
+    time_total = config.get('time', 100)
+    time_step = config.get('time_step', 1)
+    base = config.get('base', 1+1e-4)  # mM/um
+    speed = config.get('speed', 14)     # um/s
+    forward_prob = config.get('forward_probability', 0.5)
+    reverse_prob = 1 - forward_prob
+    assert 0 <= forward_prob <= 1
+    conc_0 = config.get('initial_conc', 0)  # mM
+
+    conc = conc_0
+    t = 0
+    timeline = [(t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}})]
+    while t<=time_total:
+        t += time_step
+        direction = random.choices(
+            population=[1, -1],
+            weights=[forward_prob, reverse_prob])
+        conc += base**(direction[0] * speed) - 1
+        if conc<0:
+            conc = 0
+        timeline.append((t, {ENVIRONMENT_PORT: {LIGAND_ID: conc}}))
+
+    return timeline
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'simple_chemotaxis_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
-    compartment = load_compartment(compose_simple_chemotaxis, boot_config)
-
-    # settings for simulation and plot
-    options = compartment.configuration
-    timeline = [(10, {})]
-
-    settings = {
-        'environment_port': options['environment_port'],
-        'environment_volume': 1e-13,  # L
-        'timeline': timeline}
-
+    # plot settings for the simulations
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {
             'reactions': 'flux'},
-        'skip_ports': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null', 'global']}
 
-    # saved_state = simulate_compartment(compartment, settings)
+    # exponential random timeline simulation
+    time_step = 0.1
+    exponential_random_config = {
+        'time': 60,
+        'time_step': time_step,
+        'initial_conc': 0.01,
+        'base': 1+6e-4,
+        'speed': 14,
+        'forward_probability': 0.52}
+    timeline = get_exponential_random_timeline(exponential_random_config)
+    boot_config = {
+        'initial_ligand': timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
+        'time_step': time_step,
+        'emitter': 'null'}
+    compartment = load_compartment(compose_simple_chemotaxis, boot_config)
+
+    settings = {
+        'environment_port': ENVIRONMENT_PORT,
+        'environment_volume': 1e-13,  # L
+        'timeline': timeline}
+
     saved_data = simulate_with_environment(compartment, settings)
     del saved_data[0]
     timeseries = convert_to_timeseries(saved_data)
-    volume_ts = timeseries['global']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    plot_simulation_output(timeseries, plot_settings, out_dir)
+    plot_simulation_output(
+        timeseries,
+        plot_settings,
+        out_dir,
+        'exponential_timeline')

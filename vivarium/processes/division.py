@@ -13,7 +13,6 @@ def divide_condition(compartment):
     return divide
 
 
-
 class Division(Process):
     def __init__(self, initial_parameters={}):
         self.division = 0

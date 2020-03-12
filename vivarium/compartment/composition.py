@@ -281,7 +281,7 @@ def set_axes(ax, show_xaxis=False):
         ax.tick_params(bottom=False, labelbottom=False)
 
 
-def plot_simulation_output(timeseries, settings={}, out_dir='out'):
+def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='simulation'):
     '''
     plot simulation output, with rows organized into separate columns.
 
@@ -415,7 +415,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out'):
                 row_idx += 1
 
     # save figure
-    fig_path = os.path.join(out_dir, 'simulation')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 

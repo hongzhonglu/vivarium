@@ -17,7 +17,7 @@ DEFAULT_PARAMETERS = {
     'k_z': 30.0,  # / CheZ,
     'gamma_Y': 0.1,
     'k_s': 0.45,  # scaling coefficient
-    'adaptPrecision': 3,
+    'adapt_precision': 3,  # scales CheY_P to cluster activity
     # motor
     'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
     'n_motors': 5,
@@ -28,12 +28,14 @@ DEFAULT_PARAMETERS = {
 INITIAL_STATE = {
     # response regulator proteins
     'CheY_tot': 9.7,  # (uM) #0.0097,  # (mM) 9.7 uM = 0.0097 mM
-    'CheY_P': 0.0,
+    'CheY_P': 0.5,
     'CheZ': 0.01*100,  # (uM) #phosphatase 100 uM = 0.1 mM (0.01 scaling from RapidCell1.4.2)
     'CheA': 0.01*100,  # (uM) #100 uM = 0.1 mM (0.01 scaling from RapidCell1.4.2)
     # sensor activity
     'chemoreceptor_activity': 1/3,
     # motor activity
+    'ccw_motor_bias': 0.5,
+    'ccw_to_cw': 0.5,
     'motile_force': 0,
     'motile_torque': 0,
     'motor_state': 1,  # motor_state 1 for tumble, 0 for run
@@ -123,87 +125,74 @@ class MotorActivity(Process):
         TODO -- add CheB phosphorylation
         '''
 
-        internal = copy.copy(states['internal'])
+        internal = states['internal']
         P_on = internal['chemoreceptor_activity']
-        motor_state = internal['motor_state']
+        motor_state_current = internal['motor_state']
 
         # parameters
-        adaptPrecision = self.parameters['adaptPrecision']
+        adapt_precision = self.parameters['adapt_precision']
         k_y = self.parameters['k_y']
         k_s = self.parameters['k_s']
         k_z = self.parameters['k_z']
-        gamma_Y  =self.parameters['gamma_Y']
+        gamma_Y = self.parameters['gamma_Y']
         mb_0 = self.parameters['mb_0']
         cw_to_ccw = self.parameters['cw_to_ccw']
 
         ## Kinase activity
         # relative steady-state concentration of phosphorylated CheY.
-        scaling = 1.  # 1.66889  # 19.3610  # scales CheY_P linearly so that CheY_P=1 at rest (P_on=1/3)
-        CheY_P = adaptPrecision * scaling * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
+        CheY_P = adapt_precision * k_y * k_s * P_on / (k_y * k_s * P_on + k_z + gamma_Y)  # CheZ cancels out of k_z
 
         ## Motor switching
         # CCW corresponds to run. CW corresponds to tumble
         ccw_motor_bias = mb_0 / (CheY_P * (1 - mb_0) + mb_0)  # (1/s)
         ccw_to_cw = cw_to_ccw * (1 / ccw_motor_bias - 1)  # (1/s)
 
-        if motor_state == 0:  # 0 for run
-            # switch to tumble?
+        if motor_state_current == 0:  # 0 for run
+            # switch to tumble (cw)?
             prob_switch = ccw_to_cw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 1
                 thrust, torque = tumble()
             else:
+                motor_state = 0
                 thrust, torque = run()
 
-        elif motor_state == 1:  # 1 for tumble
-            # switch to run?
+        elif motor_state_current == 1:  # 1 for tumble
+            # switch to run (ccw)?
             prob_switch = cw_to_ccw * timestep
             if np.random.random(1)[0] <= prob_switch:
                 motor_state = 0
                 [thrust, torque] = run()
             else:
+                motor_state = 1
                 [thrust, torque] = tumble()
 
-        # TODO -- should thrust/torque accumulate over exchange timestep?
-        update = {
+        return {
             'internal': {
                 'ccw_motor_bias': ccw_motor_bias,
                 'ccw_to_cw': ccw_to_cw,
                 'motile_force': thrust,
                 'motile_torque': torque,
                 'motor_state': motor_state,
-                'CheY_P': CheY_P
-            }
-        }
-        return update
+                'CheY_P': CheY_P}}
 
 def tumble():
-    thrust = 5.0e-1  # pN
-    tumble_jitter = 0.3
+    thrust = 100  # pN
+    tumble_jitter = 1.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 
 def run():
-    # average thrust = 0.57 pN according to:
-    # Chattopadhyay, S., Moldovan, R., Yeung, C., & Wu, X. L. (2006).
-    # Swimming efficiency of bacterium Escherichia coli. PNAS
-    thrust  = 5.7e-1  # pN
+    # average thrust = 200 pN according to:
+    # Berg, Howard C. E. coli in Motion. Under "Torque-Speed Dependence"
+    thrust  = 250  # pN
     torque = 0.0
     return [thrust, torque]
 
 
 def test_motor_control(total_time=10):
     # TODO -- add asserts for test
-
-    initial_params = {
-        # 'adaptPrecision': 1,
-        # motor
-        'mb_0': 0.65,  # steady state motor bias (Cluzel et al 2000)
-        'n_motors': 5,
-        'cw_to_ccw': 0.83,  # 1/s (Block1983) motor bias, assumed to be constant
-    }
-
-    motor = MotorActivity(initial_params)
+    motor = MotorActivity({})
     settings = motor.default_settings()
     state = settings['state']
     receptor_activity = 1./3.
@@ -229,9 +218,6 @@ def test_motor_control(total_time=10):
 
         # update motor state
         state['internal']['motor_state'] = motor_state
-
-        # print('t: {} | motor: {}'.format(time, motor_state)) # 0 for run, 1 for tumble
-
         CheY_P_vec.append(CheY_P)
         ccw_motor_bias_vec.append(ccw_motor_bias)
         ccw_to_cw_vec.append(ccw_to_cw)

@@ -112,9 +112,15 @@ class ConvenienceKinetics(Process):
                             # convert exchange fluxes to counts with mmol_to_counts
                             # TODO -- use deriver to get exchanges
                             delta_counts = int((state_flux * mmol_to_counts).magnitude)
-                            update['exchange'][state_id] = delta_counts
+                            update['exchange'][state_id] = (
+                                update['exchange'].get(state_id, 0)
+                                + delta_counts
+                            )
                         else:
-                            update[port_id][state_id] = state_flux
+                            update[port_id][state_id] = (
+                                update[port_id].get(state_id, 0)
+                                + state_flux
+                            )
 
         # note: external and internal ports update change in mmol.
         return update
@@ -149,9 +155,11 @@ def get_glc_lct_config():
     transport_kinetics = {
         'EX_glc__D_e': {
             ('internal', 'PTSG'): {
+                # k_m for external [glc__D_e]
                 ('external', 'glc__D_e'): 1e-1,
+                # Set k_m = None to make a reactant non-limiting
                 ('internal', 'pep_c'): None,
-                'kcat_f': 3e5}},
+                'kcat_f': 3e5}},  # kcat for the forward direction
         'EX_lac__D_e': {
             ('internal', 'LacY'): {
                 ('external', 'lac__D_e'): 1e-1,

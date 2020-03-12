@@ -1,15 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-from collections import defaultdict
-import math
-import uuid
 import numpy as np
-import os
-import time
 
 import vivarium.actor.event as event
 from vivarium.actor.actor import Actor
-import vivarium.actor.filepath as fp
 
 
 class EnvironmentSimulation(object):

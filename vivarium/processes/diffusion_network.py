@@ -7,9 +7,9 @@ import numpy as np
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
-    convert_to_timeseries)
+    simulate_process_with_environment,
+    convert_to_timeseries,
+    plot_simulation_output)
 
 
 
@@ -71,48 +71,52 @@ def make_location_network(n_bins):
     return locations, adjacent_edges
 
 
-class Diffusion(Process):
-    '''
-    '''
+
+class DiffusionNetwork(Process):
+    ''''''
     def __init__(self, initial_parameters={}):
+
+        # parameters
+        molecule_ids = initial_parameters.get('molecules', ['glc'])
+        diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
 
         # initial state
         initial_state = initial_parameters.get('initial_state', {})
         self.initial_membrane = initial_state.get('membrane_composition', {})
-        self.initial_sites = initial_state.get('sites', {})
+        self.initial_concentrations = initial_state.get('concentrations', {})
 
-        # parameters
-        n_bins = initial_parameters.get('n_bins', (2,1))
-        size = initial_parameters.get('size', (2, 1))
-        bins_x = n_bins[0]
-        bins_y = n_bins[1]
-        length_x = size[0]
-        length_y = size[1]
-
-        # make diffusion network
-        molecule_ids = initial_parameters.get('molecules', ['glc'])
-        diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
-        locations, edges = make_location_network(n_bins)
-
-        # membranes
-        membrane_locations = initial_parameters.get('membrane_locations', [])
+        # membrane channels
         channels = initial_parameters.get('channels', {})
 
-        # diffusion settings
-        dx = length_x / bins_x
-        dy = length_y / bins_y
-        dx2 = dx * dy
-        # diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * diffusion * (dx ** 2 + dy ** 2))
+        # make diffusion network
+        network = initial_parameters.get('network', {})
+        if network.get('type') == 'grid':
+            n_bins = network.get('n_bins', (2,1))
+            size = network.get('size', (2, 1))
+            membrane_edges = network.get('membrane_edges', [])
+            bins_x = n_bins[0]
+            bins_y = n_bins[1]
+            length_x = size[0]
+            length_y = size[1]
+            locations, edges = make_location_network(n_bins)
 
-        diffusion_config = {
-            'nodes': locations,
-            'edges': edges,
-            'molecule_ids': molecule_ids,
-            'diffusion': diffusion/dx2,
-            'membrane_locations': membrane_locations,
-            'channels': channels}
+            # diffusion settings
+            dx = length_x / bins_x
+            dy = length_y / bins_y
+            dx2 = dx * dy
+            diffusion / dx2
+            # diffusion_dt = 0.5 * dx ** 2 * dy ** 2 / (2 * diffusion * (dx ** 2 + dy ** 2))
+        else:
+            locations = network.get('locations')
+            edges = network.get('edges')
+            membrane_edges = network.get('membrane_edges', [])
 
-        self.diffusion_network = DiffusionNetwork(diffusion_config)
+        self.nodes = locations
+        self.edges = edges
+        self.molecule_ids = molecule_ids
+        self.diffusion = diffusion
+        self.membrane_edges = membrane_edges
+        self.channel_diffusion = channels
 
         # make ports from locations and membrane channels
         ports = {
@@ -124,13 +128,13 @@ class Diffusion(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(Diffusion, self).__init__(ports, parameters)
+        super(DiffusionNetwork, self).__init__(ports, parameters)
 
 
     def default_settings(self):
         initial_state = {
             'membrane_composition': self.initial_membrane}
-        initial_state.update(self.initial_sites)
+        initial_state.update(self.initial_concentrations)
         return {
             'state': initial_state}
 
@@ -140,20 +144,9 @@ class Diffusion(Process):
             for state_id, concs in states.items() if state_id is not 'membrane_composition'}
         membrane = states['membrane_composition']
 
-        diffusion_delta = self.diffusion_network.diffusion_delta(concentrations, membrane, timestep)
+        diffusion_delta = self.diffusion_delta(concentrations, membrane, timestep)
 
         return diffusion_delta
-
-
-class DiffusionNetwork(object):
-
-    def __init__(self, config):
-        self.nodes = config.get('nodes')
-        self.edges = config.get('edges')
-        self.molecule_ids = config.get('molecule_ids')
-        self.diffusion = config.get('diffusion')
-        self.membrane_locations = config.get('membrane_locations')
-        self.channel_diffusion = config.get('channels')
 
     def diffusion_delta(self, locations, membrane, timestep):
         diffusion_delta = {
@@ -166,7 +159,7 @@ class DiffusionNetwork(object):
             concs1 = locations[node1]
             concs2 = locations[node2]
 
-            if edge in self.membrane_locations or (edge[1], edge[0]) in self.membrane_locations:
+            if edge in self.membrane_edges or (edge[1], edge[0]) in self.membrane_edges:
                 diffusion = 0
                 for channel_id, channel_conc in membrane.items():
                     diffusion += channel_conc * self.channel_diffusion[channel_id]
@@ -175,10 +168,9 @@ class DiffusionNetwork(object):
                 diffusion = self.diffusion
 
             for mol_id in self.molecule_ids:
-                delta1 = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
-                delta2 = -delta1
-                diffusion_delta[node1][mol_id] += delta1
-                diffusion_delta[node2][mol_id] += delta2
+                delta = diffusion * timestep * (concs2[mol_id] - concs1[mol_id])
+                diffusion_delta[node1][mol_id] += delta
+                diffusion_delta[node2][mol_id] -= delta
 
         return diffusion_delta
 
@@ -189,29 +181,36 @@ def get_two_compartment_config():
     initial_state = {
         'membrane_composition': {
             'porin': 5},
-        'sites': {
-            (0, 0): {
+        'concentrations': {
+            'external': {
                 'glc': 20.0},
-            (1, 0): {
+            'internal': {
                 'glc': 0.0}
         }}
 
     return {
         'initial_state': initial_state,
         'molecules': ['glc'],
-        'membrane_locations': [((0,0),(1,0))],
+        'network': {
+            'type': 'standard',
+            'locations': ['external', 'internal'],
+            'edges': [('external', 'internal')],
+            'membrane_edges': [('external', 'internal')],
+        },
         'channels':{
             'porin': 5e-2  # diffusion rate through porin
         },
-        'n_bins': (2, 1),
-        'size': (2e-2, 1e-2),
         'diffusion': 1e-1}
 
 def get_grid_config():
     initial_state = {
         'membrane_composition': {
             'porin': 1e2},
-        'sites': {
+        'concentrations': {
+            (1, 1): {
+                'glc': 20.0},
+            (1, 2): {
+                'glc': 20.0},
             (2, 1): {
                 'glc': 20.0},
             (2, 2): {
@@ -220,52 +219,63 @@ def get_grid_config():
                 'glc': 20.0},
             (3, 2): {
                 'glc': 20.0},
-            (6, 1): {
-                'glc': 20.0}
         }}
 
     return {
         'initial_state': initial_state,
         'molecules': ['glc'],
-        'membrane_locations': [
-            ((1, 0), (2, 0)),
-            ((1, 1), (2, 1)),
-            ((1, 2), (2, 2)),
-            ((2, 3), (2, 2)),
-            ((3, 3), (3, 2)),
-            ((4, 3), (4, 2)),
-            ((5, 3), (5, 2)),
-            ((6, 2), (6, 3)),
-        ],
-        'channels': {
-            'porin': 5e-4  # diffusion rate through porin
+        'network': {
+            'type': 'grid',
+            'n_bins': (6, 4),
+            'size': (6, 4),
+            'membrane_edges': [
+                # left
+                ((0, 1), (1, 1)),
+                ((0, 2), (1, 2)),
+                # top
+                ((1, 3), (1, 2)),
+                ((2, 3), (2, 2)),
+                ((3, 3), (3, 2)),
+                # ((4, 3), (4, 2)),
+                # right
+                ((4, 2), (5, 2)),
+                ((4, 1), (5, 1)),
+                ((1, 0), (1, 1)),
+                ((2, 0), (2, 1)),
+                # bottom
+                ((3, 0), (3, 1)),
+                ((4, 0), (4, 1)),
+            ],
         },
-        'n_bins': (10, 4),
-        'size': (10, 4),
-        'diffusion': 2e-1}
+        'channels': {
+            'porin': 1e-4  # diffusion rate through porin
+        },
+        'diffusion': 3e-1}
 
-def test_diffusion(config = get_two_compartment_config(), time=10):
-    diffusion = Diffusion(config)
+def test_diffusion_network(config = get_two_compartment_config(), time=10):
+    diffusion = DiffusionNetwork(config)
     settings = {
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-2}
 
-    compartment = process_in_compartment(diffusion)
-    return simulate_with_environment(compartment, settings)
+    return simulate_process_with_environment(diffusion, settings)
 
-def plot_diffusion_output(data, config, out_dir='out', filename='field'):
+def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
 
     # parameters
-    molecules = config.get('molecules')
+    molecules = config.get('molecules', {})
     molecule_ids = list(molecules)
     n_fields = len(molecule_ids)
-    membrane_locations = config.get('membrane_locations')
 
-    n_bins = config.get('n_bins')
-    size = config.get('size')
+    # get network configuration
+    network = config.get('network')
+    assert network['type'] == 'grid'
+    membrane_edges = network.get('membrane_edges')
+    n_bins = network.get('n_bins')
+    size = network.get('size')
     bins_x = n_bins[0]
     bins_y = n_bins[1]
     length_x = size[0]
@@ -313,7 +323,7 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
                        cmap='YlGn')
 
             # plot membrane
-            for membrane in membrane_locations:
+            for membrane in membrane_edges:
                 site1 = membrane[0]
                 site2 = membrane[1]
                 middle = (
@@ -341,16 +351,18 @@ def plot_diffusion_output(data, config, out_dir='out', filename='field'):
     plt.close(fig)
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'diffusion')
+    out_dir = os.path.join('out', 'tests', 'diffusion_network')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # 2-site network
     config = get_two_compartment_config()
-    saved_data = test_diffusion(config, 20)
+    saved_data = test_diffusion_network(config, 20)
     timeseries = convert_to_timeseries(saved_data)
-    plot_diffusion_output(timeseries, config, out_dir, '2_sites')
+    plot_simulation_output(timeseries, {}, out_dir, '2_sites')
 
+    # grid network
     config = get_grid_config()
-    saved_data = test_diffusion(config, 20)
+    saved_data = test_diffusion_network(config, 30)
     timeseries = convert_to_timeseries(saved_data)
-    plot_diffusion_output(timeseries, config, out_dir, 'grid')
+    plot_diffusion_field_output(timeseries, config, out_dir, 'grid')

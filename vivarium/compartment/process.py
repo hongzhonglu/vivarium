@@ -12,6 +12,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 COMPARTMENT_STATE = '__compartment_state__'
 
+
 class topologyError(Exception):
     pass
 
@@ -25,19 +26,27 @@ def npize(d):
     return keys, values
 
 
-# updater functions
+## updater functions
+# these function take in a variable key, the entire store's dict,
+# the variable's current value, the variable's current update,
+# and returns a new value, and other updates
 def update_accumulate(key, state_dict, current_value, new_value):
     return current_value + new_value, {}
 
 def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
+def update_merge(key, state_dict, current_value, new_value):
+    return deep_merge(dict(current_value), new_value), {}
+
 updater_library = {
     'accumulate': update_accumulate,
-    'set': update_set}
+    'set': update_set,
+    'merge': update_merge}
 
 
-# divider functions
+## divider functions
+# these functions take in a value, are return two values for each daughter
 def default_divide_condition(compartment):
     return False
 
@@ -365,7 +374,6 @@ class Compartment(Store):
             'data': data}
         self.emitter.emit(emit_config)
 
-
     def divide_state(self):
         daughter_states = [{}, {}]
         for port_id, state in self.states.items():
@@ -630,7 +638,9 @@ def load_compartment(composite=toy_composite, boot_config={}):
     processes = composite_config['processes']
     states = composite_config['states']
     options = composite_config['options']
-    options.update({'emitter': boot_config.get('emitter')})
+    options.update({
+        'emitter': boot_config.get('emitter'),
+        'time_step': boot_config.get('time_step', 1.0)})
 
     compartment = Compartment(processes, states, options)
     # print('current_parameters: {}'.format(compartment.current_parameters()))
