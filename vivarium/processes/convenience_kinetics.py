@@ -7,7 +7,6 @@ from scipy import constants
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
-    convert_to_timeseries,
     plot_simulation_output,
     flatten_timeseries,
     save_timeseries,
