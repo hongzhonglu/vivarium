@@ -71,6 +71,12 @@ def compose_lattice_environment(config):
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
+    boundaries = {
+        agent_id: state['boundary']
+        for agent_id, state in agents_config.items()}
+
+    import ipdb; ipdb.set_trace()
+
 
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
