@@ -281,8 +281,11 @@ class Multibody(Process):
 
 
 # test functions
-def n_body_config(n_agents=10, bounds=[10, 10]):
-    agents = {
+def get_n_dummy_agents(n_agents):
+    return {agent_id: None for agent_id in range(n_agents)}
+
+def random_body_config(agents=get_n_dummy_agents(10), bounds=[10, 10]):
+    agent_config = {
         agent_id: {
             'location': [
                 np.random.uniform(0, bounds[0]),
@@ -293,10 +296,10 @@ def n_body_config(n_agents=10, bounds=[10, 10]):
             'width': 0.5,
             'mass': 1,
             'forces': [0, 0]}
-        for agent_id in range(n_agents)}
+        for agent_id in agents.keys()}
 
     return {
-        'agents': agents,
+        'agents': agent_config,
         'bounds': bounds,
         'jitter_force': 1e1}
 
@@ -383,7 +386,7 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def test_multibody(config=n_body_config(), time=1):
+def test_multibody(config=random_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
@@ -397,7 +400,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = n_body_config(10)
+    config = random_body_config(get_n_dummy_agents(10))
     saved_data = test_multibody(config, 20)
     timeseries = convert_to_timeseries(saved_data)
     plot_snapshots(timeseries, config, out_dir, 'bodies')

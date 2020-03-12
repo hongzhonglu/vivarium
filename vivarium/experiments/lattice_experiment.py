@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import uuid
 
 from vivarium.compartment.process import load_compartment
 
@@ -14,45 +15,46 @@ def compose_lattice_experiment(config):
     # TODO -- lattice_config needs to get the correct agent_id linking it to growth_division
     # TODO -- lattice_config needs a list of subcompartment
     # TODO -- we need a initialize_embedded_compartment() composition function
-    growth_division_config = {}
-    lattice_config = {}
-
-    # make the compartments
-    n_agents = config.get('n_agents', 0)
-
-    agents = {}
-    for agent in range(n_agents):
-        # TODO -- uuid?
-        agents[agent] = load_compartment(compose_growth_division, growth_division_config)
-
-    # TODO -- load agent ids in lattice
-    lattice_compartment = load_compartment(compose_lattice_environment, lattice_config)
-
+    growth_division_config = config.get('agents', {})
+    lattice_config = config.get('lattice', {})
 
     import ipdb;
     ipdb.set_trace()
 
+    # make the compartments
+    n_agents = config.get('n_agents', 0)
+
+    # initialize agents and get their boundaries
+    agents = {}
+    for agent in range(n_agents):
+        compartment = load_compartment(compose_growth_division, growth_division_config)
+        boundary_store = compartment.states['environment']
+        agents[str(uuid.uuid1())] = {
+            'boundary': boundary_store}
+
+    # load agent boundaries in lattice
+    lattice_config.update(agents)
+    lattice_compartment = load_compartment(compose_lattice_environment, lattice_config)
+
+
+    import ipdb;  ipdb.set_trace()
+
 
 def get_ecoli_core_glc_config():
-    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
+    # todo -- implement timeline
     lattice_config = {
-        'name': 'ecoli_core',
-        'timeline_str': timeline_str,  # todo -- implement timeline
+
         'size': (15, 15),
         'n_bins': (10, 10),
         'diffusion': 1e-3,
         'depth': 2e-2,
-        'jitter_force': 1e-1,
-        'n_agents': 1,
-        # 'run_for': 5.0,
-        # 'emit_fields': [
-        #     'co2_e',
-        #     'o2_e',
-        #     'glc__D_e',
-        #     'lac__D_e']
-    }
+        'jitter_force': 1e-1}
 
-    return lattice_config
+    agent_config = {}
+
+    return {
+        'lattice': lattice_config,
+        'agents': agent_config}
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice_experiment')
