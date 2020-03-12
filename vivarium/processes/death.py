@@ -149,7 +149,7 @@ class ToyAntibioticInjector(Process):
                     self.antibiotic_name: 0.0
                 }
             },
-            'emitter_keys': {self.antibiotic_name},
+            'emitter_keys': {'internal': [self.antibiotic_name]},
         }
         return default_settings
 

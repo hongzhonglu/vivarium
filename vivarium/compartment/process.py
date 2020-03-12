@@ -353,8 +353,11 @@ class Compartment(Store):
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
-        elif emitter_type == 'null':
-            emitter = emit.get_emitter({'type': 'null'})
+        elif isinstance(emitter_type, str):
+            emitter = emit.configure_emitter(
+                {'emitter': {'type': emitter_type}},
+                self.processes,
+                self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
         else:
@@ -639,14 +642,10 @@ def load_compartment(composite=toy_composite, boot_config={}):
     states = composite_config['states']
     options = composite_config['options']
     options.update({
-        'emitter': boot_config.get('emitter'),
+        'emitter': boot_config.get('emitter', 'timeseries'),
         'time_step': boot_config.get('time_step', 1.0)})
 
-    compartment = Compartment(processes, states, options)
-    # print('current_parameters: {}'.format(compartment.current_parameters()))
-    # print('current_state: {}'.format(compartment.current_state()))
-
-    return compartment
+    return Compartment(processes, states, options)
 
 def simulate_compartment(compartment, settings={}):
     '''

@@ -42,6 +42,8 @@ def get_emitter(config):
         emitter = DatabaseEmitter(config)
     elif emitter_type == 'null':
         emitter = NullEmitter(config)
+    elif emitter_type == 'timeseries':
+        emitter = TimeSeriesEmitter(config)
     else:
         emitter = Emitter(config)
 
@@ -56,7 +58,9 @@ def get_emitter_keys(process, topology):
         process_ports = topology[process_id]
 
         default_settings = process_object.default_settings()
-        process_keys = default_settings['emitter_keys']
+        process_keys = default_settings.get('emitter_keys', {})
+        if not process_keys:
+            print('no emitter keys in process {}'.format(process_id))
         for port, keys in process_keys.items():
             compartment_name = process_ports[port]
             if compartment_name in emitter_keys.keys():
@@ -95,6 +99,38 @@ class NullEmitter(Emitter):
     def emit(self, data):
         pass
 
+class TimeSeriesEmitter(Emitter):
+
+    def __init__(self, config):
+        keys = config.get('keys', {})
+        self.ports = list(keys.keys())
+        self.saved_data = {}
+
+    def emit(self, data):
+
+        # save history data
+        if data['table'] == 'history':
+            emit_data = data['data']
+            time = emit_data['time']
+            self.saved_data[time] = {
+                port: values for port, values in emit_data.items() if port in self.ports}
+
+    def get_data(self):
+        return self.saved_data
+    
+    def get_timeseries(self):
+        time_vec = list(self.saved_data.keys())
+        initial_state = self.saved_data[time_vec[0]]
+        timeseries = {port: {state: []
+                             for state, initial in states.items()}
+                      for port, states in initial_state.items()}
+        timeseries['time'] = time_vec
+
+        for time, all_states in self.saved_data.items():
+            for port, states in all_states.items():
+                for state_id, state in states.items():
+                    timeseries[port][state_id].append(state)
+        return timeseries
 
 class KafkaEmitter(Emitter):
     '''
