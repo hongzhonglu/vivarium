@@ -367,7 +367,7 @@ def exchange_body_config(config):
         'size': size,
         'bodies': bodies}
 
-def test_diffusion_field(config, time=10):
+def test_diffusion_field(config=get_gaussian_config(), time=10):
     diffusion = DiffusionField(config)
     settings = {
         'total_time': time,
