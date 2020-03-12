@@ -206,7 +206,15 @@ class DiffusionField(Process):
         # diffuse field
         delta_fields = self.diffuse(fields, timestep)
 
-        return {'fields': delta_fields}
+
+
+        # TODO -- give each agent its local environment
+        agents = {}
+
+
+        return {
+            'fields': delta_fields,
+            'agents': agents}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)

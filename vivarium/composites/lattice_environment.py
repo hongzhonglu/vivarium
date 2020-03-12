@@ -32,21 +32,20 @@ def compose_lattice_environment(config):
     molecules = config.get('molecules', ['glc'])
 
     # get the agents
-    agents = config.get('agents', {})
-    n_agents = len(agents)
+    agents_config = config.get('agents', {})
 
     ## Declare the processes.
     # multibody physics
-    multibody_config = random_body_config(agents, bounds)
+    multibody_config = random_body_config(agents_config, bounds)
     multibody = Multibody(multibody_config)
 
     # diffusion field
     agents = {
         agent_id: {
-        'location': [bounds[0]/4, bounds[1]/4],
+        'location': boundary['location'],
         'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}
-            for agent_id, boundary in agents.items()}
+            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
+            for agent_id, boundary in multibody_config['agents'].items()}
 
     exchange_config = {
         'molecules': molecules,
@@ -71,6 +70,12 @@ def compose_lattice_environment(config):
             'fields': 'fields'}}
 
     # initialize the states
+    import ipdb;
+    ipdb.set_trace()
+    # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
+
+
+
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {

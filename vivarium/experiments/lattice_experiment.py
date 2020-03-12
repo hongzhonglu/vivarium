@@ -15,29 +15,26 @@ def compose_lattice_experiment(config):
     # TODO -- lattice_config needs to get the correct agent_id linking it to growth_division
     # TODO -- lattice_config needs a list of subcompartment
     # TODO -- we need a initialize_embedded_compartment() composition function
-    growth_division_config = config.get('agents', {})
+    # growth_division_config = config.get('agents', {})
     lattice_config = config.get('lattice', {})
+    agents_config = config.get('agents', {})
 
-    import ipdb;
-    ipdb.set_trace()
 
-    # make the compartments
-    n_agents = config.get('n_agents', 0)
-
-    # initialize agents and get their boundaries
+    # initialize agent compartments and get their boundaries
+    n_agents = agents_config.get('n_agents', 0)
     agents = {}
     for agent in range(n_agents):
-        compartment = load_compartment(compose_growth_division, growth_division_config)
+        compartment = load_compartment(compose_growth_division)
         boundary_store = compartment.states['environment']
         agents[str(uuid.uuid1())] = {
             'boundary': boundary_store}
 
     # load agent boundaries in lattice
-    lattice_config.update(agents)
+    lattice_config.update({'agents': agents})
     lattice_compartment = load_compartment(compose_lattice_environment, lattice_config)
 
 
-    import ipdb;  ipdb.set_trace()
+    import ipdb; ipdb.set_trace()
 
 
 def get_ecoli_core_glc_config():
@@ -50,7 +47,9 @@ def get_ecoli_core_glc_config():
         'depth': 2e-2,
         'jitter_force': 1e-1}
 
-    agent_config = {}
+    agent_config = {
+        'n_agents': 1
+    }
 
     return {
         'lattice': lattice_config,
