@@ -4,15 +4,14 @@ import os
 
 import numpy as np
 from scipy.ndimage import convolve
+import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
     convert_to_timeseries)
 
-from vivarium.processes.diffusion_field import (
-    plot_field_output,
-    LAPLACIAN_2D)
+from vivarium.processes.diffusion_field import LAPLACIAN_2D
 
 
 PI = np.pi
@@ -209,7 +208,6 @@ class MinSystem(Process):
 
 
 
-
 # testing functions
 def get_min_config():
 
@@ -234,8 +232,6 @@ def get_min_config():
         'k_E' : 0.093*3,  # micrometer**3/sec. Rate of MinE attachment to membrane-associated MinD:ATP complex
         }
 
-
-
 def test_min_system(config = get_min_config(), time=10):
     min = MinSystem(config)
     settings = {
@@ -246,12 +242,75 @@ def test_min_system(config = get_min_config(), time=10):
 
     return simulate_process_with_environment(min, settings)
 
+def plot_min_system_output(data, config, out_dir='out', filename='output'):
+    n_snapshots = 20
+    plot_step_size = 10
+
+    # get saved state
+    cytoplasm = data['cytoplasm']
+    membrane = data['membrane']
+
+
+    # import ipdb;
+    # ipdb.set_trace()
+
+    fig, axes = plt.subplots(n_snapshots, 6, figsize=(8, 0.5 * n_snapshots))
+
+    for slice in range(n_snapshots):
+        # axes[slice, 0].text(0.5, 0.5, str(slice * plot_step_size * DT) + 's')
+
+        # plot cytoplasm
+        axes[slice, 1].imshow(cytoplasm['MinD-ATP[c]'][:, :, slice], cmap='YlGnBu', aspect="auto")
+        axes[slice, 2].imshow(cytoplasm['MinD-ADP[c]'][:, :, slice], cmap='YlGnBu', aspect="auto")
+        axes[slice, 3].imshow(cytoplasm['MinE[c]'][:, :, slice], cmap='YlOrRd', aspect="auto")
+
+        # plot membrane
+        axes[slice, 4].plot(membrane['MinD-ATP[m]'][:, slice].T)
+        axes[slice, 5].plot(membrane['MinE-MinD-ATP[m]'][:, slice].T)
+
+        # # add vertical lines for cap location
+        # axes[slice, 4].axvline(x=cap_pos1, linestyle='--', linewidth=1, color='k')
+        # axes[slice, 4].axvline(x=cap_pos2, linestyle='--', linewidth=1, color='k')
+        # axes[slice, 5].axvline(x=cap_pos1, linestyle='--', linewidth=1, color='k')
+        # axes[slice, 5].axvline(x=cap_pos2, linestyle='--', linewidth=1, color='k')
+
+        axes[slice, 0].axis('off')
+
+        for x in range(1, 6):
+            axes[slice, x].set_xticks([])
+            axes[slice, x].set_yticks([])
+
+    # axes[0, 1].set_title('[MinD:ATP] cytoplasm', fontsize=6)
+    # axes[0, 2].set_title('[MinD:ADP] cytoplasm', fontsize=6)
+    # axes[0, 3].set_title('[MinE] cytoplasm', fontsize=6)
+    # axes[0, 4].set_title('[MinD:ATP] membrane', fontsize=6)
+    # axes[0, 5].set_title('[MinE:MinD:ATP] membrane', fontsize=6)
+
+
+
+
+
+
+
+
+
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
+
+
+
+
+
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'diffusion_network')
+    out_dir = os.path.join('out', 'tests', 'min_system')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     config = get_min_config()
     saved_data = test_min_system(config, 30)
     timeseries = convert_to_timeseries(saved_data)
-    plot_field_output(timeseries, config, out_dir, 'grid')
+    plot_min_system_output(timeseries, config, out_dir)
