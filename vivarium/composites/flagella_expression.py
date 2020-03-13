@@ -83,46 +83,63 @@ def generate_flagella_compartment(config):
     return compose_gene_expression(flagella_expression_config)
 
 
-def plot_flagella_just_in_time(timeseries, config, out_dir='out'):
+def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
+    ''' make a timeseries heatmap for each port specified in config['plot_ports'] '''
 
-    name = config.get('name', 'gene_expression')
+    name = config.get('name', 'timeseries')
+    plot_ports = config.get('plot_ports', [])
     ports = config.get('ports', {})
-    transcripts = timeseries[ports['transcripts']]
     time = timeseries['time']
 
-    # make timeseries heatmap
-    transcript_ids = list(transcripts.keys())
-    transcript_ids.reverse()  # reverse to get proper labeling with imshow
-    n_transcripts = len(transcript_ids)
-    transcripts_ts_map = [
-        [value/ max(max(series), 1)
-            for value in series]
-            for transcript, series in transcripts.items()]
+    # make timeseries heatmaps
+    ts_heatmap = {}
+    for port_id in plot_ports:
+        port = timeseries[ports[port_id]]
+        var_keys = list(port.keys())
+        var_keys.reverse()  # reverse to get proper labeling with imshow
+        var_series = [
+            [value / max(max(series), 1)
+                for value in series]
+                for variable, series in port.items()]
 
-    # make figure
-    fig = plt.figure(figsize=(5, 0.6*len(transcript_ids)))
-    ax = fig.add_subplot(1,1,1)
-    im = ax.imshow(transcripts_ts_map,
-        extent=[time[0], time[-1], 0, n_transcripts],
-        interpolation='nearest',
-        aspect='auto',
-        cmap='cividis'
-        )
-    ax.locator_params(axis='y', nbins=n_transcripts)
+        ts_heatmap[port_id] = {
+            'keys': var_keys,
+            'timeseries': var_series}
 
-    # set y ticks locations and labels
-    y_tick_locs = np.asarray([loc+0.5 for loc in range(n_transcripts)])
-    ax.set_yticks(y_tick_locs)
-    ax.set_yticklabels(transcript_ids)
-    ax.set_xlabel('time (s)')
+    # make figure for each port in plot_ports
+    for port_id, heatmap in ts_heatmap.items():
+        n_cols = 1
+        n_vars = len(heatmap['keys'])
 
-    # colorbar
-    cbar = fig.colorbar(im)
-    cbar.set_label('relative flourescence', rotation=270, labelpad=20)
+        fig = plt.figure(figsize=(4 * n_cols, 0.6 * n_vars))
 
-    # save figure
-    fig_path = os.path.join(out_dir, name)
-    plt.savefig(fig_path, bbox_inches='tight')
+        var_keys = heatmap['keys']
+        var_series = heatmap['timeseries']
+        n_vars = len(var_keys)
+        ax = fig.add_subplot(111)
+
+        im = ax.imshow(var_series,
+            extent=[time[0], time[-1], 0, n_vars],
+            interpolation='nearest',
+            aspect='auto',
+            cmap='cividis'
+            )
+        ax.locator_params(axis='y', nbins=n_vars)
+
+        # set y ticks locations and labels
+        y_tick_locs = np.asarray([loc+0.5 for loc in range(n_vars)])
+        ax.set_yticks(y_tick_locs)
+        ax.set_yticklabels(var_keys)
+        ax.set_xlabel('time (s)')
+
+        # colorbar
+        cbar = fig.colorbar(im)
+        cbar.set_label('relative flourescence', rotation=270, labelpad=20)
+
+        # save figure
+        figname = name + '_' + port_id
+        fig_path = os.path.join(out_dir, figname)
+        plt.savefig(fig_path, bbox_inches='tight')
 
 
 
@@ -138,8 +155,7 @@ if __name__ == '__main__':
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
-    settings = {
-        'total_time': 1000}
+    settings = {'total_time': 1000}
     saved_state = simulate_compartment(flagella_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
@@ -158,9 +174,11 @@ if __name__ == '__main__':
 
     # just-in-time figure
     plot_config2 = plot_config.copy()
-    plot_config2.update({'name': 'flagella_just_in_time'})
+    plot_config2.update({
+        'name': 'flagella',
+        'plot_ports': ['transcripts', 'proteins']})
 
-    plot_flagella_just_in_time(
+    plot_timeseries_heatmaps(
         timeseries,
         plot_config2,
         out_dir)
