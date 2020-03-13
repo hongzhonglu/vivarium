@@ -45,8 +45,8 @@ class MinSystem(Process):
         self.dx = self.length / self.bins_x
 
         # initial concentrations
-        MinD_conc = initial_parameters.get('MinD_conc', 1000 / (PI * self.radius ** 2))
-        MinE_conc = initial_parameters.get('MinE_conc', 350 / (PI * self.radius ** 2))
+        self.MinD_conc = initial_parameters.get('MinD_conc', 1000 / (PI * self.radius ** 2))
+        self.MinE_conc = initial_parameters.get('MinE_conc', 350 / (PI * self.radius ** 2))
 
         # make templates
         self.edges_template = np.pad(np.zeros((self.bins_y - 2, self.bins_x - 2)), (1, 1), 'constant', constant_values=(1, 1))
@@ -57,7 +57,6 @@ class MinSystem(Process):
 
 
         half_bins_y = int(self.bins_y / 2)
-        half_bins_x = int(self.bins_x / 2)
         self.top_membrane = [(i, 0) for i in range(1, half_bins_y)]
         self.top_membrane.extend([(0, i) for i in range(self.bins_x)])
         self.top_membrane.extend([(i, -1) for i in range(1, half_bins_y)])
@@ -76,24 +75,7 @@ class MinSystem(Process):
         }
         # molecule_ids = list(index.keys())
 
-        ## Initialize molecular fields
-        # cytoplasm
-        cytoplasm = {}
-        cytoplasm['MinD-ADP[c]'] = np.random.normal(MinD_conc, 1, (self.bins_y, self.bins_x))
-        cytoplasm['MinD-ATP[c]'] = np.random.normal(MinD_conc, 1, (self.bins_y, self.bins_x))
-        cytoplasm['MinE[c]'] = np.random.normal(MinE_conc, 1, (self.bins_y, self.bins_x))
 
-        if init_in_half:
-            # put all MinD in one half of the cytoplasm to speed up time to oscillations
-            cytoplasm['MinD-ADP[c]'][:, 0:half_bins_x] *= 2.0
-            cytoplasm['MinD-ADP[c]'][:, half_bins_x:self.bins_x] *= 0.0
-            cytoplasm['MinD-ATP[c]'][:, 0:half_bins_x] *= 2.0
-            cytoplasm['MinD-ATP[c]'][:, half_bins_x:self.bins_x] *= 0.0
-
-        # membrane
-        membrane = {}
-        membrane['MinD-ATP[m]'] = np.random.normal(MinD_conc, 1, (self.bins_mem,))
-        membrane['MinE-MinD-ATP[m]'] = np.random.normal(MinE_conc, 1, (self.bins_mem,))
         
 
         # make ports
@@ -109,18 +91,37 @@ class MinSystem(Process):
 
 
     def default_settings(self):
-        initial_state = {}
-        # initial_state.update(self.initial_concentrations)
+        ## Initialize molecular fields
+
+        # cytoplasm
+        cytoplasm = {}
+        cytoplasm['MinD-ADP[c]'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
+        cytoplasm['MinD-ATP[c]'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
+        cytoplasm['MinE[c]'] = np.random.normal(self.MinE_conc, 1, (self.bins_y, self.bins_x))
+
+        if init_in_half:
+            half_bins_x = int(self.bins_x / 2)
+            # put all MinD in one half of the cytoplasm to speed up time to oscillations
+            cytoplasm['MinD-ADP[c]'][:, 0:half_bins_x] *= 2.0
+            cytoplasm['MinD-ADP[c]'][:, half_bins_x:self.bins_x] *= 0.0
+            cytoplasm['MinD-ATP[c]'][:, 0:half_bins_x] *= 2.0
+            cytoplasm['MinD-ATP[c]'][:, half_bins_x:self.bins_x] *= 0.0
+
+        # membrane
+        membrane = {}
+        membrane['MinD-ATP[m]'] = np.random.normal(self.MinD_conc, 1, (self.bins_mem,))
+        membrane['MinE-MinD-ATP[m]'] = np.random.normal(self.MinE_conc, 1, (self.bins_mem,))
+
+        initial_state = {
+            'membrane': membrane,
+            'cytoplasm': cytoplasm}
+
         return {
             'state': initial_state}
 
     def next_update(self, timestep, states):
         cytoplasm = states['cytoplasm']
         membrane = states['membrane']
-
-        d_cytoplasm = np.zeros_like(cytoplasm)
-        d_membrane = np.zeros_like(membrane)
-        diffusion_c = np.zeros_like(cytoplasm)
 
         # grid
         top_membrane = self.top_membrane
@@ -133,19 +134,13 @@ class MinSystem(Process):
         k_E = self.parameters['k_E']
         k_de = self.parameters['k_de']
         k_ADP_ATP = self.parameters['k_ADP_ATP']
-        
-        
-        
+
         bins_x = self.bins_x
         bins_y = self.bins_y
         dx = self.dx
-        
-
-        import ipdb; ipdb.set_trace()
-
 
         ## Initialize deltas and diffusion arrays
-        d_cytoplasm ={}
+        d_cytoplasm = {}
         d_membrane = {}
         diffusion_c = {}
 
@@ -207,10 +202,6 @@ class MinSystem(Process):
         d_cytoplasm['MinE[c]'] = (diffusion_c['MinE[c]'] + rxn_3_c - rxn_2_c)
         d_membrane['MinD-ATP[m]'] = (-rxn_2_m + rxn_1_m)
         d_membrane['MinE-MinD-ATP[m]'] = (-rxn_3_m + rxn_2_m)
-
-
-        import ipdb; ipdb.set_trace()
-
 
         return {
             'cytoplasm': d_cytoplasm,
