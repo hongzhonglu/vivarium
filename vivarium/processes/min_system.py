@@ -64,24 +64,10 @@ class MinSystem(Process):
         self.bottom_membrane.extend([(-1, i) for i in range(self.bins_x)])
         self.bottom_membrane.extend([(i, -1) for i in range(half_bins_y, self.bins_y - 1)])
 
-        # molecule indices
-        index = {
-            'MinD-ADP[c]': 0,
-            'MinD-ATP[c]': 1,
-            'MinE[c]': 2,
-            'MinD-ATP[m]': 0,
-            'MinE-MinD-ATP[m]': 1,
-        }
-        # molecule_ids = list(index.keys())
-
-
-        
-
         # make ports
         ports = {
-            'cytoplasm': ['MinD-ADP[c]', 'MinD-ATP[c]', 'MinE[c]'],
-            'membrane': ['MinD-ATP[m]', 'MinE-MinD-ATP[m]']
-        }
+            'cytoplasm': ['MinD-ADP', 'MinD-ATP', 'MinE'],
+            'membrane': ['MinD-ATP', 'MinE-MinD-ATP']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -94,29 +80,31 @@ class MinSystem(Process):
 
         # cytoplasm
         cytoplasm = {}
-        cytoplasm['MinD-ADP[c]'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
-        cytoplasm['MinD-ATP[c]'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
-        cytoplasm['MinE[c]'] = np.random.normal(self.MinE_conc, 1, (self.bins_y, self.bins_x))
+        cytoplasm['MinD-ADP'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
+        cytoplasm['MinD-ATP'] = np.random.normal(self.MinD_conc, 1, (self.bins_y, self.bins_x))
+        cytoplasm['MinE'] = np.random.normal(self.MinE_conc, 1, (self.bins_y, self.bins_x))
 
         if init_in_half:
             half_bins_x = int(self.bins_x / 2)
             # put all MinD in one half of the cytoplasm to speed up time to oscillations
-            cytoplasm['MinD-ADP[c]'][:, 0:half_bins_x] *= 2.0
-            cytoplasm['MinD-ADP[c]'][:, half_bins_x:self.bins_x] *= 0.0
-            cytoplasm['MinD-ATP[c]'][:, 0:half_bins_x] *= 2.0
-            cytoplasm['MinD-ATP[c]'][:, half_bins_x:self.bins_x] *= 0.0
+            cytoplasm['MinD-ADP'][:, 0:half_bins_x] *= 2.0
+            cytoplasm['MinD-ADP'][:, half_bins_x:self.bins_x] *= 0.0
+            cytoplasm['MinD-ATP'][:, 0:half_bins_x] *= 2.0
+            cytoplasm['MinD-ATP'][:, half_bins_x:self.bins_x] *= 0.0
 
         # membrane
         membrane = {}
-        membrane['MinD-ATP[m]'] = np.random.normal(self.MinD_conc, 1, (self.bins_mem,))
-        membrane['MinE-MinD-ATP[m]'] = np.random.normal(self.MinE_conc, 1, (self.bins_mem,))
+        membrane['MinD-ATP'] = np.random.normal(self.MinD_conc, 1, (self.bins_mem,))
+        membrane['MinE-MinD-ATP'] = np.random.normal(self.MinE_conc, 1, (self.bins_mem,))
 
         initial_state = {
             'membrane': membrane,
             'cytoplasm': cytoplasm}
 
         return {
-            'state': initial_state}
+            'state': initial_state,
+            'time_step': 0.1,  # .0001
+        }
 
     def next_update(self, timestep, states):
         cytoplasm = states['cytoplasm']
@@ -139,72 +127,88 @@ class MinSystem(Process):
         dx = self.dx
 
         ## Initialize deltas and diffusion arrays
-        d_cytoplasm = {}
-        d_membrane = {}
         diffusion_c = {}
 
 
         ## Get diffusion
-        diffusion_c['MinD-ADP[c]'] = convolve(
-            cytoplasm['MinD-ADP[c]'],
+        diffusion_c['MinD-ADP'] = convolve(
+            cytoplasm['MinD-ADP'],
             LAPLACIAN_2D,
             mode='reflect') / dx ** 2 * diffusion
 
-        diffusion_c['MinD-ATP[c]'] = convolve(
-            cytoplasm['MinD-ATP[c]'],
+        diffusion_c['MinD-ATP'] = convolve(
+            cytoplasm['MinD-ATP'],
             LAPLACIAN_2D,
             mode='reflect') / dx ** 2 * diffusion
 
-        diffusion_c['MinE[c]'] = convolve(
-            cytoplasm['MinE[c]'],
+        diffusion_c['MinE'] = convolve(
+            cytoplasm['MinE'],
             LAPLACIAN_2D,
             mode='reflect') / dx ** 2 * diffusion
         
         ## Get values at cytoplasm-membrane contact sites
         # cytoplasm to membrane contacts
-        DT_c_top = np.array([cytoplasm['MinD-ATP[c]'][idx] for idx in top_membrane])
-        DT_c_bottom = np.array([cytoplasm['MinD-ATP[c]'][idx] for idx in bottom_membrane])
+        DT_c_top = np.array([cytoplasm['MinD-ATP'][idx] for idx in top_membrane])
+        DT_c_bottom = np.array([cytoplasm['MinD-ATP'][idx] for idx in bottom_membrane])
         DT_c_exchange = (DT_c_top + DT_c_bottom) / 2
 
-        E_c_top = np.array([cytoplasm['MinE[c]'][idx] for idx in top_membrane])
-        E_c_bottom = np.array([cytoplasm['MinE[c]'][idx] for idx in bottom_membrane])
+        E_c_top = np.array([cytoplasm['MinE'][idx] for idx in top_membrane])
+        E_c_bottom = np.array([cytoplasm['MinE'][idx] for idx in bottom_membrane])
         exchange_E_c = (E_c_top + E_c_bottom) / 2
 
         # membrane to cytoplasm contacts
         exchange_DT_m = np.zeros((bins_y, bins_x))
         for mem_idx, cyto_idx in enumerate(top_membrane):
-            exchange_DT_m[cyto_idx] = membrane['MinD-ATP[m]'][mem_idx]
+            exchange_DT_m[cyto_idx] = membrane['MinD-ATP'][mem_idx]
         for mem_idx, cyto_idx in enumerate(bottom_membrane):
-            exchange_DT_m[cyto_idx] = membrane['MinD-ATP[m]'][mem_idx]
+            exchange_DT_m[cyto_idx] = membrane['MinD-ATP'][mem_idx]
 
         exchange_EDT_m = np.zeros((bins_y, bins_x))
         for mem_idx, cyto_idx in enumerate(top_membrane):
-            exchange_EDT_m[cyto_idx] = membrane['MinE-MinD-ATP[m]'][mem_idx]
+            exchange_EDT_m[cyto_idx] = membrane['MinE-MinD-ATP'][mem_idx]
         for mem_idx, cyto_idx in enumerate(bottom_membrane):
-            exchange_EDT_m[cyto_idx] = membrane['MinE-MinD-ATP[m]'][mem_idx]
+            exchange_EDT_m[cyto_idx] = membrane['MinE-MinD-ATP'][mem_idx]
 
         ## Calculate reaction rates
         # rates for cytoplasm
-        rxn_1_c = (k_D + k_dD * (exchange_DT_m + exchange_EDT_m)) * self.edges_template * cytoplasm['MinD-ATP[c]']
-        rxn_2_c = k_E * exchange_DT_m * cytoplasm['MinE[c]']
+        rxn_1_c = (k_D + k_dD * (exchange_DT_m + exchange_EDT_m)) * self.edges_template * cytoplasm['MinD-ATP']
+        rxn_2_c = k_E * exchange_DT_m * cytoplasm['MinE']
         rxn_3_c = k_de * exchange_EDT_m
-        rxn_4_c = k_ADP_ATP * cytoplasm['MinD-ADP[c]']
+        rxn_4_c = k_ADP_ATP * cytoplasm['MinD-ADP']
 
         # rates for membrane
-        rxn_1_m = (k_D + k_dD * (membrane['MinD-ATP[m]'] + membrane['MinE-MinD-ATP[m]'])) * DT_c_exchange
-        rxn_2_m = k_E * membrane['MinD-ATP[m]'] * exchange_E_c
-        rxn_3_m = k_de * membrane['MinE-MinD-ATP[m]']
+        rxn_1_m = (k_D + k_dD * (membrane['MinD-ATP'] + membrane['MinE-MinD-ATP'])) * DT_c_exchange
+        rxn_2_m = k_E * membrane['MinD-ATP'] * exchange_E_c
+        rxn_3_m = k_de * membrane['MinE-MinD-ATP']
 
         ## Get derivatives
-        d_cytoplasm['MinD-ADP[c]'] = (diffusion_c['MinD-ADP[c]'] - rxn_4_c + rxn_3_c)
-        d_cytoplasm['MinD-ATP[c]'] = (diffusion_c['MinD-ATP[c]'] + rxn_4_c - rxn_1_c)
-        d_cytoplasm['MinE[c]'] = (diffusion_c['MinE[c]'] + rxn_3_c - rxn_2_c)
-        d_membrane['MinD-ATP[m]'] = (-rxn_2_m + rxn_1_m)
-        d_membrane['MinE-MinD-ATP[m]'] = (-rxn_3_m + rxn_2_m)
+        # cytoplasm
+        d_MinD_ADP_cyto = (diffusion_c['MinD-ADP'] - rxn_4_c + rxn_3_c) * timestep
+        d_MinD_ATP_cyto = (diffusion_c['MinD-ATP'] + rxn_4_c - rxn_1_c) * timestep
+        d_MinE_cyto = (diffusion_c['MinE'] + rxn_3_c - rxn_2_c) * timestep
+
+        #membrane
+        d_MinD_ATP_mem = (-rxn_2_m + rxn_1_m) * timestep
+        d_MinE_MinD_ATP_mem = (-rxn_3_m + rxn_2_m) * timestep
+
+
+        # check for nans
+        d_MinD_ADP_cyto = np.nan_to_num(d_MinD_ADP_cyto)
+        d_MinD_ATP_cyto = np.nan_to_num(d_MinD_ATP_cyto)
+        d_MinE_cyto = np.nan_to_num(d_MinE_cyto)
+        d_MinD_ATP_mem = np.nan_to_num(d_MinD_ATP_mem)
+        d_MinE_MinD_ATP_mem = np.nan_to_num(d_MinE_MinD_ATP_mem)
 
         return {
-            'cytoplasm': d_cytoplasm,
-            'membrane': d_membrane}
+            'cytoplasm': {
+                'MinD-ADP': d_MinD_ADP_cyto,
+                'MinD-ATP': d_MinD_ATP_cyto,
+                'MinE': d_MinE_cyto
+            },
+            'membrane': {
+                'MinD-ATP': d_MinD_ATP_mem,
+                'MinE-MinD-ATP': d_MinE_MinD_ATP_mem
+            }}
 
 
 
@@ -244,29 +248,28 @@ def test_min_system(config = get_min_config(), time=10):
 
 def plot_min_system_output(data, config, out_dir='out', filename='output'):
     n_snapshots = 20
-    plot_step_size = 10
 
     # get saved state
     cytoplasm = data['cytoplasm']
     membrane = data['membrane']
-
-
-    # import ipdb;
-    # ipdb.set_trace()
+    time = data['time']
+    plot_steps = np.round(np.linspace(0, len(time)-1, n_snapshots)).astype(int)
 
     fig, axes = plt.subplots(n_snapshots, 6, figsize=(8, 0.5 * n_snapshots))
 
-    for slice in range(n_snapshots):
-        # axes[slice, 0].text(0.5, 0.5, str(slice * plot_step_size * DT) + 's')
+    for slice, ts in enumerate(plot_steps):
+
+        # times
+        axes[slice, 0].text(0.5, 0.5, str(time[ts]) + 's')
 
         # plot cytoplasm
-        axes[slice, 1].imshow(cytoplasm['MinD-ATP[c]'][:, :, slice], cmap='YlGnBu', aspect="auto")
-        axes[slice, 2].imshow(cytoplasm['MinD-ADP[c]'][:, :, slice], cmap='YlGnBu', aspect="auto")
-        axes[slice, 3].imshow(cytoplasm['MinE[c]'][:, :, slice], cmap='YlOrRd', aspect="auto")
+        axes[slice, 1].imshow(cytoplasm['MinD-ATP'][ts], cmap='YlGnBu', aspect="auto")
+        axes[slice, 2].imshow(cytoplasm['MinD-ADP'][ts], cmap='YlGnBu', aspect="auto")
+        axes[slice, 3].imshow(cytoplasm['MinE'][ts], cmap='YlOrRd', aspect="auto")
 
         # plot membrane
-        axes[slice, 4].plot(membrane['MinD-ATP[m]'][:, slice].T)
-        axes[slice, 5].plot(membrane['MinE-MinD-ATP[m]'][:, slice].T)
+        axes[slice, 4].plot(membrane['MinD-ATP'][ts].T)
+        axes[slice, 5].plot(membrane['MinE-MinD-ATP'][ts].T)
 
         # # add vertical lines for cap location
         # axes[slice, 4].axvline(x=cap_pos1, linestyle='--', linewidth=1, color='k')
@@ -280,19 +283,12 @@ def plot_min_system_output(data, config, out_dir='out', filename='output'):
             axes[slice, x].set_xticks([])
             axes[slice, x].set_yticks([])
 
-    # axes[0, 1].set_title('[MinD:ATP] cytoplasm', fontsize=6)
-    # axes[0, 2].set_title('[MinD:ADP] cytoplasm', fontsize=6)
-    # axes[0, 3].set_title('[MinE] cytoplasm', fontsize=6)
-    # axes[0, 4].set_title('[MinD:ATP] membrane', fontsize=6)
-    # axes[0, 5].set_title('[MinE:MinD:ATP] membrane', fontsize=6)
-
-
-
-
-
-
-
-
+    # set titles
+    axes[0, 1].set_title('[MinD:ATP] cytoplasm', fontsize=6)
+    axes[0, 2].set_title('[MinD:ADP] cytoplasm', fontsize=6)
+    axes[0, 3].set_title('[MinE] cytoplasm', fontsize=6)
+    axes[0, 4].set_title('[MinD:ATP] membrane', fontsize=6)
+    axes[0, 5].set_title('[MinE:MinD:ATP] membrane', fontsize=6)
 
 
     fig_path = os.path.join(out_dir, filename)
@@ -302,15 +298,12 @@ def plot_min_system_output(data, config, out_dir='out', filename='output'):
 
 
 
-
-
-
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'min_system')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     config = get_min_config()
-    saved_data = test_min_system(config, 30)
+    saved_data = test_min_system(config, 1)
     timeseries = convert_to_timeseries(saved_data)
     plot_min_system_output(timeseries, config, out_dir)
