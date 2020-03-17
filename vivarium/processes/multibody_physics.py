@@ -121,9 +121,8 @@ class Multibody(Process):
         for agent_id, specs in agents.items():
             self.add_body_from_center(agent_id, specs)
 
-        # make a port for each initial agent
-        ports = {agent_id: AGENT_KEYS
-            for agent_id in agents.keys()}
+        # all initial agents get a key under a single port
+        ports = {'agents': list(self.agents.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -133,17 +132,17 @@ class Multibody(Process):
     def default_settings(self):
         agents = {agent_id: self.get_body_specs(agent_id)
                 for agent_id in self.agents.keys()}
+        state = {'agents': agents}
 
-        schema = {agent_id: {state_key: {'updater': 'set'}
-                for state_key in AGENT_KEYS}
-                for agent_id, agent in agents.items()}
+        schema = {'agents': {agent_id: {'updater': 'merge'}
+                for agent_id, agent in agents.items()}}
 
         return {
-            'state': agents,
+            'state': state,
             'schema': schema,}
 
     def next_update(self, timestep, states):
-        agents = states
+        agents = states['agents']
 
         # check if an agent has been removed
         removed_agents = [
@@ -166,7 +165,7 @@ class Multibody(Process):
             agent_id: self.get_body_specs(agent_id)
             for agent_id in self.agents.keys()}
 
-        return new_agents
+        return {'agents': new_agents}
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -393,8 +392,7 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     snapshot_times = [time_vec[i] for i in time_indices]
 
     # get agents
-    agents = {state_id: series
-              for state_id, series in data.items() if state_id not in NON_AGENT_KEYS}
+    agents = data['agents']
 
     agent_colors = {}
     for agent_id in agents:
@@ -417,12 +415,12 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
         # get agents_now and plot them
         agents_now = {}
         for agent_id, series in agents.items():
-            if series['location'][time_idx] is not None:
+            if series[time_idx]['location'] is not None:
                 agent_data = {
-                    'location': series['location'][time_idx],
-                    'angle': series['angle'][time_idx],
-                    'length': series['length'][time_idx],
-                    'width': series['width'][time_idx]}
+                    'location': series[time_idx]['location'],
+                    'angle': series[time_idx]['angle'],
+                    'length': series[time_idx]['length'],
+                    'width': series[time_idx]['width']}
                 agents_now[agent_id] = agent_data
         plot_agents(ax, agents_now, agent_colors)
 
