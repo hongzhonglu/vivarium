@@ -19,6 +19,7 @@ AVOGADRO = constants.N_A
 DIFFUSION_CONSTANT = 5e-1
 DEFAULT_DEPTH = 3000.0  # um
 
+AGENT_KEYS = ['location', 'exchange', 'local_environment']
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
@@ -180,9 +181,8 @@ class DiffusionField(Process):
         self.initial_agents = initial_parameters.get('agents', {})
 
         # make ports
-        ports = {
-            'fields': self.molecule_ids,
-            'agents': list(self.initial_agents.keys())}
+        ports = {agent_id: AGENT_KEYS for agent_id in self.initial_agents.keys()}
+        ports.update({'fields': self.molecule_ids})
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -190,19 +190,20 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        schema = {
-            'agents': {agent_id : {'updater': 'merge'}
-                for agent_id in self.ports['agents']}}
+        schema = {agent_id: {'local_environment': {'updater': 'set'}}
+                for agent_id in self.initial_agents.keys()}
+
+        initial_state = {'fields': self.initial_state}
+        initial_state.update(self.initial_agents)
 
         return {
             'schema': schema,
-            'state': {
-                'fields': self.initial_state,
-                'agents': self.initial_agents}}
+            'state': initial_state}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        agents = states['agents']
+        agents = {state_id: specs
+                  for state_id, specs in states.items() if state_id not in ['fields']}
 
         # uptake/secretion from agents
         delta_exchanges = self.apply_exchanges(agents)
@@ -214,13 +215,13 @@ class DiffusionField(Process):
 
         # get each agent's local environment
         local_environments = self.get_local_environments(agents, fields)
-        agent_update = {
+        update = {
             agent_id: {'local_environment': local_env}
                 for agent_id, local_env in local_environments.items()}
 
-        return {
-            'fields': delta_fields,
-            'agents': agent_update}
+        update.update({'fields': delta_fields})
+
+        return update
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
@@ -368,7 +369,9 @@ def get_gaussian_config(n_bins=(10, 10)):
 
 def get_secretion_agent_config(molecules=['glc'], n_bins=[10, 10]):
     agent = {
-        'location': [n_bins[0]/4, n_bins[1]/4],
+        'location': [
+                np.random.uniform(0, n_bins[0]),
+                np.random.uniform(0, n_bins[1])],
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}
     agents = {'1': agent}

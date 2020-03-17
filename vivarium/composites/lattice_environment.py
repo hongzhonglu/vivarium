@@ -33,6 +33,7 @@ def compose_lattice_environment(config):
 
     # get the agents
     agents_config = config.get('agents', {})
+    agent_ids = list(agents_config.keys())
 
     ## Declare the processes.
     # multibody physics
@@ -61,13 +62,12 @@ def compose_lattice_environment(config):
         'diffusion': diffusion}]
 
     # topology
+    agent_ports = {agent_id: agent_id for agent_id in agent_ids}
+    diffusion_ports = {'fields': 'fields'}
+    diffusion_ports.update(agent_ports)
     topology = {
-        'multibody': {
-            'agents': 'agents',
-        },
-        'diffusion': {
-            'agents': 'agents',
-            'fields': 'fields'}}
+        'multibody': agent_ports,
+        'diffusion': diffusion_ports}
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
