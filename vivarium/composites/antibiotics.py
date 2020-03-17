@@ -4,7 +4,6 @@ import math
 import os
 
 from vivarium.compartment.composition import (
-    convert_to_timeseries,
     plot_simulation_output,
     simulate_with_environment,
     get_derivers,
@@ -148,6 +147,7 @@ def run_antibiotics_composite():
     settings = {
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
+        'emit_timeseries': True,
         'environment_volume': 1e-5,  # L
         'timestep': 1,
         'total_time': DIVISION_TIME * NUM_DIVISIONS,
@@ -175,8 +175,7 @@ def run_antibiotics_composite():
 
 
 def test_antibiotics_composite_similar_to_reference():
-    saved_data = run_antibiotics_composite()
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = run_antibiotics_composite()
     flattened = flatten_timeseries(timeseries)
     reference = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
@@ -193,8 +192,7 @@ def main():
         'skip_ports': ['prior_state'],
     }
 
-    saved_state = run_antibiotics_composite()
-    timeseries = convert_to_timeseries(saved_state)
+    timeseries = run_antibiotics_composite()
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
 

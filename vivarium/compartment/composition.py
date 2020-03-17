@@ -145,7 +145,7 @@ def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
     compartment_state_port = settings.get('compartment_state_port')
-    emitter_type = settings.get('emitter_type', 'timeseries')
+    emitter = settings.get('emitter', 'timeseries')
 
     processes = [{'process': process}]
     topology = {
@@ -175,7 +175,7 @@ def process_in_compartment(process, settings={}):
 
     options = {
         'topology': topology,
-        'emitter': emitter_type}
+        'emitter': emitter}
 
     return Compartment(processes, states, options)
 
