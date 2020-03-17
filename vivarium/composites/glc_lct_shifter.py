@@ -5,6 +5,11 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.composition import set_axes
+from vivarium.compartment.process import load_compartment
+from vivarium.compartment.composition import (
+    simulate_with_environment,
+    plot_simulation_output
+)
 
 # composite
 from vivarium.composites.ode_expression import compose_ode_expression
@@ -139,15 +144,11 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment
-    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
-
     out_dir = os.path.join('out', 'tests', 'glc_lct_shifter')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {'emitter': 'null'}
-    compartment = load_compartment(compose_glc_lct_shifter, boot_config)
+    compartment = load_compartment(compose_glc_lct_shifter)
 
     # settings for simulation and plot
     options = compartment.configuration
@@ -167,7 +168,9 @@ if __name__ == '__main__':
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
         'environment_volume': 2e-13,  # L
-        'timeline': timeline}
+        'timeline': timeline,
+        'emit_timeseries': True,
+    }
 
     plot_settings = {
         'max_rows': 20,
@@ -187,8 +190,6 @@ if __name__ == '__main__':
         'skip_ports': ['prior_state', 'null']}
 
     # saved_state = simulate_compartment(compartment, settings)
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
     plot_diauxic_shift(timeseries, settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

@@ -72,7 +72,8 @@ class ODE_expression(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': self.ports['internal']}
+            'internal': self.ports['internal'],
+            'counts': self.ports['internal']}
 
         # derivers
         deriver_setting = [{

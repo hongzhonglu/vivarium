@@ -9,7 +9,6 @@ from vivarium.compartment.process import (
     load_compartment)
 from vivarium.compartment.composition import (
     simulate_with_environment,
-    convert_to_timeseries,
     plot_simulation_output)
 
 # processes
@@ -121,18 +120,17 @@ if __name__ == '__main__':
     timeline = get_exponential_random_timeline(exponential_random_config)
     boot_config = {
         'initial_ligand': timeline[0][1][ENVIRONMENT_PORT][LIGAND_ID],  # set initial_ligand from timeline
-        'time_step': time_step,
-        'emitter': 'null'}
+        'time_step': time_step}
     compartment = load_compartment(compose_simple_chemotaxis, boot_config)
 
     settings = {
         'environment_port': ENVIRONMENT_PORT,
         'environment_volume': 1e-13,  # L
-        'timeline': timeline}
+        'timeline': timeline,
+        'emit_timeseries': True,
+    }
 
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(
         timeseries,
         plot_settings,
