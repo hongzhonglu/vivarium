@@ -181,8 +181,9 @@ class DiffusionField(Process):
         self.initial_agents = initial_parameters.get('agents', {})
 
         # make ports
-        ports = {agent_id: AGENT_KEYS for agent_id in self.initial_agents.keys()}
-        ports.update({'fields': self.molecule_ids})
+        ports = {
+             'fields': self.molecule_ids,
+             'agents': list(self.initial_agents.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -190,20 +191,19 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        schema = {agent_id: {'local_environment': {'updater': 'set'}}
-                for agent_id in self.initial_agents.keys()}
-
-        initial_state = {'fields': self.initial_state}
-        initial_state.update(self.initial_agents)
+        schema = {
+            'agents': {agent_id : {'updater': 'merge'}
+                   for agent_id in self.ports['agents']}}
 
         return {
             'schema': schema,
-            'state': initial_state}
+            'state': {
+                 'fields': self.initial_state,
+                 'agents': self.initial_agents}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        agents = {state_id: specs
-                  for state_id, specs in states.items() if state_id not in ['fields']}
+        agents = states['agents']
 
         # uptake/secretion from agents
         delta_exchanges = self.apply_exchanges(agents)
@@ -215,13 +215,13 @@ class DiffusionField(Process):
 
         # get each agent's local environment
         local_environments = self.get_local_environments(agents, fields)
-        update = {
+        agent_update = {
             agent_id: {'local_environment': local_env}
                 for agent_id, local_env in local_environments.items()}
 
-        update.update({'fields': delta_fields})
-
-        return update
+        return {
+            'fields': delta_fields,
+            'agents': agent_update}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
