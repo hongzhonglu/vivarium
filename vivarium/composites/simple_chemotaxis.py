@@ -3,10 +3,9 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.composition import get_derivers, load_compartment
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment)
+    initialize_state)
 from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output)

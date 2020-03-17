@@ -4,12 +4,11 @@ import os
 
 from vivarium.compartment.process import (
     initialize_state,
-    load_compartment,
 )
 from vivarium.compartment.composition import (
     simulate_compartment,
-    convert_to_timeseries
-)
+    convert_to_timeseries,
+    load_compartment)
 
 # processes
 from vivarium.processes.multibody_physics import (

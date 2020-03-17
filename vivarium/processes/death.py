@@ -7,11 +7,10 @@ import os
 from vivarium.compartment.composition import (
     plot_simulation_output,
     simulate_compartment,
-)
+    load_compartment)
 from vivarium.compartment.process import (
     Process,
     initialize_state,
-    load_compartment,
     COMPARTMENT_STATE,
 )
 

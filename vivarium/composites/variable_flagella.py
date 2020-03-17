@@ -5,8 +5,7 @@ import os
 import random
 
 from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers
-from vivarium.compartment.process import load_compartment
+from vivarium.compartment.composition import get_derivers, load_compartment
 from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output

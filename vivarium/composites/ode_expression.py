@@ -3,14 +3,13 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment
+    initialize_state
 )
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
-    plot_simulation_output
-)
+    plot_simulation_output,
+    load_compartment)
 
 # processes
 from vivarium.processes.division import Division, divide_condition

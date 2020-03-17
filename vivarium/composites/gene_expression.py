@@ -5,11 +5,9 @@ import os
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment,
-    simulate_compartment
+    initialize_state
 )
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.composition import get_derivers, load_compartment, simulate_compartment
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
