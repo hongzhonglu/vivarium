@@ -14,42 +14,45 @@ from vivarium.compartment.composition import (
 # processes
 from vivarium.processes.multibody_physics import (
     Multibody,
-    n_body_config,
+    get_n_dummy_agents,
+    random_body_config,
     plot_snapshots,
 )
 from vivarium.processes.diffusion_field import (
     DiffusionField,
-    exchange_body_config,
+    exchange_agent_config,
     plot_field_output,
 )
 
 
 def compose_lattice_environment(config):
     """"""
-    n_bodies = config.get('n_bodies', 10)
     bounds = config.get('bounds', [10, 10])
     size = config.get('size', [10, 10])
     molecules = config.get('molecules', ['glc'])
 
+    # get the agents
+    agents_config = config.get('agents', {})
+
     ## Declare the processes.
     # multibody physics
-    multibody_config = n_body_config(n_bodies, bounds)
+    multibody_config = random_body_config(agents_config, bounds)
     multibody = Multibody(multibody_config)
 
     # diffusion field
-    bodies = {
-        body_id: {
-        'location': [bounds[0]/4, bounds[1]/4],
+    agents = {
+        agent_id: {
+        'location': boundary['location'],
         'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}
-            for body_id in range(n_bodies)}
+            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
+            for agent_id, boundary in multibody_config['agents'].items()}
 
     exchange_config = {
         'molecules': molecules,
         'n_bins': bounds,
         'size': size,
-        'bodies': bodies}
-    diffusion_config = exchange_body_config(exchange_config)
+        'agents': agents}
+    diffusion_config = exchange_agent_config(exchange_config)
     diffusion = DiffusionField(diffusion_config)
 
     # Place processes in layers
@@ -60,13 +63,15 @@ def compose_lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'bodies': 'bodies',
+            'agents': 'agents',
         },
         'diffusion': {
-            'bodies': 'bodies',
+            'agents': 'agents',
             'fields': 'fields'}}
 
     # initialize the states
+    # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
+
     states = initialize_state(processes, topology, config.get('initial_state', {}))
 
     options = {
@@ -85,13 +90,12 @@ def compose_lattice_environment(config):
 def get_lattice_config():
     return {
         'molecules': ['glc'],
-        'n_bodies': 10,
         'bounds': [10, 10],
-        'size': [10, 10]}
+        'size': [10, 10],
+        'agents': get_n_dummy_agents(6)}  # no boundary store
 
 def test_lattice_environment(config=get_lattice_config(), time=10):
-    boot_config = {'emitter': 'null'}
-    lattice_environment = load_compartment(compose_lattice_environment, boot_config)
+    lattice_environment = load_compartment(compose_lattice_environment, config)
     settings = {'total_time': time}
     return simulate_compartment(lattice_environment, settings)
 
@@ -103,7 +107,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_lattice_config()
-    saved_data = test_lattice_environment(config, 20)
+    saved_data = test_lattice_environment(config, 10)
     timeseries = convert_to_timeseries(saved_data)
     plot_field_output(timeseries, config, out_dir, 'lattice_field')
     plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')

@@ -2,8 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.process import (
+    initialize_state,
+    load_compartment)
+from vivarium.compartment.composition import (
+    get_derivers,
+    simulate_with_environment,
+    convert_to_timeseries,
+    plot_simulation_output)
 
 # processes
 from vivarium.processes.growth import Growth
@@ -69,9 +75,6 @@ def compose_growth_division(config):
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment
-    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
-
     out_dir = os.path.join('out', 'tests', 'growth_division_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
