@@ -655,18 +655,19 @@ def simulate_compartment(compartment, settings={}):
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
 
-    # save initial state
-    time = 0
-    saved_state = {}
-    saved_state[time] = compartment.current_state()
+    # data settings
+    emit_timeseries = settings.get('emit_timeseries', False)
 
     # run simulation
+    time = 0
     while time < total_time:
         time += timestep
         compartment.update(timestep)
-        saved_state[time] = compartment.current_state()
 
-    return saved_state
+    if emit_timeseries:
+        return compartment.emitter.get_timeseries()
+    else:
+        return compartment.emitter.get_data()
 
 
 if __name__ == '__main__':

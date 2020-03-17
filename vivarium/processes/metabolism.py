@@ -6,8 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries, \
+from vivarium.compartment.composition import (
+    simulate_process_with_environment,
     plot_simulation_output
+)
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_port_dicts, deep_merge
@@ -126,7 +128,9 @@ class Metabolism(Process):
         default_emitter_keys = {
             'internal': self.internal_state_ids,
             'external': self.fba.external_molecules,
-            'reactions': self.reaction_ids}
+            'reactions': self.reaction_ids,
+            'flux_bounds': self.constrained_reaction_ids,
+            'global': ['mass']}
 
         # schema
         schema = {
@@ -306,11 +310,11 @@ def save_network(config, out_dir='out'):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-6,  # L
+        'emit_timeseries': True,
         'timestep': 1,
         'total_time': 10}
 
-    data = simulate_process_with_environment(metabolism, settings)
-    timeseries = convert_to_timeseries(data)
+    timeseries = simulate_process_with_environment(metabolism, settings)
     reactions =  timeseries['reactions']
 
     # save fluxes as node size
@@ -483,6 +487,7 @@ def test_BiGG_metabolism(settings={}):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-6,  # L
+        'emit_timeseries': True,
         'timestep': 1,
         'timeline': [(10, {})]}
     sim_settings.update(settings)
@@ -515,6 +520,7 @@ def test_toy_metabolism(out_dir='out'):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-14,  # L
+        'emit_timeseries': True,
         'timestep': 1,
         'timeline': timeline}
 
@@ -559,23 +565,19 @@ if __name__ == '__main__':
         'overlay': {
             'reactions': 'flux_bounds'}}
 
-    saved_data = test_BiGG_metabolism(sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_BiGG_metabolism(sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
     plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
     plot_exchanges(timeseries, sim_settings, out_dir_BiGG)
 
-    # # run toy model
-    # plot_settings = {
-    #     'skip_ports': ['exchange'],
-    #     'overlay': {
-    #         'reactions': 'flux_bounds'}}
-    #
-    # saved_data = test_toy_metabolism()
-    # del saved_data[0]  # remove first state
-    # timeseries = convert_to_timeseries(saved_data)
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
+    # run toy model
+    plot_settings = {
+        'skip_ports': ['exchange'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    timeseries = test_toy_metabolism()
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make_network()

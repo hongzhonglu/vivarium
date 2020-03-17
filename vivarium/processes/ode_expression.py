@@ -4,7 +4,11 @@ import os
 
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
-from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import (
+    process_in_compartment,
+    simulate_with_environment,
+    plot_simulation_output
+)
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.utils.units import units
 from vivarium.processes.derive_globals import AVOGADRO
@@ -197,7 +201,9 @@ def test_expression(time=10):
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
-        'environment_volume': 1e-12}
+        'environment_volume': 1e-12,
+        'emit_timeseries': True,
+    }
 
     compartment = process_in_compartment(expression)
     return simulate_with_environment(compartment, settings)
@@ -208,7 +214,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
-    del saved_data[0]  # remove first state
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_simulation_output(timeseries, {}, out_dir)
