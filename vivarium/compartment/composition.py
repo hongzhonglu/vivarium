@@ -630,6 +630,8 @@ class ToyLinearGrowthDeathProcess(Process):
 
     def default_settings(self):
         default_settings = {
+            'emitter_keys': {
+                'global': ['mass']},
             'state': {
                 'global': {
                     'mass': 0.0
