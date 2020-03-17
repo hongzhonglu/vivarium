@@ -12,7 +12,7 @@ from matplotlib import colors
 from matplotlib.patches import Patch
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import simulate_process_with_environment, convert_to_timeseries
+from vivarium.compartment.composition import simulate_process_with_environment
 
 DEFAULT_N_FLAGELLA = 5
 DEFAULT_PMF = 170  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg)
@@ -125,11 +125,8 @@ class FlagellaActivity(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'internal': [
-                'motile_force',
-                'motile_torque',
-                'motile_state'],
-            # 'flagella': [],
+            'internal': ['motile_force', 'motile_torque', 'motile_state', 'CheY', 'CheY_P', 'cw_bias'],
+            'flagella': ['flagella_activity'],
             # 'external': [],
         }
 
@@ -293,7 +290,9 @@ def test_activity(parameters=default_params, timeline=default_timeline):
 
     settings = {
         'timeline': timeline,
-        'environment_port': 'external'}
+        'environment_port': 'external',
+        'emit_timeseries': True,
+    }
 
     return simulate_process_with_environment(motor, settings)
 
@@ -493,14 +492,12 @@ if __name__ == '__main__':
 
     zero_flagella = {'flagella': 0}
     timeline = [(2, {})]
-    data1 = test_activity(zero_flagella, timeline)
-    output1 = convert_to_timeseries(data1)
+    output1 = test_activity(zero_flagella, timeline)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
     five_flagella = {'flagella': 5}
     timeline = [(2, {})]
-    data2 = test_activity(five_flagella, timeline)
-    output2 = convert_to_timeseries(data2)
+    output2 = test_activity(five_flagella, timeline)
     plot_activity(output2, out_dir, 'motor_control')
 
     # variable flagella
@@ -514,8 +511,7 @@ if __name__ == '__main__':
             'counts': {
                 'flagella': 4}}),
         (6, {})]
-    data3 = test_activity(init_params, timeline)
-    output3 = convert_to_timeseries(data3)
+    output3 = test_activity(init_params, timeline)
     plot_activity(output3, out_dir, 'motor_control_variable')
 
     output3 = test_motor_PMF()

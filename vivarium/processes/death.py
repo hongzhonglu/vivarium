@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.composition import (
-    convert_to_timeseries,
     plot_simulation_output,
     simulate_compartment,
 )
@@ -218,10 +217,10 @@ def compose_toy_death(config):
 
 
 def test_death_freeze_state(end_time=10, asserts=True):
-    boot_config = {'emitter': 'null'}
-    compartment = load_compartment(compose_toy_death, boot_config)
+    compartment = load_compartment(compose_toy_death)
     settings = {
-        'timeline': [(end_time, {})]
+        'timeline': [(end_time, {})],
+        'emit_timeseries': True,
     }
     saved_states = simulate_compartment(compartment, settings)
     if asserts:
@@ -258,9 +257,7 @@ def plot_death_freeze_state_test():
     out_dir = os.path.join('out', 'tests', 'death_freeze_state')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    saved_data = test_death_freeze_state(asserts=False)
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_death_freeze_state(asserts=False)
     plot_settings = {}
     plot_simulation_output(timeseries, plot_settings, out_dir)
 

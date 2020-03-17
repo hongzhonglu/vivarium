@@ -6,7 +6,6 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.composition import (
-    convert_to_timeseries,
     plot_simulation_output,
     simulate_process_with_environment,
     flatten_timeseries,
@@ -135,13 +134,13 @@ def run_antibiotic_transport():
         'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-15,  # Units of L
+        'emit_timeseries': True,
     }
     return simulate_process_with_environment(process, settings)
 
 
 def test_antibiotic_transport():
-    data = run_antibiotic_transport()
-    timeseries = convert_to_timeseries(data)
+    timeseries = run_antibiotic_transport()
     flattened = flatten_timeseries(timeseries)
     reference = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
@@ -152,9 +151,7 @@ def main():
     out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    saved_data = run_antibiotic_transport()
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = run_antibiotic_transport()
     plot_settings = {}
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
