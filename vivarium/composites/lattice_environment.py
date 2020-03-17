@@ -62,12 +62,13 @@ def compose_lattice_environment(config):
         'diffusion': diffusion}]
 
     # topology
-    agent_ports = {agent_id: agent_id for agent_id in agent_ids}
-    diffusion_ports = {'fields': 'fields'}
-    diffusion_ports.update(agent_ports)
     topology = {
-        'multibody': agent_ports,
-        'diffusion': diffusion_ports}
+        'multibody': {
+            'agents': 'agents',
+        },
+        'diffusion': {
+            'agents': 'agents',
+            'fields': 'fields'}}
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
