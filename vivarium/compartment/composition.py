@@ -659,11 +659,9 @@ class TestSimulateProcess:
         process = ToyLinearGrowthDeathProcess()
         settings = {
             'compartment_state_port': 'compartment',
+            'emit_timeseries': True,
         }
-        saved_total_states = simulate_process(
-            process, settings)
-        timeseries = convert_to_timeseries(
-            saved_total_states)
+        timeseries = simulate_process(process, settings)
         expected_masses = [
             # Mass stops increasing the iteration after mass > 5 because
             # cell dies
