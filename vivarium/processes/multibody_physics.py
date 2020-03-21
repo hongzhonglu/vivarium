@@ -5,6 +5,8 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 import random
 import math
+import copy
+import uuid
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,9 +15,13 @@ from matplotlib.colors import hsv_to_rgb
 import pymunk
 
 # vivarium imports
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import (
+    Process,
+    Store,
+    COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
     simulate_process,
+    process_in_compartment,
     convert_to_timeseries)
 
 
@@ -31,12 +37,29 @@ JITTER_FORCE = 1e-3  # pN
 
 DEFAULT_BOUNDS = [10, 10]
 
-# colors for phylogeny initial bodies
+# colors for phylogeny initial agents
 HUES = [hue/360 for hue in np.linspace(0,360,30)]
+DEFAULT_HUE = HUES[0]
 DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 
+# agent port keys
+AGENT_KEYS = ['location', 'angle', 'volume', 'length', 'width', 'mass', 'forces']
+NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
+
+
+def get_volume(length, width):
+    '''
+    V = (4/3)*PI*r^3 + PI*r^2*a
+    l = a + 2*r
+    '''
+    radius = width / 2
+    cylinder_length = length - width
+    volume = cylinder_length * (PI * radius ** 2) + (4 / 3) * PI * radius ** 3
+
+    return volume
+
 def random_body_position(body):
-    ''' pick a random point along the boundary'''
+    # pick a random point along the boundary
     width, length = body.dimensions
     if random.randint(0, 1) == 0:
         # force along ends
@@ -56,10 +79,21 @@ def random_body_position(body):
             location = (width, random.uniform(0, length))
     return location
 
+def daughter_locations(parent_location, parent_length, parent_angle):
+    pos_ratios = [-0.25, 0.25]
+    daughter_locations = []
+    for daughter in range(2):
+        dx = parent_length * pos_ratios[daughter] * math.cos(parent_angle)
+        dy = parent_length * pos_ratios[daughter] * math.sin(parent_angle)
+        location = [parent_location[0] + dx, parent_location[1] + dy]
+        daughter_locations.append(location)
 
+    return daughter_locations
 
 class Multibody(Process):
-    ''''''
+    """
+    A multi-body physics process using pymunk
+    """
     def __init__(self, initial_parameters={}):
 
         # hardcoded parameters
@@ -81,15 +115,14 @@ class Multibody(Process):
         # TODO -- mother machine configuration
         self.add_barriers(bounds)
 
-        # initialize bodies
-        self.bodies = {}
-        bodies = initial_parameters.get('bodies')
-        for body_id, specs in bodies.items():
-            self.add_body_from_center(body_id, specs)
+        # initialize agents
+        self.agents = {}
+        agents = initial_parameters.get('agents')
+        for agent_id, specs in agents.items():
+            self.add_body_from_center(agent_id, specs)
 
-        # make ports
-        # TODO -- need option to add/remove ports throughout simulation
-        ports = {'bodies': list(self.bodies.keys())}
+        # all initial agents get a key under a single port
+        ports = {'agents': list(self.agents.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -97,35 +130,42 @@ class Multibody(Process):
         super(Multibody, self).__init__(ports, parameters)
 
     def default_settings(self):
-        bodies = {body_id: self.get_body_specs(body_id)
-            for body_id in self.bodies.keys()}
+        agents = {agent_id: self.get_body_specs(agent_id)
+                for agent_id in self.agents.keys()}
+        state = {'agents': agents}
 
-        schema = {'bodies': {body_id : {'updater': 'merge'}
-            for body_id, body in bodies.items()}}
+        schema = {'agents': {agent_id: {'updater': 'merge'}
+                for agent_id, agent in agents.items()}}
 
         return {
-            'state': {'bodies': bodies},
+            'state': state,
             'schema': schema,}
 
     def next_update(self, timestep, states):
-        bodies = states['bodies']
+        agents = states['agents']
 
-        # TODO -- check if any body has been removed?
-        for body_id, specs in bodies.items():
-            if body_id in self.bodies:
-                self.update_body(body_id, specs)
+        # check if an agent has been removed
+        removed_agents = [
+            agent_id for agent_id in self.agents.keys() if agent_id not in agents.keys()]
+        for agent_id in removed_agents:
+            del self.agents[agent_id]
+
+        # update agents, add new agents
+        for agent_id, specs in agents.items():
+            if agent_id in self.agents:
+                self.update_body(agent_id, specs)
             else:
-                self.add_body_from_center(body_id, specs)
+                self.add_body_from_center(agent_id, specs)
 
         # run simulation
         self.run(timestep)
 
-        # get new bodies specs
-        new_bodies = {
-            body_id: self.get_body_specs(body_id)
-                for body_id in self.bodies.keys()}
+        # get new agent specs
+        new_agents = {
+            agent_id: self.get_body_specs(agent_id)
+            for agent_id in self.agents.keys()}
 
-        return {'bodies': new_bodies}
+        return {'agents': new_agents}
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -155,7 +195,7 @@ class Multibody(Process):
 
             # add directly to angular velocity
             body.angular_velocity += torque
-            ## force-based torque
+            # force-based torque
             # if torque != 0.0:
             #     motile_force = get_force_with_angle(thrust, torque)
 
@@ -224,8 +264,8 @@ class Multibody(Process):
         # add body and shape to space
         self.space.add(body, shape)
 
-        # add body to bodies dictionary
-        self.bodies[body_id] = (body, shape)
+        # add body to agents dictionary
+        self.agents[body_id] = (body, shape)
 
     def update_body(self, body_id, specs):
 
@@ -233,7 +273,7 @@ class Multibody(Process):
         width = specs.get('width')
         mass = specs.get('mass')
 
-        body, shape = self.bodies[body_id]
+        body, shape = self.agents[body_id]
         position = body.position
         angle = body.angle
 
@@ -263,10 +303,10 @@ class Multibody(Process):
         self.space.remove(body, shape)
 
         # update body
-        self.bodies[body_id] = (new_body, new_shape)
+        self.agents[body_id] = (new_body, new_shape)
 
-    def get_body_specs(self, body_id):
-        body, shape = self.bodies[body_id]
+    def get_body_specs(self, agent_id):
+        body, shape = self.agents[agent_id]
         width, length = body.dimensions
         position = body.position
 
@@ -279,11 +319,13 @@ class Multibody(Process):
             'mass': body.mass}
 
 
-
 # test functions
-def n_body_config(n_bodies=10, bounds=[10, 10]):
-    bodies = {
-        body_id: {
+def get_n_dummy_agents(n_agents):
+    return {agent_id: None for agent_id in range(n_agents)}
+
+def random_body_config(agents=get_n_dummy_agents(10), bounds=[10, 10]):
+    agent_config = {
+        agent_id: {
             'location': [
                 np.random.uniform(0, bounds[0]),
                 np.random.uniform(0, bounds[1])],
@@ -293,15 +335,14 @@ def n_body_config(n_bodies=10, bounds=[10, 10]):
             'width': 0.5,
             'mass': 1,
             'forces': [0, 0]}
-        for body_id in range(n_bodies)}
+        for agent_id in agents.keys()}
 
     return {
-        'bodies': bodies,
+        'agents': agent_config,
         'bounds': bounds,
         'jitter_force': 1e1}
 
-
-def plot_body(ax, data, color):
+def plot_agent(ax, data, color):
 
     # location, orientation, length
     x_center = data['location'][0]
@@ -329,6 +370,17 @@ def plot_body(ax, data, color):
 
     ax.add_patch(rect)
 
+def plot_agents(ax, agents, agent_colors={}):
+    '''
+    - ax: the axis for plot
+    - agents: a dict with {agent_id: agent_data} and
+        agent_data a dict with keys location, angle, length, width
+    - agent_colors: dict with {agent_id: hsv color}
+-
+    '''
+    for agent_id, agent_data in agents.items():
+        color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
+        plot_agent(ax, agent_data, color)
 
 def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     n_snapshots = 6
@@ -339,14 +391,14 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
-    # get bodies
-    bodies = data['bodies']
+    # get agents
+    agents = data['agents']
 
-    body_colors = {}
-    for body_id in bodies:
+    agent_colors = {}
+    for agent_id in agents:
         hue = random.choice(HUES)  # select random initial hue
         color = [hue] + DEFAULT_SV
-        body_colors[body_id] = color
+        agent_colors[agent_id] = color
 
     # make the figure
     n_rows = 1
@@ -359,14 +411,18 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
         row_idx = 0
         ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
-        for body_id, series in bodies.items():
-            body_data = {
-                'location': series[time_idx]['location'],
-                'angle': series[time_idx]['angle'],
-                'length': series[time_idx]['length'],
-                'width': series[time_idx]['width']}
-            color = body_colors[body_id]
-            plot_body(ax, body_data, color)
+
+        # get agents_now and plot them
+        agents_now = {}
+        for agent_id, series in agents.items():
+            if series[time_idx]['location'] is not None:
+                agent_data = {
+                    'location': series[time_idx]['location'],
+                    'angle': series[time_idx]['angle'],
+                    'length': series[time_idx]['length'],
+                    'width': series[time_idx]['width']}
+                agents_now[agent_id] = agent_data
+        plot_agents(ax, agents_now, agent_colors)
 
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
@@ -383,7 +439,7 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def test_multibody(config=n_body_config(), time=1):
+def test_multibody(config=random_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
@@ -392,12 +448,14 @@ def test_multibody(config=n_body_config(), time=1):
     return simulate_process(multibody, settings)
 
 
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'multibody')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = n_body_config(10)
+    config = random_body_config(get_n_dummy_agents(10))
     saved_data = test_multibody(config, 20)
     timeseries = convert_to_timeseries(saved_data)
     plot_snapshots(timeseries, config, out_dir, 'bodies')
+
