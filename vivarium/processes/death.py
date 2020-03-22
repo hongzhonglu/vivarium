@@ -142,14 +142,16 @@ def compose_toy_death(config):
     }
     death_process = DeathFreezeState(death_parameters)
     injector_parameters = {
-        'injection_rate': TOY_INJECTION_RATE,
-        'substrate': 'antibiotic',
+        'substrate_rate_map': {
+            'antibiotic': TOY_INJECTION_RATE,
+        },
         'port': 'internal',
     }
     injector_process = Injector(injector_parameters)
     enduring_parameters = {
-        'injection_rate': TOY_INJECTION_RATE,
-        'substrate': 'enduring_antibiotic',
+        'substrate_rate_map': {
+            'enduring_antibiotic': TOY_INJECTION_RATE,
+        },
         'port': 'internal',
     }
     enduring_process = Injector(enduring_parameters)

@@ -20,33 +20,38 @@ class Injector(Process):
         if initial_parameters is None:
             initial_parameters = {}
 
-        self.injection_rate = initial_parameters['injection_rate']
-        self.substrate = initial_parameters.get(
-            'substrate', 'injected_substrate')
+        self.substrate_rate_map = initial_parameters['substrate_rate_map']
         self.port = initial_parameters['port']
-        ports = {self.port: [self.substrate]}
+        ports = {
+            self.port: [
+                substrate for substrate in self.substrate_rate_map
+            ]
+        }
         super(Injector, self).__init__(ports, initial_parameters)
 
     def default_settings(self):
         default_settings = {
             'state': {
                 self.port: {
-                    self.substrate: 0.0
+                    substrate: 0 for substrate in self.substrate_rate_map
                 }
             },
-            'emitter_keys': {self.substrate},
+            'emitter_keys': {self.port: self.substrate_rate_map.keys},
         }
         return default_settings
 
     def next_update(self, timestep, states):
-        delta = timestep * self.injection_rate
-        return {self.port: {self.substrate: delta}}
+        return {
+            self.port: {
+                substrate: timestep * rate
+                for substrate, rate in self.substrate_rate_map.items()
+            }
+        }
 
 
 def run_injector():
     parameters = {
-        'injection_rate': 1.0,
-        'substrate': 'toy',
+        'substrate_rate_map': {'toy': 1.0},
         'port': 'cell',
         }
     injector = Injector(parameters)
