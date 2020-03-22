@@ -21,9 +21,8 @@ class Injector(Process):
             initial_parameters = {}
 
         self.substrate_rate_map = initial_parameters['substrate_rate_map']
-        self.port = initial_parameters['port']
         ports = {
-            self.port: [
+            'internal': [
                 substrate for substrate in self.substrate_rate_map
             ]
         }
@@ -32,17 +31,17 @@ class Injector(Process):
     def default_settings(self):
         default_settings = {
             'state': {
-                self.port: {
+                'internal': {
                     substrate: 0 for substrate in self.substrate_rate_map
                 }
             },
-            'emitter_keys': {self.port: self.substrate_rate_map.keys},
+            'emitter_keys': {'internal': self.substrate_rate_map.keys},
         }
         return default_settings
 
     def next_update(self, timestep, states):
         return {
-            self.port: {
+            'internal': {
                 substrate: timestep * rate
                 for substrate, rate in self.substrate_rate_map.items()
             }
@@ -52,7 +51,6 @@ class Injector(Process):
 def run_injector():
     parameters = {
         'substrate_rate_map': {'toy': 1.0},
-        'port': 'cell',
         }
     injector = Injector(parameters)
     settings = {
@@ -67,7 +65,7 @@ def test_injector():
     timeseries = run_injector()
     # Expect [0, 1, ..., 10] because 0 at start
     expected = [i for i in range(11)]
-    assert expected == timeseries['cell']['toy']
+    assert expected == timeseries['internal']['toy']
 
 
 def main():

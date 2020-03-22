@@ -145,14 +145,12 @@ def compose_toy_death(config):
         'substrate_rate_map': {
             'antibiotic': TOY_INJECTION_RATE,
         },
-        'port': 'internal',
     }
     injector_process = Injector(injector_parameters)
     enduring_parameters = {
         'substrate_rate_map': {
             'enduring_antibiotic': TOY_INJECTION_RATE,
         },
-        'port': 'internal',
     }
     enduring_process = Injector(enduring_parameters)
     processes = [
