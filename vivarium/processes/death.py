@@ -15,6 +15,7 @@ from vivarium.compartment.process import (
     load_compartment,
     COMPARTMENT_STATE,
 )
+from vivarium.processes.injector import Injector
 
 
 TOY_ANTIBIOTIC_THRESHOLD = 5.0
@@ -130,34 +131,6 @@ class DeathFreezeState(Process):
         return {}
 
 
-class ToyAntibioticInjector(Process):
-
-    def __init__(self, initial_parameters=None):
-        if initial_parameters is None:
-            initial_parameters = {}
-        self.injection_rate = initial_parameters.get(
-            'injection_rate', 1.0)
-        self.antibiotic_name = initial_parameters.get(
-            'antibiotic_name', 'antibiotic')
-        ports = {'internal': [self.antibiotic_name]}
-        super(ToyAntibioticInjector, self).__init__(ports, initial_parameters)
-
-    def default_settings(self):
-        default_settings = {
-            'state': {
-                'internal': {
-                    self.antibiotic_name: 0.0
-                }
-            },
-            'emitter_keys': {self.antibiotic_name},
-        }
-        return default_settings
-
-    def next_update(self, timestep, states):
-        delta = timestep * self.injection_rate
-        return {'internal': {self.antibiotic_name: delta}}
-
-
 def compose_toy_death(config):
     death_parameters = {
         'detectors': {
@@ -170,13 +143,16 @@ def compose_toy_death(config):
     death_process = DeathFreezeState(death_parameters)
     injector_parameters = {
         'injection_rate': TOY_INJECTION_RATE,
+        'substrate': 'antibiotic',
+        'port': 'internal',
     }
-    injector_process = ToyAntibioticInjector(injector_parameters)
+    injector_process = Injector(injector_parameters)
     enduring_parameters = {
         'injection_rate': TOY_INJECTION_RATE,
-        'antibiotic_name': 'enduring_antibiotic'
+        'substrate': 'enduring_antibiotic',
+        'port': 'internal',
     }
-    enduring_process = ToyAntibioticInjector(enduring_parameters)
+    enduring_process = Injector(enduring_parameters)
     processes = [
         {
             'death': death_process,
