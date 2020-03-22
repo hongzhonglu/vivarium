@@ -69,13 +69,13 @@ class RnaDegradation(Process):
     def default_settings(self):
         default_state = {
             'transcripts': {
-                transcript: 1e3
+                transcript: 10
                 for transcript in self.transcript_order},
             'proteins': {
-                protein: 1e2
+                protein: 1
                 for protein in self.protein_order},
             'molecules': {
-                nucleotide: 1e4
+                nucleotide: 100
                 for nucleotide in self.molecule_order}}
 
         default_emitter_keys = {
