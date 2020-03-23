@@ -192,7 +192,12 @@ def simulate_process(process, settings={}):
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
-    requires processes made for LatticeCompartment, with environment_port and exchange_port
+    Requires:
+        - a compartment with environment_port and exchange_port
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     # parameters

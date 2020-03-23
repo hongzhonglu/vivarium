@@ -650,6 +650,12 @@ def load_compartment(composite=toy_composite, boot_config={}):
 def simulate_compartment(compartment, settings={}):
     '''
     run a compartment simulation
+        Requires:
+        - a compartment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     timestep = settings.get('timestep', 1)
