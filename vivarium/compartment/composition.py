@@ -667,6 +667,6 @@ class TestSimulateProcess:
         expected_masses = [
             # Mass stops increasing the iteration after mass > 5 because
             # cell dies
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
         masses = timeseries['global']['mass']
         assert masses == expected_masses
