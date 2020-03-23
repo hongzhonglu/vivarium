@@ -88,7 +88,6 @@ if __name__ == '__main__':
     # run simulation
     settings = {
         'total_time': 800,
-        'emit_timeseries': True,
     }
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 

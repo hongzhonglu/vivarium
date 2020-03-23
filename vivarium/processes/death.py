@@ -100,7 +100,7 @@ class DeathFreezeState(Process):
                     'dead': 0,
                 },
             },
-            'emitter_keys': {},
+            'emitter_keys': {'global': ['dead']},
             'updaters': {
                 'compartment': {'processes': 'set'},
                 'global': {'dead': 'set'},
@@ -219,34 +219,39 @@ def test_death_freeze_state(end_time=10, asserts=True):
     compartment = load_compartment(compose_toy_death)
     settings = {
         'timeline': [(end_time, {})],
-        'emit_timeseries': True,
     }
     saved_states = simulate_compartment(compartment, settings)
     if asserts:
         # Add 1 because dies when antibiotic strictly above threshold
         expected_death = 1 + TOY_ANTIBIOTIC_THRESHOLD // TOY_INJECTION_RATE
         expected_saved_states = {
-            time: {
-                'cell': {
-                    'antibiotic': (
-                        time * TOY_INJECTION_RATE
-                        if time <= expected_death
-                        # Add one because death will only be detected
-                        # the iteration after antibiotic above
-                        # threshold. This happens because death and
-                        # injector run "concurrently" in the composite,
-                        # so their updates are applied after both have
-                        # finished.
-                        else (expected_death + 1) * TOY_INJECTION_RATE
-                    ),
-                    'enduring_antibiotic': time * TOY_INJECTION_RATE,
-                },
-                'global': {
-                    'dead': 0 if time <= expected_death else 1,
-                },
-            }
-            for time in range(end_time + 1)
+            'cell': {
+                'antibiotic': [],
+                'enduring_antibiotic': [],
+            },
+            'global': {
+                'dead': [],
+            },
+            'time': [],
         }
+        for i in range(end_time):
+            time = i + 1
+            expected_saved_states['cell']['antibiotic'].append(
+                time * TOY_INJECTION_RATE
+                if time <= expected_death
+                # Add one because death will only be detected
+                # the iteration after antibiotic above
+                # threshold. This happens because death and
+                # injector run "concurrently" in the composite,
+                # so their updates are applied after both have
+                # finished.
+                else (expected_death + 1) * TOY_INJECTION_RATE
+            )
+            expected_saved_states['cell']['enduring_antibiotic'].append(
+                time * TOY_INJECTION_RATE)
+            expected_saved_states['global']['dead'].append(
+                0 if time <= expected_death else 1)
+            expected_saved_states['time'].append(time)
         assert expected_saved_states == saved_states
 
     return saved_states

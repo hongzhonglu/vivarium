@@ -146,7 +146,6 @@ def run_antibiotics_composite():
     settings = {
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
-        'emit_timeseries': True,
         'environment_volume': 1e-5,  # L
         'timestep': 1,
         'total_time': DIVISION_TIME * NUM_DIVISIONS,

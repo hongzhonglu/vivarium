@@ -192,7 +192,12 @@ def simulate_process(process, settings={}):
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
-    requires processes made for LatticeCompartment, with environment_port and exchange_port
+    Requires:
+        - a compartment with environment_port and exchange_port
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     # parameters
@@ -216,7 +221,7 @@ def simulate_with_environment(compartment, settings={}):
     timestep = compartment.time_step
 
     # data settings
-    emit_timeseries = settings.get('emit_timeseries', False)
+    return_raw_data = settings.get('return_raw_data', False)
 
     ## run simulation
     time = 0
@@ -244,10 +249,10 @@ def simulate_with_environment(compartment, settings={}):
             reset_exchange = {key: 0 for key in exchange_ids}
             exchange.assign_values(reset_exchange)
 
-    if emit_timeseries:
-        return compartment.emitter.get_timeseries()
-    else:
+    if return_raw_data:
         return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 def convert_to_timeseries(sim_output):
     '''
@@ -661,13 +666,12 @@ class TestSimulateProcess:
         process = ToyLinearGrowthDeathProcess()
         settings = {
             'compartment_state_port': 'compartment',
-            'emit_timeseries': True,
         }
         timeseries = simulate_process(process, settings)
         expected_masses = [
             # Mass stops increasing the iteration after mass > 5 because
             # cell dies
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
         masses = timeseries['global']['mass']
         assert masses == expected_masses
 
@@ -697,13 +701,19 @@ def load_compartment(composite, boot_config={}):
 def simulate_compartment(compartment, settings={}):
     '''
     run a compartment simulation
+        Requires:
+        - a compartment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
 
     # data settings
-    emit_timeseries = settings.get('emit_timeseries', False)
+    return_raw_data = settings.get('return_raw_data', False)
 
     # run simulation
     time = 0
@@ -711,10 +721,10 @@ def simulate_compartment(compartment, settings={}):
         time += timestep
         compartment.update(timestep)
 
-    if emit_timeseries:
-        return compartment.emitter.get_timeseries()
-    else:
+    if return_raw_data:
         return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 
 ## functions for testing

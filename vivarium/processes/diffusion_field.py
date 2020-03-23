@@ -19,6 +19,7 @@ AVOGADRO = constants.N_A
 DIFFUSION_CONSTANT = 5e-1
 DEFAULT_DEPTH = 3000.0  # um
 
+AGENT_KEYS = ['location', 'exchange', 'local_environment']
 
 def gaussian(deviation, distance):
     return np.exp(-np.power(distance, 2.) / (2 * np.power(deviation, 2.)))
@@ -181,8 +182,8 @@ class DiffusionField(Process):
 
         # make ports
         ports = {
-            'fields': self.molecule_ids,
-            'agents': list(self.initial_agents.keys())}
+             'fields': self.molecule_ids,
+             'agents': list(self.initial_agents.keys())}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -192,13 +193,13 @@ class DiffusionField(Process):
     def default_settings(self):
         schema = {
             'agents': {agent_id : {'updater': 'merge'}
-                for agent_id in self.ports['agents']}}
+                   for agent_id in self.ports['agents']}}
 
         return {
             'schema': schema,
             'state': {
-                'fields': self.initial_state,
-                'agents': self.initial_agents}}
+                 'fields': self.initial_state,
+                 'agents': self.initial_agents}}
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -368,7 +369,9 @@ def get_gaussian_config(n_bins=(10, 10)):
 
 def get_secretion_agent_config(molecules=['glc'], n_bins=[10, 10]):
     agent = {
-        'location': [n_bins[0]/4, n_bins[1]/4],
+        'location': [
+                np.random.uniform(0, n_bins[0]),
+                np.random.uniform(0, n_bins[1])],
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}
     agents = {'1': agent}

@@ -32,6 +32,7 @@ def compose_lattice_environment(config):
 
     # get the agents
     agents_config = config.get('agents', {})
+    agent_ids = list(agents_config.keys())
 
     ## Declare the processes.
     # multibody physics

@@ -105,7 +105,6 @@ if __name__ == '__main__':
     # run simulation
     settings = {
         'total_time': 100,
-        'emit_timeseries': True,
     }
     timeseries = simulate_compartment(gfp_expression_compartment, settings)
 

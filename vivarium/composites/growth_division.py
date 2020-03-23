@@ -93,7 +93,7 @@ if __name__ == '__main__':
         'environment_volume': 1e-6,  # L
         'timestep': 1,
         'total_time': 100,
-        'emit_timeseries': True,}
+    }
 
     plot_settings = {
         'max_rows': 25,

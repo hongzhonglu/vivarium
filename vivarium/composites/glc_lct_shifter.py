@@ -168,7 +168,6 @@ if __name__ == '__main__':
         'exchange_port': options['exchange_port'],
         'environment_volume': 2e-13,  # L
         'timeline': timeline,
-        'emit_timeseries': True,
     }
 
     plot_settings = {

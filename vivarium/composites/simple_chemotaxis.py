@@ -126,7 +126,6 @@ if __name__ == '__main__':
         'environment_port': ENVIRONMENT_PORT,
         'environment_volume': 1e-13,  # L
         'timeline': timeline,
-        'emit_timeseries': True,
     }
 
     timeseries = simulate_with_environment(compartment, settings)

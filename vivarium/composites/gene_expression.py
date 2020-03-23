@@ -167,7 +167,6 @@ if __name__ == '__main__':
     # run simulation
     sim_settings = {
         'total_time': 100,
-        'emit_timeseries': True,
     }
     timeseries = simulate_compartment(gene_expression_compartment, sim_settings)
 

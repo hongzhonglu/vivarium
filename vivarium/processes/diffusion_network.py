@@ -266,7 +266,6 @@ def test_diffusion_network(config = get_two_compartment_config(), time=10):
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-2,
-        'emit_timeseries': True,
     }
 
     return simulate_process_with_environment(diffusion, settings)
