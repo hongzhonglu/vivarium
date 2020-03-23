@@ -1,10 +1,9 @@
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
+from vivarium.utils.constants import ECOLI_GENOME_PATH
 from vivarium.data.knowledge_base import KnowledgeBase
 
 knowledge_base = KnowledgeBase()
-
-ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
 
 ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
 
