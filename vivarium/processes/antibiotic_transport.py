@@ -18,7 +18,7 @@ DEFAULT_INITIAL_STATE = {
     'internal': {
         'porin': 1.0,  # Membrane pore through which antibiotics enter
         # EcoCyc ID: TRANS-CPLX-201
-        'AcrAB-TolC': 1.0,  # Efflux pump complex
+        'acrAB-tolC': 1.0,  # Efflux pump complex
         'antibiotic': 0.0,
     },
     'external': {
@@ -67,7 +67,7 @@ class AntibioticTransport(ConvenienceKinetics):
                     },
                     'is_reversible': False,
                     'catalyzed by': [
-                        ('internal', 'AcrAB-TolC')],
+                        ('internal', 'acrAB-tolC')],
                 },
             },
             'kinetic_parameters': {
@@ -78,7 +78,7 @@ class AntibioticTransport(ConvenienceKinetics):
                     },
                 },
                 'antibiotic_export': {
-                    ('internal', 'AcrAB-TolC'): {
+                    ('internal', 'acrAB-tolC'): {
                         'kcat_f': acrABTolC_kcat,
                         ('internal', 'antibiotic'): acrABTolC_km,
                     },
@@ -88,7 +88,7 @@ class AntibioticTransport(ConvenienceKinetics):
             'ports': {
                 'internal': [
                     'porin',
-                    'AcrAB-TolC',
+                    'acrAB-tolC',
                     'antibiotic',
                 ],
                 'external': ['antibiotic'],
