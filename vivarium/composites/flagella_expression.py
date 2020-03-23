@@ -1,6 +1,6 @@
 import os
-from vivarium.utils.units import units
 
+from vivarium.compartment.process import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
@@ -8,9 +8,7 @@ from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import generate_template, UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
-from vivarium.environment.make_media import Media
 
-from vivarium.processes.derive_globals import AVOGADRO
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -80,9 +78,6 @@ def generate_flagella_compartment(config):
     return compose_gene_expression(flagella_expression_config)
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment, simulate_compartment
-    from vivarium.compartment.composition import convert_to_timeseries
-
     out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -92,10 +87,9 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 800}
-    saved_state = simulate_compartment(flagella_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_state)
+        'total_time': 800,
+    }
+    timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
     plot_config = {
         'name': 'flagella_expression',

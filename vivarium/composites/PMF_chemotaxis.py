@@ -2,9 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state, load_compartment
-from vivarium.compartment.composition import get_derivers, simulate_with_environment, \
-    convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.process import (
+    initialize_state,
+    load_compartment
+)
+from vivarium.compartment.composition import (
+    get_derivers,
+    simulate_with_environment,
+    plot_simulation_output
+)
 
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
@@ -119,7 +125,8 @@ if __name__ == '__main__':
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
         'environment_volume': 1e-13,
-        'timeline': timeline}
+        'timeline': timeline,
+    }
 
     plot_settings = {
         'max_rows': 20,
@@ -129,7 +136,5 @@ if __name__ == '__main__':
         'skip_ports': [
             'prior_state', 'null']}
 
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(timeseries, plot_settings, out_dir)

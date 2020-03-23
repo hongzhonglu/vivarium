@@ -353,8 +353,11 @@ class Compartment(Store):
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
-        elif emitter_type == 'null':
-            emitter = emit.get_emitter({'type': 'null'})
+        elif isinstance(emitter_type, str):
+            emitter = emit.configure_emitter(
+                {'emitter': {'type': emitter_type}},
+                self.processes,
+                self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
         else:
@@ -639,35 +642,38 @@ def load_compartment(composite=toy_composite, boot_config={}):
     states = composite_config['states']
     options = composite_config['options']
     options.update({
-        'emitter': boot_config.get('emitter'),
+        'emitter': boot_config.get('emitter', 'timeseries'),
         'time_step': boot_config.get('time_step', 1.0)})
 
-    compartment = Compartment(processes, states, options)
-    # print('current_parameters: {}'.format(compartment.current_parameters()))
-    # print('current_state: {}'.format(compartment.current_state()))
-
-    return compartment
+    return Compartment(processes, states, options)
 
 def simulate_compartment(compartment, settings={}):
     '''
     run a compartment simulation
+        Requires:
+        - a compartment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
 
-    # save initial state
-    time = 0
-    saved_state = {}
-    saved_state[time] = compartment.current_state()
+    # data settings
+    return_raw_data = settings.get('return_raw_data', False)
 
     # run simulation
+    time = 0
     while time < total_time:
         time += timestep
         compartment.update(timestep)
-        saved_state[time] = compartment.current_state()
 
-    return saved_state
+    if return_raw_data:
+        return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 
 if __name__ == '__main__':

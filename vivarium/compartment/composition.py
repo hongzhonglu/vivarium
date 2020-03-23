@@ -145,6 +145,7 @@ def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
     process_settings = process.default_settings()
     compartment_state_port = settings.get('compartment_state_port')
+    emitter = settings.get('emitter', 'timeseries')
 
     processes = [{'process': process}]
     topology = {
@@ -173,7 +174,8 @@ def process_in_compartment(process, settings={}):
     states = initialize_state(processes, topology, state_dict)
 
     options = {
-        'topology': topology}
+        'topology': topology,
+        'emitter': emitter}
 
     return Compartment(processes, states, options)
 
@@ -190,7 +192,12 @@ def simulate_process(process, settings={}):
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.
-    requires processes made for LatticeCompartment, with environment_port and exchange_port
+    Requires:
+        - a compartment with environment_port and exchange_port
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
     '''
 
     # parameters
@@ -213,12 +220,11 @@ def simulate_with_environment(compartment, settings={}):
     end_time = timeline[-1][0]
     timestep = compartment.time_step
 
-    # initialize saved_state
-    saved_state = {}
+    # data settings
+    return_raw_data = settings.get('return_raw_data', False)
 
     ## run simulation
     time = 0
-    saved_state[time] = compartment.current_state()
     while time < end_time:
         time += timestep
         for (t, change_dict) in timeline:
@@ -243,9 +249,10 @@ def simulate_with_environment(compartment, settings={}):
             reset_exchange = {key: 0 for key in exchange_ids}
             exchange.assign_values(reset_exchange)
 
-        saved_state[time] = compartment.current_state()
-
-    return saved_state
+    if return_raw_data:
+        return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 def convert_to_timeseries(sim_output):
     '''
@@ -628,6 +635,8 @@ class ToyLinearGrowthDeathProcess(Process):
 
     def default_settings(self):
         default_settings = {
+            'emitter_keys': {
+                'global': ['mass']},
             'state': {
                 'global': {
                     'mass': 0.0
@@ -658,13 +667,10 @@ class TestSimulateProcess:
         settings = {
             'compartment_state_port': 'compartment',
         }
-        saved_total_states = simulate_process(
-            process, settings)
-        timeseries = convert_to_timeseries(
-            saved_total_states)
+        timeseries = simulate_process(process, settings)
         expected_masses = [
             # Mass stops increasing the iteration after mass > 5 because
             # cell dies
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
         masses = timeseries['global']['mass']
         assert masses == expected_masses

@@ -7,7 +7,6 @@ from scipy import constants
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
-    convert_to_timeseries,
     plot_simulation_output,
     flatten_timeseries,
     save_timeseries,
@@ -64,7 +63,10 @@ class ConvenienceKinetics(Process):
         default_state = self.initial_state
 
         # default emitter keys
-        default_emitter_keys = {}
+        emit_ports = ['internal', 'external']
+        default_emitter_keys = {
+            port: state_list
+            for port, state_list in self.ports.items() if port in emit_ports}
 
         # schema
         schema = {
@@ -246,9 +248,7 @@ def test_convenience_kinetics(end_time=1000):
 
 
 def test_convenience_kinetics_correlated_to_reference():
-    saved_data = test_convenience_kinetics()
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_convenience_kinetics()
     flattened = flatten_timeseries(timeseries)
     reference_timeseries = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
@@ -262,8 +262,6 @@ if __name__ == '__main__':
 
     plot_settings = {}
 
-    saved_data = test_convenience_kinetics()
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_convenience_kinetics()
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
