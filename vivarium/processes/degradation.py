@@ -143,7 +143,6 @@ def test_rna_degradation(end_time=100):
     settings = {
         'timestep': 1,
         'total_time': end_time,
-        'emit_timeseries': True,
     }
     return simulate_process(rna_degradation, settings)
 

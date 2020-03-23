@@ -220,7 +220,6 @@ def test_death_freeze_state(end_time=10, asserts=True):
     compartment = load_compartment(compose_toy_death)
     settings = {
         'timeline': [(end_time, {})],
-        'emit_timeseries': True,
     }
     saved_states = simulate_compartment(compartment, settings)
     if asserts:

@@ -656,7 +656,7 @@ def simulate_compartment(compartment, settings={}):
     total_time = settings.get('total_time', 10)
 
     # data settings
-    emit_timeseries = settings.get('emit_timeseries', False)
+    return_raw_data = settings.get('return_raw_data', False)
 
     # run simulation
     time = 0
@@ -664,10 +664,10 @@ def simulate_compartment(compartment, settings={}):
         time += timestep
         compartment.update(timestep)
 
-    if emit_timeseries:
-        return compartment.emitter.get_timeseries()
-    else:
+    if return_raw_data:
         return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 
 if __name__ == '__main__':

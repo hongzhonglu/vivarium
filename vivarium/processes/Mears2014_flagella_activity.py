@@ -291,7 +291,6 @@ def test_activity(parameters=default_params, timeline=default_timeline):
     settings = {
         'timeline': timeline,
         'environment_port': 'external',
-        'emit_timeseries': True,
     }
 
     return simulate_process_with_environment(motor, settings)

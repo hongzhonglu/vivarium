@@ -134,7 +134,6 @@ def run_antibiotic_transport():
         'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-15,  # Units of L
-        'emit_timeseries': True,
     }
     return simulate_process_with_environment(process, settings)
 

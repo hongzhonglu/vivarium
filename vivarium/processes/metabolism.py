@@ -310,7 +310,6 @@ def save_network(config, out_dir='out'):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-6,  # L
-        'emit_timeseries': True,
         'timestep': 1,
         'total_time': 10}
 
@@ -487,7 +486,6 @@ def test_BiGG_metabolism(settings={}):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-6,  # L
-        'emit_timeseries': True,
         'timestep': 1,
         'timeline': [(10, {})]}
     sim_settings.update(settings)
@@ -520,7 +518,6 @@ def test_toy_metabolism(out_dir='out'):
         'environment_port': 'external',
         'exchange_port': 'exchange',
         'environment_volume': 1e-14,  # L
-        'emit_timeseries': True,
         'timestep': 1,
         'timeline': timeline}
 

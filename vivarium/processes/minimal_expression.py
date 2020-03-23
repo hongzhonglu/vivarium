@@ -115,7 +115,6 @@ def test_expression(end_time=10):
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
         'environment_volume': 1e-12,
-        'emit_timeseries': True,
     }
 
     compartment = process_in_compartment(expression)

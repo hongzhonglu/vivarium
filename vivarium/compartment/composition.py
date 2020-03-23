@@ -216,7 +216,7 @@ def simulate_with_environment(compartment, settings={}):
     timestep = compartment.time_step
 
     # data settings
-    emit_timeseries = settings.get('emit_timeseries', False)
+    return_raw_data = settings.get('return_raw_data', False)
 
     ## run simulation
     time = 0
@@ -244,10 +244,10 @@ def simulate_with_environment(compartment, settings={}):
             reset_exchange = {key: 0 for key in exchange_ids}
             exchange.assign_values(reset_exchange)
 
-    if emit_timeseries:
-        return compartment.emitter.get_timeseries()
-    else:
+    if return_raw_data:
         return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
 
 def convert_to_timeseries(sim_output):
     '''
@@ -661,7 +661,6 @@ class TestSimulateProcess:
         process = ToyLinearGrowthDeathProcess()
         settings = {
             'compartment_state_port': 'compartment',
-            'emit_timeseries': True,
         }
         timeseries = simulate_process(process, settings)
         expected_masses = [

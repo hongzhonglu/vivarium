@@ -239,7 +239,6 @@ def test_convenience_kinetics(end_time=1000):
     settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
-        'emit_timeseries': True,
         'environment_volume': 1e-13,  # L
         'timestep': 1,
         'total_time': end_time}
