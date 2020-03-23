@@ -37,7 +37,7 @@ def build_complexation_stoichiometry(
             matrix[reaction_index][reverse_index[molecule_id]] = level
 
     return matrix, rates_array
-    
+
 
 class Complexation(Process):
     def __init__(self, initial_parameters={}):
@@ -70,11 +70,17 @@ class Complexation(Process):
     def default_settings(self):
         default_state = {
             'monomers': {monomer_id: 1000 for monomer_id in self.monomer_ids},
-            'complexes': {complex_id: 0 for complex_id in self.complex_ids}}
+            'complexes': {complex_id: 0 for complex_id in self.complex_ids}
+        }
+        emitter_keys = {
+            'complexes': self.complex_ids,
+        }
 
         return {
             'state': default_state,
-            'parameters': self.parameters}
+            'parameters': self.parameters,
+            'emitter_keys': emitter_keys,
+        }
 
     def next_update(self, timestep, states):
         monomers = states['monomers']
