@@ -317,4 +317,83 @@ install the Python packages Vivarim uses.
 
 Now you are all set to run Vivarium!
 
-.. todo:: run simulations
+---------------
+Run Simulations
+---------------
+
+Some Terminology: Processes and Composites
+==========================================
+
+In Vivarium, we break our cell models into *processes*. Each process
+models part of the cell's function. For example, we have processes for
+metabolism, transcription, and translation in Vivarium. We can combine
+these processes into *composites* that model a cell with all of the
+functionality modeled by the included processes. For example, we could
+compose transcription and translation to create a more complete gene
+expression model.
+
+.. todo:: Link to topical guide on processes and composites
+
+In Vivarium, we store processes in ``vivarium/vivarium/processes`` and
+composites in ``vivarium/vivarium/composites``.
+
+Running Processes and Composites in Isolation
+=============================================
+
+Every process and composite can be run by itself. While this is not
+particularly useful for modeling cells or colonies, it may help
+illustrate what the process or composite does. To run a process or
+composite, you can simply execute the Python file that defines it. For
+example, we can run the degradation process like this:
+
+.. code-block:: console
+
+    $ python vivarium_work/vivarium/vivarium/processes/degradation.py
+    ...
+
+Don't worry about the output--it's only useful for developers. You will
+see that a new folder has been created at
+``vivarium_work/vivarium/vivarium/out/tests``. This is where we store
+the output from running processes and composites in isolation. For the
+degradation process, the output is in the ``degradation`` folder inside
+``tests``. Here you'll find a ``simulation.png`` file that looks like
+this:
+
+.. image:: ./_static/degradation_plots.png
+    :width: 100%
+    :alt: Four columns of plots, each of which has the plotted value on
+        the y-axis and time on the x-axis. In the first column, we see
+        the concentration of transcripts decreasing linearly with time,
+        while in the third column concentrations of the four RNA
+        nucleotides increase linearly with time. In the second column a
+        plot of the concentration of endoRNAse is a horizontal line, and
+        in the fourth column plots of metrics like density, volume, and
+        mass are all constant.
+
+This shows quickly that this degradation process removes transcripts and
+returns the RNA nucleotides to the cell.
+
+Some processes also produce the data from which the plots were produced.
+This is saved in ``simulation_data.csv``. Try running the
+``convenience_kinetics`` process to see how this works!
+
+Lastly, try running the ``flagella_expression`` composite like this:
+
+.. code-block:: console
+
+    $ python vivarium_work/vivarium/vivarium/composites/flagella_expression.py
+
+Now in the ``flagella_expression_composite`` in ``tests``, you should
+see an image containing a plot like this:
+
+.. image:: ./_static/flagella_expression_aa_plot.png
+    :width: 100%
+    :alt: Five plots showing the concentrations of various polymerases,
+        nucleotides, amino acids, transcripts, and proteins over time.
+        The amino acid plot shows one amino acid running out first.
+
+Notice that even from this minimal simulation, we can tell which amino
+acid is limiting! In this case the colors are so similar that it's hard
+to tell, but the limiting amino acid is either alanine or leucine.
+
+.. todo:: Is alanine or leucine limiting?
