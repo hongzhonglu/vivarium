@@ -6,8 +6,11 @@ import random
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.regulation_logic import build_rule
-from vivarium.compartment.composition import process_in_compartment, simulate_with_environment, convert_to_timeseries, \
+from vivarium.compartment.composition import (
+    process_in_compartment,
+    simulate_with_environment,
     plot_simulation_output
+)
 
 
 
@@ -107,12 +110,12 @@ def test_expression(end_time=10):
     # load process
     expression = MinimalExpression(expression_config)
 
-
     settings = {
         'total_time': 100,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
-        'environment_volume': 1e-12}
+        'environment_volume': 1e-12,
+    }
 
     compartment = process_in_compartment(expression)
     return simulate_with_environment(compartment, settings)
@@ -123,8 +126,6 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    saved_data = test_expression(1000)
-    del saved_data[0] # remove first state
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_expression(1000)
     plot_simulation_output(timeseries, {}, out_dir)
 

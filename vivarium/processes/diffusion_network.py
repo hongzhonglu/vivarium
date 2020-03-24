@@ -8,7 +8,6 @@ import numpy as np
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
-    convert_to_timeseries,
     plot_simulation_output)
 
 
@@ -132,11 +131,19 @@ class DiffusionNetwork(Process):
 
 
     def default_settings(self):
+
+        # emitter keys
+        emitter_keys = {port_id: keys for port_id, keys in self.ports.items()}
+
+        # initial_state
         initial_state = {
             'membrane_composition': self.initial_membrane}
         initial_state.update(self.initial_concentrations)
+
         return {
-            'state': initial_state}
+            'state': initial_state,
+            'emitter_keys': emitter_keys
+        }
 
     def next_update(self, timestep, states):
         concentrations = {
@@ -258,7 +265,8 @@ def test_diffusion_network(config = get_two_compartment_config(), time=10):
         'total_time': time,
         # 'exchange_port': 'exchange',
         'environment_port': 'external',
-        'environment_volume': 1e-2}
+        'environment_volume': 1e-2,
+    }
 
     return simulate_process_with_environment(diffusion, settings)
 
@@ -357,12 +365,10 @@ if __name__ == '__main__':
 
     # 2-site network
     config = get_two_compartment_config()
-    saved_data = test_diffusion_network(config, 20)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_diffusion_network(config, 20)
     plot_simulation_output(timeseries, {}, out_dir, '2_sites')
 
     # grid network
     config = get_grid_config()
-    saved_data = test_diffusion_network(config, 30)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_diffusion_network(config, 30)
     plot_diffusion_field_output(timeseries, config, out_dir, 'grid')

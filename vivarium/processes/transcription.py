@@ -150,7 +150,8 @@ class Transcription(Process):
 
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
+            'molecules': self.monomer_ids,
+            'proteins': [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
         schema = {

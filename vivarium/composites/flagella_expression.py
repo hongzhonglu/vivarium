@@ -1,8 +1,12 @@
 import os
+<<<<<<< HEAD
 
 import matplotlib.pyplot as plt
 import numpy as np
+=======
+>>>>>>> 9a604c059c91f9e7133e6157e046e7d877a6c15a
 
+from vivarium.compartment.process import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
@@ -11,7 +15,10 @@ from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9a604c059c91f9e7133e6157e046e7d877a6c15a
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -144,9 +151,6 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment, simulate_compartment
-    from vivarium.compartment.composition import convert_to_timeseries
-
     out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -155,10 +159,10 @@ if __name__ == '__main__':
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
-    settings = {'total_time': 2400}
-    saved_state = simulate_compartment(flagella_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_state)
+    settings = {
+        'total_time': 2400,
+    }
+    timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
     plot_config = {
         'name': 'flagella_expression',
