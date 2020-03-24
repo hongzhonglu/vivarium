@@ -20,8 +20,6 @@ you'll probably enjoy the pretty HTML version more.
 If you want to generate the HTML documentation yourself, check out the
 instructions on building documentation :ref:`below <building-docs>`.
 
-.. todo:: Add link to section on building docs
-
 =====================
 Writing Documentation
 =====================
