@@ -40,6 +40,10 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# Causes warnings to be thrown for all unresolvable references. This
+# will help avoid broken links.
+nitpicky = True
+
 
 # -- Options for HTML output -------------------------------------------------
 
