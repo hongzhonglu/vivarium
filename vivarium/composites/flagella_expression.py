@@ -50,7 +50,7 @@ def generate_flagella_compartment(config):
 
             'sequences': flagella.operon_sequences,
             'templates': flagella.transcript_templates,
-            'concentration_keys': ['CRP', 'flhDC'],
+            'concentration_keys': ['CRP', 'flhDC', 'fliA'],
             'transcript_affinities': flagella.transcript_affinities,
 
             'elongation_rate': 22,
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
-    settings = {'total_time': 1000}
+    settings = {'total_time': 2400}
     saved_state = simulate_compartment(flagella_expression_compartment, settings)
     del saved_state[0]  # remove the first state
     timeseries = convert_to_timeseries(saved_state)
