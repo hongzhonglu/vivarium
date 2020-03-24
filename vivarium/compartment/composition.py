@@ -254,29 +254,6 @@ def simulate_with_environment(compartment, settings={}):
     else:
         return compartment.emitter.get_timeseries()
 
-def convert_to_timeseries(sim_output):
-    '''
-    input:
-        - saved_states (dict) with {timestep: state_dict}
-    returns:
-        - timeseries (dict) with timeseries in lists {'time': [], 'port1': {'state': []}}
-    TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
-    '''
-
-    time_vec = list(sim_output.keys())
-    initial_state = sim_output[time_vec[0]]
-    timeseries = {port: {state: []
-        for state, initial in states.items()}
-        for port, states in initial_state.items()}
-    timeseries['time'] = time_vec
-
-    for time, all_states in sim_output.items():
-        for port, states in all_states.items():
-            for state_id, state in states.items():
-                timeseries[port][state_id].append(state)
-
-    return timeseries
-
 
 def set_axes(ax, show_xaxis=False):
     ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))

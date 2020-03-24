@@ -5,8 +5,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 import random
 import math
-import copy
-import uuid
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,12 +16,9 @@ import pymunk
 # vivarium imports
 from vivarium.compartment.process import (
     Process,
-    Store,
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
-    simulate_process,
-    process_in_compartment,
-    convert_to_timeseries)
+    simulate_process)
 
 
 # constants
@@ -137,9 +133,14 @@ class Multibody(Process):
         schema = {'agents': {agent_id: {'updater': 'merge'}
                 for agent_id, agent in agents.items()}}
 
+        default_emitter_keys = {
+            port_id: keys for port_id, keys in self.ports.items()}
+
         return {
             'state': state,
-            'schema': schema,}
+            'schema': schema,
+            'emitter_keys': default_emitter_keys,
+        }
 
     def next_update(self, timestep, states):
         agents = states['agents']
@@ -455,7 +456,6 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = random_body_config(get_n_dummy_agents(10))
-    saved_data = test_multibody(config, 20)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_multibody(config, 20)
     plot_snapshots(timeseries, config, out_dir, 'bodies')
 

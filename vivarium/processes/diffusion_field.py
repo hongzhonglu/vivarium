@@ -8,9 +8,7 @@ from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import (
-    simulate_process,
-    convert_to_timeseries)
+from vivarium.compartment.composition import simulate_process
 
 
 # laplacian kernel for diffusion
@@ -195,11 +193,16 @@ class DiffusionField(Process):
             'agents': {agent_id : {'updater': 'merge'}
                    for agent_id in self.ports['agents']}}
 
+        default_emitter_keys = {
+            port_id: keys for port_id, keys in self.ports.items()}
+
         return {
             'schema': schema,
+            'emitter_keys': default_emitter_keys,
             'state': {
                  'fields': self.initial_state,
-                 'agents': self.initial_agents}}
+                 'agents': self.initial_agents}
+        }
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -414,16 +417,13 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_random_field_config()
-    saved_data = test_diffusion_field(config, 10)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_diffusion_field(config, 10)
     plot_field_output(timeseries, config, out_dir, 'random_field')
 
     gaussian_config = get_gaussian_config()
-    gaussian_data = test_diffusion_field(gaussian_config, 10)
-    gaussian_timeseries = convert_to_timeseries(gaussian_data)
+    gaussian_timeseries = test_diffusion_field(gaussian_config, 10)
     plot_field_output(gaussian_timeseries, gaussian_config, out_dir, 'gaussian_field')
 
     secretion_config = get_secretion_agent_config()
-    secretion_data = test_diffusion_field(secretion_config, 10)
-    secretion_timeseries = convert_to_timeseries(secretion_data)
+    secretion_timeseries = test_diffusion_field(secretion_config, 10)
     plot_field_output(secretion_timeseries, secretion_config, out_dir, 'secretion')

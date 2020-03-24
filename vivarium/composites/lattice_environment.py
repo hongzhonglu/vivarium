@@ -6,10 +6,7 @@ from vivarium.compartment.process import (
     initialize_state,
     load_compartment,
 )
-from vivarium.compartment.composition import (
-    simulate_compartment,
-    convert_to_timeseries
-)
+from vivarium.compartment.composition import simulate_compartment
 
 # processes
 from vivarium.processes.multibody_physics import (
@@ -108,8 +105,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_lattice_config()
-    saved_data = test_lattice_environment(config, 10)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_lattice_environment(config, 10)
     plot_field_output(timeseries, config, out_dir, 'lattice_field')
     plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')
     
