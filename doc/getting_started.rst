@@ -423,6 +423,8 @@ to tell, but the limiting amino acid is either alanine or leucine.
 
 .. todo:: Is alanine or leucine limiting?
 
+.. _agents-in-terminal-windows:
+
 Running Agents in Terminal Windows
 ==================================
 
@@ -544,8 +546,8 @@ should see the cells shift to consuming lactose.
 
 .. todo:: Instructions for debugging in this mode
 
-#. First, let's create a ``glc_lct`` environment agent. This is a kind
-   of lattice environment. Lattice environments discretize the
+#. First, let's create a ``ecoli_core_glc`` environment agent. This is a
+   kind of lattice environment. Lattice environments discretize the
    simulation space into a two-dimensional grid, each region of which
    has the same depth. Each region has uniform metabolite
    concentrations, but metabolite concentrations differ between regions,
@@ -555,7 +557,7 @@ should see the cells shift to consuming lactose.
 
    .. code-block:: console
    
-        $ python -m vivarium.environment.boot --type glc_lct --id env
+        $ python -m vivarium.environment.boot --type ecoli_core_glc --id env
         environment started
 
    .. note:: Wait for the ``environment started`` to show up before
@@ -591,8 +593,6 @@ should see the cells shift to consuming lactose.
         {'event': 'ENVIRONMENT_SYNCHRONIZE', 'inner_id': 'c1',
         'outer_id': 'env', 'state': { ... }}
 
-
-
 #. Now we can start the simulation!
 
    .. code-block:: console
@@ -612,3 +612,50 @@ should see the cells shift to consuming lactose.
 .. todo:: Fix this tutorial, as currently it fails.
 
 .. todo:: Add example output from this tutorial.
+
+Using Shepherd
+==============
+
+The usual way to start the simulation is to use Shepherd, which spawns
+agents in new threads as requested via Kafka messages so you don't have
+to launch each agent in its own terminal tab. Furthermore, this enables
+cell division wherein a cell agent process ends and two new ones begin.
+But to debug an agent, see the :ref:`agents-in-terminal-windows`
+instructions above.
+
+Let's take a look at an example of using Shepherd. We'll be able to
+model cells dividing!
+
+.. todo:: Reference composites in this and the previous tutorial
+
+.. WARNING:: This tutorial has not yet been tested!
+
+#. Launch Shepherd in a separate terminal window:
+
+   .. code-block:: console
+
+        $ lein run
+
+#. For our environment, let's make a ``lattice`` agent:
+
+   .. code-block:: console
+   
+        $ python -m vivarium.environment.boot --type lattice --id env
+        environment started
+
+   .. note:: Wait for the ``environment started`` to show up before
+       proceeding. Otherwise there won't be an environment to add the
+       cells to!
+
+#. Next, let's create a cell agent of type ``growth_division``, which
+   can grow and divide.
+
+   .. code-block:: console
+   
+      $ python -m vivarium.environment.boot --type growth_division --id c --outer-id env
+
+#. Now we can start the simulation!
+
+   .. code-block:: console
+   
+        $ python -m vivarium.environment.control run --id env
