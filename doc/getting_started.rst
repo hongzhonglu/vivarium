@@ -12,9 +12,30 @@ account on a macOS or Linux system.
 Getting Organized
 =================
 
+Creating Enclosing Directory
+----------------------------
+
 Create a ``vivarium_work`` folder anywhere you like. But for installing
 some third-party software, everything we do will occur inside this
 folder.
+
+.. _pythonpath:
+
+Setting PYTHONPATH
+------------------
+
+Vivarium needs the root of the repository to be in your ``PYTHONPATH``
+environment variable so that Python can find Vivarium. To make this easy
+to set, we suggest adding this line to your shell startup file:
+
+.. code-block:: bash
+
+    alias pycd='export PYTHONPATH="$PWD:$PYTHONPATH"'
+
+Now when you are about to work on Vivarium, navigate to the root of the
+Vivarium repository (``vivarium_work/vivarium``) and run ``pycd`` in
+your terminal. You will need to do this for each terminal window you
+use.
 
 Installing Dependencies
 =======================
@@ -351,6 +372,10 @@ example, we can run the degradation process like this:
     $ python vivarium_work/vivarium/vivarium/processes/degradation.py
     ...
 
+.. note:: If you get errors from Python about being unable to find
+    ``vivarium``, make sure you've set your PYTHONPATH correctly. See
+    :ref:`pythonpath` for details.
+
 Don't worry about the output--it's only useful for developers. You will
 see that a new folder has been created at
 ``vivarium_work/vivarium/vivarium/out/tests``. This is where we store
@@ -397,3 +422,193 @@ acid is limiting! In this case the colors are so similar that it's hard
 to tell, but the limiting amino acid is either alanine or leucine.
 
 .. todo:: Is alanine or leucine limiting?
+
+Running Agents in Terminal Windows
+==================================
+
+.. note:: Running agents separately in terminal windows is very useful
+    for debugging because it lets you see the output from each agent.
+
+Terminology: Agents
+-------------------
+
+Vivarium is heavily influenced by agent-based modeling, in which the
+model consists of individual agents interacting with each other. In
+Vivarium, each cell is an agent. The environment is also an agent. These
+agents interact with each other by passing messages through Kafka.
+
+.. todo:: Link to more comprehensive topical guide
+
+How to Run Agents
+-----------------
+
+Each agent runs on its own thread. We do this because each agent can be
+as complex as an entire whole-cell model, so the entire simulation
+cannot be run on a single thread. Shepherd can manage these threads for
+you; importantly, you must use Shepherd if your simulation will require
+creating or deleting threads. Cell division, for example, involves
+stopping the mother cell's thread and starting two new threads, one for
+each daughter cell, so division requires Shepherd.
+
+.. todo:: Link to using Shepherd
+
+That said, you *can* run agents on your own instead of using Shepherd.
+
+.. note:: If you run a simulation using this method that includes
+    stopping and/or starting agents, the agents will stop, but new ones
+    will not start. For example if your cell divides, the agent you
+    started for the mother cell will stop, but the daughter cells will
+    not be created.
+
+We will run each agent in its own terminal window to mimic the threads
+that Shepherd would create. Let's see how!
+
+First we need to get all our servers running. Do each of the following
+in a separate terminal window:
+
+#. Start Zookeeper:
+
+   .. code-block:: console
+   
+        $ vivarium_work/zookeeper.sh
+        ...
+        ... INFO binding to port 0.0.0.0/0.0.0.0:2181 ...
+
+#. Start Kafka:
+
+   .. code-block:: console
+   
+        $ vivarium_work/kafka.sh
+        ...
+        ... INFO [KafkaServer id=0] started (kafka.server.KafkaServer)
+
+   You should also see som text print out on the Zookeeper window. You
+   might see some ``NoNode`` warnings--these are safe to ignore.
+
+   .. note:: Zookeeper must be started before Kafka!
+
+#. Start MongoDB:
+
+   .. code-block:: console
+   
+        $ vivarium_work/mongo.sh
+
+   There shouldn't be any output.
+
+   .. note:: Alternatively, if you installed MongoDB using Homebrew, you
+       can tell Homebrew to always run a MongoDB server by running:
+
+       .. code-block:: console
+
+            $ brew services start mongodb/brew/mongodb-community
+
+       Now a MongoDB server will be started automatically once you
+       login. Then you can skip the step of starting MongoDB in the
+       future.
+
+Now we can create our agents. We create an agent like this:
+
+.. code-block:: console
+
+    $ python -m vivarium.environment.boot --type <type> --id <id> [--outer-id <outId>]
+
+.. note:: If you get errors from Python about being unable to find
+    ``vivarium``, make sure you've set your PYTHONPATH correctly. See
+    :ref:`pythonpath` for details.
+
+where ``<type>`` is the agent type, ``<id>`` is the identifier for this
+agent, and ``<outId>`` is an optional argument that stipulates that the
+agent should be placed inside the agent with identifier ``<outId>``.
+This outer agent will almost always be an environment. There is also an
+optional ``--config '{...}'`` argument you can use to configure the
+agent.
+
+.. todo:: Link to information on configuration
+
+Ther are many possible agent types. To see them all check out the help
+text like this:
+
+.. code-block:: console
+
+    $ python -m vivarium.environment.boot --help
+
+.. todo:: Point to the autogenerated docs for the agents
+
+Here's an example of running a simulation of a simple environment with
+three cells that consume glucose and lactose. We will initialize the
+environment with glucose and lactose, and as the glucose is depleted, we
+should see the cells shift to consuming lactose.
+
+.. WARNING:: This example doesn't work yet. The general process is
+    correct, but the particular agent types are not.
+
+.. todo:: Instructions for debugging in this mode
+
+#. First, let's create a ``glc_lct`` environment agent. This is a kind
+   of lattice environment. Lattice environments discretize the
+   simulation space into a two-dimensional grid, each region of which
+   has the same depth. Each region has uniform metabolite
+   concentrations, but metabolite concentrations differ between regions,
+   letting us model a continuous distribution of concentrations. A
+   diffusion process in the environment tends to make the space
+   homogeneous. We start this agent like this:
+
+   .. code-block:: console
+   
+        $ python -m vivarium.environment.boot --type glc_lct --id env
+        environment started
+
+   .. note:: Wait for the ``environment started`` to show up before
+       proceeding. Otherwise there won't be an environment to add the
+       cells to!
+
+#. Next, let's create three cell agents. These agents will be of type
+   ``shifter`` because they will initially consume glucose, but when
+   glucose concentrations drop, they will start consuming lactose. We
+   create these agents like this:
+
+   .. code-block:: console
+   
+      $ python -m vivarium.environment.boot --type shifter --id c1 --outer-id env
+      $ python -m vivarium.environment.boot --type shifter --id c2 --outer-id env
+      $ python -m vivarium.environment.boot --type shifter --id c3 --outer-id env
+
+   After creating each cell agent, you should see in both the cell and
+   the environment's terminal windows a message from the cell to the
+   environment declaring itself:
+
+   .. code-block:: console
+
+        <-- environment-receive CELL_DECLARE [shifter c1]: {'event':
+        'CELL_DECLARE', 'agent_id': 'env', 'inner_id': 'c1',
+        'agent_config': { ... }, 'state': {'volume': 1.0}}
+
+   And a message from the environment back to the cell:
+
+   .. code-block:: console
+   
+        <-- cell-receive ENVIRONMENT_SYNCHRONIZE [glc_lct env]:
+        {'event': 'ENVIRONMENT_SYNCHRONIZE', 'inner_id': 'c1',
+        'outer_id': 'env', 'state': { ... }}
+
+
+
+#. Now we can start the simulation!
+
+   .. code-block:: console
+   
+        $ python -m vivarium.environment.control run --id env
+
+   The simulation will stop on its own once the environment agent hits
+   the end of its programmed timeline. However, you can pause, run,
+   and shutdown the simulation like this as well:
+
+   .. code-block:: console
+   
+        $ python -m vivarium.environment.control pause --id env
+        $ python -m vivarium.environment.control run --id env
+        $ python -m vivarium.environment.control shutdown
+
+.. todo:: Fix this tutorial, as currently it fails.
+
+.. todo:: Add example output from this tutorial.
