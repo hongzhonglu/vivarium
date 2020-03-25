@@ -47,7 +47,10 @@ up for Vivarium.  Make sure you have each of them installed.
 Python 3
 --------
 
-The Vivarium code is written in Python.
+We wrote Vivarium in Python 3. While we did also write it to be
+Python-2-compatible, `the Python Software Foundation has deprecated
+Python 2 <https://www.python.org/dev/peps/pep-0373/>`_, so we strongly
+recommend using Python 3.
 
 *Check Installation*
 
@@ -62,7 +65,8 @@ Make sure you see a version at least 3.6.
 
 Download the latest installer from https://www.python.org/downloads/
 
-**Open JDK 8**
+Open JDK 8
+----------
 
 Zookeeper and Kafka, which we will address later, require that you have
 Java installed.
@@ -78,8 +82,8 @@ Ensure the version is at least 1.8.
 
 *Install*
 
-Download the latest JDK installer from
-https://www.oracle.com/java/technologies/javase-downloads.html.  As of
+Download the latest JDK installer from the `Java SE Downloads site
+<https://www.oracle.com/java/technologies/javase-downloads.html>`_.  As of
 writing the latest is Java SE 14. Download and run the appropriate
 installer for your platform. Then you need to set the ``JAVA_HOME``
 environment variable, for instance by adding ``export
@@ -98,11 +102,10 @@ processes that otherwise do not need to know who is sending and
 receiving these messages. Vivarium uses Kafka to pass messages between
 actors, for example between a cell and its environment.
 
-Kafka is built on Zookeeper, which is a service for synchronizing access
-to a hierarchy of key/value pairs called "nodes". The Kafka and
-Zookeeper services are meant to be deployed in multiple instances in a
-server cluster, but there is a binary distribution that you can run
-locally for development.
+Kafka relies on Zookeeper, which synchronizes access to a hierarchy of
+key-value pairs called nodes. We like Kafka because it will let us
+distribute the model across computers in a server cluster, but you can
+also run a local Kafka instance for development.
 
 *Check Installation*
 
@@ -113,9 +116,10 @@ it, even if you use Kafka already.
 
 *Install*
 
-#. Download Kafka from https://kafka.apache.org/downloads, choosing the
-   latest version. This will give you a ``.tgz`` archive file that
-   includes both Kafka and Zookeeper.
+#. Download Kafka from the `Apache Kafka site
+   <https://kafka.apache.org/downloads>`_, choosing the latest version.
+   This will give you a ``.tgz`` archive file that includes both Kafka
+   and Zookeeper.
 #. Unarchive this file into ``vivarium_work`` to create a folder like
    ``vivarium_work/kafka_2.11-2.0.0/``. Your folder name will likely
    change slightly to match your version of Kafka.
@@ -150,17 +154,17 @@ it, even if you use Kafka already.
         $ chmod 700 vivarium_work/kafka.sh
         $ chmod 700 vivarium_work/zookeeper.sh
 
-   Now you can easily start and stop the zookeeper and Kafka servers
-   like this:
+   Now you can start and stop the Zookeeper and Kafka servers like this:
 
    .. code-block:: console
 
         $ vivarium_work/zookeeper.sh
         $ vivarium_work/kafka.sh
 
-   Note that Zookeeper must be started before Kafka. Also note that
-   these two commands must be run in separate terminals. To shut them
-   down, you can just use CTRL-C to kill the processes.
+   Make sure to start Zookeeper before Kafka, as Kafka expects a
+   Zookeeper instance to already be running when in starts. Also note
+   that you must run these two commands in separate terminals. To shut
+   them down, you can just use CTRL-C to kill the processes.
 
    .. note:: Make sure you shut down Kafka before Zookeeper!  If you
        shut down Zookeeper first, Kafka will refuse to quit. You can
@@ -170,7 +174,7 @@ MongoDB
 -------
 
 We use a MongoDB database to store the data collected from running
-simulations. This can be a a remote server, but for this guide we will
+simulations. This can be a remote server, but for this guide we will
 run a MongoDB server locally.
 
 *Check Installation*
@@ -194,8 +198,8 @@ If you are on Linux, see the MongoDB documentation's `instructions
 
 *Setup*
 
-There are any number of ways to get a MongoDB server up and running
-locally. Here is one way:
+You can get a MongoDB server up and running locally anu number of ways.
+Here is one:
 
 #. Create a folder ``vivarium_work/mongodb``. This is where the database
    will be stored. We store the database here instead of at the default
@@ -232,7 +236,7 @@ locally. Here is one way:
 
         $ vivarium_work/mongo.sh
 
-.. todo:: Use python -m agent.boot --host ip.to.remote.cluster:9092
+.. todo:: Use ``py -m agent.boot --host ip.to.remote.cluster:9092``
     for remote Kafka services
 
 GNU Linear Programming Kit (GLPK)
@@ -245,9 +249,9 @@ that GLPK already be installed on your system.
 
 *Check Installation*
 
-Currently we don't have a way to check whether ``glpk`` is installed. If
-you think you already have it, you can proceed with the installation and
-watch for an error about missing ``glpk``.
+We don't have a way to check whether ``glpk`` is installed. If you think
+you already have it, you can proceed with the installation and watch for
+an error about missing ``glpk``.
 
 .. todo:: Check GLPK installation
 
@@ -271,7 +275,7 @@ to manage these threads.
 
 *Check Installation*
 
-To check whether Leiningen is installed, run:
+To check whether you have Leiningen installed, run:
 
 .. code-block:: console
 
@@ -284,8 +288,8 @@ ignore. Make sure the version is at least 2.9.
 *Install*
 
 To install Leiningen, follow the instructions on its `website
-<https://leiningen.org/>`_. Alternatively, you can also install the
-``leiningen`` formula on Homebrew.
+<https://leiningen.org/>`_. You can also install the ``leiningen``
+formula on Homebrew instead.
 
 Download and Setup Vivarium
 ===========================
@@ -310,7 +314,7 @@ Installing Python Packages
 --------------------------
 
 Above we installed all the non-Python dependencies, but we still have to
-install the Python packages Vivarim uses.
+install the Python packages Vivarium uses.
 
 #. Move into the ``vivarium`` folder created when you cloned the
    repository.
@@ -348,9 +352,9 @@ Some Terminology: Processes and Composites
 In Vivarium, we break our cell models into *processes*. Each process
 models part of the cell's function. For example, we have processes for
 metabolism, transcription, and translation in Vivarium. We can combine
-these processes into *composites* that model a cell with all of the
+these processes into *composites* that model a cell with all the
 functionality modeled by the included processes. For example, we could
-compose transcription and translation to create a more complete gene
+compose transcription and translation to create a fuller gene
 expression model.
 
 .. todo:: Link to topical guide on processes and composites
@@ -361,11 +365,12 @@ composites in ``vivarium/vivarium/composites``.
 Running Processes and Composites in Isolation
 =============================================
 
-Every process and composite can be run by itself. While this is not
-particularly useful for modeling cells or colonies, it may help
-illustrate what the process or composite does. To run a process or
-composite, you can simply execute the Python file that defines it. For
-example, we can run the degradation process like this:
+You can run any process or composite by itself. While this is too simple
+for modeling whole cells or colonies, it may help illustrate what the
+process or composite does. Isolating processes or composites like this
+is also a helpful debugging tool. To run a process or composite, you can
+execute the Python file that defines it. For example, we can run the
+degradation process like this:
 
 .. code-block:: console
 
@@ -376,13 +381,12 @@ example, we can run the degradation process like this:
     ``vivarium``, make sure you've set your PYTHONPATH correctly. See
     :ref:`pythonpath` for details.
 
-Don't worry about the output--it's only useful for developers. You will
-see that a new folder has been created at
-``vivarium_work/vivarium/vivarium/out/tests``. This is where we store
-the output from running processes and composites in isolation. For the
-degradation process, the output is in the ``degradation`` folder inside
-``tests``. Here you'll find a ``simulation.png`` file that looks like
-this:
+Don't worry about the output--it's for developers. You will see a new
+folder at ``vivarium_work/vivarium/vivarium/out/tests``. This is where
+we store the output from running processes and composites in isolation.
+For the degradation process, the output is in the ``degradation`` folder
+inside ``tests``. Here you'll find a ``simulation.png`` file that looks
+like this:
 
 .. image:: ./_static/degradation_plots.png
     :width: 100%
@@ -395,11 +399,12 @@ this:
         in the fourth column plots of metrics like density, volume, and
         mass are all constant.
 
-This shows quickly that this degradation process removes transcripts and
-returns the RNA nucleotides to the cell.
+If you wanted to understand how the degradation process works, this
+would show you that it removes transcripts and returns the RNA
+nucleotides to the cell.
 
-Some processes also produce the data from which the plots were produced.
-This is saved in ``simulation_data.csv``. Try running the
+Some processes also produce the data shown in the plots.  You can find
+this data in ``simulation_data.csv``. Try running the
 ``convenience_kinetics`` process to see how this works!
 
 Lastly, try running the ``flagella_expression`` composite like this:
@@ -428,7 +433,7 @@ to tell, but the limiting amino acid is either alanine or leucine.
 Running Agents in Terminal Windows
 ==================================
 
-.. note:: Running agents separately in terminal windows is very useful
+.. note:: Running agents separately in terminal windows is helpful
     for debugging because it lets you see the output from each agent.
 
 Terminology: Agents
@@ -446,7 +451,7 @@ How to Run Agents
 
 Each agent runs on its own thread. We do this because each agent can be
 as complex as an entire whole-cell model, so the entire simulation
-cannot be run on a single thread. Shepherd can manage these threads for
+cannot run on a single thread. Shepherd can manage these threads for
 you; importantly, you must use Shepherd if your simulation will require
 creating or deleting threads. Cell division, for example, involves
 stopping the mother cell's thread and starting two new threads, one for
@@ -460,7 +465,7 @@ That said, you *can* run agents on your own instead of using Shepherd.
     stopping and/or starting agents, the agents will stop, but new ones
     will not start. For example if your cell divides, the agent you
     started for the mother cell will stop, but the daughter cells will
-    not be created.
+    not start.
 
 We will run each agent in its own terminal window to mimic the threads
 that Shepherd would create. Let's see how!
@@ -487,7 +492,7 @@ in a separate terminal window:
    You should also see som text print out on the Zookeeper window. You
    might see some ``NoNode`` warnings--these are safe to ignore.
 
-   .. note:: Zookeeper must be started before Kafka!
+   .. note:: You must start Zookeeper before Kafka!
 
 #. Start MongoDB:
 
@@ -497,16 +502,15 @@ in a separate terminal window:
 
    There shouldn't be any output.
 
-   .. note:: Alternatively, if you installed MongoDB using Homebrew, you
-       can tell Homebrew to always run a MongoDB server by running:
+   .. note:: If you installed MongoDB using Homebrew, you can instead
+        `tell Homebrew to always run a MongoDB server by running:
 
        .. code-block:: console
 
             $ brew services start mongodb/brew/mongodb-community
 
-       Now a MongoDB server will be started automatically once you
-       login. Then you can skip the step of starting MongoDB in the
-       future.
+       Now a MongoDB server will start automatically once you login.
+       Then you can skip the step of starting MongoDB in the future.
 
 Now we can create our agents. We create an agent like this:
 
@@ -515,20 +519,19 @@ Now we can create our agents. We create an agent like this:
     $ python -m vivarium.environment.boot --type <type> --id <id> [--outer-id <outId>]
 
 .. note:: If you get errors from Python about being unable to find
-    ``vivarium``, make sure you've set your PYTHONPATH correctly. See
-    :ref:`pythonpath` for details.
+    ``vivarium``, make sure you've set your PYTHONPATH to include
+    vivarium.  See :ref:`pythonpath` for details.
 
 where ``<type>`` is the agent type, ``<id>`` is the identifier for this
 agent, and ``<outId>`` is an optional argument that stipulates that the
 agent should be placed inside the agent with identifier ``<outId>``.
-This outer agent will almost always be an environment. There is also an
-optional ``--config '{...}'`` argument you can use to configure the
-agent.
+This outer agent will almost always be an environment. You can also
+provide an optional ``--config '{...}'`` argument you can use to
+configure the agent.
 
 .. todo:: Link to information on configuration
 
-Ther are many possible agent types. To see them all check out the help
-text like this:
+To see the other agent types, check out the help text like this:
 
 .. code-block:: console
 
@@ -538,8 +541,8 @@ text like this:
 
 Here's an example of running a simulation of a simple environment with
 three cells that consume glucose and lactose. We will initialize the
-environment with glucose and lactose, and as the glucose is depleted, we
-should see the cells shift to consuming lactose.
+environment with glucose and lactose, and as the cells depelete the
+glucose we should see the cells shift to consuming lactose.
 
 .. WARNING:: This example doesn't work yet. The general process is
     correct, but the particular agent types are not.
@@ -620,7 +623,7 @@ The usual way to start the simulation is to use Shepherd, which spawns
 agents in new threads as requested via Kafka messages so you don't have
 to launch each agent in its own terminal tab. Furthermore, this enables
 cell division wherein a cell agent process ends and two new ones begin.
-But to debug an agent, see the :ref:`agents-in-terminal-windows`
+To debug an agent, though, see the :ref:`agents-in-terminal-windows`
 instructions above.
 
 Let's take a look at an example of using Shepherd. We'll be able to
@@ -628,7 +631,7 @@ model cells dividing!
 
 .. todo:: Reference composites in this and the previous tutorial
 
-.. WARNING:: This tutorial has not yet been tested!
+.. WARNING:: We haven't tested this tutorial yet!
 
 #. Launch Shepherd in a separate terminal window:
 
@@ -659,3 +662,5 @@ model cells dividing!
    .. code-block:: console
    
         $ python -m vivarium.environment.control run --id env
+
+.. todo:: Running an experiment with Shepherd.
