@@ -1,10 +1,7 @@
 import os
-<<<<<<< HEAD
 
 import matplotlib.pyplot as plt
 import numpy as np
-=======
->>>>>>> 9a604c059c91f9e7133e6157e046e7d877a6c15a
 
 from vivarium.compartment.process import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
@@ -14,11 +11,6 @@ from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
-
-<<<<<<< HEAD
-
-=======
->>>>>>> 9a604c059c91f9e7133e6157e046e7d877a6c15a
 
 def degradation_sequences(sequence, promoters):
     return {
@@ -161,15 +153,15 @@ if __name__ == '__main__':
     # run simulation
     settings = {
         'total_time': 2400,
-    }
+        'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
     plot_config = {
         'name': 'flagella_expression',
         'ports': {
             'transcripts': 'transcripts',
-            'molecules': 'molecules',
-            'proteins': 'proteins'}}
+            'proteins': 'proteins',
+            'molecules': 'molecules'}}
 
     plot_gene_expression_output(
         timeseries,
@@ -180,7 +172,10 @@ if __name__ == '__main__':
     plot_config2 = plot_config.copy()
     plot_config2.update({
         'name': 'flagella',
-        'plot_ports': ['transcripts', 'proteins']})
+        'plot_ports': [
+            'transcripts',
+            'proteins',
+            'molecules']})
 
     plot_timeseries_heatmaps(
         timeseries,

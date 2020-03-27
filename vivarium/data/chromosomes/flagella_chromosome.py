@@ -19,6 +19,7 @@ class FlagellaChromosome(object):
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
                 'fliA': ['fliA', 'fliZ'], # ignore 'tcyJ' for now
@@ -102,6 +103,18 @@ class FlagellaChromosome(object):
                             'position': 1138312,
                             'strength': 1.0,
                             'products': ['flgB']}]},
+                'flgEp': {
+                    'id': 'flgEp',
+                    'position': 1132574,
+                    'direction': 1,
+                    'sites': [
+                        {'thresholds': [('flhDC', 1.9e-05)]},
+                        {'thresholds': [('fliA', 3e-06)]}],
+                    'terminators': [
+                        {
+                            'position': 1133782,
+                            'strength': 1.0,
+                            'products': ['flgE']}]},
                 'flhBp': {
                     'id': 'flhBp',
                     'position': 1966191,
@@ -245,6 +258,7 @@ class FlagellaChromosome(object):
             'fliFp1',
             'flgAp',
             'flgBp',
+            'flgEp',
             'flhBp',
             'fliAp1',
             'fliDp',
@@ -272,6 +286,9 @@ class FlagellaChromosome(object):
             'flgAp': {
                 'flhDC': 0.15,
                 'fliA': 0.3},
+            'flgEp': {
+                'flhDC': 2.0,
+                'fliA': 1.0},
             'flhBp': {
                 'flhDC': 0.1,
                 'fliA': 0.35},
