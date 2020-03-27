@@ -1,3 +1,4 @@
+
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
@@ -18,14 +19,15 @@ class FlagellaChromosome(object):
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
                 'fliA': ['fliA', 'fliZ'], # ignore 'tcyJ' for now
                 'fliD': ['fliD', 'fliS', 'fliT'],
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
-                # 'meche': [],
-                # 'mocha': [],
+                'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
+                'motA': ['motA', 'motB', 'cheA', 'cheW'],
                 'flgM': ['flgM', 'flgN']},
             'promoters': {
                 'flhDp': {
@@ -34,8 +36,6 @@ class FlagellaChromosome(object):
                     'direction': -1,
                     'sites': [
                         {
-                            'position': 0,
-                            'length': 0,
                             'thresholds': [
                                 ('CRP', 1e-05)]}],
                     'terminators': [
@@ -48,11 +48,8 @@ class FlagellaChromosome(object):
                     'position': 2019618,
                     'direction': 1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 1e-05)]}],
+                        {'thresholds': [('flhDC', 1e-06)]},
+                        {'thresholds': [('fliA', 1.3e-05)]}],
                     'terminators': [
                         {
                             'position': 2023678,
@@ -63,11 +60,8 @@ class FlagellaChromosome(object):
                     'position': 2013014,
                     'direction': -1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 1.5e-05)]}],
+                        {'thresholds': [('flhDC', 4e-06)]},
+                        {'thresholds': [('fliA', 1.1e-05)]}],
                     'terminators': [
                         {
                             'position': 2012700,
@@ -78,56 +72,56 @@ class FlagellaChromosome(object):
                     'position': 2013229,
                     'direction': 1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 2e-05)]}],
+                        {'thresholds': [('flhDC', 7e-06)]},
+                        {'thresholds': [('fliA', 1e-05)]}],
                     'terminators': [
                         {
                             'position': 2019513,
                             'strength': 1.0,
                             'products': ['fliF']}]},
-                'flgAp': {
-                    'id': 'flgAp',
+                'flgBp': {
+                    'id': 'flgBp',
                     'position': 1130863,
                     'direction': -1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 2.5e-05)]}],
+                        {'thresholds': [('flhDC', 1e-05)]},
+                        {'thresholds': [('fliA', 8e-06)]}],
                     'terminators': [
                         {
                             'position': 1129414,
                             'strength': 1.0,
                             'products': ['flgA']}]},
-                'flgBp': {
-                    'id': 'flgBp',
+                'flgAp': {
+                    'id': 'flgAp',
                     'position': 1131018,
                     'direction': 1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 3e-05)]}],
+                        {'thresholds': [('flhDC', 1.3e-05)]},
+                        {'thresholds': [('fliA', 6e-06)]}],
                     'terminators': [
                         {
                             'position': 1138312,
                             'strength': 1.0,
                             'products': ['flgB']}]},
+                'flgEp': {
+                    'id': 'flgEp',
+                    'position': 1132574,
+                    'direction': 1,
+                    'sites': [
+                        {'thresholds': [('flhDC', 1.9e-05)]},
+                        {'thresholds': [('fliA', 3e-06)]}],
+                    'terminators': [
+                        {
+                            'position': 1133782,
+                            'strength': 1.0,
+                            'products': ['flgE']}]},
                 'flhBp': {
                     'id': 'flhBp',
                     'position': 1966191,
                     'direction': -1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 3.5e-05)]}],
+                        {'thresholds': [('flhDC', 1.5e-05)]},
+                        {'thresholds': [('fliA', 5e-06)]}],
                     'terminators': [
                         {
                             'position': 1962580,
@@ -138,11 +132,8 @@ class FlagellaChromosome(object):
                     'position': 2001789,
                     'direction': -1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 4e-05)]}],
+                        {'thresholds': [('flhDC', 1.7e-05)]},
+                        {'thresholds': [('fliA', 4e-06)]}],
                     'terminators': [
                         {
                             'position': 1999585,
@@ -153,11 +144,8 @@ class FlagellaChromosome(object):
                     'position': 2003872,
                     'direction': 1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 4.5e-05)]}],
+                        {'thresholds': [('flhDC', 1.9e-05)]},
+                        {'thresholds': [('fliA', 3e-06)]}],
                     'terminators': [
                         {
                             'position': 2006078,
@@ -168,11 +156,8 @@ class FlagellaChromosome(object):
                     'position': 1138378,
                     'direction': 1,
                     'sites': [
-                        {
-                            'position': 0,
-                            'length': 0,
-                            'thresholds': [
-                                ('flhD', 5e-05)]}],
+                        {'thresholds': [('flhDC', 2.1e-05)]},
+                        {'thresholds': [('fliA', 1e-06)]}],
                     'terminators': [
                         {
                             'position': 1140986,
@@ -181,41 +166,63 @@ class FlagellaChromosome(object):
                 'fliCp': {
                     'id': 'fliCp',
                     'position': 2002110,
-                    'direction': -1,
+                    'direction': 1,
                     'sites': [
                         {
-                            'position': 0,
-                            'length': 0,
                             'thresholds': [
-                                ('GadE', 0.55),
-                                ('H-NS', 0.6)]}],
+                                ('fliA', 5e-06)]}],
+                        # {
+                        #     'thresholds': [
+                        #         ('GadE', 0.55),
+                        #         ('H-NS', 0.6)]}],
                     'terminators': [
                         {
                             'position': 2003606,
                             'strength': 1.0,
                             'products': ['fliC']}]},
-                # 'meche': {
-                #     'id': 'meche',
-                #     'position': 0,
-                #     'direction': 1,
-                #     'sites': [],
-                #     'terminators': []},
-                # 'mocha': {
-                #     'id': 'mocha',
-                #     'position': 0,
-                #     'direction': 1,
-                #     'sites': [],
-                #     'terminators': []},
+                'tarp': {
+                    'id': 'tarp',
+                    'position': 1972691,
+                    'direction': -1,
+                    'sites': [
+                        {
+                            'thresholds': [
+                                ('fliA', 7e-06)]}],
+                        # {
+                        #     'thresholds': [
+                        #         ('Fnr', 1e-5)]}],
+                    'terminators': [
+                        {
+                            'position': 1971030,
+                            'strength': 1.0,
+                            'products': ['tar']}]},
+                'motAp': {
+                    'id': 'motAp',
+                    'position': 1977139,
+                    'direction': -1,
+                    'sites': [
+                        {
+                            'thresholds': [
+                                ('fliA', 9e-06)]}],
+                        # {
+                        #     'thresholds': [
+                        #         ('CpxR', 1e-5)]}],
+                    'terminators': [
+                        {
+                            'position': 1976252,
+                            'strength': 1.0,
+                            'products': ['motA']}]},
                 'flgMp': {
                     'id': 'flgMp',
                     'position': 1130128,
                     'direction': -1,
                     'sites': [
                         {
-                            'position': 0,
-                            'length': 0,
                             'thresholds': [
-                                ('CsgD', 0.1)]}],
+                                ('fliA', 1.1e-05)]}],
+                        # {
+                        #     'thresholds': [
+                        #         ('CsgD', 0.1)]}],
                     'terminators': [
                         {
                             'position': 1129414,
@@ -241,31 +248,90 @@ class FlagellaChromosome(object):
             'fliDp',
             'flgKp',
             'fliCp',
-            # 'meche',
-            # 'mocha',
+            'tarp',
+            'motAp'
             'flgMp']
 
-        self.flhD_activated = [
+        self.flhDC_activated = [
             'fliLp1',
             'fliEp1',
             'fliFp1',
             'flgAp',
             'flgBp',
+            'flgEp',
             'flhBp',
             'fliAp1',
             'fliDp',
             'flgKp']
 
+        self.fliA_activated = [
+            'fliCp',
+            'tarp',
+            'motAp',
+            'flgMp']
+
+        flhDC_factors = {
+            'fliLp1': {
+                'flhDC': 1.2,
+                'fliA': 0.25},
+            'fliEp1': {
+                'flhDC': 0.45,
+                'fliA': 0.35},
+            'fliFp1': {
+                'flhDC': 0.35,
+                'fliA': 0.30},
+            'flgBp': {
+                'flhDC': 0.35,
+                'fliA': 0.45},
+            'flgAp': {
+                'flhDC': 0.15,
+                'fliA': 0.3},
+            'flgEp': {
+                'flhDC': 1.0,
+                'fliA': 10.0},
+            'flhBp': {
+                'flhDC': 0.1,
+                'fliA': 0.35},
+            'fliAp1': {
+                'flhDC': 1.0,
+                'fliA': 0.3},
+            'fliDp': {
+                'flhDC': 1.2,
+                'fliA': 0.25},
+            'flgKp': {
+                'flhDC': 1.2,
+                'fliA': 0.25}}
+
+        def binary_sum_gates(promoter_factors):
+            affinities = {}
+            first, second = list(promoter_factors[
+                list(promoter_factors.keys())[0]].keys())
+            
+            # this hard coding of simple addition is alarming and probably points
+            # towards providing a function of promoter state for affinity rather
+            # than a simple lookup of the affinity for each promoter state tuple.
+            for promoter, factors in promoter_factors.items():
+                affinities[(promoter, first, None)] = factors[first]
+                affinities[(promoter, None, second)] = factors[second]
+                affinities[(promoter, first, second)] = factors[first] + factors[second]
+
+            return affinities
+
         self.promoter_affinities = {
-            ('flhDp', None): 0.0,
             ('flhDp', 'CRP'): 0.01}
 
-        self.promoter_affinities[('fliCp', None)] = 0.0
-        self.promoter_affinities[('flgMp', None)] = 0.0
+        # self.promoter_affinities[('motAp', 'CpxR')] = 1.0
 
-        for promoter in self.flhD_activated:
-            self.promoter_affinities[(promoter, None)] = 0.0
-            self.promoter_affinities[(promoter, 'flhD')] = 1.0
+        flhDC_affinities = binary_sum_gates(flhDC_factors)
+        self.promoter_affinities.update(flhDC_affinities)
+        print('flhDC_affinities')
+        print(flhDC_affinities)
+
+        for promoter in self.flhDC_activated:
+            self.promoter_affinities[(promoter, 'flhDC')] = 1.0
+
+        for promoter in self.fliA_activated:
+            self.promoter_affinities[(promoter, 'fliA')] = 1.0
 
         self.transcripts = [
             product
@@ -291,15 +357,24 @@ class FlagellaChromosome(object):
             operon: 0.01
             for operon in self.config['genes'].keys()}
 
-        self.transcription_factors = ['flhD', 'CsgD', 'CRP', 'GadE', 'H-NS']
+        self.transcription_factors = [
+            'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
 
         self.complexation_monomer_ids = [
-            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'MotA', 'MotB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
+            'fliG', 'fliM', 'fliN', 'flhA', 'flhB', 'flhD', 'flhC', 'fliO', 'fliP', 'fliQ', 'fliR', 'fliJ', 'fliI', 'fliH', 'fliL', 'flgH', 'motA', 'motB', 'flgB', 'flgC', 'flgF', 'flgG', 'flgI', 'fliF', 'fliE','fliC','flgL','flgK','fliD','flgE']
 
         self.complexation_complex_ids = [
-            'flagellar motor switch','flagellum', 'flagellar export apparatus', 'flagellar motor']
+            'flhDC',
+            'flagellar motor switch',
+            'flagellum',
+            'flagellar export apparatus',
+            'flagellar motor']
 
         self.complexation_stoichiometry = {
+            'flhDC': {
+                'flhD': -4.0,
+                'flhC': -2.0,
+                'flhDC': 1.0},
             'flagellar motor switch reaction': {
                 'flagellar motor switch': 1.0,
                 'fliG': -26.0,
@@ -321,8 +396,8 @@ class FlagellaChromosome(object):
                 'flagellar motor switch': -1.0,
                 'fliL': -2.0,
                 'flgH': -1.0,
-                'MotA': -1.0,
-                'MotB': -1.0,
+                'motA': -1.0,
+                'motB': -1.0,
                 'flgB': -1.0,
                 'flgC': -1.0,
                 'flgF': -1.0,
@@ -340,9 +415,12 @@ class FlagellaChromosome(object):
                 'fliD': -5.0,
                 'flgE': -120.0}}
 
-        reaction_default = 1e-30
+        reaction_default = 1e-5
         self.complexation_rates = {
+            'flhDC': reaction_default,
             'flagellar motor switch reaction': reaction_default,
             'flagellar export apparatus reaction': reaction_default,
             'flagellar motor reaction': reaction_default,
             'flagellum reaction': reaction_default}
+
+flagella_chromosome = FlagellaChromosome()

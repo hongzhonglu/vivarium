@@ -660,6 +660,7 @@ def simulate_compartment(compartment, settings={}):
 
     timestep = settings.get('timestep', 1)
     total_time = settings.get('total_time', 10)
+    verbose = settings.get('verbose')
 
     # data settings
     return_raw_data = settings.get('return_raw_data', False)
@@ -668,6 +669,8 @@ def simulate_compartment(compartment, settings={}):
     time = 0
     while time < total_time:
         time += timestep
+        if verbose:
+            print('time: {}'.format(time))
         compartment.update(timestep)
 
     if return_raw_data:
