@@ -6,7 +6,7 @@ import numpy as np
 from vivarium.compartment.process import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
-from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
+from vivarium.data.chromosomes.flagella_chromosome import flagella_chromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
@@ -21,8 +21,7 @@ def degradation_sequences(sequence, promoters):
         for promoter_key, promoter in promoters.items()}
 
 def generate_flagella_compartment(config):
-    flagella = FlagellaChromosome()
-    plasmid = Chromosome(flagella.config)
+    plasmid = Chromosome(flagella_chromosome.config)
     sequences = plasmid.product_sequences()
 
     print(sequences)
@@ -37,20 +36,20 @@ def generate_flagella_compartment(config):
 
         'transcription': {
 
-            'sequence': flagella.config['sequence'],
-            'templates': flagella.config['promoters'],
-            'genes': flagella.config['genes'],
-            'transcription_factors': flagella.transcription_factors,
-            'promoter_affinities': flagella.promoter_affinities,
+            'sequence': flagella_chromosome.config['sequence'],
+            'templates': flagella_chromosome.config['promoters'],
+            'genes': flagella_chromosome.config['genes'],
+            'transcription_factors': flagella_chromosome.transcription_factors,
+            'promoter_affinities': flagella_chromosome.promoter_affinities,
             'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
 
-            'sequences': flagella.operon_sequences,
-            'templates': flagella.transcript_templates,
+            'sequences': flagella_chromosome.operon_sequences,
+            'templates': flagella_chromosome.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
-            'transcript_affinities': flagella.transcript_affinities,
+            'transcript_affinities': flagella_chromosome.transcript_affinities,
 
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
@@ -64,19 +63,19 @@ def generate_flagella_compartment(config):
                 'transcripts': {
                     'endoRNAse': {
                         transcript: 1e-23
-                        for transcript in flagella.config['genes'].keys()}}}},
+                        for transcript in flagella_chromosome.config['genes'].keys()}}}},
 
         'complexation': {
-            'monomer_ids': flagella.complexation_monomer_ids,
-            'complex_ids': flagella.complexation_complex_ids,
-            'stoichiometry': flagella.complexation_stoichiometry,
-            'rates': flagella.complexation_rates},
+            'monomer_ids': flagella_chromosome.complexation_monomer_ids,
+            'complex_ids': flagella_chromosome.complexation_complex_ids,
+            'stoichiometry': flagella_chromosome.complexation_stoichiometry,
+            'rates': flagella_chromosome.complexation_rates},
 
         'initial_state': {
             'molecules': molecules,
             'transcripts': {
                 gene: 0
-                for gene in flagella.config['genes'].keys()},
+                for gene in flagella_chromosome.config['genes'].keys()},
             'proteins': {
                 'CpxR': 10,
                 'CRP': 10,
@@ -92,20 +91,27 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
     ''' make a timeseries heatmap for each port specified in config['plot_ports'] '''
 
     name = config.get('name', 'timeseries')
-    plot_ports = config.get('plot_ports', [])
+    plot_ports = config.get('plot_ports', {})
     ports = config.get('ports', {})
     time = timeseries['time']
 
+    def relative_to_max(series):
+        relative = max(max(series), 1)
+        return [
+            value / relative
+            for value in series]
+
     # make timeseries heatmaps
     ts_heatmap = {}
-    for port_id in plot_ports:
+    for port_id, order in plot_ports.items():
         port = timeseries[ports[port_id]]
-        var_keys = list(port.keys())
-        var_keys.reverse()  # reverse to get proper labeling with imshow
+        var_keys = list(order)
+
         var_series = [
-            [value / max(max(series), 1)
-                for value in series]
-                for variable, series in port.items()]
+            relative_to_max(port[key])
+            for key in var_keys]
+
+        var_keys.reverse()  # reverse to get proper labeling with imshow
 
         ts_heatmap[port_id] = {
             'keys': var_keys,
@@ -158,7 +164,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 40,
+        'total_time': 2400,
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
@@ -178,12 +184,10 @@ if __name__ == '__main__':
     plot_config2 = plot_config.copy()
     plot_config2.update({
         'name': 'flagella',
-        'plot_ports': [
-            'transcripts',
-            'proteins',
-            'molecules']})
-
-    import ipdb; ipdb.set_trace()
+        'plot_ports': {
+            'transcripts': list(flagella_chromosome.config['genes'].keys()),
+            'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
+            'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
 
     plot_timeseries_heatmaps(
         timeseries,

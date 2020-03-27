@@ -75,7 +75,7 @@ class RnaDegradation(Process):
                 transcript: 1e3
                 for transcript in self.transcript_order},
             'proteins': {
-                protein: 1e2
+                protein: 1e0
                 for protein in self.protein_order},
             'molecules': {
                 nucleotide: 1e4

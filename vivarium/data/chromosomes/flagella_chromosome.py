@@ -287,8 +287,8 @@ class FlagellaChromosome(object):
                 'flhDC': 0.15,
                 'fliA': 0.3},
             'flgEp': {
-                'flhDC': 2.0,
-                'fliA': 1.0},
+                'flhDC': 1.0,
+                'fliA': 10.0},
             'flhBp': {
                 'flhDC': 0.1,
                 'fliA': 0.35},
@@ -422,3 +422,5 @@ class FlagellaChromosome(object):
             'flagellar export apparatus reaction': reaction_default,
             'flagellar motor reaction': reaction_default,
             'flagellum reaction': reaction_default}
+
+flagella_chromosome = FlagellaChromosome()

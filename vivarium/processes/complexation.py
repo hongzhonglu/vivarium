@@ -72,8 +72,13 @@ class Complexation(Process):
             'monomers': {monomer_id: 0 for monomer_id in self.monomer_ids},
             'complexes': {complex_id: 0 for complex_id in self.complex_ids}}
 
+        default_emitter_keys = {
+            'monomers': self.monomer_ids,
+            'complexes': self.complex_ids}
+
         return {
             'state': default_state,
+            'emitter_keys': default_emitter_keys,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
