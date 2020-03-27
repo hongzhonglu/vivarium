@@ -69,7 +69,7 @@ class Complexation(Process):
 
     def default_settings(self):
         default_state = {
-            'monomers': {monomer_id: 1000 for monomer_id in self.monomer_ids},
+            'monomers': {monomer_id: 0 for monomer_id in self.monomer_ids},
             'complexes': {complex_id: 0 for complex_id in self.complex_ids}}
 
         return {
@@ -112,6 +112,8 @@ def test_complexation():
     complexation = Complexation()
     settings = complexation.default_settings()
     state = settings['state']
+    for monomer in self.monomer_ids:
+        state['monomers'][monomer] = 1000
 
     update = complexation.next_update(1.0, state)
     print('initial state: {}'.format(state))
