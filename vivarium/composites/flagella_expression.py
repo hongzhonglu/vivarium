@@ -66,6 +66,12 @@ def generate_flagella_compartment(config):
                         transcript: 1e-23
                         for transcript in flagella.config['genes'].keys()}}}},
 
+        'complexation': {
+            'monomer_ids': flagella.complexation_monomer_ids,
+            'complex_ids': flagella.complexation_complex_ids,
+            'stoichiometry': flagella.complexation_stoichiometry,
+            'rates': flagella.complexation_rates},
+
         'initial_state': {
             'molecules': molecules,
             'transcripts': {
@@ -152,7 +158,7 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 2400,
+        'total_time': 40,
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
@@ -176,6 +182,8 @@ if __name__ == '__main__':
             'transcripts',
             'proteins',
             'molecules']})
+
+    import ipdb; ipdb.set_trace()
 
     plot_timeseries_heatmaps(
         timeseries,
