@@ -60,3 +60,58 @@ Glossary
         discretize time.
 
         .. todo:: How does this work with the returned timeseries data?
+
+    Composite
+    Composites
+        Composites model how a set of :term:`processes` interact through
+        shared :term:`stores`. When the composite is simulated, each
+        store gets updated by one or more of the processes in the
+        composite. This lets us simulate how the state of the model
+        evolves as all the processes run simultaneously.
+
+    Store
+    Stores
+        The state of the model is broken down into stores, each of which
+        represents the state of some physical or conceptual subset of
+        the overall state. For example, a cell model might have a store
+        for the proteins in the cytoplasm, another for the transcripts
+        in the cytoplasm, and one for the transcripts in the nucleus.
+        Each :term:`variable` must belong to exactly one store.
+
+    Variable
+    Variables
+        The state of the model is a collection of variables.  Each
+        variable stores a piece of information about the full model
+        state. For example, the concentration of glucose in the
+        cytoplasm might be a variable, while the concentration of
+        glucose-6-phosphate in the cytoplasm is another variable. The
+        extracellular concentration of glucose might be a third
+        variable. As these examples illustrate, variables are often
+        track the amount of a molecule in a physical region. Exceptions
+        exist though, for instance whether a cell is dead could also be
+        a variable.
+
+    Port
+    Ports
+        When a :term:`process` needs access to part of the model state,
+        it will be provided a :term:`store`. The ports of a process are
+        what the process calls those stores. When running a process, you
+        provide a store to each of the process's ports. Think of the
+        ports as physical ports into which a cable to a store can be
+        plugged.
+
+    Compartment
+    Compartments
+       TODO
+       .. todo:: Write compartment glossary entry
+
+    Topology
+    Topologies
+        A topology defines how :term:`stores` are associated to
+        :term:`ports`. This tells Vivarium which store to pass to each
+        port of each process during the simulation.
+
+    Masking
+        When Vivarium passes stores to processes, it includes only the
+        variables the process has requested. We call this filtering
+        masking.
