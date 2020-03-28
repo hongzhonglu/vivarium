@@ -166,7 +166,7 @@ it, even if you use Kafka already.
    that you must run these two commands in separate terminals. To shut
    them down, you can just use CTRL-C to kill the processes.
 
-   .. note:: Make sure you shut down Kafka before Zookeeper!  If you
+   .. WARNING:: Make sure you shut down Kafka before Zookeeper!  If you
        shut down Zookeeper first, Kafka will refuse to quit. You can
        then force it to stop with ``kill -9``.
  
@@ -377,7 +377,7 @@ degradation process like this:
     $ python vivarium_work/vivarium/vivarium/processes/degradation.py
     ...
 
-.. note:: If you get errors from Python about being unable to find
+.. tip:: If you get errors from Python about being unable to find
     ``vivarium``, make sure you've set your PYTHONPATH correctly. See
     :ref:`pythonpath` for details.
 
@@ -433,7 +433,7 @@ to tell, but the limiting amino acid is either alanine or leucine.
 Running Agents in Terminal Windows
 ==================================
 
-.. note:: Running agents separately in terminal windows is helpful
+.. tip:: Running agents separately in terminal windows is helpful
     for debugging because it lets you see the output from each agent.
 
 Terminology: Agents
@@ -461,7 +461,7 @@ each daughter cell, so division requires Shepherd.
 
 That said, you *can* run agents on your own instead of using Shepherd.
 
-.. note:: If you run a simulation using this method that includes
+.. WARNING:: If you run a simulation using this method that includes
     stopping and/or starting agents, the agents will stop, but new ones
     will not start. For example if your cell divides, the agent you
     started for the mother cell will stop, but the daughter cells will
@@ -492,7 +492,7 @@ in a separate terminal window:
    You should also see som text print out on the Zookeeper window. You
    might see some ``NoNode`` warnings--these are safe to ignore.
 
-   .. note:: You must start Zookeeper before Kafka!
+   .. WARNING:: You must start Zookeeper before Kafka!
 
 #. Start MongoDB:
 
@@ -502,15 +502,15 @@ in a separate terminal window:
 
    There shouldn't be any output.
 
-   .. note:: If you installed MongoDB using Homebrew, you can instead
-        `tell Homebrew to always run a MongoDB server by running:
+   If you installed MongoDB using Homebrew, you can instead
+   tell Homebrew to always run a MongoDB server by running:
 
-       .. code-block:: console
+   .. code-block:: console
 
-            $ brew services start mongodb/brew/mongodb-community
+        $ brew services start mongodb/brew/mongodb-community
 
-       Now a MongoDB server will start automatically once you login.
-       Then you can skip the step of starting MongoDB in the future.
+   Now a MongoDB server will start automatically once you login.
+   Then you can skip the step of starting MongoDB in the future.
 
 Now we can create our agents. We create an agent like this:
 
@@ -518,7 +518,7 @@ Now we can create our agents. We create an agent like this:
 
     $ python -m vivarium.environment.boot --type <type> --id <id> [--outer-id <outId>]
 
-.. note:: If you get errors from Python about being unable to find
+.. tip:: If you get errors from Python about being unable to find
     ``vivarium``, make sure you've set your PYTHONPATH to include
     vivarium.  See :ref:`pythonpath` for details.
 
@@ -544,7 +544,7 @@ three cells that consume glucose and lactose. We will initialize the
 environment with glucose and lactose, and as the cells depelete the
 glucose we should see the cells shift to consuming lactose.
 
-.. WARNING:: This example doesn't work yet. The general process is
+.. DANGER:: This example doesn't work yet. The general process is
     correct, but the particular agent types are not.
 
 .. todo:: Instructions for debugging in this mode
@@ -563,7 +563,7 @@ glucose we should see the cells shift to consuming lactose.
         $ python -m vivarium.environment.boot --type ecoli_core_glc --id env
         environment started
 
-   .. note:: Wait for the ``environment started`` to show up before
+   .. WARNING:: Wait for the ``environment started`` to show up before
        proceeding. Otherwise there won't be an environment to add the
        cells to!
 
@@ -631,7 +631,7 @@ model cells dividing!
 
 .. todo:: Reference composites in this and the previous tutorial
 
-.. WARNING:: We haven't tested this tutorial yet!
+.. DANGER:: We haven't tested this tutorial yet!
 
 #. Launch Shepherd in a separate terminal window:
 
@@ -646,7 +646,7 @@ model cells dividing!
         $ python -m vivarium.environment.boot --type lattice --id env
         environment started
 
-   .. note:: Wait for the ``environment started`` to show up before
+   .. WARNING:: Wait for the ``environment started`` to show up before
        proceeding. Otherwise there won't be an environment to add the
        cells to!
 
