@@ -1,11 +1,6 @@
-.. Vivarium documentation master file, created by
-   sphinx-quickstart on Mon Mar 23 21:07:42 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-************************************
+====================================
 Welcome to Vivarium's documentation!
-************************************
+====================================
 
 Vivarium is a framework that provides for multi-scale simulation of
 whole-cell models.
@@ -19,37 +14,52 @@ whole-cell models.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Introduction
+   :hidden:
 
-   docs
-   getting_started
+   getting_started.rst
 
-============
+.. toctree::
+   :maxdepth: 2
+   :caption: Topic Guides
+   :hidden:
+
+   guides/index.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+   :hidden:
+
+   glossary.rst
+
+.. todo:: Maybe use :ref:`genindex`
+
+.. todo:: Maybe use :ref:`modindex`
+
+.. DANGER:: This documentation is unfinished! Please do not rely on it.
+
+------------
 Introduction
-============
+------------
 
 A vivarium, literally a "place of life," is a controlled environment in
 which organisms can be studied. You might have encountered examples of
 vivaria like an aquarium or a terarium. The Vivarium project provides a
 framework for creating a computational vivarium which can simulate
-colonies of whole-cell models in a shared, dynamic environment.
+colonies of cells in a shared, dynamic environment.
 
-.. todo:: Use Cases
+.. todo:: Use cases
 
-.. todo:: Getting Started: Installation and run existing simulation
+Using This Documentation
+========================
 
-.. todo:: Developing your own models
+If you want to run Vivarium, start with our :doc:`getting started guide
+<getting_started>`, which will walk you through getting Vivarium up
+and running.
 
-.. todo:: Contributing Models
+For a technical deep-dive into the important concepts in Vivarium, check
+out our :doc:`topic guides <guides/index>`.
 
-.. todo:: Hacking on the framework
-
-.. todo:: Contributing framework changes
-
-==================
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. todo:: Describe what tutorials do.

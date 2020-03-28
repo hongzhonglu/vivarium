@@ -45,6 +45,38 @@ documentation:
 * We write tutorials in the second-person, future tense, for example
   "First, you'll need to install". We also frequently use the imperative
   ("Install this").
+* We use the following admonitions. We don't want to overload our users
+  with admonitions, so we don't use any others.
+
+    * We warn users about potential problems with warning admonitions.
+      These often describe important steps that we think users might forget.
+
+      .. WARNING::
+
+         ``.. WARNING::``
+
+    * We use notes to highlight important points. These should *not* be
+      used for asides that aren't important enough to integrate directly
+      into the text.
+
+      .. note::
+
+         ``.. note::``
+    
+    * We give users helpful tips using the tip admonition. These help
+      highlight tips that some users might not use but that will help
+      users who are debugging problems.
+
+      .. tip::
+
+         ``.. tip::``
+
+    * We use danger admonitions for the most critical warnings. Use
+      these sparingly.
+
+      .. DANGER::
+
+         ``.. DANGER::``
 
 .. _building-docs:
 
