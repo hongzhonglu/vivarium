@@ -40,7 +40,15 @@ Glossary
         the current state of the model. During the simulation, each
         process is provided with the current state of the model and
         the timestep, and the process returns an update that changes
-        the state of the model.
+        the state of the model. Each process is an instance of a
+        :term:`process class`.
+
+    Process Class
+    Process Classes
+        A process class is a Python class that defines a process's
+        model. These classes can be instantiated, and optionally
+        configured, to create :term:`processes`. Each process class must
+        subclass either :py:class:`Process` or another process class.
 
     Timestep
     Timesteps
@@ -115,3 +123,24 @@ Glossary
         When Vivarium passes stores to processes, it includes only the
         variables the process has requested. We call this filtering
         masking.
+
+    Deriver
+    Derivers
+        TODO
+        .. todo:: Write deriver glossary entry
+
+    Emitter
+    Emitters
+        While a simulation is running, the current state is stored in
+        :term:`stores`, but this information is overwritten at each
+        timestep with an updated state. When we want to save off
+        variable values for later analysis, we send these data to
+        one of our emitters, each of which formats the data for a
+        storage medium, for example a database or a Kafka message. We
+        then query the emitter to get the formatted data.
+
+    Update
+    Updates
+        An update describes how the model state should change due to the
+        influence of a :term:`proces` over some period of time (usually
+        a :term:`timestep`).
