@@ -6,6 +6,40 @@ from vivarium.compartment.process import Process
 
 
 class Growth(Process):
+    """The Growth :term:`process class` models exponential cell growth.
+
+    The cell's mass :math:`m_{t + h}` at time :math:`t + h` for
+    :term:`timestep` :math:`h` and with growth rate :math:`r` is modeled
+    as:
+
+    .. math::
+
+        m_{t + h} = m_t e^{rh}
+
+    Configuration Options:
+
+    * ``growth_rate``: The cell's growth rate :math:`r`. This rate is
+      0.0006 by default.
+
+      .. todo:: Why is the rate 0.0006?
+
+    Example Usage:
+
+    >>> import math
+    >>> TIMESTEP = 1.0  # in seconds
+    >>> # growth rate chosen so mass doubles each timestep
+    >>> configuration = {'growth_rate': math.log(2.0)}
+    >>> growth_process = Growth(configuration)
+    >>> state = growth_process.default_settings()['state']
+    >>> state
+    {'global': {'mass': 1339}}
+    >>> update = growth_process.next_update(TIMESTEP, state)
+    >>> update
+    {'global': {'mass': 2678.0}}
+    >>> update['global']['mass'] / state['global']['mass']
+    2.0
+
+    """
     def __init__(self, initial_parameters={}):
         ports = {
             'global': ['mass', 'volume']}
@@ -15,7 +49,6 @@ class Growth(Process):
         super(Growth, self).__init__(ports, parameters)
 
     def default_settings(self):
-
         # default state
         mass = 1339  # (wet mass in fg)
         internal = {'mass': mass}
