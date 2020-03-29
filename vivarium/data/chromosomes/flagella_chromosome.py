@@ -6,10 +6,9 @@ knowledge_base = KnowledgeBase()
 
 ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
 
-ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
-
 class FlagellaChromosome(object):
     def __init__(self):
+        ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
         self.config = {
             'sequence': ecoli_sequence,
             'genes': {

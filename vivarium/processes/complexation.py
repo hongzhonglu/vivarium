@@ -7,13 +7,6 @@ from arrow import StochasticSystem
 from vivarium.compartment.process import Process, keys_list
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 
-chromosome = FlagellaChromosome()
-
-default_complexation_parameters = {
-    'monomer_ids': chromosome.complexation_monomer_ids,
-    'complex_ids': chromosome.complexation_complex_ids,
-    'stoichiometry': chromosome.complexation_stoichiometry,
-    'rates': chromosome.complexation_rates}
 
 def build_complexation_stoichiometry(
         stoichiometry,
@@ -37,11 +30,17 @@ def build_complexation_stoichiometry(
             matrix[reaction_index][reverse_index[molecule_id]] = level
 
     return matrix, rates_array
-    
+
 
 class Complexation(Process):
     def __init__(self, initial_parameters={}):
-        self.default_parameters = copy.deepcopy(default_complexation_parameters)
+        chromosome = FlagellaChromosome()
+        self.default_parameters = {
+            'monomer_ids': chromosome.complexation_monomer_ids,
+            'complex_ids': chromosome.complexation_complex_ids,
+            'stoichiometry': chromosome.complexation_stoichiometry,
+            'rates': chromosome.complexation_rates}
+
         self.derive_defaults(initial_parameters, 'stoichiometry', 'reaction_ids', keys_list)
 
         self.parameters = self.default_parameters
