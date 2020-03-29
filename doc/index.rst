@@ -32,7 +32,7 @@ whole-cell models.
    :caption: Reference
    :hidden:
 
-   glossary.rst
+   reference/index.rst
 
 .. todo:: Maybe use :ref:`genindex`
 

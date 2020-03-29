@@ -38,11 +38,12 @@ How Processes and Stores are Implemented
 Processes
 ---------
 
-Processes are written as classes that inherit from :py:class:`Process`.
-To create a composite, we create instances of these classes to make the
-processes we want to compose. If a process is configurable, we might
-provide a dictionary of configuration options. For information on
-configuring a process, see the process's documentation.
+Processes are written as classes that inherit from
+:py:class:`vivarium.compartment.process.Process`.  To create a
+composite, we create instances of these classes to make the processes we
+want to compose. If a process is configurable, we might provide a
+dictionary of configuration options. For information on configuring a
+process, see the process's documentation.
 
 .. todo:: Point to an example documented process and its usage
 
@@ -54,7 +55,8 @@ Stores
 
 Each store is implemented as a Python dictionary where the keys are the
 variable names and the values are the variable values. We also have
-wrapper :py:class:`Store` objects that hold these dictionaries.
+wrapper :py:class:`vivarium.compartment.process.Store` objects that hold
+these dictionaries.
 
 ----------------------------
 Ports Make Processes Modular
@@ -90,8 +92,10 @@ How Processes Define Ports
 ==========================
 
 A process specifies its port names in its constructor by calling the
-superclass (:py:class:`Process`) constructor. For example, the
-:py:class:`ConvenienceKinetics` class contains this line:
+superclass (:py:class:`vivarium.compartment.process.Process`)
+constructor. For example, the
+:py:class:`vivarium.processes.convenience_kinetics.ConvenienceKinetics`
+class contains this line:
 
 .. code-block:: python
 
@@ -176,7 +180,7 @@ Example Composite
 To put all this information together, let's take a look at an example
 composite that combines transport, growth, division, and expression
 processes. This example comes from
-:py:func:`growth_division.compose_growth_division`.
+:py:func:`vivarium.composites.growth_division.compose_growth_division`.
 
 .. code-block:: python
 
@@ -252,7 +256,8 @@ from the state, but it is not directly updated by processes.
 
 Third, we discuss the initialization of the states. This line will
 appear in each composite. The inner workings of
-:py:func:`initialize_state` are beyond the scope of this guide.
+:py:func:`vivarium.compartment.process.initialize_state` are beyond
+the scope of this guide.
 
 Lastly, we provide extra information in ``options``, for example the
 composite name.

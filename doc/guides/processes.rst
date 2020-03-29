@@ -8,7 +8,8 @@ this document as described in :rfc:`2119`.
 Models in Vivarium are built by combining :term:`processes`, each of
 which models a mechanism in the cell. These processes can be combined in
 a :term:`composite` to build more complicated models. Process models are
-defined in a class that inherit from :py:class:`Process`, and these
+defined in a class that inherit from
+:py:class:`vivarium.compartment.process.Process`, and these
 :term:`process classes` can be instantiated to create individual
 processes.  During instantiation, the process class may accept
 configuration options.
@@ -55,7 +56,7 @@ not used by the process class. Any information needed by the process
 class MAY also be included in these parameters. Once the object has
 been instantiated, these parameters are available as
 ``self.parameters``, where they have been stored by the
-:py:class:`Process` constructor.
+:py:class:`vivarium.compartment.process.Process` constructor.
 
 Example Constructor
 -------------------
@@ -135,13 +136,13 @@ Schema
 .. todo:: What else does the schema do?
 
 In the schema, we define how this process class will specify
-:term:`updates` for each variable. Check out
-:py:data:`vivarium.compartment.process.updater_library` for a list of
-the available updaters, which include ``set`` and ``accumulate``.
-``accumulate`` is the default, and it specifies that the value of the
-variable in the update be added to the variable's current value when the
-update is applied. ``set`` specifies that the update value overwrite the
-current value.
+:term:`updates` for each variable. The available updaters are as
+follows:
+
+* ``accumulate`` is the default, and it specifies that the value of the
+  variable in the update be added to the variable's current value when
+  the update is applied.
+* ``set`` specifies that the update value overwrite the current value.
 
 The schema MUST take the form of a dictionary like the default state
 dictionary, only the variable values are replaced with dictionaries that
@@ -257,7 +258,7 @@ how to use a process.
 If you are writing your own process, please include these examples!
 Also, executing the process class Python file should execute one of
 these examples and save the output as demonstrated in
-:py:mod:`vivarium.process.convenience_kinetics`. Lastly, any top-level
+:py:mod:`vivarium.processes.convenience_kinetics`. Lastly, any top-level
 functions you include that are prefixed with ``test_`` will be executed
 by ``pytest``. Please add these tests to help future developers make
 sure they haven't broken your process!

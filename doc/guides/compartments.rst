@@ -34,8 +34,9 @@ Directly Creating Compartments
 ==============================
 
 You can create compartments directly using either the
-:py:class:`Compartment` constructor or by using a framework function.
-Both are beyond the scope of this documentation.
+:py:class:`vivarium.compartment.process.Compartment` constructor or by
+using a framework function.  Both are beyond the scope of this
+documentation.
 
 ------------------------
 Compartment Interactions
@@ -117,7 +118,7 @@ Diffusion Field
 
 A diffusion field operates on a grid like that described above with
 :ref:`lattice <space-discretization-lattice>`. The diffusion rate is
-configurable. See :py:mod:`vivarium.process.diffusion_field` for
+configurable. See :py:mod:`vivarium.processes.diffusion_field` for
 details.
 
 Diffusion Network
@@ -134,7 +135,7 @@ however, diffusion networks are more computationally intensive to model.
 Instead, diffusion networks can be used to model diffusion between a
 cell and its environment through the membrane or a channel.
 
-See :py:mod:`vivarium.process.diffusion_network` for details.
+See :py:mod:`vivarium.processes.diffusion_network` for details.
 
 Multi-Body Physics
 ==================
@@ -146,4 +147,4 @@ compartments. This process applies forces when two compartments overlap
 by too much and small random forces to approximate thermal jitter.
 
 This process is implemented in
-:py:mod:`vivarium.process.multibody_physics`.
+:py:mod:`vivarium.processes.multibody_physics`.
