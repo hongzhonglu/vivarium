@@ -64,3 +64,6 @@ html_static_path = ['_static']
 
 # -- sphinx.ext.intersphinx options --
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
+
+# -- sphinx.ext.autodic options --
+autodoc_inherit_docstrings = False
