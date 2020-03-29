@@ -4,30 +4,11 @@ vivarium.compartment package
 Submodules
 ----------
 
-vivarium.compartment.composition module
----------------------------------------
+.. toctree::
 
-.. automodule:: vivarium.compartment.composition
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-vivarium.compartment.emitter module
------------------------------------
-
-.. automodule:: vivarium.compartment.emitter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-vivarium.compartment.process module
------------------------------------
-
-.. automodule:: vivarium.compartment.process
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   vivarium.compartment.composition
+   vivarium.compartment.emitter
+   vivarium.compartment.process
 
 Module contents
 ---------------

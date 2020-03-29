@@ -4,14 +4,9 @@ vivarium.parameters package
 Submodules
 ----------
 
-vivarium.parameters.parameters module
--------------------------------------
+.. toctree::
 
-.. automodule:: vivarium.parameters.parameters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   vivarium.parameters.parameters
 
 Module contents
 ---------------

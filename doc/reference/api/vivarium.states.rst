@@ -4,14 +4,9 @@ vivarium.states package
 Submodules
 ----------
 
-vivarium.states.chromosome module
----------------------------------
+.. toctree::
 
-.. automodule:: vivarium.states.chromosome
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   vivarium.states.chromosome
 
 Module contents
 ---------------
