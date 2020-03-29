@@ -325,6 +325,21 @@ install the Python packages Vivarium uses.
         $ python3 -m venv venv
         ...
         $ source venv/bin/activate
+
+#. Install Numpy. One of our dependencies, ``stochastic-arrow`` requires
+   that Numpy be installed first. Check the ``requirements.txt`` file
+   for a line like this:
+
+   .. code-block::
+   
+        numpy==1.15.3
+
+   Now install the version of Numpy specified in ``requirements.txt``
+
+   .. code-block:: console
+   
+        $ pip install numpy==1.15.3
+
 #. Install packages
 
    .. code-block:: console
@@ -544,9 +559,6 @@ three cells that consume glucose and lactose. We will initialize the
 environment with glucose and lactose, and as the cells depelete the
 glucose we should see the cells shift to consuming lactose.
 
-.. DANGER:: This example doesn't work yet. The general process is
-    correct, but the particular agent types are not.
-
 .. todo:: Instructions for debugging in this mode
 
 #. First, let's create a ``ecoli_core_glc`` environment agent. This is a
@@ -602,9 +614,9 @@ glucose we should see the cells shift to consuming lactose.
    
         $ python -m vivarium.environment.control run --id env
 
-   The simulation will stop on its own once the environment agent hits
-   the end of its programmed timeline. However, you can pause, run,
-   and shutdown the simulation like this as well:
+   Simulation stop on their own once the environment agent hits the end
+   of its programmed timeline. However, you can pause, run, and shutdown
+   the simulation like this as well:
 
    .. code-block:: console
    
@@ -612,9 +624,47 @@ glucose we should see the cells shift to consuming lactose.
         $ python -m vivarium.environment.control run --id env
         $ python -m vivarium.environment.control shutdown
 
-.. todo:: Fix this tutorial, as currently it fails.
+   In this example, one of the cells tries to divide, halting the
+   simulation early. We'll see later how to simulate division.
 
-.. todo:: Add example output from this tutorial.
+#. Once the simulation completes, run the analysis script to plot the
+   data:
+
+   .. code-block:: console
+
+        $ python vivarium/analysis/run_analysis -e env
+
+   When the script completes, look for a folder named ``env`` in
+   ``vivarium_work/vivarium/out`` with plots from your simulation.
+
+In ``snap_out.png`` you should see something like this:
+
+.. image:: ./_static/shifter_snap_out.png
+   :width: 100%
+   :alt: A grid of plots with 4 rows and 6 columns. Each plot shows the
+       concentrations of some metabolite as a color from white to
+       purple. Each row is for one of carbon dioxide, oxygen, glucose,
+       and lactose. Each column is for a time during the experiment from
+       0 to 2.5 hours. Each of the three cells is depicted in each plot
+       as a rectangle. We see local depletions of oxygen, glucose, and
+       lactose around each cell and local increses in carbon
+       dioide around each cell, over time.
+
+Notice that the cells are consuming glucose and lactose as we expected!
+Now take a look at ``c1/compartment.png``. Here is part of the plot you
+should see:
+
+.. image:: ./_static/shifter_compartment_crop.png
+    :width: 100%
+    :alt: A five by two grid of plots, each showing a variable
+        value versus time. Three plots are boxed in red, showing the
+        following. We see glucose quickly being consumed. Once glucose
+        is consumed, LacY expression steps up and lactose in the
+        environment is depleted.
+
+Here notice that the glucose around the cell is quickly consumed, after
+which LacY expression increases. Then, the cell consumes the surrounding
+glucose, as we expected.
 
 Using Shepherd
 ==============
