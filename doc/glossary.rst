@@ -14,8 +14,22 @@ Glossary
 
     Compartment
     Compartments
-       TODO
-       .. todo:: Write compartment glossary entry
+        We organize our models into compartments, each of which is like
+        an agent in an :term:`agent-based model`. Each compartment
+        stores a :term:`composite` of :term:`processes` and
+        :term:`stores`. Compartments can be nested and interact with
+        neighbor, parent, and child compartments through :term:`boundary
+        stores`. Thus, a model might contain a compartment for the
+        environment that contains two child compartments for the two
+        cells in the environment.
+
+    Boundary Store
+    Boundary Stores
+        :term:`Compartments` interact through boundary stores that
+        represent how the compartments affect each other. For example,
+        between an environment compartment and a cell compartment, there
+        might be a boundary store to track the flux of metabolites from
+        the cell to the environment and vice versa.
 
     Composite
     Composites
@@ -27,8 +41,11 @@ Glossary
 
     Deriver
     Derivers
-        TODO
-        .. todo:: Write deriver glossary entry
+        Derivers run after all processes have run for a
+        :term:`timepoint` and compute values from the state of the
+        model. These computed values are generally stored in the
+        ``global`` :term:`store`. For example, one common deriver uses
+        the cell's mass and density to compute the volume.
 
     Emitter
     Emitters
@@ -39,6 +56,11 @@ Glossary
         one of our emitters, each of which formats the data for a
         storage medium, for example a database or a Kafka message. We
         then query the emitter to get the formatted data.
+
+    Exchange
+    Exchanges
+        The flux between a cell and its environment. This is stored in a
+        :term:`boundary store`.
 
     Masking
         When Vivarium passes stores to processes, it includes only the

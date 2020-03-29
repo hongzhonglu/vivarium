@@ -3,6 +3,7 @@
    :caption: Topic Guides
 
    modeling_paradigm.rst
-   composites.rst
    processes.rst
+   composites.rst
+   compartments.rst
    docs.rst
