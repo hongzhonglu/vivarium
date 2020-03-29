@@ -461,6 +461,8 @@ agents interact with each other by passing messages through Kafka.
 
 .. todo:: Link to more comprehensive topical guide
 
+.. _getting-started-how-to-run-agents:
+
 How to Run Agents
 -----------------
 
@@ -681,6 +683,8 @@ model cells dividing!
 
 .. todo:: Reference composites in this and the previous tutorial
 
+#. First, start Zookeeper, Kafka, and MongoDB as we discussed above in
+   :ref:`getting-started-how-to-run-agents`.
 #. Launch Shepherd in a separate terminal window:
 
    .. code-block:: console
@@ -697,6 +701,10 @@ model cells dividing!
    .. WARNING:: Wait for the ``environment started`` to show up before
        proceeding. Otherwise there won't be an environment to add the
        cells to!
+
+   .. tip:: If you get errors from Python about being unable to find
+        ``vivarium``, make sure you've set your PYTHONPATH to include
+        vivarium.  See :ref:`pythonpath` for details.
 
 #. Next, let's create a cell agent of type ``growth_division``, which
    can grow and divide.
@@ -733,4 +741,55 @@ take a look at ``snap_out.png``, you should see rows of plots like this:
         Glucose concentrations are shown depleting around the cells, and
         the colony is growing as the cells multiply.
 
-.. todo:: Running an experiment with Shepherd.
+Running Experiments
+-------------------
+
+With Shepherd, you can also run experiments that pre-define the
+environment and cell types. For example, let's see how we could have run
+a simulation of growing and dividing cells like above more easily:
+
+#. First, start Zookeeper, Kafka, and MongoDB as we discussed above in
+   :ref:`getting-started-how-to-run-agents`.
+#. Now start up Shepherd:
+
+   .. code-block:: console
+   
+        $ lein run
+
+#. Load the experiment:
+
+   .. DANGER:: This experiment doesn't work yet. We are working on a fix
+      in `#178 <https://github.com/CovertLab/vivarium/issues/178>`_
+
+   .. code-block:: console
+
+        $ python -m vivarium.environment.control \
+            growth-division-experiment --experiment_id exp
+
+   .. tip:: If you get errors from Python about being unable to find
+        ``vivarium``, make sure you've set your PYTHONPATH to include
+        vivarium.  See :ref:`pythonpath` for details.
+
+#. Run the simulation:
+
+   .. code-block:: console
+
+        $ python -m vivarium.environment.control run --id exp
+
+#. When it finishes, run the analysis:
+
+   .. code-block:: console
+   
+        $ python vivarium/analysis/run_analysis -e exp
+
+   This is a long experiment, so you might want to end the simulation
+   early too.
+
+In ``snap_out.png``, we see a similar outcome to before. The plots are
+different this time because there is some stochasticity in the model.
+
+.. image:: ./_static/growth_division_experiment_snap_out_crop.png
+    :width: 100%
+    :alt: A row of 6 plots showing the simulated colony over time.
+        Glucose concentrations are shown depleting around the cells, and
+        the colony is growing as the cells multiply.
