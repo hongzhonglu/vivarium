@@ -681,8 +681,6 @@ model cells dividing!
 
 .. todo:: Reference composites in this and the previous tutorial
 
-.. DANGER:: We haven't tested this tutorial yet!
-
 #. Launch Shepherd in a separate terminal window:
 
    .. code-block:: console
@@ -693,7 +691,7 @@ model cells dividing!
 
    .. code-block:: console
    
-        $ python -m vivarium.environment.boot --type lattice --id env
+        $ python -m vivarium.environment.boot --type ecoli_core_glc --id env2
         environment started
 
    .. WARNING:: Wait for the ``environment started`` to show up before
@@ -705,12 +703,34 @@ model cells dividing!
 
    .. code-block:: console
    
-      $ python -m vivarium.environment.boot --type growth_division --id c --outer-id env
+      $ python -m vivarium.environment.boot --type growth_division --id c --outer-id env2
 
 #. Now we can start the simulation!
 
    .. code-block:: console
    
-        $ python -m vivarium.environment.control run --id env
+        $ python -m vivarium.environment.control run --id env2
+
+   This simulation is quite long, so feel free to cancel it with CTRL-C
+   after you're tired of waiting.
+
+#. Once the simulation finishes, we can analyze the data:
+
+   .. code-block:: console
+
+        $ python vivarium/analysis/run_analysis -e env2
+
+   .. note:: You can run the analysis script while the simulation is
+       still running too.
+
+First, notice how many folders are in the analysis output. Each folder
+is a cell, so since the cells divided, we have a lot of them! If you
+take a look at ``snap_out.png``, you should see rows of plots like this:
+
+.. image:: ./_static/growth_division_snap_out_crop.png
+    :width: 100%
+    :alt: A row of 6 plots showing the simulated colony over time.
+        Glucose concentrations are shown depleting around the cells, and
+        the colony is growing as the cells multiply.
 
 .. todo:: Running an experiment with Shepherd.
