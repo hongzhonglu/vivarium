@@ -41,7 +41,8 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'venv']
+exclude_patterns = [
+    '_build', 'Thumbs.db', '.DS_Store', 'venv', 'venv_*']
 
 # Causes warnings to be thrown for all unresolvable references. This
 # will help avoid broken links.
@@ -67,3 +68,9 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
 
 # -- sphinx.ext.autodic options --
 autodoc_inherit_docstrings = False
+# The Python dependencies aren't really required for building the docs
+autodoc_mock_imports = [
+    'arpeggio', 'cobra', 'confluent_kafka', 'matplotlib',
+    'mpl_toolkits', 'parsimonious', 'pygame', 'pymongo', 'arrow'
+]
+
