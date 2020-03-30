@@ -14,24 +14,10 @@ whole-cell models.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Introduction
    :hidden:
 
    getting_started.rst
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Topic Guides
-   :hidden:
-
    guides/index.rst
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Reference
-   :hidden:
-
    reference/index.rst
 
 .. todo:: Maybe use :ref:`genindex`
@@ -59,7 +45,11 @@ If you want to run Vivarium, start with our :doc:`getting started guide
 <getting_started>`, which will walk you through getting Vivarium up
 and running.
 
+For step-by-step instructions, hold tight. Tutorials are coming soon!
+
 For a technical deep-dive into the important concepts in Vivarium, check
 out our :doc:`topic guides <guides/index>`.
 
-.. todo:: Describe what tutorials do.
+If you want to look something up like the configuration options for some
+process or the definition of a word, see our :doc:`reference information
+<reference/index>`.
