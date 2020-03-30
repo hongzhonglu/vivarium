@@ -1,3 +1,14 @@
+'''
+==================
+Metabolism Process
+==================
+
+In this module, we define a :term:`process class` for modeling a cell's
+metabolic processes. Wel also define functions for getting
+configurations that can be passed to :py:class:`Metabolism` to create
+common models of metabolism.
+'''
+
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -20,16 +31,55 @@ GLOBALS = ['volume', 'mass', 'mmol_to_counts']
 
 
 class Metabolism(Process):
+    """A general class that is configured to match specific models
+
+    This metabolism process class models metabolism using flux balance
+    analysis (FBA). The FBA problem is defined using the provided
+    configuration parameters.
+
+    For an example of how to configure this process using a `BiGG
+    <http://bigg.ucsd.edu/>`_ model, see
+    :py:mod:`vivarium.processes.BiGG_metabolism`. To see how to
+    configure the process manually, look at the source code for
+    :py:func:`test_toy_metabolism`.
+
+    :term:`Ports`:
+
+    * **external**: Holds the state of molecules external to the FBA
+      reactions. For a model of a cell's metabolism, this will likely
+      hold metabolite concentrations in the extracellular space.
+    * **internal**: Holds the state of molecules internal to the FBA.
+      For a model of a cell's metabolism, this will probably be the
+      cytosolic concentrations.
+    * **reactions**: Holds the IDs of the modeled metabolic reactions.
+      The linked :term:`store` does not need to be shared with any other
+      processes.
+    * **exchange**: The :term:`boundary store` between the compartment
+      this process is running in and its parent.
+    * **flux_bounds**: The bounds on the FBA, which are imposed by the
+      availability of metabolites. For example, for the metabolism of a
+      cell, the bounds represent the limits of transmembrane transport.
+    * **global**: Should be linked to the ``global`` :term:`store`.
+
+    Args:
+        initial_parameters (dict): Configures the process with the
+            following keys/values:
+
+            * **initial_state** (:py:class:`dict`): the default state,
+              with a dict for internal and external, like this:
+              ``{'external': external_state, 'internal':
+              internal_state}``
+            * **stoichiometry** (:py:class:`dict`): a map from reaction
+              ID to that reaction's stoichiometry dictionary, e.g.
+              ``{reaction_id: stoichiometry_dict}``
+            * **objective** (:py:class:`dict`): the stoichiometry dict
+              to be optimized
+            * **external_molecules** (:py:class:`list`): the external
+              molecules
+            * **reversible_reactions** (:py:class:`list`)
+
     """
-    A general metabolism process, which sets the FBA problem based on input configuration data.
-    initial_parameters (dict) configures the process with the following keys/values:
-        - initial_state (dict) -- the default state, with a dict for internal and external:
-            {'external': external_state, 'internal': internal_state}
-        - stoichiometry (dict) -- {reaction_id: stoichiometry dict}
-        - objective (dict) -- stoichiometry dict to be optimized
-        - external_molecules (list) -- the external molecules
-        - reversible_reactions (list)
-    """
+
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
 
@@ -218,8 +268,15 @@ class Metabolism(Process):
 
 # tests and analyses
 def plot_exchanges(timeseries, sim_config, out_dir):
-    # plot focused on exchanges
+    """Create an exchange-focussed plot of timeseries data
 
+    The generated figure contins 3 plots, all versus time:
+
+    * External concentrations
+    * Counts of molecules exchanged across :term:`boundary store`
+    * Mass
+
+    """
     nAvogadro = AVOGADRO
     env_volume = sim_config['environment_volume']
     timeline = sim_config['timeline']  # TODO -- add tickmarks for timeline events
@@ -348,6 +405,15 @@ def get_initial_global_state():
         'global': globals}
 
 def get_e_coli_core_config():
+    """Get an *E. coli* core metabolism model
+
+    The model is the `e_coli_core model from BiGG
+    <http://bigg.ucsd.edu/models/e_coli_core>`_.
+
+    Returns:
+        A configuration for the model that can be passed to the
+        :py:class:`Metabolism` constructor.
+    """
     metabolism_file = os.path.join('models', 'e_coli_core.json')
     initial_state = get_initial_global_state()
     return {
@@ -355,6 +421,15 @@ def get_e_coli_core_config():
         'initial_state': initial_state}
 
 def get_iAF1260b_config():
+    """Get the metabolism config for the iAF1260b BiGG model
+
+    The metabolism model is the `iAF1260b model from BiGG
+    <http://bigg.ucsd.edu/models/iAF1260b>`_.
+
+    Returns:
+        A configuration for the model that can be passed to the
+        :py:class:`Metabolism` constructor.
+    """
     metabolism_file = os.path.join('models', 'iAF1260b.json')
     initial_state = get_initial_global_state()
     return {
