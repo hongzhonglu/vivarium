@@ -73,7 +73,7 @@ def get_derivers(process_list, topology):
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
                 except:
-                    print('{} source/target port mismatch'.format(process_id))
+                    print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
                 deriver_topology = {
