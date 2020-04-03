@@ -10,6 +10,7 @@ from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output)
 from vivarium.composites.gene_expression import plot_gene_expression_output
+from vivarium.composites.flagella_expression import get_flg_expression_config
 
 # processes
 from vivarium.processes.division import (
@@ -53,13 +54,14 @@ def compose_chemotaxis_master(config):
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
-    # expression
-    transcription = Transcription(config.get('transcription', {}))
-    translation = Translation(config.get('translation', {}))
-    degradation = RnaDegradation(config.get('degradation', {}))
-    complexation = Complexation(config.get('complexation', {}))
+    # flagella expression
+    flg_expression_config = get_flg_expression_config()
+    transcription = Transcription(flg_expression_config['transcription'])
+    translation = Translation(flg_expression_config['translation'])
+    degradation = RnaDegradation(flg_expression_config['degradation'])
+    complexation = Complexation(flg_expression_config['complexation'])
 
-    # chemotaxis
+    # chemotaxis -- flagella activity, receptor activity, and PMF
     receptor_parameters = {'ligand': 'GLC'}
     receptor_parameters.update(config)
     receptor = ReceptorCluster(config.get('receptor', receptor_parameters))
@@ -74,49 +76,60 @@ def compose_chemotaxis_master(config):
 
     # Place processes in layers
     processes = [
-        {'PMF': PMF},
+        {
+        'PMF': PMF
+        },
 
-        {'receptor': receptor,
-         'transport': transport,
-         'transcription': transcription,
-         'translation': translation,
-         'degradation': degradation,
-         'complexation': complexation},
+        {
+        'receptor': receptor,
+        'transport': transport,
+        },
 
-        {'flagella': flagella,
-         'metabolism': metabolism},
+        {
+        'transcription': transcription,
+        'translation': translation,
+        'degradation': degradation,
+        'complexation': complexation,
+        # 'metabolism': metabolism
+        },
 
-        {'division': division}
+        {
+        'flagella': flagella
+        },
+
+        {
+        'division': division
+        }
     ]
 
     # Make the topology
     # for each process, map process ports to store ids
     topology = {
         'transport': {
-            'internal': 'cell',
+            'internal': 'internal',
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
             'fluxes': 'flux_bounds',
             'global': 'global'},
 
-        'metabolism': {
-            'internal': 'cell',
-            'external': 'environment',
-            'reactions': 'reactions',
-            'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds',
-            'global': 'global'},
+        # 'metabolism': {
+        #     'internal': 'internal',
+        #     'external': 'environment',
+        #     'reactions': 'reactions',
+        #     'exchange': 'exchange',
+        #     'flux_bounds': 'flux_bounds',
+        #     'global': 'global'},
 
         'transcription': {
             'chromosome': 'chromosome',
-            'molecules': 'molecules',
+            'molecules': 'internal',
             'proteins': 'proteins',
             'transcripts': 'transcripts',
             'factors': 'concentrations'},
 
         'translation': {
             'ribosomes': 'ribosomes',
-            'molecules': 'molecules',
+            'molecules': 'internal',
             'transcripts': 'transcripts',
             'proteins': 'proteins',
             'concentrations': 'concentrations'},
@@ -124,7 +137,7 @@ def compose_chemotaxis_master(config):
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'molecules': 'molecules',
+            'molecules': 'internal',
             'global': 'global'},
 
         'complexation': {
@@ -133,35 +146,41 @@ def compose_chemotaxis_master(config):
 
         'receptor': {
             'external': 'environment',
-            'internal': 'cytoplasm'},
+            'internal': 'internal'},
 
         'flagella': {
-            'counts': 'cell_counts',
-            'internal': 'cytoplasm',
+            'internal': 'internal',
             'membrane': 'membrane',
-            'flagella': 'flagella',
+            'flagella_counts': 'proteins',
+            'flagella_activity': 'flagella',
             'external': 'environment'},
 
         'PMF': {
             'external': 'environment',
             'membrane': 'membrane',
-            'internal': 'cytoplasm'},
+            'internal': 'internal'},
 
         'division': {
-            'global': 'global'}}
+            'global': 'global'}
+    }
 
     # add derivers
     derivers = get_derivers(processes, topology)
     processes.extend(derivers['deriver_processes'])  # add deriver processes
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
-    # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    ## Initialize the states
+
+    # flagella initialized at 8
+    initial_state = {
+        'internal': {'flagella': 8}
+    }
+    states = initialize_state(processes, topology, config.get('initial_state', initial_state))
 
     options = {
         'name': config.get('name', 'chemotaxis_master'),
         'environment_port': 'environment',
-        'exchange_port': 'exchange',
+        # 'exchange_port': 'exchange',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition}
@@ -180,36 +199,37 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     compartment = load_compartment(compose_chemotaxis_master)
-
-    # settings for simulation and plot
     options = compartment.configuration
 
-    # define timeline
-    timeline = [(20, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
-
+    # simulate
+    timeline = [(120, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
     settings = {
-        'environment_port': options['environment_port'],
-        'exchange_port': options['exchange_port'],
+        'environment_port': options.get('environment_port'),
+        'exchange_port': options.get('exchange_port'),
         'environment_volume': 1e-13,  # L
-        'timeline': timeline,
-    }
+        'timeline': timeline}
 
+    timeseries = simulate_with_environment(compartment, settings)
+
+    # get growth
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
+    # plots
     plot_settings = {
-        'max_rows': 20,
+        'max_rows': 60,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
         'skip_ports': ['prior_state', 'null']}
+    plot_simulation_output(timeseries, plot_settings, out_dir)
 
-    expression_plot_settings = {
-        'name': 'gene_expression',
+    gene_exp_plot_config = {
+        'name': 'flagella_expression',
         'ports': {
             'transcripts': 'transcripts',
-            'molecules': 'cell',
-            'proteins': 'proteins'}}
-
-    # saved_state = simulate_compartment(compartment, settings)
-    timeseries = simulate_with_environment(compartment, settings)
-    volume_ts = timeseries['global']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
-    plot_simulation_output(timeseries, plot_settings, out_dir)
+            'proteins': 'proteins',
+            'molecules': 'molecules'}}
+    plot_gene_expression_output(
+        timeseries,
+        gene_exp_plot_config,
+        out_dir)

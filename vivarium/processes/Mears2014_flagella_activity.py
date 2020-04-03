@@ -96,13 +96,13 @@ class FlagellaActivity(Process):
                 'motile_state',
                 'motile_force',
                 'motile_torque'],
-            'counts': [
+            'flagella_counts': [
                 'flagella'],
             'membrane': [
                 'PMF',
                 'protons_flux_accumulated'],
-            'flagella': [
-                'flagella_activity'],
+            'flagella_activity': [
+                'flagella'],
             'external': []}
 
         parameters = DEFAULT_PARAMETERS
@@ -121,18 +121,18 @@ class FlagellaActivity(Process):
             'membrane': {
                 'PMF': DEFAULT_PMF,
                 'PROTONS': 0},
-            'counts': {'flagella': self.n_flagella},
-            'flagella': {
-                'flagella_activity': {
+            'flagella_counts': {
+                'flagella': self.n_flagella},
+            'flagella_activity': {
+                'flagella': {
                     flagella_id: random.choice([-1, 1]) for flagella_id in self.flagella_ids}},
             'internal': internal}
 
         # default emitter keys
         default_emitter_keys = {
             'internal': ['motile_force', 'motile_torque', 'motile_state', 'CheY', 'CheY_P', 'cw_bias'],
-            'flagella': ['flagella_activity'],
-            # 'external': [],
-        }
+            'flagella_counts': ['flagella'],
+            'flagella_activity': ['flagella']}
 
         # default updaters
         internal_set_states = [
@@ -152,7 +152,7 @@ class FlagellaActivity(Process):
         schema = {
             'internal': internal_schema,
             'membrane': {'PROTONS': {'updater': 'accumulate'}},
-            'flagella': {'flagella_activity': {
+            'flagella_activity': {'flagella': {
                 'updater': 'set',
                 'divide': 'split_dict'}}}
 
@@ -168,8 +168,8 @@ class FlagellaActivity(Process):
     def next_update(self, timestep, states):
 
         internal = states['internal']
-        n_flagella = states['counts']['flagella']
-        flagella = states['flagella']['flagella_activity']
+        n_flagella = states['flagella_counts']['flagella']
+        flagella = states['flagella_activity']['flagella']
         PMF = states['membrane']['PMF']
 
         # adjust number of flagella
@@ -234,8 +234,8 @@ class FlagellaActivity(Process):
             torque = 0
 
         return {
-            'flagella': {
-                'flagella_activity': flagella_update},
+            'flagella_activity': {
+                'flagella': flagella_update},
             'internal' : {
                 'CheY': CheY,
                 'CheY_P': CheY_P,
@@ -340,7 +340,7 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     cw_bias_vec = output['internal']['cw_bias']
     motile_state_vec = output['internal']['motile_state']
     motile_force_vec = output['internal']['motile_force']
-    flagella_activity = output['flagella']['flagella_activity']
+    flagella_activity = output['flagella_activity']['flagella']
     time_vec = output['time']
 
     # get flagella ids
@@ -503,12 +503,12 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     zero_flagella = {'flagella': 0}
-    timeline = [(2, {})]
+    timeline = [(10, {})]
     output1 = test_activity(zero_flagella, timeline)
     plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
     five_flagella = {'flagella': 5}
-    timeline = [(2, {})]
+    timeline = [(10, {})]
     output2 = test_activity(five_flagella, timeline)
     plot_activity(output2, out_dir, 'motor_control')
 
@@ -517,12 +517,12 @@ if __name__ == '__main__':
     timeline = [
         (0, {}),
         (2, {
-            'counts': {
+            'flagella_counts': {
                 'flagella': 6}}),
         (4, {
-            'counts': {
+            'flagella_counts': {
                 'flagella': 4}}),
-        (6, {})]
+        (10, {})]
     output3 = test_activity(init_params, timeline)
     plot_activity(output3, out_dir, 'motor_control_variable')
 

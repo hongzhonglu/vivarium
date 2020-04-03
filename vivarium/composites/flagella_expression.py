@@ -20,11 +20,9 @@ def degradation_sequences(sequence, promoters):
             promoter.last_terminator().position))
         for promoter_key, promoter in promoters.items()}
 
-def generate_flagella_compartment(config):
+def get_flg_expression_config():
     plasmid = Chromosome(flagella_chromosome.config)
     sequences = plasmid.product_sequences()
-
-    print(sequences)
 
     molecules = {}
     for nucleotide in nucleotides.values():
@@ -55,7 +53,7 @@ def generate_flagella_compartment(config):
             'polymerase_occlusion': 50},
 
         'degradation': {
-            
+
             'sequences': sequences,
             'catalysis_rates': {
                 'endoRNAse': 0.01},
@@ -83,6 +81,12 @@ def generate_flagella_compartment(config):
                 'endoRNAse': 1,
                 UNBOUND_RIBOSOME_KEY: 10,
                 UNBOUND_RNAP_KEY: 10}}}
+
+    return flagella_expression_config
+
+
+def generate_flagella_compartment(config):
+    flagella_expression_config = get_flg_expression_config()
 
     return compose_gene_expression(flagella_expression_config)
 
