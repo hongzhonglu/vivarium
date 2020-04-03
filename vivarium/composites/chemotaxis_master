@@ -204,7 +204,12 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # save the topology network
-    plot_compartment_topology(compartment, out_dir)
+    topology_plot_settings = {
+        'network_layout': 'process_layers'}
+    plot_compartment_topology(
+        compartment,
+        topology_plot_settings,
+        out_dir)
 
     # simulate
     timeline = [(120, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
@@ -238,3 +243,4 @@ if __name__ == '__main__':
         timeseries,
         gene_exp_plot_config,
         out_dir)
+    

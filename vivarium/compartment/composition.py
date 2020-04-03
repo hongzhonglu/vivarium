@@ -258,14 +258,21 @@ def simulate_with_environment(compartment, settings={}):
 
 
 # plotting functions
-def plot_compartment_topology(compartment, out_dir='out', filename='topology'):
+def plot_compartment_topology(compartment, settings, out_dir='out', filename='topology'):
     store_rgb = [x/255 for x in [239,131,148]]
     process_rgb = [x / 255 for x in [249, 204, 86]]
     node_size = 2500
+    node_distance = 1
+    layer_distance = 10
 
     topology = compartment.topology
+    process_layers = compartment.processes
 
-    # make graph
+    # get layout
+    network_layout = settings.get('network_layout', 'bipartite')
+
+
+    # make graph from topology
     G = nx.Graph()
     process_nodes = []
     store_nodes = []
@@ -289,13 +296,39 @@ def plot_compartment_topology(compartment, out_dir='out', filename='topology'):
     if overlap:
         print('{} shared by processes and stores'.format(overlap))
 
-    # plot graph
-    n_rows = max(len(process_nodes), len(store_nodes))
-    plt.figure(3, figsize=(12, 1.2*n_rows))
 
     # get positions
-    pos = nx.bipartite_layout(G, process_nodes)
+    pos = {}
+    if network_layout == 'process_layers':
+        filename = filename + '_layers'
+        n_layers = len(process_layers)
+        max_layer = max([len(layer) for layer in process_layers])
+        store_distance = n_layers * layer_distance / len(store_nodes)
 
+        n_rows = max_layer + 1
+        n_cols = len(store_nodes)
+        plt.figure(3, figsize=(1.2 * n_cols, 1.8 * n_rows))
+
+        # get locations
+        for layer_idx, layer in enumerate(process_layers):
+            process_ids = list(layer.keys())
+            for idx, node_id in enumerate(process_ids, 2):
+                pos[node_id] = np.array([layer_idx * layer_distance, idx * node_distance])
+
+        for idx, node_id in enumerate(store_nodes, 0):
+            pos[node_id] = np.array([idx * store_distance, 0])
+
+    else:
+        n_rows = max(len(process_nodes), len(store_nodes))
+        plt.figure(3, figsize=(12, 1.2 * n_rows))
+
+        for idx, node_id in enumerate(process_nodes, 1):
+            pos[node_id] = np.array([-1, -idx*node_distance])
+        for idx, node_id in enumerate(store_nodes, 1):
+            pos[node_id] = np.array([1, -idx*node_distance])
+
+
+    # plot
     nx.draw_networkx_nodes(G, pos,
                            nodelist=process_nodes,
                            with_labels=True,
