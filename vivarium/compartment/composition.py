@@ -259,6 +259,11 @@ def simulate_with_environment(compartment, settings={}):
 
 # plotting functions
 def plot_compartment_topology(compartment, settings, out_dir='out', filename='topology'):
+    """
+    Make a plot of the topology
+     - compartment: a compartment
+     - settings (dict): 'network_layout' can be 'bipartite' or 'process_layers'
+    """
     store_rgb = [x/255 for x in [239,131,148]]
     process_rgb = [x / 255 for x in [249, 204, 86]]
     node_size = 2500
@@ -268,15 +273,16 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
     topology = compartment.topology
     process_layers = compartment.processes
 
-    # get layout
+    # get figure settings
     network_layout = settings.get('network_layout', 'bipartite')
+    show_ports = settings.get('show_ports', True)
 
 
     # make graph from topology
     G = nx.Graph()
     process_nodes = []
     store_nodes = []
-    edges = []
+    edges = {}
     for process_id, connections in topology.items():
         process_nodes.append(process_id)
         G.add_node(process_id)
@@ -288,7 +294,8 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
                 G.add_node(store_id)
 
             edge = (process_id, store_id)
-            edges.append(edge)
+            edges[edge]= port
+
             G.add_edge(process_id, store_id)
 
     # are there overlapping names?
@@ -343,21 +350,28 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
                            node_shape='s')
 
     # edges
-    colors = list(range(1,len(edges)))
+    colors = list(range(1,len(edges)+1))
     nx.draw_networkx_edges(G, pos,
                            edge_color=colors,
                            width=1.5)
 
-    #labels
+    # labels
     nx.draw_networkx_labels(G, pos,
                             font_size=8,
                             )
+    if show_ports:
+        nx.draw_networkx_edge_labels(G, pos,
+                                 edge_labels=edges,
+                                 font_size=6,
+                                 label_pos=0.85)
 
     # save figure
     fig_path = os.path.join(out_dir, filename)
     plt.figure(3, figsize=(12, 12))
     plt.axis('off')
     plt.savefig(fig_path, bbox_inches='tight')
+
+    plt.close()
 
 
 def set_axes(ax, show_xaxis=False):

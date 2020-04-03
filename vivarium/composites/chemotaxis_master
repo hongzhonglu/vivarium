@@ -204,11 +204,15 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # save the topology network
-    topology_plot_settings = {
-        'network_layout': 'process_layers'}
     plot_compartment_topology(
         compartment,
-        topology_plot_settings,
+        {'network_layout': 'bipartite'},
+        out_dir)
+
+    plot_compartment_topology(
+        compartment,
+        {'network_layout': 'process_layers',
+         'show_ports': False},
         out_dir)
 
     # simulate
@@ -243,4 +247,3 @@ if __name__ == '__main__':
         timeseries,
         gene_exp_plot_config,
         out_dir)
-    
