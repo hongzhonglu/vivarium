@@ -12,14 +12,6 @@ from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
 
-def degradation_sequences(sequence, promoters):
-    return {
-        promoter.last_terminator().product[0]: rna_bases(sequence_monomers(
-            sequence,
-            promoter.position,
-            promoter.last_terminator().position))
-        for promoter_key, promoter in promoters.items()}
-
 def get_flg_expression_config():
     plasmid = Chromosome(flagella_chromosome.config)
     sequences = plasmid.product_sequences()

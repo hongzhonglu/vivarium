@@ -4,6 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import networkx as nx
 
 from vivarium.utils.dict_utils import (
     deep_merge,
@@ -255,6 +256,77 @@ def simulate_with_environment(compartment, settings={}):
         return compartment.emitter.get_timeseries()
 
 
+
+# plotting functions
+def plot_compartment_topology(compartment, out_dir='out', filename='topology'):
+    store_rgb = [x/255 for x in [239,131,148]]
+    process_rgb = [x / 255 for x in [249, 204, 86]]
+    node_size = 2500
+
+    topology = compartment.topology
+
+    # make graph
+    G = nx.Graph()
+    process_nodes = []
+    store_nodes = []
+    edges = []
+    for process_id, connections in topology.items():
+        process_nodes.append(process_id)
+        G.add_node(process_id)
+
+        for port, store_id in connections.items():
+            if store_id not in store_nodes:
+                store_nodes.append(store_id)
+            if store_id not in list(G.nodes):
+                G.add_node(store_id)
+
+            edge = (process_id, store_id)
+            edges.append(edge)
+            G.add_edge(process_id, store_id)
+
+    # are there overlapping names?
+    overlap = [name for name in process_nodes if name in store_nodes]
+    if overlap:
+        print('{} shared by processes and stores'.format(overlap))
+
+    # plot graph
+    n_rows = max(len(process_nodes), len(store_nodes))
+    plt.figure(3, figsize=(12, 1.2*n_rows))
+
+    # get positions
+    pos = nx.bipartite_layout(G, process_nodes)
+
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=process_nodes,
+                           with_labels=True,
+                           node_color=process_rgb,
+                           node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=store_nodes,
+                           with_labels=True,
+                           node_color=store_rgb,
+                           node_size=node_size,
+                           node_shape='s')
+
+    # edges
+    colors = list(range(1,len(edges)))
+    nx.draw_networkx_edges(G, pos,
+                           edge_color=colors,
+                           width=1.5)
+
+    #labels
+    nx.draw_networkx_labels(G, pos,
+                            font_size=8,
+                            )
+
+    # save figure
+    fig_path = os.path.join(out_dir, filename)
+    plt.figure(3, figsize=(12, 12))
+    plt.axis('off')
+    plt.savefig(fig_path, bbox_inches='tight')
+
+
 def set_axes(ax, show_xaxis=False):
     ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
     ax.spines['right'].set_visible(False)
@@ -404,6 +476,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     plt.savefig(fig_path, bbox_inches='tight')
 
 
+# timeseries functions
 def save_timeseries(timeseries, out_dir='out'):
     '''Save a timeseries as a CSV in out_dir'''
     flattened = flatten_timeseries(timeseries)

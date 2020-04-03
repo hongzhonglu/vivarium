@@ -8,7 +8,8 @@ from vivarium.compartment.process import (
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
-    plot_simulation_output)
+    plot_simulation_output,
+    plot_compartment_topology)
 from vivarium.composites.gene_expression import plot_gene_expression_output
 from vivarium.composites.flagella_expression import get_flg_expression_config
 
@@ -152,7 +153,7 @@ def compose_chemotaxis_master(config):
             'internal': 'internal',
             'membrane': 'membrane',
             'flagella_counts': 'proteins',
-            'flagella_activity': 'flagella',
+            'flagella_activity': 'flagella_activity',
             'external': 'environment'},
 
         'PMF': {
@@ -170,12 +171,13 @@ def compose_chemotaxis_master(config):
     topology.update(derivers['deriver_topology'])  # add deriver topology
 
     ## Initialize the states
-
-    # flagella initialized at 8
+    # flagella initialized
     initial_state = {
-        'internal': {'flagella': 8}
-    }
-    states = initialize_state(processes, topology, config.get('initial_state', initial_state))
+        'internal': {'flagella': 8}}
+    states = initialize_state(
+        processes,
+        topology,
+        config.get('initial_state', initial_state))
 
     options = {
         'name': config.get('name', 'chemotaxis_master'),
@@ -200,6 +202,9 @@ if __name__ == '__main__':
 
     compartment = load_compartment(compose_chemotaxis_master)
     options = compartment.configuration
+
+    # save the topology network
+    plot_compartment_topology(compartment, out_dir)
 
     # simulate
     timeline = [(120, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
