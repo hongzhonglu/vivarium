@@ -4,6 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import networkx as nx
 
 from vivarium.compartment import emitter as emit
 from vivarium.utils.dict_utils import (
@@ -73,7 +74,7 @@ def get_derivers(process_list, topology):
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
                 except:
-                    print('{} source/target port mismatch'.format(process_id))
+                    print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
                 deriver_topology = {
@@ -254,28 +255,123 @@ def simulate_with_environment(compartment, settings={}):
     else:
         return compartment.emitter.get_timeseries()
 
-def convert_to_timeseries(sim_output):
-    '''
-    input:
-        - saved_states (dict) with {timestep: state_dict}
-    returns:
-        - timeseries (dict) with timeseries in lists {'time': [], 'port1': {'state': []}}
-    TODO --  currently assumes state is 1 dictionary deep. make a more general state embedding
-    '''
 
-    time_vec = list(sim_output.keys())
-    initial_state = sim_output[time_vec[0]]
-    timeseries = {port: {state: []
-        for state, initial in states.items()}
-        for port, states in initial_state.items()}
-    timeseries['time'] = time_vec
 
-    for time, all_states in sim_output.items():
-        for port, states in all_states.items():
-            for state_id, state in states.items():
-                timeseries[port][state_id].append(state)
+# plotting functions
+def plot_compartment_topology(compartment, settings, out_dir='out', filename='topology'):
+    """
+    Make a plot of the topology
+     - compartment: a compartment
+     - settings (dict): 'network_layout' can be 'bipartite' or 'process_layers'
+    """
+    store_rgb = [x/255 for x in [239,131,148]]
+    process_rgb = [x / 255 for x in [249, 204, 86]]
+    node_size = 2500
+    node_distance = 1
+    layer_distance = 10
 
-    return timeseries
+    topology = compartment.topology
+    process_layers = compartment.processes
+
+    # get figure settings
+    network_layout = settings.get('network_layout', 'bipartite')
+    show_ports = settings.get('show_ports', True)
+
+
+    # make graph from topology
+    G = nx.Graph()
+    process_nodes = []
+    store_nodes = []
+    edges = {}
+    for process_id, connections in topology.items():
+        process_nodes.append(process_id)
+        G.add_node(process_id)
+
+        for port, store_id in connections.items():
+            if store_id not in store_nodes:
+                store_nodes.append(store_id)
+            if store_id not in list(G.nodes):
+                G.add_node(store_id)
+
+            edge = (process_id, store_id)
+            edges[edge]= port
+
+            G.add_edge(process_id, store_id)
+
+    # are there overlapping names?
+    overlap = [name for name in process_nodes if name in store_nodes]
+    if overlap:
+        print('{} shared by processes and stores'.format(overlap))
+
+
+    # get positions
+    pos = {}
+    if network_layout == 'process_layers':
+        filename = filename + '_layers'
+        n_layers = len(process_layers)
+        max_layer = max([len(layer) for layer in process_layers])
+        store_distance = n_layers * layer_distance / len(store_nodes)
+
+        n_rows = max_layer + 1
+        n_cols = len(store_nodes)
+        plt.figure(3, figsize=(1.2 * n_cols, 1.8 * n_rows))
+
+        # get locations
+        for layer_idx, layer in enumerate(process_layers):
+            process_ids = list(layer.keys())
+            for idx, node_id in enumerate(process_ids, 2):
+                pos[node_id] = np.array([layer_idx * layer_distance, idx * node_distance])
+
+        for idx, node_id in enumerate(store_nodes, 0):
+            pos[node_id] = np.array([idx * store_distance, 0])
+
+    else:
+        n_rows = max(len(process_nodes), len(store_nodes))
+        plt.figure(3, figsize=(12, 1.2 * n_rows))
+
+        for idx, node_id in enumerate(process_nodes, 1):
+            pos[node_id] = np.array([-1, -idx*node_distance])
+        for idx, node_id in enumerate(store_nodes, 1):
+            pos[node_id] = np.array([1, -idx*node_distance])
+
+
+    # plot
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=process_nodes,
+                           with_labels=True,
+                           node_color=process_rgb,
+                           node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=store_nodes,
+                           with_labels=True,
+                           node_color=store_rgb,
+                           node_size=node_size,
+                           node_shape='s')
+
+    # edges
+    colors = list(range(1,len(edges)+1))
+    nx.draw_networkx_edges(G, pos,
+                           edge_color=colors,
+                           width=1.5)
+
+    # labels
+    nx.draw_networkx_labels(G, pos,
+                            font_size=8,
+                            )
+    if show_ports:
+        nx.draw_networkx_edge_labels(G, pos,
+                                 edge_labels=edges,
+                                 font_size=6,
+                                 label_pos=0.85)
+
+    # save figure
+    fig_path = os.path.join(out_dir, filename)
+    plt.figure(3, figsize=(12, 12))
+    plt.axis('off')
+    plt.savefig(fig_path, bbox_inches='tight')
+
+    plt.close()
 
 
 def set_axes(ax, show_xaxis=False):
@@ -427,6 +523,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     plt.savefig(fig_path, bbox_inches='tight')
 
 
+# timeseries functions
 def save_timeseries(timeseries, out_dir='out'):
     '''Save a timeseries as a CSV in out_dir'''
     flattened = flatten_timeseries(timeseries)

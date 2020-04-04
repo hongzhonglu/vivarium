@@ -13,6 +13,7 @@ from vivarium.compartment.composition import get_derivers, load_compartment, sim
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
+from vivarium.processes.complexation import Complexation
 from vivarium.processes.division import Division, divide_condition
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
@@ -24,13 +25,15 @@ def compose_gene_expression(config):
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
     degradation = RnaDegradation(config.get('degradation', {}))
+    complexation = Complexation(config.get('complexation', {}))
     division = Division(config)
 
     # place processes in layers
     processes = [
         {'transcription': transcription,
          'translation': translation,
-         'degradation': degradation},
+         'degradation': degradation,
+         'complexation': complexation},
         {'division': division}]
 
     # make the topology
@@ -54,6 +57,10 @@ def compose_gene_expression(config):
             'proteins': 'proteins',
             'molecules': 'molecules',
             'global': 'global'},
+
+        'complexation': {
+            'monomers': 'proteins',
+            'complexes': 'proteins'},
 
         'division': {
             'global': 'global'}}

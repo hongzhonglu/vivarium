@@ -1,9 +1,10 @@
 toy_chromosome_config = {
     'sequence': 'ATACGGCACGTGACCGTCAACTTA',
     'genes': {
-        'oAZ': ['A', 'Z'],
         'oA': ['A'],
-        'oB': ['B']},
+        'oAZ': ['A', 'Z'],
+        'oB': ['B'],
+        'oBY': ['B', 'Y']},
     'promoter_order': ['pA', 'pB'],
     'promoters': {
         'pA': {

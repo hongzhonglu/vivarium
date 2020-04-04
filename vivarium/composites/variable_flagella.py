@@ -33,7 +33,7 @@ def compose_variable_flagella(config):
     # flagella
     flagella_config = copy.deepcopy(config)
     flagella_range = [0, 1, 5]  #list(range(0, 4))
-    flagella_config.update({'n_flagella': random.choice(flagella_range)})
+    flagella_config.update({'flagella': random.choice(flagella_range)})
     flagella = FlagellaActivity(flagella_config)
 
     # proton motive force
@@ -58,10 +58,10 @@ def compose_variable_flagella(config):
             'external': 'environment'},
         'flagella': {
             'internal': 'cell',
-            'counts': 'counts',
             'external': 'environment',
             'membrane': 'membrane',
-            'flagella': 'flagella'},
+            'flagella_counts': 'counts',
+            'flagella_activity': 'flagella'},
         'PMF': {
             'internal': 'cell',
             'external': 'environment',
@@ -114,6 +114,5 @@ if __name__ == '__main__':
         'max_rows': 20,
         'skip_ports': ['prior_state']}
 
-    # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(timeseries, plot_settings, out_dir)

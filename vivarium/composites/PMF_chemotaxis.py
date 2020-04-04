@@ -72,10 +72,10 @@ def compose_pmf_chemotaxis(config):
             'internal': 'cytoplasm',
             'external': 'environment'},
         'flagella': {
-            'counts': 'cell_counts',
+            'flagella_counts': 'cell_counts',
             'internal': 'cytoplasm',
             'membrane': 'membrane',
-            'flagella': 'flagella',
+            'flagella_activity': 'flagella',
             'external': 'environment'},
         'PMF': {
             'external': 'environment',
