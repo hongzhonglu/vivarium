@@ -117,7 +117,7 @@ def test_complexation():
     complexation = Complexation()
     settings = complexation.default_settings()
     state = settings['state']
-    for monomer in self.monomer_ids:
+    for monomer in complexation.monomer_ids:
         state['monomers'][monomer] = 1000
 
     update = complexation.next_update(1.0, state)

@@ -13,11 +13,10 @@ from vivarium.compartment.composition import (
     REFERENCE_DATA_DIR,
     TEST_OUT_DIR,
     assert_timeseries_close,
-)
+    load_compartment)
 from vivarium.compartment.process import (
     initialize_state,
     COMPARTMENT_STATE,
-    load_compartment,
 )
 from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.antibiotic_transport import (

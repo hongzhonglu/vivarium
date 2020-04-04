@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.process import load_compartment, simulate_compartment
+from vivarium.compartment.composition import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import flagella_chromosome

@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment,
+from vivarium.compartment.process import initialize_state
+from vivarium.compartment.composition import (
+    simulate_compartment,
+    load_compartment
 )
-from vivarium.compartment.composition import simulate_compartment
 
 # processes
 from vivarium.processes.multibody_physics import (
