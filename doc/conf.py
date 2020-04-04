@@ -74,4 +74,5 @@ autodoc_mock_imports = [
     'arpeggio', 'cobra', 'confluent_kafka', 'matplotlib',
     'mpl_toolkits', 'parsimonious', 'pygame', 'pymongo', 'arrow'
 ]
-
+# Concatenate class and __init__ docstrings
+autoclass_content = 'both'
