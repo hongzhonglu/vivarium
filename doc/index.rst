@@ -18,6 +18,7 @@ whole-cell models.
 
    getting_started.rst
    guides/index.rst
+   tutorials/index.rst
    reference/index.rst
 
 .. todo:: Maybe use :ref:`genindex`
@@ -45,7 +46,8 @@ If you want to run Vivarium, start with our :doc:`getting started guide
 <getting_started>`, which will walk you through getting Vivarium up
 and running.
 
-For step-by-step instructions, hold tight. Tutorials are coming soon!
+For step-by-step instructions, check out our :doc:`tutorials
+<tutorials/index>`.
 
 For a technical deep-dive into the important concepts in Vivarium, check
 out our :doc:`topic guides <guides/index>`.

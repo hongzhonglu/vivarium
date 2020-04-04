@@ -23,6 +23,51 @@ instructions on building documentation :ref:`below <building-docs>`.
 Writing Documentation
 ---------------------
 
+Where to Write
+==============
+
+We write four kinds of documentation for Vivarium:
+
+* Tutorials: These are step-by-step instructions that walk the reader
+  through doing something with Vivarium. We store these in
+  ``doc/tutorials``. Make sure to list all tutorials in
+  ``doc/tutorials/index.rst`` so that they appear in the sidebar and the
+  list of tutorials.
+* Guides: These dive into the technical details of Vivarium and should
+  be comprehensive. We store guides in ``doc/guides`` and list them in
+  ``doc/guides/index.rst``.
+* References: Reference material should cater to users who already know
+  what they're looking for and just need to find it. For example, a user
+  looking up a particular process or term. Our reference material
+  consists of a glossary and an API reference. The glossary is stored in
+  ``doc/glossary.rst``, while the API reference is auto-generated from
+  docstrings in the code. These docstrings can take advantage of all the
+  reStructuredText syntax we use elsewhere in Vivarium. Eventually, we
+  will remove from the reference material the stubs for functions that
+  aren't user-facing and the auto-generated titles on each page.
+    * For an example of reference documentation that defines an API, see
+      :py:mod:`vivarium.processes.death`. For an example of
+      documentation that explains how to use a process, look at
+      :py:mod:`vivarium.processes.metabolism`.
+      
+      .. note::
+          From the compiled HTML reference documentation, you can click
+          on ``[source]`` to see the source code, including the
+          docstrings. This can be very helpful for looking up
+          reStructuredText syntax.
+
+      .. WARNING:: For each class, include at most one of the class and
+          constructor docstrings. They are concatenated when the HTML is
+          compiled, so you can provide either one.
+
+          .. code-block:: python
+
+                class MyClass:
+                    '''This is the class docstring'''
+
+                    def __init__(self):
+                        '''This is the constructor docstring'''
+
 Pointers for Technical Writing
 ==============================
 
