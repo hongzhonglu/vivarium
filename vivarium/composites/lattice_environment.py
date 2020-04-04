@@ -5,7 +5,6 @@ import os
 from vivarium.compartment.process import initialize_state
 from vivarium.compartment.composition import (
     simulate_compartment,
-    convert_to_timeseries,
     load_compartment
 )
 
