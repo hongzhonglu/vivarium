@@ -16,6 +16,7 @@ from vivarium.utils.make_network import (
     make_network,
     save_network
 )
+from vivarium.data.synonyms import get_synonym
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_port_dicts, deep_merge
@@ -370,7 +371,7 @@ def toy_transport():
 
 
 # tests and analyses
-def plot_exchanges(timeseries, sim_config, out_dir):
+def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
     # plot focused on exchanges with the environment
 
     nAvogadro = AVOGADRO
@@ -439,7 +440,7 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     ax3.set_xlabel('time (s)', fontsize=12)
 
     # save figure
-    fig_path = os.path.join(out_dir, 'exchanges')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
@@ -452,16 +453,49 @@ BiGG_energy_carriers = [
     'fad_c',
 ]
 
-def energy_synthesis_plot(timeseries, sim_config, out_dir):
+def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthesis'):
     # plot the synthesis of energy carriers in BiGG model output
 
+    energy_reactions = settings.get('reactions', {})
+    saved_reactions = timeseries['reactions']
+    time_vec = timeseries['time']
 
-    # todo -- get flux through these energy carriers
+    # get each energy carrier's total flux
+    carrier_synthesis = {}
+    for reaction_id, coeffs in energy_reactions.items():
+        reaction_ts = saved_reactions[reaction_id]
 
+        for mol_id, coeff in coeffs.items():
 
-    reactions = timeseries['reactions']
+            # save to if this energy carrier is synthesized
+            if coeff > 0:
+                added_flux = [coeff*ts for ts in reaction_ts]
 
-    import ipdb; ipdb.set_trace()
+                if mol_id not in carrier_synthesis:
+                    carrier_synthesis[mol_id] = added_flux
+                else:
+                    carrier_synthesis[mol_id] = [
+                        sum(x) for x in zip(carrier_synthesis[mol_id], added_flux)]
+
+    # make the figure
+    n_cols = 1
+    n_rows = 1
+    fig = plt.figure(figsize=(n_cols * 6, n_rows * 2))
+    grid = plt.GridSpec(n_rows, n_cols)
+
+    # first subplot
+    ax = fig.add_subplot(grid[0, 0])
+    for mol_id, series in carrier_synthesis.items():
+        ax.plot(time_vec, series, label=mol_id)
+    ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+    ax.title.set_text('energy carriers')
+    ax.set_xlabel('time')
+    ax.set_xlabel('synthesis')
+
+    # save figure
+    fig_path = os.path.join(out_dir, figname)
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
+    plt.savefig(fig_path, bbox_inches='tight')
 
 
 def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
@@ -535,10 +569,12 @@ def test_toy_metabolism(out_dir='out'):
 
 def test_BiGG_metabolism(config=get_iAF1260b_config(), settings={}):
     metabolism = Metabolism(config)
+    run_metabolism(metabolism, settings)
+
+def run_metabolism(metabolism, settings):
     sim_settings = default_sim_settings
     sim_settings.update(settings)
     return simulate_process_with_environment(metabolism, sim_settings)
-
 
 
 if __name__ == '__main__':
@@ -546,14 +582,12 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    out_dir_BiGG = os.path.join('out', 'tests', 'metabolism_BiGG')
-    if not os.path.exists(out_dir_BiGG):
-        os.makedirs(out_dir_BiGG)
+    # configure BiGG metabolism
+    config = get_iAF1260b_config()
+    metabolism = Metabolism(config)
 
-    # run BiGG metabolism
-    BiGG_config = get_iAF1260b_config()
-
-    timeline = [(10, {})]  # [(2520, {})]
+    # simulation settings
+    timeline = [(100, {})]  # [(2520, {})]
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
@@ -561,6 +595,12 @@ if __name__ == '__main__':
         'timestep': 1,
         'timeline': timeline}
 
+    # run simulation
+    timeseries = run_metabolism(metabolism, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
+    # plot settings
     plot_settings = {
         'max_rows': 30,
         'remove_zeros': True,
@@ -568,22 +608,16 @@ if __name__ == '__main__':
         'overlay': {
             'reactions': 'flux_bounds'}}
 
-    timeseries = test_BiGG_metabolism(BiGG_config, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
-    volume_ts = timeseries['global']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
-    plot_exchanges(timeseries, sim_settings, out_dir_BiGG)
-
+    # make plots from simulation output
+    plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
+    plot_exchanges(timeseries, sim_settings, out_dir)
 
     # make plot of energy reactions
-
-    import ipdb; ipdb.set_trace()
-    stoichiometry = {}  #metabolism.fba.stoichiometry
-    energy_reactions = get_reactions(stoichiometry, BiGG_energy_carriers)
-
-    import ipdb; ipdb.set_trace()
-
-    energy_synthesis_plot(timeseries, sim_settings, out_dir_BiGG)
+    stoichiometry = metabolism.fba.stoichiometry
+    energy_carriers = [get_synonym(mol_id) for mol_id in BiGG_energy_carriers]
+    energy_reactions = get_reactions(stoichiometry, energy_carriers)
+    energy_plot_settings = {'reactions': energy_reactions}
+    energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
 
     # # run toy model
     # plot_settings = {
@@ -594,6 +628,5 @@ if __name__ == '__main__':
     # timeseries = test_toy_metabolism()
     # plot_simulation_output(timeseries, plot_settings, out_dir)
 
-
     # make a gephi network
-    run_sim_save_network(get_iAF1260b_config(), out_dir_BiGG)
+    run_sim_save_network(get_iAF1260b_config(), out_dir)

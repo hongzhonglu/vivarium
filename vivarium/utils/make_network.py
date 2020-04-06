@@ -26,16 +26,18 @@ def get_loose_nodes(stoichiometry):
 
 	return loose_nodes
 
-
 def get_reactions(stoichiometry, molecules):
+	'''
+	for each entry in molecules (list), return all the reactions with the molecules coefficient
+	'''
+	reactions = {}
+	for reaction_id, stoich in stoichiometry.items():
+		mol_coeffs = {mol_id: coeff
+				for mol_id, coeff in stoich.items()
+				if mol_id in molecules}
+		reactions[reaction_id] = mol_coeffs
 
-
-	import ipdb; ipdb.set_trace()
-
-
-
-
-
+	return reactions
 
 def make_network(stoichiometry, info={}):
 	'''
