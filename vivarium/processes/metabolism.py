@@ -490,7 +490,7 @@ def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthes
     ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
     ax.title.set_text('energy carriers')
     ax.set_xlabel('time')
-    ax.set_xlabel('synthesis')
+    ax.set_ylabel('synthesis')
 
     # save figure
     fig_path = os.path.join(out_dir, figname)
