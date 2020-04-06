@@ -26,6 +26,17 @@ def get_loose_nodes(stoichiometry):
 
 	return loose_nodes
 
+
+def get_reactions(stoichiometry, molecules):
+
+
+	import ipdb; ipdb.set_trace()
+
+
+
+
+
+
 def make_network(stoichiometry, info={}):
 	'''
 	Makes a gephi network

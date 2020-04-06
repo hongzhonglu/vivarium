@@ -11,7 +11,11 @@ from vivarium.compartment.composition import (
     simulate_process_with_environment,
     plot_simulation_output
 )
-from vivarium.utils.make_network import make_network, save_network
+from vivarium.utils.make_network import (
+    get_reactions,
+    make_network,
+    save_network
+)
 from vivarium.utils.units import units
 from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_port_dicts, deep_merge
@@ -367,7 +371,7 @@ def toy_transport():
 
 # tests and analyses
 def plot_exchanges(timeseries, sim_config, out_dir):
-    # plot focused on exchanges
+    # plot focused on exchanges with the environment
 
     nAvogadro = AVOGADRO
     env_volume = sim_config['environment_volume']
@@ -439,6 +443,27 @@ def plot_exchanges(timeseries, sim_config, out_dir):
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
+# energy carriers in BiGG models
+BiGG_energy_carriers = [
+    'atp_c',
+    'gtp_c',
+    'nad_c',
+    'nadp_c',
+    'fad_c',
+]
+
+def energy_synthesis_plot(timeseries, sim_config, out_dir):
+    # plot the synthesis of energy carriers in BiGG model output
+
+
+    # todo -- get flux through these energy carriers
+
+
+    reactions = timeseries['reactions']
+
+    import ipdb; ipdb.set_trace()
+
+
 def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
     metabolism = Metabolism(config)
 
@@ -477,30 +502,19 @@ def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
 
 
 # tests
-def test_BiGG_metabolism(settings={}):
-    metabolism_config = get_iAF1260b_config()
-    # metabolism_config = get_e_coli_core_config()
-    metabolism = Metabolism(metabolism_config)
-
-    # simulate metabolism
-    sim_settings = {
-        'environment_port': 'external',
-        'exchange_port': 'exchange',
-        'environment_volume': 1e-6,  # L
-        'timestep': 1,
-        'timeline': [(10, {})]}
-    sim_settings.update(settings)
-
-    saved_data = simulate_process_with_environment(metabolism, sim_settings)
-
-    return saved_data
+default_sim_settings = {
+    'environment_port': 'external',
+    'exchange_port': 'exchange',
+    'environment_volume': 1e-6,  # L
+    'timestep': 1,
+    'timeline': [(10, {})]}
 
 def test_toy_metabolism(out_dir='out'):
     regulation_logic = {
         'R4': 'if (external, O2) > 0.1 and not (external, F) < 0.1'}
 
     toy_config = get_toy_configuration()
-    transport = toy_transport()
+    transport = toy_transport()  # TODO -- this is no longer running in the test.
 
     toy_config['constrained_reaction_ids'] = list(transport.keys())
     toy_config['regulation'] = regulation_logic
@@ -514,15 +528,16 @@ def test_toy_metabolism(out_dir='out'):
             'F': 0}}),
         (30, {})]
 
-    settings = {
-        'environment_port': 'external',
-        'exchange_port': 'exchange',
-        'environment_volume': 1e-14,  # L
-        'timestep': 1,
-        'timeline': timeline}
+    settings = default_sim_settings
+    settings.update({'timeline': timeline})
+    return simulate_process_with_environment(toy_metabolism, settings)
 
-    saved_data = simulate_process_with_environment(toy_metabolism, settings)
-    return saved_data
+
+def test_BiGG_metabolism(config=get_iAF1260b_config(), settings={}):
+    metabolism = Metabolism(config)
+    sim_settings = default_sim_settings
+    sim_settings.update(settings)
+    return simulate_process_with_environment(metabolism, sim_settings)
 
 
 
@@ -535,27 +550,40 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir_BiGG):
         os.makedirs(out_dir_BiGG)
 
-    # # run BiGG metabolism
-    # timeline = [(2520, {})]
-    # sim_settings = {
-    #     'environment_port': 'external',
-    #     'exchange_port': 'exchange',
-    #     'environment_volume': 1e-13,  # L
-    #     'timestep': 1,
-    #     'timeline': timeline}
-    #
-    # plot_settings = {
-    #     'max_rows': 30,
-    #     'remove_zeros': True,
-    #     'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
-    #     'overlay': {
-    #         'reactions': 'flux_bounds'}}
-    #
-    # timeseries = test_BiGG_metabolism(sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
-    # volume_ts = timeseries['global']['volume']
-    # print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
-    # plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
-    # plot_exchanges(timeseries, sim_settings, out_dir_BiGG)
+    # run BiGG metabolism
+    BiGG_config = get_iAF1260b_config()
+
+    timeline = [(10, {})]  # [(2520, {})]
+    sim_settings = {
+        'environment_port': 'external',
+        'exchange_port': 'exchange',
+        'environment_volume': 1e-13,  # L
+        'timestep': 1,
+        'timeline': timeline}
+
+    plot_settings = {
+        'max_rows': 30,
+        'remove_zeros': True,
+        'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    timeseries = test_BiGG_metabolism(BiGG_config, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+    plot_simulation_output(timeseries, plot_settings, out_dir_BiGG)
+    plot_exchanges(timeseries, sim_settings, out_dir_BiGG)
+
+
+    # make plot of energy reactions
+
+    import ipdb; ipdb.set_trace()
+    stoichiometry = {}  #metabolism.fba.stoichiometry
+    energy_reactions = get_reactions(stoichiometry, BiGG_energy_carriers)
+
+    import ipdb; ipdb.set_trace()
+
+    energy_synthesis_plot(timeseries, sim_settings, out_dir_BiGG)
 
     # # run toy model
     # plot_settings = {
