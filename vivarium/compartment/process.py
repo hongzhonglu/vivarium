@@ -248,10 +248,10 @@ class Process(object):
             for port, values in self.ports.items()}
 
 
-def connect_topology(process_layers, states, topology):
+def connect_topology(process, derivers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the ports in each process to the state they refer to.'''
-
+    process_layers = process + derivers
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]
@@ -355,7 +355,9 @@ class Compartment(Store):
 
         # configure compartment state
         self.states[COMPARTMENT_STATE] = self
-        self.state = {'processes': self.processes}
+        self.state = {
+            'processes': self.processes,
+            'derivers': self.derivers}
         self.updaters = {'processes': 'set'}
 
         # divide condition
@@ -370,7 +372,7 @@ class Compartment(Store):
         elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
                 {'emitter': {'type': emitter_config}},
-                self.processes,
+                self.processes + self.derivers,
                 self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
@@ -378,7 +380,7 @@ class Compartment(Store):
             self.emitter_keys = configuration['emitter'].get('keys')
             self.emitter = configuration['emitter'].get('object')
 
-        connect_topology(processes, self.states, self.topology)
+        connect_topology(processes, derivers, self.states, self.topology)
 
         # log experiment configuration
         data = {
@@ -433,12 +435,36 @@ class Compartment(Store):
             updates[key].append(update_store)
         return updates
 
+    def run_derivers(self):
+
+        # flatten all deriver layers into a single deriver dict
+        derivers = {}
+        for stack in self.state['derivers']:
+            derivers.update(stack)
+
+        updates = {}
+        for name, process in derivers.items():
+            update = process.update_for(1)  # timestep shouldn't influence derivers
+
+            for port, update_dict in update.items():
+                key = self.topology[name][port]
+                if not updates.get(key):
+                    updates[key] = []
+                updates[key].append(update_dict)
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
     def apply_updates(self, updates):
         for key in self.states.keys():
             self.states[key].prepare()
 
         for key, update in updates.items():
             self.states[key].apply_updates(update)
+
+        # run derivers after every update
+        # TODO -- only run derivers if any of their states have been updated
+        self.run_derivers()
 
         for key in self.states.keys():
             self.states[key].proceed()
