@@ -771,7 +771,7 @@ def load_compartment(composite, boot_config={}):
         'emitter': boot_config.get('emitter', 'timeseries'),
         'time_step': boot_config.get('time_step', 1.0)})
 
-    return Compartment(processes, states, derivers, options)
+    return Compartment(processes, derivers, states, options)
 
 
 def simulate_compartment(compartment, settings={}):

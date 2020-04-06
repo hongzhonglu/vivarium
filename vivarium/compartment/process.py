@@ -339,7 +339,7 @@ def initialize_state(process_layers, topology, initial_state):
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, states, derivers, configuration):
+    def __init__(self, processes, derivers, states, configuration):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
