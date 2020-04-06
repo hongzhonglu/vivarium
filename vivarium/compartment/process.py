@@ -444,7 +444,7 @@ class Compartment(Store):
 
         time = 0
 
-        # flatten all process stacks into a single process dict
+        # flatten all process layers into a single process dict
         processes = {}
         for stack in self.state['processes']:
             processes.update(stack)
@@ -479,7 +479,7 @@ class Compartment(Store):
                 # no processes ran, jump to next process
                 next_event = timestep
                 for process_name in front.keys():
-                    if front[process_name]['time'] < next_step:
+                    if front[process_name]['time'] < next_event:
                         next_event = front[process_name]['time']
                 time = next_event
             else:
