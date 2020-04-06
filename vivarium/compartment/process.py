@@ -194,8 +194,8 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
-        default_timestep = self.default_settings().get('timestep', 1.0)
-        self.timestep = self.parameters.get('timestep', default_timestep)
+        default_timestep = self.default_settings().get('time_step', 1.0)
+        self.time_step = self.parameters.get('time_step', default_timestep)
 
     def local_timestep(self):
         '''
@@ -203,7 +203,7 @@ class Process(object):
         Meant to be overridden in subclasses, unless 1.0 is a happy value. 
         '''
 
-        return self.timestep
+        return self.time_step
 
     def default_settings(self):
         return {}
@@ -263,7 +263,7 @@ def connect_topology(process_layers, states, topology):
             except:
                 print('{} mismatched ports'.format(name))
 
-def get_compartment_timestep(process_layers):
+def get_minimum_timestep(process_layers):
     # get the minimum time_step from all processes
     processes = merge_dicts(process_layers)
     minimum_step = 10
@@ -345,7 +345,7 @@ class Compartment(Store):
 
         self.initial_time = configuration.get('initial_time', 0.0)
         self.local_time = 0.0
-        self.time_step = min(configuration.get('time_step', 1.0), get_compartment_timestep(processes))
+        self.time_step = configuration.get('time_step', 1.0)
 
         self.processes = processes
         self.states = states

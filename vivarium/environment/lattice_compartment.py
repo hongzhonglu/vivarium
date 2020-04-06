@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from vivarium.compartment.process import Compartment, initialize_state, get_compartment_timestep, Process, Store
+from vivarium.compartment.process import Compartment, initialize_state, get_minimum_timestep, Process, Store
 from vivarium.compartment.emitter import get_emitter
 from vivarium.actor.inner import Simulation
 from vivarium.compartment.composition import get_derivers, load_compartment
@@ -157,7 +157,7 @@ def generate_lattice_compartment(process, config):
     states = initialize_state(processes_layers, topology, config.get('initial_state', {}))
 
     # get the time step
-    time_step = get_compartment_timestep(processes_layers)
+    time_step = get_minimum_timestep(processes_layers)
 
     # configure the emitter
     emitter_config = config.get('emitter', {})
