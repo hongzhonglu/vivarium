@@ -13,6 +13,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 COMPARTMENT_STATE = '__compartment_state__'
 
 INFINITY = float('inf')
+VERBOSE = True
 
 class topologyError(Exception):
     pass
@@ -193,7 +194,7 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
-    def timestep(self):
+    def local_timestep(self):
         '''
         Returns the favored timestep for this process.
         Meant to be overridden in subclasses, unless 1.0 is a happy value. 
@@ -357,14 +358,14 @@ class Compartment(Store):
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
         # emitter
-        emitter_type = configuration.get('emitter')
-        if emitter_type is None:
+        emitter_config = configuration.get('emitter')
+        if emitter_config is None:
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
-        elif isinstance(emitter_type, str):
+        elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
-                {'emitter': {'type': emitter_type}},
+                {'emitter': {'type': emitter_config}},
                 self.processes,
                 self.topology)
             self.emitter_keys = emitter.get('keys')
@@ -429,34 +430,49 @@ class Compartment(Store):
         return updates
 
     def apply_updates(self, updates):
+        for key in self.states.keys():
+            self.states[key].prepare()
+
         for key, update in updates.items():
-            self.states[key].apply_updates()
+            self.states[key].apply_updates(update)
+
+        for key in self.states.keys():
+            self.states[key].proceed()
 
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
         time = 0
+
+        # flatten all process stacks into a single process dict
+        processes = {}
+        for stack in self.state['processes']:
+            processes.update(stack)
+
+        # keep track of which processes have simulated until when
         front = {
             process_name: {
-                time: 0,
-                update: {}}
-            for process_name in self.state['processes'].keys()}
+                'time': 0,
+                'update': {}}
+            for process_name in processes.keys()}
 
         while time < timestep:
-            updates = {}
             step = INFINITY
 
-            for process_name, process in self.state['processes'].items():
+            if VERBOSE:
+                print('{}: {}'.format(time, self.states['state'].to_dict()))
+
+            for process_name, process in processes.items():
+
                 process_time = front[process_name]['time']
                 if process_time <= time:
-                    previous_update = front[process_name]['update']
-                    updates = self.collect_updates(updates, process_name, previous_update)
-                    interval = min(process_time + process.timestep(), timestep)
+                    future = min(process_time + process.local_timestep(), timestep)
+                    interval = future - process_time
                     update = process.update_for(interval)
 
                     if interval < step:
                         step = interval
-                    front[process_name]['time'] += interval
+                    front[process_name]['time'] = future
                     front[process_name]['update'] = update
 
             if step == INFINITY:
@@ -468,36 +484,21 @@ class Compartment(Store):
                 time = next_event
             else:
                 # at least one process ran, apply updates and continue
+                future = time + step
+
+                updates = {}
+                for process_name, advance in front.items():
+                    if advance['time'] <= future:
+                        updates = self.collect_updates(updates, process_name, advance['update'])
+                        advance['update'] = {}
+
                 self.apply_updates(updates)
 
-                # for key, update in updates.items():
-                #     self.states[key].apply_updates()
-                time += step
+                time = future
 
-        updates = {}
-        for process_name, progress in front.items():
-            updates = self.collect_updates(updates, process_name, progress['update'])
-        self.apply_updates(updates)
-
-        # # use processes from state
-        # for processes in self.state['processes']:
-        #     updates = {}
-        #     for name, process in processes.items():
-        #         update = process.update_for(timestep)
-        #         for port, update_dict in update.items():
-        #             key = self.topology[name][port]
-        #             if not updates.get(key):
-        #                 updates[key] = []
-        #             updates[key].append(update_dict)
-
-        #     for key in self.states.keys():
-        #         self.states[key].prepare()
-
-        #     for key, update in updates.items():
-        #         self.states[key].apply_updates(update)
-
-        #     for key in self.states.keys():
-        #         self.states[key].proceed()
+        for process_name, advance in front.items():
+            assert advance['time'] == time == timestep
+            assert len(advance['update']) == 0
 
         self.local_time += timestep
 
@@ -541,44 +542,62 @@ def test_timescales():
         def __init__(self):
             self.timestep = 3.0
             self.ports = {
-                'state': 'state'}
+                'state': ['base']}
 
-        def timestep(self):
+        def local_timestep(self):
             return self.timestep
 
         def next_update(self, timestep, states):
             base = states['state']['base']
+            next_base = timestep * base * 0.1
+
             return {
-                'state': {'base': base * 0.1}}
+                'state': {'base': next_base}}
 
     class Fast(Process):
         def __init__(self):
-            self.timestep = 0.01
+            self.timestep = 0.1
             self.ports = {
-                'state': 'state'}
+                'state': ['base', 'motion']}
 
-        def timestep(self):
+        def local_timestep(self):
             return self.timestep
 
         def next_update(self, timestep, states):
             base = states['state']['base']
-            motion = states['state']['motion']
+            motion = timestep * base * 0.001
 
             return {
-                'state': {'motion': base * 0.001}}
+                'state': {'motion': motion}}
 
-    processes = {
+    processes = [{
         'slow': Slow(),
-        'fast': Fast()}
+        'fast': Fast()}]
 
     states = {
-        'state': Store()}
+        'state': Store({
+            'base': 1.0,
+            'motion': 0.0})}
 
     topology = {
-    }
+        'slow': {'state': 'state'},
+        'fast': {'state': 'state'}}
+
+    emitter_config = {
+            'type': 'print',
+            'keys': {
+                'state': ['base', 'motion']}}
+
+    configuration = {
+        'topology': topology,
+        'emitter': emit.get_emitter(emitter_config)}
 
     compartment = Compartment(
         processes,
         states,
-        topology)
-    
+        configuration)
+
+    compartment.update(10.0)
+
+if __name__ == '__main__':
+    test_timescales()
