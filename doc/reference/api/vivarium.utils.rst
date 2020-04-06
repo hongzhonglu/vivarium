@@ -16,6 +16,7 @@ Submodules
    vivarium.utils.make_network
    vivarium.utils.multicell_physics
    vivarium.utils.polymerize
+   vivarium.utils.pretty
    vivarium.utils.rate_law_utilities
    vivarium.utils.regulation_logic
    vivarium.utils.units
