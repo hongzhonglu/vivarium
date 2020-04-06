@@ -463,7 +463,8 @@ class Compartment(Store):
             step = INFINITY
 
             if VERBOSE:
-                print('{}: {}'.format(time, self.states['state'].to_dict()))
+                for state_id in self.states:
+                    print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
             for process_name, process in processes.items():
                 process_time = front[process_name]['time']
