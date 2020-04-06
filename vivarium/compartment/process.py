@@ -463,8 +463,8 @@ class Compartment(Store):
                 print('{}: {}'.format(time, self.states['state'].to_dict()))
 
             for process_name, process in processes.items():
-
                 process_time = front[process_name]['time']
+
                 if process_time <= time:
                     future = min(process_time + process.local_timestep(), timestep)
                     interval = future - process_time
