@@ -339,25 +339,26 @@ def initialize_state(process_layers, topology, initial_state):
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, states, configuration):
+    def __init__(self, processes, states, derivers, configuration):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
+        self.processes = processes
+        self.states = states
+        self.derivers = derivers
+        self.configuration = configuration
+
+        self.topology = configuration['topology']
         self.initial_time = configuration.get('initial_time', 0.0)
         self.local_time = 0.0
         self.time_step = configuration.get('time_step', 1.0)
-
-        self.processes = processes
-        self.states = states
 
         # configure compartment state
         self.states[COMPARTMENT_STATE] = self
         self.state = {'processes': self.processes}
         self.updaters = {'processes': 'set'}
 
-        self.configuration = configuration
-        self.topology = configuration['topology']
-
+        # divide condition
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
         # emitter

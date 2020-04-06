@@ -166,15 +166,16 @@ def compose_chemotaxis_master(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
     ## Initialize the states
     # flagella initialized
     initial_state = {
         'internal': {'flagella': 8}}
     states = initialize_state(
-        processes,
+        all_processes,
         topology,
         config.get('initial_state', initial_state))
 
@@ -188,6 +189,7 @@ def compose_chemotaxis_master(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -203,15 +205,10 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # save the topology network
+    settings = {'show_ports': True}
     plot_compartment_topology(
         compartment,
-        {'network_layout': 'bipartite'},
-        out_dir)
-
-    plot_compartment_topology(
-        compartment,
-        {'network_layout': 'process_layers',
-         'show_ports': False},
+        settings,
         out_dir)
 
     # simulate

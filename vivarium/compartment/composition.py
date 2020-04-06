@@ -274,9 +274,7 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
     process_layers = compartment.processes
 
     # get figure settings
-    network_layout = settings.get('network_layout', 'bipartite')
     show_ports = settings.get('show_ports', True)
-
 
     # make graph from topology
     G = nx.Graph()
@@ -306,33 +304,13 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
 
     # get positions
     pos = {}
-    if network_layout == 'process_layers':
-        filename = filename + '_layers'
-        n_layers = len(process_layers)
-        max_layer = max([len(layer) for layer in process_layers])
-        store_distance = n_layers * layer_distance / len(store_nodes)
+    n_rows = max(len(process_nodes), len(store_nodes))
+    plt.figure(3, figsize=(12, 1.2 * n_rows))
 
-        n_rows = max_layer + 1
-        n_cols = len(store_nodes)
-        plt.figure(3, figsize=(1.2 * n_cols, 1.8 * n_rows))
-
-        # get locations
-        for layer_idx, layer in enumerate(process_layers):
-            process_ids = list(layer.keys())
-            for idx, node_id in enumerate(process_ids, 2):
-                pos[node_id] = np.array([layer_idx * layer_distance, idx * node_distance])
-
-        for idx, node_id in enumerate(store_nodes, 0):
-            pos[node_id] = np.array([idx * store_distance, 0])
-
-    else:
-        n_rows = max(len(process_nodes), len(store_nodes))
-        plt.figure(3, figsize=(12, 1.2 * n_rows))
-
-        for idx, node_id in enumerate(process_nodes, 1):
-            pos[node_id] = np.array([-1, -idx*node_distance])
-        for idx, node_id in enumerate(store_nodes, 1):
-            pos[node_id] = np.array([1, -idx*node_distance])
+    for idx, node_id in enumerate(process_nodes, 1):
+        pos[node_id] = np.array([-1, -idx*node_distance])
+    for idx, node_id in enumerate(store_nodes, 1):
+        pos[node_id] = np.array([1, -idx*node_distance])
 
 
     # plot
@@ -786,13 +764,14 @@ def load_compartment(composite, boot_config={}):
 
     composite_config = composite(boot_config)
     processes = composite_config['processes']
+    derivers = composite_config.get('derivers', [])
     states = composite_config['states']
     options = composite_config['options']
     options.update({
         'emitter': boot_config.get('emitter', 'timeseries'),
         'time_step': boot_config.get('time_step', 1.0)})
 
-    return Compartment(processes, states, options)
+    return Compartment(processes, states, derivers, options)
 
 
 def simulate_compartment(compartment, settings={}):
