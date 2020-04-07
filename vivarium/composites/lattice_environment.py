@@ -68,7 +68,7 @@ def compose_lattice_environment(config):
             'fields': 'fields'}}
 
     # add derivers
-    deriver_processes = {}
+    deriver_processes = []
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up

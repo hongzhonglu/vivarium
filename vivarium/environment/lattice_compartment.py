@@ -34,7 +34,7 @@ class LatticeCompartment(Compartment, Simulation):
     - exchange_port holds accumulated molecules counts over the exchange timestep,
     and passes them to the environment upon exchange.
     '''
-    def __init__(self, processes, states, configuration):
+    def __init__(self, processes, derivers, states, configuration):
         self.exchange_port = configuration.get('exchange_port', '')
         self.environment_port = configuration.get('environment_port', '')
 
@@ -57,7 +57,7 @@ class LatticeCompartment(Compartment, Simulation):
             if 'division' in state_ids:
                 self.division_port = port
 
-        super(LatticeCompartment, self).__init__(processes, states, configuration)
+        super(LatticeCompartment, self).__init__(processes, derivers, states, configuration)
 
     def run_incremental(self, run_until):
         while self.time() < run_until:
@@ -150,11 +150,15 @@ def generate_lattice_compartment(process, config):
 
     # add derivers
     derivers = get_derivers(processes_layers, topology)
-    processes_layers.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes_layers + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
 
     # initialize the states for each port
-    states = initialize_state(processes_layers, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     # get the time step
     time_step = get_minimum_timestep(processes_layers)
@@ -176,7 +180,7 @@ def generate_lattice_compartment(process, config):
     }
 
     # create the lattice compartment
-    return LatticeCompartment(processes_layers, states, options)
+    return LatticeCompartment(processes_layers, deriver_processes, states, options)
 
 
 

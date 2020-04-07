@@ -908,9 +908,12 @@ def toy_composite(config):
             initial_parameters={
                 'mass_conversion_rate': 0.5}), # example of overriding default parameters
          'transport': ToyTransport()},
-        {'external_volume': ToyDeriveVolume(),
-         'internal_volume': ToyDeriveVolume()},
         {'death': ToyDeath()}]
+
+    # deriver processes
+    derivers_processes = [
+        {'external_volume': ToyDeriveVolume(),
+         'internal_volume': ToyDeriveVolume()}]
 
     # declare the states
     states = {
@@ -960,6 +963,7 @@ def toy_composite(config):
 
     return {
         'processes': processes,
+        'derivers': derivers_processes,
         'states': states,
         'options': options}
 

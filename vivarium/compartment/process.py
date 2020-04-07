@@ -600,6 +600,8 @@ def test_timescales():
         'slow': Slow(),
         'fast': Fast()}]
 
+    derivers = []
+
     states = {
         'state': Store({
             'base': 1.0,
@@ -620,6 +622,7 @@ def test_timescales():
 
     compartment = Compartment(
         processes,
+        derivers,
         states,
         configuration)
 
