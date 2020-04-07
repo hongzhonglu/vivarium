@@ -262,7 +262,6 @@ def get_cpm_minimum_config():
         'animate': True}
 
 def test_CPM(cpm_config = get_cpm_minimum_config(), time=5):
-
     # load process
     expression = CellularPotts(cpm_config)
 
