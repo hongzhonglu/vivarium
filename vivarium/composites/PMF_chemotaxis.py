@@ -3,14 +3,13 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment
+    initialize_state
 )
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
-    plot_simulation_output
-)
+    plot_simulation_output,
+    load_compartment)
 
 # processes
 from vivarium.processes.ode_expression import ODE_expression, get_flagella_expression
@@ -73,10 +72,10 @@ def compose_pmf_chemotaxis(config):
             'internal': 'cytoplasm',
             'external': 'environment'},
         'flagella': {
-            'counts': 'cell_counts',
+            'flagella_counts': 'cell_counts',
             'internal': 'cytoplasm',
             'membrane': 'membrane',
-            'flagella': 'flagella',
+            'flagella_activity': 'flagella',
             'external': 'environment'},
         'PMF': {
             'external': 'environment',
@@ -87,11 +86,15 @@ def compose_pmf_chemotaxis(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'PMF_chemotaxis_composite',
@@ -103,6 +106,7 @@ def compose_pmf_chemotaxis(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 

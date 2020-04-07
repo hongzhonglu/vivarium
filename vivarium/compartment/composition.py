@@ -4,7 +4,9 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import networkx as nx
 
+from vivarium.compartment import emitter as emit
 from vivarium.utils.dict_utils import (
     deep_merge,
     deep_merge_check,
@@ -12,11 +14,10 @@ from vivarium.utils.dict_utils import (
 )
 from vivarium.compartment.process import (
     initialize_state,
-    simulate_compartment,
     Compartment,
     COMPARTMENT_STATE,
     Process,
-)
+    Store)
 from vivarium.utils.units import units
 
 # processes
@@ -73,7 +74,7 @@ def get_derivers(process_list, topology):
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
                 except:
-                    print('{} source/target port mismatch'.format(process_id))
+                    print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
                 deriver_topology = {
@@ -159,25 +160,24 @@ def process_in_compartment(process, settings={}):
     if compartment_state_port:
         topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
+    # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    deriver_topology = derivers['deriver_topology']
-
-    # add deriver processes
-    processes.extend(deriver_processes)
-
-    # add deriver topology
-    topology.update(deriver_topology)
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
 
     # make the state
     state_dict = process_settings['state']
-    states = initialize_state(processes, topology, state_dict)
+    states = initialize_state(
+        all_processes,
+        topology,
+        state_dict)
 
     options = {
         'topology': topology,
         'emitter': emitter}
 
-    return Compartment(processes, states, options)
+    return Compartment(processes, deriver_processes, states, options)
 
 def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
@@ -253,6 +253,102 @@ def simulate_with_environment(compartment, settings={}):
         return compartment.emitter.get_data()
     else:
         return compartment.emitter.get_timeseries()
+
+
+
+# plotting functions
+def plot_compartment_topology(compartment, settings, out_dir='out', filename='topology'):
+    """
+    Make a plot of the topology
+     - compartment: a compartment
+     - settings (dict): 'network_layout' can be 'bipartite' or 'process_layers'
+    """
+    store_rgb = [x/255 for x in [239,131,148]]
+    process_rgb = [x / 255 for x in [249, 204, 86]]
+    node_size = 2500
+    node_distance = 1
+    layer_distance = 10
+
+    topology = compartment.topology
+    process_layers = compartment.processes
+
+    # get figure settings
+    show_ports = settings.get('show_ports', True)
+
+    # make graph from topology
+    G = nx.Graph()
+    process_nodes = []
+    store_nodes = []
+    edges = {}
+    for process_id, connections in topology.items():
+        process_nodes.append(process_id)
+        G.add_node(process_id)
+
+        for port, store_id in connections.items():
+            if store_id not in store_nodes:
+                store_nodes.append(store_id)
+            if store_id not in list(G.nodes):
+                G.add_node(store_id)
+
+            edge = (process_id, store_id)
+            edges[edge]= port
+
+            G.add_edge(process_id, store_id)
+
+    # are there overlapping names?
+    overlap = [name for name in process_nodes if name in store_nodes]
+    if overlap:
+        print('{} shared by processes and stores'.format(overlap))
+
+
+    # get positions
+    pos = {}
+    n_rows = max(len(process_nodes), len(store_nodes))
+    plt.figure(3, figsize=(12, 1.2 * n_rows))
+
+    for idx, node_id in enumerate(process_nodes, 1):
+        pos[node_id] = np.array([-1, -idx*node_distance])
+    for idx, node_id in enumerate(store_nodes, 1):
+        pos[node_id] = np.array([1, -idx*node_distance])
+
+
+    # plot
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=process_nodes,
+                           with_labels=True,
+                           node_color=process_rgb,
+                           node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=store_nodes,
+                           with_labels=True,
+                           node_color=store_rgb,
+                           node_size=node_size,
+                           node_shape='s')
+
+    # edges
+    colors = list(range(1,len(edges)+1))
+    nx.draw_networkx_edges(G, pos,
+                           edge_color=colors,
+                           width=1.5)
+
+    # labels
+    nx.draw_networkx_labels(G, pos,
+                            font_size=8,
+                            )
+    if show_ports:
+        nx.draw_networkx_edge_labels(G, pos,
+                                 edge_labels=edges,
+                                 font_size=6,
+                                 label_pos=0.85)
+
+    # save figure
+    fig_path = os.path.join(out_dir, filename)
+    plt.figure(3, figsize=(12, 12))
+    plt.axis('off')
+    plt.savefig(fig_path, bbox_inches='tight')
+
+    plt.close()
 
 
 def set_axes(ax, show_xaxis=False):
@@ -404,6 +500,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     plt.savefig(fig_path, bbox_inches='tight')
 
 
+# timeseries functions
 def save_timeseries(timeseries, out_dir='out'):
     '''Save a timeseries as a CSV in out_dir'''
     flattened = flatten_timeseries(timeseries)
@@ -651,3 +748,236 @@ class TestSimulateProcess:
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 7.0, 7.0, 7.0]
         masses = timeseries['global']['mass']
         assert masses == expected_masses
+
+def load_compartment(composite, boot_config={}):
+    '''
+    put a composite function into a compartment
+
+    inputs:
+        - composite is a function that returns a dict with 'processes', 'states', and 'options'
+        for configuring a compartment
+        - boot_config (dict) with specific parameters for the processes
+    return:
+        - a compartment object for testing
+    '''
+
+    composite_config = composite(boot_config)
+    processes = composite_config['processes']
+    derivers = composite_config.get('derivers', [])
+    states = composite_config['states']
+    options = composite_config['options']
+    options.update({
+        'emitter': boot_config.get('emitter', 'timeseries'),
+        'time_step': boot_config.get('time_step', 1.0)})
+
+    return Compartment(processes, derivers, states, options)
+
+
+def simulate_compartment(compartment, settings={}):
+    '''
+    run a compartment simulation
+        Requires:
+        - a compartment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
+    '''
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # data settings
+    return_raw_data = settings.get('return_raw_data', False)
+
+    # run simulation
+    time = 0
+    while time < total_time:
+        time += timestep
+        compartment.update(timestep)
+
+    if return_raw_data:
+        return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
+
+
+## functions for testing
+def toy_composite(config):
+    '''
+    a toy composite function for testing
+    returns a dictionary with 'processes', 'states', and 'options'
+
+    '''
+
+    # toy processes
+    class ToyMetabolism(Process):
+        def __init__(self, initial_parameters={}):
+            ports = {'pool': ['GLC', 'MASS']}
+            parameters = {'mass_conversion_rate': 1}
+            parameters.update(initial_parameters)
+
+            super(ToyMetabolism, self).__init__(ports, parameters)
+
+        def default_settings(self):
+            return {
+                'emitter_keys': {
+                    port_id: keys for port_id, keys in self.ports.items()}
+            }
+
+        def next_update(self, timestep, states):
+            update = {}
+            glucose_required = timestep / self.parameters['mass_conversion_rate']
+            if states['pool']['GLC'] >= glucose_required:
+                update = {
+                    'pool': {
+                        'GLC': -2,
+                        'MASS': 1}}
+
+            return update
+
+    class ToyTransport(Process):
+        def __init__(self, initial_parameters={}):
+            ports = {
+                'external': ['GLC'],
+                'internal': ['GLC']}
+            parameters = {'intake_rate': 2}
+            parameters.update(initial_parameters)
+
+            super(ToyTransport, self).__init__(ports, parameters)
+
+        def default_settings(self):
+            return {
+                'emitter_keys': {
+                    port_id: keys for port_id, keys in self.ports.items()}
+            }
+
+        def next_update(self, timestep, states):
+            update = {}
+            intake = timestep * self.parameters['intake_rate']
+            if states['external']['GLC'] >= intake:
+                update = {
+                    'external': {'GLC': -2, 'MASS': 1},
+                    'internal': {'GLC': 2}}
+
+            return update
+
+    class ToyDeriveVolume(Process):
+        def __init__(self, initial_parameters={}):
+            ports = {
+                'compartment': ['MASS', 'DENSITY', 'VOLUME']}
+            parameters = {}
+
+            super(ToyDeriveVolume, self).__init__(ports, parameters)
+
+        def default_settings(self):
+            return {
+                'emitter_keys': {
+                    port_id: keys for port_id, keys in self.ports.items()}
+            }
+
+        def next_update(self, timestep, states):
+            volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
+            update = {
+                'compartment': {'VOLUME': volume}}
+
+            return update
+
+    class ToyDeath(Process):
+        def __init__(self, initial_parameters={}):
+            ports = {
+                'compartment': ['VOLUME'],
+                'global': ['processes']}
+            super(ToyDeath, self).__init__(ports, {})
+
+        def next_update(self, timestep, states):
+            volume = states['compartment']['VOLUME']
+            update = {}
+
+            if volume > 1.0:
+                # kill the cell
+                update = {
+                    'global': {
+                        'processes': []}}
+
+            return update
+
+
+    processes = [
+        {'metabolism': ToyMetabolism(
+            initial_parameters={
+                'mass_conversion_rate': 0.5}), # example of overriding default parameters
+         'transport': ToyTransport()},
+        {'death': ToyDeath()}]
+
+    # deriver processes
+    derivers_processes = [
+        {'external_volume': ToyDeriveVolume(),
+         'internal_volume': ToyDeriveVolume()}]
+
+    # declare the states
+    states = {
+        'periplasm': Store(
+            initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10, 'VOLUME': 100/10},
+            schema={
+                'VOLUME': {
+                    'updater': 'set'}}),
+        'cytoplasm': Store(
+            initial_state={'MASS': 3, 'DENSITY': 10, 'VOLUME': 3/10},
+            schema={
+                'VOLUME': {
+                    'updater': 'set'}})}
+
+    # hook up the ports in each process to compartment states
+    topology = {
+        'metabolism': {
+            'pool': 'cytoplasm'},
+        'transport': {
+            'external': 'periplasm',
+            'internal': 'cytoplasm'},
+        'death': {
+            'compartment': 'cytoplasm',
+            'global': COMPARTMENT_STATE},
+        'external_volume': {
+            'compartment': 'periplasm'},
+        'internal_volume': {
+            'compartment': 'cytoplasm'}}
+
+    # emitter that prints to the terminal
+    emitter = emit.get_emitter({
+        'type': 'print',
+        'keys': {
+            'periplasm': ['GLC', 'MASS'],
+            'cytoplasm': ['MASS']}})
+
+    # schema for states
+    schema = {}
+
+    options = {
+        # 'environment_port': 'environment',
+        # 'exchange_port': 'exchange',
+        'schema': schema,
+        'emitter': emitter,
+        'topology': topology,
+        'initial_time': 0.0}
+
+    return {
+        'processes': processes,
+        'derivers': derivers_processes,
+        'states': states,
+        'options': options}
+
+
+def test_compartment(composite=toy_composite):
+    compartment = load_compartment(composite)
+    settings = {
+        'timestep': 1,
+        'total_time': 20,
+        'emit_timeseries': True,}
+
+    return simulate_compartment(compartment, settings)
+
+
+if __name__ == '__main__':
+    timeseries = test_compartment()
+    print(timeseries)

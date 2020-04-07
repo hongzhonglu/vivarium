@@ -63,9 +63,11 @@ class Complexation(Process):
 
         self.complexation = StochasticSystem(self.complexation_stoichiometry)
 
-        self.ports = {
+        ports = {
             'monomers': self.monomer_ids,
             'complexes': self.complex_ids}
+
+        super(Complexation, self).__init__(ports)
 
     def default_settings(self):
         default_state = {
@@ -117,7 +119,7 @@ def test_complexation():
     complexation = Complexation()
     settings = complexation.default_settings()
     state = settings['state']
-    for monomer in self.monomer_ids:
+    for monomer in complexation.monomer_ids:
         state['monomers'][monomer] = 1000
 
     update = complexation.next_update(1.0, state)

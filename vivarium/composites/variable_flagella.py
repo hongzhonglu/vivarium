@@ -5,8 +5,7 @@ import os
 import random
 
 from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers
-from vivarium.compartment.process import load_compartment
+from vivarium.compartment.composition import get_derivers, load_compartment
 from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output
@@ -34,7 +33,7 @@ def compose_variable_flagella(config):
     # flagella
     flagella_config = copy.deepcopy(config)
     flagella_range = [0, 1, 5]  #list(range(0, 4))
-    flagella_config.update({'n_flagella': random.choice(flagella_range)})
+    flagella_config.update({'flagella': random.choice(flagella_range)})
     flagella = FlagellaActivity(flagella_config)
 
     # proton motive force
@@ -59,10 +58,10 @@ def compose_variable_flagella(config):
             'external': 'environment'},
         'flagella': {
             'internal': 'cell',
-            'counts': 'counts',
             'external': 'environment',
             'membrane': 'membrane',
-            'flagella': 'flagella'},
+            'flagella_counts': 'counts',
+            'flagella_activity': 'flagella'},
         'PMF': {
             'internal': 'cell',
             'external': 'environment',
@@ -72,11 +71,16 @@ def compose_variable_flagella(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
+
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'environment_port': 'environment',
@@ -87,6 +91,7 @@ def compose_variable_flagella(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -115,6 +120,5 @@ if __name__ == '__main__':
         'max_rows': 20,
         'skip_ports': ['prior_state']}
 
-    # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(timeseries, plot_settings, out_dir)

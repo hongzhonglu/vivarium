@@ -12,6 +12,8 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 COMPARTMENT_STATE = '__compartment_state__'
 
+INFINITY = float('inf')
+VERBOSE = False
 
 class topologyError(Exception):
     pass
@@ -192,6 +194,17 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
+        default_timestep = self.default_settings().get('time_step', 1.0)
+        self.time_step = self.parameters.get('time_step', default_timestep)
+
+    def local_timestep(self):
+        '''
+        Returns the favored timestep for this process.
+        Meant to be overridden in subclasses, unless 1.0 is a happy value. 
+        '''
+
+        return self.time_step
+
     def default_settings(self):
         return {}
 
@@ -235,10 +248,10 @@ class Process(object):
             for port, values in self.ports.items()}
 
 
-def connect_topology(process_layers, states, topology):
+def connect_topology(process, derivers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the ports in each process to the state they refer to.'''
-
+    process_layers = process + derivers
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]
@@ -250,7 +263,7 @@ def connect_topology(process_layers, states, topology):
             except:
                 print('{} mismatched ports'.format(name))
 
-def get_compartment_timestep(process_layers):
+def get_minimum_timestep(process_layers):
     # get the minimum time_step from all processes
     processes = merge_dicts(process_layers)
     minimum_step = 10
@@ -326,37 +339,40 @@ def initialize_state(process_layers, topology, initial_state):
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, states, configuration):
+    def __init__(self, processes, derivers, states, configuration):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
-        self.initial_time = configuration.get('initial_time', 0.0)
-        self.local_time = 0.0
-        self.time_step = min(configuration.get('time_step', 1.0), get_compartment_timestep(processes))
-
         self.processes = processes
         self.states = states
+        self.derivers = derivers
+        self.configuration = configuration
+
+        self.topology = configuration['topology']
+        self.initial_time = configuration.get('initial_time', 0.0)
+        self.local_time = 0.0
+        self.time_step = configuration.get('time_step', 1.0)
 
         # configure compartment state
         self.states[COMPARTMENT_STATE] = self
-        self.state = {'processes': self.processes}
+        self.state = {
+            'processes': self.processes,
+            'derivers': self.derivers}
         self.updaters = {'processes': 'set'}
 
-        self.configuration = configuration
-        self.topology = configuration['topology']
-
+        # divide condition
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
         # emitter
-        emitter_type = configuration.get('emitter')
-        if emitter_type is None:
+        emitter_config = configuration.get('emitter')
+        if emitter_config is None:
             emitter = emit.get_emitter({})
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
-        elif isinstance(emitter_type, str):
+        elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
-                {'emitter': {'type': emitter_type}},
-                self.processes,
+                {'emitter': {'type': emitter_config}},
+                self.processes + self.derivers,
                 self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
@@ -364,7 +380,7 @@ class Compartment(Store):
             self.emitter_keys = configuration['emitter'].get('keys')
             self.emitter = configuration['emitter'].get('object')
 
-        connect_topology(processes, self.states, self.topology)
+        connect_topology(processes, derivers, self.states, self.topology)
 
         # log experiment configuration
         data = {
@@ -411,28 +427,106 @@ class Compartment(Store):
         ''' overriding from State '''
         return self.current_state()
 
+    def collect_updates(self, updates, process_name, new_update):
+        for port, update_store in new_update.items():
+            key = self.topology[process_name][port]
+            if not updates.get(key):
+                updates[key] = []
+            updates[key].append(update_store)
+        return updates
+
+    def run_derivers(self):
+
+        # flatten all deriver layers into a single deriver dict
+        derivers = {}
+        for stack in self.state['derivers']:
+            derivers.update(stack)
+
+        updates = {}
+        for name, process in derivers.items():
+            new_update = process.update_for(1)  # timestep shouldn't influence derivers
+            updates = self.collect_updates(updates, name, new_update)
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
+    def send_updates(self, updates):
+        ''' Prepare the states, apply the updates, run derivers, and proceed'''
+
+        for key in self.states.keys():
+            self.states[key].prepare()
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
+        # run derivers after every update
+        # TODO -- only run derivers if any of their states have been updated
+        self.run_derivers()
+
+        for key in self.states.keys():
+            self.states[key].proceed()
+
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
-        # use processes from state
-        for processes in self.state['processes']:
-            updates = {}
-            for name, process in processes.items():
-                update = process.update_for(timestep)
-                for port, update_dict in update.items():
-                    key = self.topology[name][port]
-                    if not updates.get(key):
-                        updates[key] = []
-                    updates[key].append(update_dict)
+        time = 0
 
-            for key in self.states.keys():
-                self.states[key].prepare()
+        # flatten all process layers into a single process dict
+        processes = {}
+        for stack in self.state['processes']:
+            processes.update(stack)
 
-            for key, update in updates.items():
-                self.states[key].apply_updates(update)
+        # keep track of which processes have simulated until when
+        front = {
+            process_name: {
+                'time': 0,
+                'update': {}}
+            for process_name in processes.keys()}
 
-            for key in self.states.keys():
-                self.states[key].proceed()
+        while time < timestep:
+            step = INFINITY
+
+            if VERBOSE:
+                for state_id in self.states:
+                    print('{}: {}'.format(time, self.states[state_id].to_dict()))
+
+            for process_name, process in processes.items():
+                process_time = front[process_name]['time']
+
+                if process_time <= time:
+                    future = min(process_time + process.local_timestep(), timestep)
+                    interval = future - process_time
+                    update = process.update_for(interval)
+
+                    if interval < step:
+                        step = interval
+                    front[process_name]['time'] = future
+                    front[process_name]['update'] = update
+
+            if step == INFINITY:
+                # no processes ran, jump to next process
+                next_event = timestep
+                for process_name in front.keys():
+                    if front[process_name]['time'] < next_event:
+                        next_event = front[process_name]['time']
+                time = next_event
+            else:
+                # at least one process ran, apply updates and continue
+                future = time + step
+
+                updates = {}
+                for process_name, advance in front.items():
+                    if advance['time'] <= future:
+                        updates = self.collect_updates(updates, process_name, advance['update'])
+                        advance['update'] = {}
+
+                self.send_updates(updates)
+
+                time = future
+
+        for process_name, advance in front.items():
+            assert advance['time'] == time == timestep
+            assert len(advance['update']) == 0
 
         self.local_time += timestep
 
@@ -471,216 +565,70 @@ class Compartment(Store):
         self.emitter.emit(emit_config)
 
 
+def test_timescales():
+    class Slow(Process):
+        def __init__(self):
+            self.timestep = 3.0
+            self.ports = {
+                'state': ['base']}
 
-
-## functions for testing
-def toy_composite(config):
-    '''
-    a toy composite function for testing
-    returns a dictionary with 'processes', 'states', and 'options'
-
-    '''
-
-    # toy processes
-    class ToyMetabolism(Process):
-        def __init__(self, initial_parameters={}):
-            ports = {'pool': ['GLC', 'MASS']}
-            parameters = {'mass_conversion_rate': 1}
-            parameters.update(initial_parameters)
-
-            super(ToyMetabolism, self).__init__(ports, parameters)
+        def local_timestep(self):
+            return self.timestep
 
         def next_update(self, timestep, states):
-            update = {}
-            glucose_required = timestep / self.parameters['mass_conversion_rate']
-            if states['pool']['GLC'] >= glucose_required:
-                update = {
-                    'pool': {
-                        'GLC': -2,
-                        'MASS': 1}}
+            base = states['state']['base']
+            next_base = timestep * base * 0.1
 
-            return update
+            return {
+                'state': {'base': next_base}}
 
-    class ToyTransport(Process):
-        def __init__(self, initial_parameters={}):
-            ports = {
-                'external': ['GLC'],
-                'internal': ['GLC']}
-            parameters = {'intake_rate': 2}
-            parameters.update(initial_parameters)
+    class Fast(Process):
+        def __init__(self):
+            self.timestep = 0.1
+            self.ports = {
+                'state': ['base', 'motion']}
 
-            super(ToyTransport, self).__init__(ports, parameters)
+        def local_timestep(self):
+            return self.timestep
 
         def next_update(self, timestep, states):
-            update = {}
-            intake = timestep * self.parameters['intake_rate']
-            if states['external']['GLC'] >= intake:
-                update = {
-                    'external': {'GLC': -2, 'MASS': 1},
-                    'internal': {'GLC': 2}}
+            base = states['state']['base']
+            motion = timestep * base * 0.001
 
-            return update
+            return {
+                'state': {'motion': motion}}
 
-    class ToyDeriveVolume(Process):
-        def __init__(self, initial_parameters={}):
-            ports = {
-                'compartment': ['MASS', 'DENSITY', 'VOLUME']}
-            parameters = {}
+    processes = [{
+        'slow': Slow(),
+        'fast': Fast()}]
 
-            super(ToyDeriveVolume, self).__init__(ports, parameters)
+    derivers = []
 
-        def next_update(self, timestep, states):
-            volume = states['compartment']['MASS'] / states['compartment']['DENSITY']
-            update = {
-                'compartment': {'VOLUME': volume}}
-
-            return update
-
-    class ToyDeath(Process):
-        def __init__(self, initial_parameters={}):
-            ports = {
-                'compartment': ['VOLUME'],
-                'global': ['processes']}
-            super(ToyDeath, self).__init__(ports, {})
-
-        def next_update(self, timestep, states):
-            volume = states['compartment']['VOLUME']
-            update = {}
-
-            if volume > 1.0:
-                # kill the cell
-                update = {
-                    'global': {
-                        'processes': []}}
-
-            return update
-
-
-    processes = [
-        {'metabolism': ToyMetabolism(
-            initial_parameters={
-                'mass_conversion_rate': 0.5}), # example of overriding default parameters
-         'transport': ToyTransport()},
-        {'external_volume': ToyDeriveVolume(),
-         'internal_volume': ToyDeriveVolume()},
-        {'death': ToyDeath()}]
-
-    # declare the states
     states = {
-        'periplasm': Store(
-            initial_state={'GLC': 20, 'MASS': 100, 'DENSITY': 10, 'VOLUME': 100/10},
-            schema={
-                'VOLUME': {
-                    'updater': 'set'}}),
-        'cytoplasm': Store(
-            initial_state={'MASS': 3, 'DENSITY': 10, 'VOLUME': 3/10},
-            schema={
-                'VOLUME': {
-                    'updater': 'set'}})}
+        'state': Store({
+            'base': 1.0,
+            'motion': 0.0})}
 
-    # hook up the ports in each process to compartment states
     topology = {
-        'metabolism': {
-            'pool': 'cytoplasm'},
-        'transport': {
-            'external': 'periplasm',
-            'internal': 'cytoplasm'},
-        'death': {
-            'compartment': 'cytoplasm',
-            'global': COMPARTMENT_STATE},
-        'external_volume': {
-            'compartment': 'periplasm'},
-        'internal_volume': {
-            'compartment': 'cytoplasm'}}
+        'slow': {'state': 'state'},
+        'fast': {'state': 'state'}}
 
-    # emitter that prints to the terminal
-    emitter = emit.get_emitter({
-        'type': 'print',
-        'keys': {
-            'periplasm': ['GLC', 'MASS'],
-            'cytoplasm': ['MASS']}})
+    emitter_config = {
+            'type': 'print',
+            'keys': {
+                'state': ['base', 'motion']}}
 
-    # schema for states
-    schema = {}
-
-    options = {
-        # 'environment_port': 'environment',
-        # 'exchange_port': 'exchange',
-        'schema': schema,
-        'emitter': emitter,
+    configuration = {
         'topology': topology,
-        'initial_time': 0.0}
+        'emitter': emit.get_emitter(emitter_config)}
 
-    return {
-        'processes': processes,
-        'states': states,
-        'options': options}
+    compartment = Compartment(
+        processes,
+        derivers,
+        states,
+        configuration)
 
-def test_compartment(composite=toy_composite):
-    compartment = load_compartment(composite)
-    settings = {
-        'timestep': 1,
-        'total_time': 20}
-
-    saved_state = simulate_compartment(compartment, settings)
-    return saved_state
-
-def load_compartment(composite=toy_composite, boot_config={}):
-    '''
-    put a composite function into a compartment
-
-    inputs:
-        - composite is a function that returns a dict with 'processes', 'states', and 'options'
-        for configuring a compartment
-        - boot_config (dict) with specific parameters for the processes
-    return:
-        - a compartment object for testing
-    '''
-
-    composite_config = composite(boot_config)
-    processes = composite_config['processes']
-    states = composite_config['states']
-    options = composite_config['options']
-    options.update({
-        'emitter': boot_config.get('emitter', 'timeseries'),
-        'time_step': boot_config.get('time_step', 1.0)})
-
-    return Compartment(processes, states, options)
-
-def simulate_compartment(compartment, settings={}):
-    '''
-    run a compartment simulation
-        Requires:
-        - a compartment
-
-    Returns:
-        - a timeseries of variables from all ports.
-        - if 'return_raw_data' is True, it returns the raw data instead
-    '''
-
-    timestep = settings.get('timestep', 1)
-    total_time = settings.get('total_time', 10)
-    verbose = settings.get('verbose')
-
-    # data settings
-    return_raw_data = settings.get('return_raw_data', False)
-
-    # run simulation
-    time = 0
-    while time < total_time:
-        time += timestep
-        if verbose:
-            print('time: {}'.format(time))
-        compartment.update(timestep)
-
-    if return_raw_data:
-        return compartment.emitter.get_data()
-    else:
-        return compartment.emitter.get_timeseries()
-
+    compartment.update(10.0)
 
 if __name__ == '__main__':
-    saved_state = test_compartment()
-    for time, state in saved_state.items():
-        print('{}: {}'.format(time,state))
-
+    test_timescales()

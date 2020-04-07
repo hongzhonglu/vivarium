@@ -4,8 +4,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.composition import set_axes
-from vivarium.compartment.process import load_compartment
+from vivarium.compartment.composition import set_axes, load_compartment
 from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output

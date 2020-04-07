@@ -3,10 +3,9 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.composition import get_derivers, load_compartment
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment)
+    initialize_state)
 from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output)
@@ -49,21 +48,25 @@ def compose_simple_chemotaxis(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'simple_chemotaxis_composite',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
-        'environment_port': 'environment',
-    }
+        'environment_port': 'environment'}
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 

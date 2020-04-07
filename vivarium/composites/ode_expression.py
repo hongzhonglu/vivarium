@@ -3,14 +3,13 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment
+    initialize_state
 )
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
-    plot_simulation_output
-)
+    plot_simulation_output,
+    load_compartment)
 
 # processes
 from vivarium.processes.division import Division, divide_condition
@@ -80,11 +79,15 @@ def compose_ode_expression(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
-    # Initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    # initialize the states
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': config.get('name', 'master_composite'),
@@ -96,6 +99,7 @@ def compose_ode_expression(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
