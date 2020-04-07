@@ -58,11 +58,16 @@ def compose_growth_division(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
+
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'growth_division_composite',
@@ -74,6 +79,7 @@ def compose_growth_division(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
