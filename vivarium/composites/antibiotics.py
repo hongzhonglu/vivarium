@@ -117,14 +117,17 @@ def compose_antibiotics(config):
         },
     }
 
-    # Add Derivers
+    # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
     topology.update(derivers['deriver_topology'])
 
     # initialize the states
     states = initialize_state(
-        processes, topology, config.get('initial_state', {}))
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'antibiotic_growth_composite',
@@ -137,6 +140,7 @@ def compose_antibiotics(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 

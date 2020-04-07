@@ -13,7 +13,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 COMPARTMENT_STATE = '__compartment_state__'
 
 INFINITY = float('inf')
-VERBOSE = True
+VERBOSE = False
 
 class topologyError(Exception):
     pass
@@ -194,13 +194,16 @@ class Process(object):
         self.parameters = parameters or {}
         self.states = None
 
+        default_timestep = self.default_settings().get('time_step', 1.0)
+        self.time_step = self.parameters.get('time_step', default_timestep)
+
     def local_timestep(self):
         '''
         Returns the favored timestep for this process.
         Meant to be overridden in subclasses, unless 1.0 is a happy value. 
         '''
 
-        return 1.0
+        return self.time_step
 
     def default_settings(self):
         return {}
@@ -245,10 +248,10 @@ class Process(object):
             for port, values in self.ports.items()}
 
 
-def connect_topology(process_layers, states, topology):
+def connect_topology(process, derivers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the ports in each process to the state they refer to.'''
-
+    process_layers = process + derivers
     for processes in process_layers:
         for name, process in processes.items():
             connections = topology[name]
@@ -260,7 +263,7 @@ def connect_topology(process_layers, states, topology):
             except:
                 print('{} mismatched ports'.format(name))
 
-def get_compartment_timestep(process_layers):
+def get_minimum_timestep(process_layers):
     # get the minimum time_step from all processes
     processes = merge_dicts(process_layers)
     minimum_step = 10
@@ -336,25 +339,28 @@ def initialize_state(process_layers, topology, initial_state):
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, states, configuration):
+    def __init__(self, processes, derivers, states, configuration):
         ''' Given a set of processes and states, and a topology describing their
             connections, perform those connections. '''
 
-        self.initial_time = configuration.get('initial_time', 0.0)
-        self.local_time = 0.0
-        self.time_step = min(configuration.get('time_step', 1.0), get_compartment_timestep(processes))
-
         self.processes = processes
         self.states = states
+        self.derivers = derivers
+        self.configuration = configuration
+
+        self.topology = configuration['topology']
+        self.initial_time = configuration.get('initial_time', 0.0)
+        self.local_time = 0.0
+        self.time_step = configuration.get('time_step', 1.0)
 
         # configure compartment state
         self.states[COMPARTMENT_STATE] = self
-        self.state = {'processes': self.processes}
+        self.state = {
+            'processes': self.processes,
+            'derivers': self.derivers}
         self.updaters = {'processes': 'set'}
 
-        self.configuration = configuration
-        self.topology = configuration['topology']
-
+        # divide condition
         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
         # emitter
@@ -366,7 +372,7 @@ class Compartment(Store):
         elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
                 {'emitter': {'type': emitter_config}},
-                self.processes,
+                self.processes + self.derivers,
                 self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
@@ -374,7 +380,7 @@ class Compartment(Store):
             self.emitter_keys = configuration['emitter'].get('keys')
             self.emitter = configuration['emitter'].get('object')
 
-        connect_topology(processes, self.states, self.topology)
+        connect_topology(processes, derivers, self.states, self.topology)
 
         # log experiment configuration
         data = {
@@ -429,12 +435,33 @@ class Compartment(Store):
             updates[key].append(update_store)
         return updates
 
-    def apply_updates(self, updates):
+    def run_derivers(self):
+
+        # flatten all deriver layers into a single deriver dict
+        derivers = {}
+        for stack in self.state['derivers']:
+            derivers.update(stack)
+
+        updates = {}
+        for name, process in derivers.items():
+            new_update = process.update_for(1)  # timestep shouldn't influence derivers
+            updates = self.collect_updates(updates, name, new_update)
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
+    def send_updates(self, updates):
+        ''' Prepare the states, apply the updates, run derivers, and proceed'''
+
         for key in self.states.keys():
             self.states[key].prepare()
 
         for key, update in updates.items():
             self.states[key].apply_updates(update)
+
+        # run derivers after every update
+        # TODO -- only run derivers if any of their states have been updated
+        self.run_derivers()
 
         for key in self.states.keys():
             self.states[key].proceed()
@@ -460,7 +487,8 @@ class Compartment(Store):
             step = INFINITY
 
             if VERBOSE:
-                print('{}: {}'.format(time, self.states['state'].to_dict()))
+                for state_id in self.states:
+                    print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
             for process_name, process in processes.items():
                 process_time = front[process_name]['time']
@@ -492,7 +520,7 @@ class Compartment(Store):
                         updates = self.collect_updates(updates, process_name, advance['update'])
                         advance['update'] = {}
 
-                self.apply_updates(updates)
+                self.send_updates(updates)
 
                 time = future
 
@@ -574,6 +602,8 @@ def test_timescales():
         'slow': Slow(),
         'fast': Fast()}]
 
+    derivers = []
+
     states = {
         'state': Store({
             'base': 1.0,
@@ -594,6 +624,7 @@ def test_timescales():
 
     compartment = Compartment(
         processes,
+        derivers,
         states,
         configuration)
 
