@@ -13,7 +13,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 COMPARTMENT_STATE = '__compartment_state__'
 
 INFINITY = float('inf')
-VERBOSE = True
+VERBOSE = False
 
 class topologyError(Exception):
     pass

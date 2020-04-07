@@ -160,25 +160,24 @@ def process_in_compartment(process, settings={}):
     if compartment_state_port:
         topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
+    # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    deriver_topology = derivers['deriver_topology']
-
-    # add deriver processes
-    processes.extend(deriver_processes)
-
-    # add deriver topology
-    topology.update(deriver_topology)
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])
 
     # make the state
     state_dict = process_settings['state']
-    states = initialize_state(processes, topology, state_dict)
+    states = initialize_state(
+        all_processes,
+        topology,
+        state_dict)
 
     options = {
         'topology': topology,
         'emitter': emitter}
 
-    return Compartment(processes, states, options)
+    return Compartment(processes, deriver_processes, states, options)
 
 def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
