@@ -450,7 +450,9 @@ class Compartment(Store):
         for key, update in updates.items():
             self.states[key].apply_updates(update)
 
-    def apply_updates(self, updates):
+    def send_updates(self, updates):
+        ''' Prepare the states, apply the updates, run derivers, and proceed'''
+
         for key in self.states.keys():
             self.states[key].prepare()
 
@@ -518,7 +520,7 @@ class Compartment(Store):
                         updates = self.collect_updates(updates, process_name, advance['update'])
                         advance['update'] = {}
 
-                self.apply_updates(updates)
+                self.send_updates(updates)
 
                 time = future
 
