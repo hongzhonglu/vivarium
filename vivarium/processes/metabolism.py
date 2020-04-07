@@ -431,7 +431,7 @@ BiGG_energy_carriers = [
     'fad_c',
 ]
 
-def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthesis'):
+def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_use'):
     # plot the synthesis of energy carriers in BiGG model output
 
     energy_reactions = settings.get('reactions', {})
@@ -439,21 +439,20 @@ def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthes
     time_vec = timeseries['time']
 
     # get each energy carrier's total flux
-    carrier_synthesis = {}
+    carrier_use = {}
     for reaction_id, coeffs in energy_reactions.items():
         reaction_ts = saved_reactions[reaction_id]
 
         for mol_id, coeff in coeffs.items():
 
-            # save to if this energy carrier is synthesized
-            if coeff > 0:
-                added_flux = [coeff*ts for ts in reaction_ts]
-
-                if mol_id not in carrier_synthesis:
-                    carrier_synthesis[mol_id] = added_flux
+            # save if energy carrier is used
+            if coeff < 0:
+                added_flux = [-coeff*ts for ts in reaction_ts]
+                if mol_id not in carrier_use:
+                    carrier_use[mol_id] = added_flux
                 else:
-                    carrier_synthesis[mol_id] = [
-                        sum(x) for x in zip(carrier_synthesis[mol_id], added_flux)]
+                    carrier_use[mol_id] = [
+                        sum(x) for x in zip(carrier_use[mol_id], added_flux)]
 
     # make the figure
     n_cols = 1
@@ -463,12 +462,12 @@ def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthes
 
     # first subplot
     ax = fig.add_subplot(grid[0, 0])
-    for mol_id, series in carrier_synthesis.items():
+    for mol_id, series in carrier_use.items():
         ax.plot(time_vec, series, label=mol_id)
     ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-    ax.title.set_text('energy carriers')
-    ax.set_xlabel('time')
-    ax.set_ylabel('synthesis')
+    ax.set_title('energy use')
+    ax.set_xlabel('time ($s$)')
+    ax.set_ylabel('$(mmol*L^{{{}}}*s^{{{}}})$'.format(-1, -1))  # TODO -- use unit schema in figures
 
     # save figure
     fig_path = os.path.join(out_dir, figname)
