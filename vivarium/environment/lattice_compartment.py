@@ -267,6 +267,9 @@ def divide_composite(config):
         {'growth': ToyGrowth()},
         {'divide': ToyDivide()}]
 
+    # declare derivers
+    derivers = []
+
     # declare the states
     states = {
         'cell': Store(
@@ -297,6 +300,7 @@ def divide_composite(config):
 
     return {
         'processes': processes,
+        'derivers': derivers,
         'states': states,
         'options': options}
 
@@ -304,11 +308,12 @@ def test_divide(composite=divide_composite):
     # set up the the composite
     composite_config = composite({})
     processes = composite_config['processes']
+    derivers = composite_config['derivers']
     states = composite_config['states']
     options = composite_config['options']
     # topology = options['topology']
 
-    lattice_compartment = LatticeCompartment(processes, states, options)
+    lattice_compartment = LatticeCompartment(processes, derivers, states, options)
 
     settings = {
         'timestep': 1,
