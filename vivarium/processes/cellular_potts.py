@@ -254,8 +254,14 @@ def get_cpm_config():
         'target_area': 25,
         'animate': True}
 
-def test_CPM(cpm_config = get_cpm_config(), time=5):
+def get_cpm_minimum_config():
+    return {
+        'n_agents': 2,
+        'grid_size': (20, 20),
+        'target_area': 10,
+        'animate': True}
 
+def test_CPM(cpm_config = get_cpm_minimum_config(), time=5):
     # load process
     expression = CellularPotts(cpm_config)
 
