@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import math
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -328,27 +327,6 @@ def get_toy_configuration():
 
     return config
 
-def test_config(config=get_toy_configuration()):
-    # configure metabolism process
-    metabolism = Metabolism(config)
-
-    print('MODEL: {}'.format(metabolism.fba.model))
-    print('REACTIONS: {}'.format(metabolism.fba.model.reactions))
-    print('METABOLITES: {}'.format(metabolism.fba.model.metabolites))
-    print('GENES: {}'.format(metabolism.fba.model.genes))
-    print('COMPARTMENTS: {}'.format(metabolism.fba.model.compartments))
-    print('SOLVER: {}'.format(metabolism.fba.model.solver))
-    print('EXPRESSION: {}'.format(metabolism.fba.model.objective.expression))
-
-    print(metabolism.fba.optimize())
-    print(metabolism.fba.model.summary())
-    print('internal: {}'.format(metabolism.fba.internal_reactions()))
-    print('external: {}'.format(metabolism.fba.external_reactions()))
-    print(metabolism.fba.reaction_ids())
-    print(metabolism.fba.get_reactions())
-    print(metabolism.fba.get_reaction_bounds())
-    print(metabolism.fba.read_exchange_fluxes())
-
 
 # toy functions
 def make_kinetic_rate(mol_id, vmax, km=0.0):
@@ -370,7 +348,7 @@ def toy_transport():
     return transport_kinetics
 
 
-# tests and analyses
+# plots
 def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
     # plot focused on exchanges with the environment
 
@@ -497,7 +475,6 @@ def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_synthes
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
-
 def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
     metabolism = Metabolism(config)
 
@@ -521,7 +498,7 @@ def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
     reaction_fluxes = {}
     for rxn_id in reaction_ids:
         flux = abs(np.mean(reactions[rxn_id][1:]))
-        reaction_fluxes[rxn_id] = math.log(1000 * flux + 1.1)
+        reaction_fluxes[rxn_id] = np.log(1000 * flux + 1.1)
 
     # define node type
     node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
@@ -566,10 +543,30 @@ def test_toy_metabolism(out_dir='out'):
     settings.update({'timeline': timeline})
     return simulate_process_with_environment(toy_metabolism, settings)
 
-
 def test_BiGG_metabolism(config=get_iAF1260b_config(), settings={}):
     metabolism = Metabolism(config)
     run_metabolism(metabolism, settings)
+
+def test_config(config=get_toy_configuration()):
+    # configure metabolism process
+    metabolism = Metabolism(config)
+
+    print('MODEL: {}'.format(metabolism.fba.model))
+    print('REACTIONS: {}'.format(metabolism.fba.model.reactions))
+    print('METABOLITES: {}'.format(metabolism.fba.model.metabolites))
+    print('GENES: {}'.format(metabolism.fba.model.genes))
+    print('COMPARTMENTS: {}'.format(metabolism.fba.model.compartments))
+    print('SOLVER: {}'.format(metabolism.fba.model.solver))
+    print('EXPRESSION: {}'.format(metabolism.fba.model.objective.expression))
+
+    print(metabolism.fba.optimize())
+    print(metabolism.fba.model.summary())
+    print('internal: {}'.format(metabolism.fba.internal_reactions()))
+    print('external: {}'.format(metabolism.fba.external_reactions()))
+    print(metabolism.fba.reaction_ids())
+    print(metabolism.fba.get_reactions())
+    print(metabolism.fba.get_reaction_bounds())
+    print(metabolism.fba.read_exchange_fluxes())
 
 def run_metabolism(metabolism, settings):
     sim_settings = default_sim_settings
@@ -618,15 +615,6 @@ if __name__ == '__main__':
     energy_reactions = get_reactions(stoichiometry, energy_carriers)
     energy_plot_settings = {'reactions': energy_reactions}
     energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
-
-    # # run toy model
-    # plot_settings = {
-    #     'skip_ports': ['exchange'],
-    #     'overlay': {
-    #         'reactions': 'flux_bounds'}}
-    #
-    # timeseries = test_toy_metabolism()
-    # plot_simulation_output(timeseries, plot_settings, out_dir)
 
     # make a gephi network
     run_sim_save_network(get_iAF1260b_config(), out_dir)
