@@ -254,7 +254,7 @@ def get_cpm_config():
         'target_area': 25,
         'animate': True}
 
-def test_CPM(cpm_config = get_cpm_config(), time=10):
+def test_CPM(cpm_config = get_cpm_config(), time=5):
 
     # load process
     expression = CellularPotts(cpm_config)
