@@ -444,13 +444,8 @@ class Compartment(Store):
 
         updates = {}
         for name, process in derivers.items():
-            update = process.update_for(1)  # timestep shouldn't influence derivers
-
-            for port, update_dict in update.items():
-                key = self.topology[name][port]
-                if not updates.get(key):
-                    updates[key] = []
-                updates[key].append(update_dict)
+            new_update = process.update_for(1)  # timestep shouldn't influence derivers
+            updates = self.collect_updates(updates, name, new_update)
 
         for key, update in updates.items():
             self.states[key].apply_updates(update)
