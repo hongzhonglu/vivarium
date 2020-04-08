@@ -160,7 +160,7 @@ class Translation(Process):
             'molecules': {},
             'transcripts': {
                 transcript_id: 1
-                for transcript_id in self.transcript_order},
+                for transcript_id in self.operons.keys()},
             'proteins': dict({
                 UNBOUND_RIBOSOME_KEY: 10})}
 
