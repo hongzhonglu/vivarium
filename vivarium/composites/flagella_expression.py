@@ -36,7 +36,7 @@ def get_flg_expression_config():
 
         'translation': {
 
-            'sequences': flagella_chromosome.operon_sequences,
+            'sequences': flagella_chromosome.protein_sequences,
             'templates': flagella_chromosome.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
             'transcript_affinities': flagella_chromosome.transcript_affinities,
