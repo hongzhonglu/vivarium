@@ -39,7 +39,15 @@ def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
 def update_merge(key, state_dict, current_value, new_value):
-    return deep_merge(dict(current_value), new_value), {}
+    # merge dicts, with new_value replacing any shared keys with current_value
+    update = current_value.copy()
+    for k, v in current_value.items():
+        new = new_value.get(k)
+        if isinstance(new, dict):
+            update[k] = deep_merge(dict(v), new)
+        else:
+            update[k] = new
+    return update, {}
 
 updater_library = {
     'accumulate': update_accumulate,

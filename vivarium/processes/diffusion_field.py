@@ -175,13 +175,12 @@ class DiffusionField(Process):
             self.initial_state.update(gradient_fields)
 
         # agents
-        # todo -- support adaptive ports for agents
         self.initial_agents = initial_parameters.get('agents', {})
 
         # make ports
         ports = {
              'fields': self.molecule_ids,
-             'agents': list(self.initial_agents.keys())}
+             'agents': ['agents']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -189,24 +188,23 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        schema = {
-            'agents': {agent_id : {'updater': 'merge'}
-                   for agent_id in self.ports['agents']}}
-
+        state = {
+            'fields': self.initial_state,
+            'agents': {'agents': self.initial_agents}
+        }
+        schema = {'agents': {'agents': {'updater': 'merge'}}}
         default_emitter_keys = {
             port_id: keys for port_id, keys in self.ports.items()}
 
         return {
+            'state': state,
             'schema': schema,
             'emitter_keys': default_emitter_keys,
-            'state': {
-                 'fields': self.initial_state,
-                 'agents': self.initial_agents}
         }
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        agents = states['agents']
+        agents = states['agents']['agents']
 
         # uptake/secretion from agents
         delta_exchanges = self.apply_exchanges(agents)
@@ -224,7 +222,7 @@ class DiffusionField(Process):
 
         return {
             'fields': delta_fields,
-            'agents': agent_update}
+            'agents': {'agents': agent_update}}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
