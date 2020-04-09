@@ -113,7 +113,7 @@ class Multibody(Process):
 
         # initialize agents
         self.agents = {}
-        agents = initial_parameters.get('agents')
+        agents = initial_parameters.get('agents', {})
         for agent_id, specs in agents.items():
             self.add_body_from_center(agent_id, specs)
 
@@ -377,7 +377,6 @@ def plot_agents(ax, agents, agent_colors={}):
     - agents: a dict with {agent_id: agent_data} and
         agent_data a dict with keys location, angle, length, width
     - agent_colors: dict with {agent_id: hsv color}
--
     '''
     for agent_id, agent_data in agents.items():
         color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)

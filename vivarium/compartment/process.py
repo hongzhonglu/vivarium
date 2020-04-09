@@ -218,6 +218,15 @@ class Process(object):
         for port, state in self.states.items():
             state.declare_state(self.ports[port])
 
+    def remove_port_keys(self, ports):
+         for port, keys in ports.items():
+             for key in keys:
+                 self.ports[port].remove(key)
+
+    def add_port_keys(self, ports):
+         for port, keys in ports.items():
+             self.ports[port].extend(keys)
+
     def update_for(self, timestep):
         ''' Called each timestep to find the next state for this process. '''
 
@@ -336,6 +345,12 @@ def initialize_state(process_layers, topology, initial_state):
 
     return initialized_state
 
+def flatten_process_layers(process_layers):
+    processes = {}
+    for layer in process_layers:
+        processes.update(layer)
+    return processes
+
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
@@ -436,11 +451,7 @@ class Compartment(Store):
         return updates
 
     def run_derivers(self):
-
-        # flatten all deriver layers into a single deriver dict
-        derivers = {}
-        for stack in self.state['derivers']:
-            derivers.update(stack)
+        derivers = flatten_process_layers(self.state['derivers'])
 
         updates = {}
         for name, process in derivers.items():
@@ -472,9 +483,7 @@ class Compartment(Store):
         time = 0
 
         # flatten all process layers into a single process dict
-        processes = {}
-        for stack in self.state['processes']:
-            processes.update(stack)
+        processes = flatten_process_layers(self.state['processes'])
 
         # keep track of which processes have simulated until when
         front = {

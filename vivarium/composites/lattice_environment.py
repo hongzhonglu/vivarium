@@ -1,59 +1,39 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import uuid
 
-from vivarium.compartment.process import initialize_state
+from vivarium.compartment.process import (
+    initialize_state,
+    flatten_process_layers
+)
 from vivarium.compartment.composition import (
     simulate_compartment,
-    load_compartment
+    load_compartment,
+    get_derivers
 )
 
 # processes
 from vivarium.processes.multibody_physics import (
     Multibody,
-    get_n_dummy_agents,
-    random_body_config,
     plot_snapshots,
 )
 from vivarium.processes.diffusion_field import (
     DiffusionField,
-    exchange_agent_config,
     plot_field_output,
 )
+
+# composites
+from vivarium.composites.growth_division import growth_division
 
 
 
 def lattice_environment(config):
-    bounds = config.get('bounds', [10, 10])
-    size = config.get('size', [10, 10])
-    molecules = config.get('molecules', ['glc'])
+    # declare the processes.
+    multibody = Multibody(config)
+    diffusion = DiffusionField(config)
 
-    # get the agents
-    agents_config = config.get('agents', {})
-    agent_ids = list(agents_config.keys())
-
-    ## Declare the processes.
-    # multibody physics
-    multibody_config = random_body_config(agents_config, bounds)
-    multibody = Multibody(multibody_config)
-
-    # diffusion field
-    agents = {
-        agent_id: {
-        'location': boundary['location'],
-        'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
-            for agent_id, boundary in multibody_config['agents'].items()}
-
-    exchange_config = {
-        'molecules': molecules,
-        'n_bins': bounds,
-        'size': size,
-        'agents': agents}
-    diffusion_config = exchange_agent_config(exchange_config)
-    diffusion = DiffusionField(diffusion_config)
-
-    # Place processes in layers
+    # place processes in layers
     processes = [
         {'multibody': multibody,
         'diffusion': diffusion}]
@@ -61,31 +41,95 @@ def lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'agents',
+            'agents': 'boundary',
         },
         'diffusion': {
-            'agents': 'agents',
+            'agents': 'boundary',
             'fields': 'fields'}}
 
     return {
         'processes': processes,
         'topology': topology}
 
+def get_agents(n_agents):
+    processes = []
+    topologies = {}
+    agent_ids = []
+    for agent in range(n_agents):
+
+        agent_id = str(uuid.uuid1())
+        agent_ids.extend(agent_id)
+
+        # make the agent
+        agent = growth_division(config.get('agents', {}))  # TODO -- make this general purpose by passing in compartment
+
+        # processes
+        a_processes = flatten_process_layers(agent['processes'])
+        a_processes = {
+            (agent_id, process_id): process
+            for process_id, process in a_processes.items()}
+
+        # topology
+        a_topology = {
+            (agent_id, process_id): ports
+            for process_id, ports in agent['topology'].items()}
+
+        # save processes and topology
+        processes.append(a_processes)
+        topologies[agent_id] = a_topology
+
+    return {
+        'ids': agent_ids,
+        'processes': processes,
+        'topologies': topologies}
 
 
-
+# TODO -- this can move to a separate experiments directory
 def lattice_environment_experiment(config):
-    environment = lattice_environment(config)
-    processes = environment['processes']
-    topology = environment['topology']
+    # configure the experiment
+    n_agents = config.get('n_agents')
 
-    # add derivers
-    deriver_processes = []
+    # get the environment
+    environment = lattice_environment(config.get('environment', {}))
+    environment_processes = flatten_process_layers(environment['processes'])
+    environment_topology = environment['topology']
+    inner_key = 'agents'  # TODO -- get this from config of each env process
+
+    # get agent processes and topologies
+    agents = get_agents(n_agents)
+    agent_processes = agents['processes']
+    agent_topologies = agents['topologies']
+    agent_ids = agents['ids']
+
+    ## make processes and topology for experiment
+    processes = []
+    topology = {}
+
+    # add environment
+    processes.append(environment_processes)
+    topology.update(environment_topology)
+
+    # add agents
+    processes.extend(agent_processes)
+
+    # add agent ids to the environment's boundary
+    for env_process in environment_processes.values():
+        env_process.add_port_keys({inner_key: agent_ids})
+
+    # combine agent and environment topologies
+    for agent_id, agent_topology in agent_topologies.items():
+        topology.update(agent_topology)
+
+    ## add derivers
+    derivers = get_derivers(processes, topology)
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
     states = initialize_state(
-        processes,
+        all_processes,
         topology,
         config.get('initial_state', {}))
 
@@ -104,13 +148,22 @@ def lattice_environment_experiment(config):
 
 # toy functions/ defaults
 def get_lattice_config():
-    return {
+
+    environment_config = {
         'molecules': ['glc'],
         'bounds': [10, 10],
         'size': [10, 10],
-        'agents': get_n_dummy_agents(6)}  # no boundary store
+    }
 
-def test_lattice_environment(config=get_lattice_config(), time=10):
+    agent_config = {}
+
+    return {
+        'n_agents': 5,
+        'environment': environment_config,
+        'agents': agent_config
+    }
+
+def test_lattice_experiment(config=get_lattice_config(), time=10):
     lattice_environment = load_compartment(lattice_environment_experiment, config)
     settings = {'total_time': time}
     return simulate_compartment(lattice_environment, settings)
@@ -123,7 +176,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_lattice_config()
-    timeseries = test_lattice_environment(config, 10)
+    timeseries = test_lattice_experiment(config, 10)
     plot_field_output(timeseries, config, out_dir, 'lattice_field')
     plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')
     
