@@ -17,7 +17,10 @@ from vivarium.processes.multibody_physics import plot_snapshots
 from vivarium.processes.diffusion_field import plot_field_output
 
 # compartments
-from vivarium.composites.lattice_environment import get_environment
+from vivarium.composites.lattice_environment import (
+    get_environment,
+    get_timeseries
+)
 from vivarium.composites.growth_division import growth_division
 
 
@@ -141,7 +144,9 @@ def get_lattice_config():
 
 def test_lattice_experiment(config=get_lattice_config(), time=10):
     lattice_environment = load_compartment(lattice_experiment, config)
-    settings = {'total_time': time}
+    settings = {
+        'return_raw_data': True,
+        'total_time': time}
     return simulate_compartment(lattice_environment, settings)
 
 
@@ -152,7 +157,11 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_lattice_config()
-    timeseries = test_lattice_experiment(config, 10)
+    data = test_lattice_experiment(config, 10)
+    timeseries = get_timeseries(data)
+
+    import ipdb; ipdb.set_trace()
+
     plot_field_output(timeseries, config, out_dir, 'lattice_field')
-    plot_snapshots(timeseries, config, out_dir, 'lattice_bodies')
+    plot_snapshots(data, config, out_dir, 'lattice_bodies')
     
