@@ -22,8 +22,8 @@ from vivarium.processes.diffusion_field import (
 )
 
 
-def compose_lattice_environment(config):
-    """"""
+
+def lattice_environment(config):
     bounds = config.get('bounds', [10, 10])
     size = config.get('size', [10, 10])
     molecules = config.get('molecules', ['glc'])
@@ -67,6 +67,18 @@ def compose_lattice_environment(config):
             'agents': 'agents',
             'fields': 'fields'}}
 
+    return {
+        'processes': processes,
+        'topology': topology}
+
+
+
+
+def lattice_environment_experiment(config):
+    environment = lattice_environment(config)
+    processes = environment['processes']
+    topology = environment['topology']
+
     # add derivers
     deriver_processes = []
 
@@ -99,7 +111,7 @@ def get_lattice_config():
         'agents': get_n_dummy_agents(6)}  # no boundary store
 
 def test_lattice_environment(config=get_lattice_config(), time=10):
-    lattice_environment = load_compartment(compose_lattice_environment, config)
+    lattice_environment = load_compartment(lattice_environment_experiment, config)
     settings = {'total_time': time}
     return simulate_compartment(lattice_environment, settings)
 
