@@ -381,7 +381,14 @@ def plot_agents(ax, agents, agent_colors={}):
         color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
         plot_agent(ax, agent_data, color)
 
-def plot_snapshots(data, config, out_dir='out', filename='multibody'):
+def plot_snapshots(agents, fields, config, out_dir='out', filename='multibody'):
+    '''
+
+        - agents (dict): with {time: agent_data}
+        - fields TODO
+        - config (dict): the environment config for the simulation
+
+    '''
     n_snapshots = 6
     bounds = config.get('bounds', DEFAULT_BOUNDS)
 
@@ -390,15 +397,15 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
-    # get agents
-    agents = set()
-    for time, time_data in data.items():
-        current_agents = list(time_data['agents']['agents'].keys())
-        agents.update(current_agents)
-    agents = list(agents)
+    # get all agent ids
+    agent_ids = set()
+    for time, time_data in agents.items():
+        current_agents = list(time_data.keys())
+        agent_ids.update(current_agents)
+    agent_ids = list(agent_ids)
 
     agent_colors = {}
-    for agent_id in agents:
+    for agent_id in agent_ids:
         hue = random.choice(HUES)  # select random initial hue
         color = [hue] + DEFAULT_SV
         agent_colors[agent_id] = color
@@ -414,7 +421,7 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
         row_idx = 0
         ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
-        agents_now = data[time]['agents']['agents']
+        agents_now = agents[time]
         plot_agents(ax, agents_now, agent_colors)
 
     fig_path = os.path.join(out_dir, filename)
@@ -449,4 +456,8 @@ if __name__ == '__main__':
 
     config = random_body_config(get_n_dummy_agents(10))
     data = test_multibody(config, 20)
-    plot_snapshots(data, config, out_dir, 'bodies')
+
+    # make snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, config, out_dir, 'bodies')

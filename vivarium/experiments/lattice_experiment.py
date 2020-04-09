@@ -162,6 +162,10 @@ if __name__ == '__main__':
 
     import ipdb; ipdb.set_trace()
 
-    plot_field_output(timeseries, config, out_dir, 'lattice_field')
+    # plot_field_output(timeseries, config, out_dir, 'lattice_field')
+
+    # make snapshot
+    agents = {time: time_data['boundary'] for time, time_data in data.items()}
+    fields = {}
     plot_snapshots(data, config, out_dir, 'lattice_bodies')
     
