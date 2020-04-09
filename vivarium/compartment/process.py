@@ -226,15 +226,6 @@ class Process(object):
         for port, state in self.states.items():
             state.declare_state(self.ports[port])
 
-    def remove_port_keys(self, ports):
-         for port, keys in ports.items():
-             for key in keys:
-                 self.ports[port].remove(key)
-
-    def add_port_keys(self, ports):
-         for port, keys in ports.items():
-             self.ports[port].extend(keys)
-
     def update_for(self, timestep):
         ''' Called each timestep to find the next state for this process. '''
 

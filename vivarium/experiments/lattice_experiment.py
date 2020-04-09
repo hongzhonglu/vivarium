@@ -13,44 +13,17 @@ from vivarium.compartment.composition import (
     get_derivers
 )
 
-# processes
-from vivarium.processes.multibody_physics import (
-    Multibody,
-    plot_snapshots,
-)
-from vivarium.processes.diffusion_field import (
-    DiffusionField,
-    plot_field_output,
-)
+from vivarium.processes.multibody_physics import plot_snapshots
+from vivarium.processes.diffusion_field import plot_field_output
 
-# composites
+# compartments
+from vivarium.composites.lattice_environment import get_environment
 from vivarium.composites.growth_division import growth_division
 
 
+BOUNDARY_ID = 'boundary'
 
-def environment(config):
-    # declare the processes.
-    multibody = Multibody(config)
-    diffusion = DiffusionField(config)
-
-    # place processes in layers
-    processes = [
-        {'multibody': multibody,
-        'diffusion': diffusion}]
-
-    # topology
-    topology = {
-        'multibody': {
-            'agents': 'boundary',
-        },
-        'diffusion': {
-            'agents': 'boundary',
-            'fields': 'fields'}}
-
-    return {
-        'processes': processes,
-        'topology': topology}
-
+# TODO -- this can be made into a general function
 def get_agents(n_agents):
     processes = []
     topologies = {}
@@ -61,18 +34,25 @@ def get_agents(n_agents):
         agent_ids.extend(agent_id)
 
         # make the agent
-        agent = growth_division(config.get('agents', {}))  # TODO -- make this general purpose by passing in compartment
+        agent = growth_division(config.get('agents', {}))  # TODO -- pass in compartment
 
-        # processes
+        # processes -- each process id is associated with its agent id with a tuple
         a_processes = flatten_process_layers(agent['processes'])
         a_processes = {
             (agent_id, process_id): process
             for process_id, process in a_processes.items()}
 
         # topology
-        a_topology = {
-            (agent_id, process_id): ports
-            for process_id, ports in agent['topology'].items()}
+        a_topology = {}
+        for process_id, topology in agent['topology'].items():
+            ports = {}
+            for port_id, store_id in topology.items():
+                if store_id == BOUNDARY_ID:
+                    ports[port_id] = store_id
+                else:
+                    ports[port_id] = (agent_id, store_id)
+
+            a_topology[(agent_id, process_id)] = ports
 
         # save processes and topology
         processes.append(a_processes)
@@ -90,7 +70,7 @@ def lattice_experiment(config):
     n_agents = config.get('n_agents')
 
     # get the environment
-    environment = environment(config.get('environment', {}))
+    environment = get_environment(config.get('environment', {}))
     environment_processes = flatten_process_layers(environment['processes'])
     environment_topology = environment['topology']
     inner_key = 'agents'  # TODO -- get this from config of each env process
@@ -111,10 +91,6 @@ def lattice_experiment(config):
 
     # add agents
     processes.extend(agent_processes)
-
-    # add agent ids to the environment's boundary
-    for env_process in environment_processes.values():
-        env_process.add_port_keys({inner_key: agent_ids})
 
     # combine agent and environment topologies
     for agent_id, agent_topology in agent_topologies.items():
@@ -164,14 +140,14 @@ def get_lattice_config():
     }
 
 def test_lattice_experiment(config=get_lattice_config(), time=10):
-    lattice_environment = load_compartment(lattice_environment_experiment, config)
+    lattice_environment = load_compartment(lattice_experiment, config)
     settings = {'total_time': time}
     return simulate_compartment(lattice_environment, settings)
 
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'lattice_environment_composite')
+    out_dir = os.path.join('out', 'tests', 'lattice_experiment')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
