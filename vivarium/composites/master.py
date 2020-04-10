@@ -2,8 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.process import (
+    initialize_state)
+from vivarium.compartment.composition import (
+    get_derivers,
+    simulate_with_environment,
+    plot_simulation_output, load_compartment)
+from vivarium.composites.gene_expression import plot_gene_expression_output
 
 # processes
 from vivarium.processes.division import Division, divide_condition
@@ -93,11 +98,15 @@ def compose_master(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': config.get('name', 'master_composite'),
@@ -109,6 +118,7 @@ def compose_master(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -135,16 +145,11 @@ def default_transport_config():
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment
-    from vivarium.compartment.composition import simulate_with_environment, convert_to_timeseries, plot_simulation_output
-    from vivarium.composites.gene_expression import plot_gene_expression_output
-
     out_dir = os.path.join('out', 'tests', 'master_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    boot_config = {}  # {'emitter': 'null'}
-    compartment = load_compartment(compose_master, boot_config)
+    compartment = load_compartment(compose_master)
 
     # settings for simulation and plot
     options = compartment.configuration
@@ -156,7 +161,8 @@ if __name__ == '__main__':
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
         'environment_volume': 1e-13,  # L
-        'timeline': timeline}
+        'timeline': timeline,
+    }
 
     plot_settings = {
         'max_rows': 20,
@@ -172,9 +178,7 @@ if __name__ == '__main__':
             'proteins': 'proteins'}}
 
     # saved_state = simulate_compartment(compartment, settings)
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
     plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)

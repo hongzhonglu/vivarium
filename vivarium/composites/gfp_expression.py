@@ -1,6 +1,7 @@
 import os
 from vivarium.utils.units import units
 
+from vivarium.compartment.composition import load_compartment, simulate_compartment
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosomes.gfp_chromosome import gfp_plasmid_config
 from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
@@ -94,9 +95,6 @@ def generate_gfp_compartment(config):
     return compose_gene_expression(gfp_config)
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment, simulate_compartment
-    from vivarium.compartment.composition import convert_to_timeseries
-
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -106,10 +104,9 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 100}
-    saved_state = simulate_compartment(gfp_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_state)
+        'total_time': 100,
+    }
+    timeseries = simulate_compartment(gfp_expression_compartment, settings)
 
     plot_config = {
         'name': 'gfp_expression',

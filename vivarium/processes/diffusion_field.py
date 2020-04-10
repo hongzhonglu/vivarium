@@ -8,9 +8,7 @@ from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import (
-    simulate_process,
-    convert_to_timeseries)
+from vivarium.compartment.composition import simulate_process
 
 
 # laplacian kernel for diffusion
@@ -177,13 +175,12 @@ class DiffusionField(Process):
             self.initial_state.update(gradient_fields)
 
         # agents
-        # todo -- support adaptive ports for agents
         self.initial_agents = initial_parameters.get('agents', {})
 
         # make ports
         ports = {
              'fields': self.molecule_ids,
-             'agents': list(self.initial_agents.keys())}
+             'agents': ['agents']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -191,19 +188,23 @@ class DiffusionField(Process):
         super(DiffusionField, self).__init__(ports, parameters)
 
     def default_settings(self):
-        schema = {
-            'agents': {agent_id : {'updater': 'merge'}
-                   for agent_id in self.ports['agents']}}
+        state = {
+            'fields': self.initial_state,
+            'agents': {'agents': self.initial_agents}
+        }
+        schema = {'agents': {'agents': {'updater': 'merge'}}}
+        default_emitter_keys = {
+            port_id: keys for port_id, keys in self.ports.items()}
 
         return {
+            'state': state,
             'schema': schema,
-            'state': {
-                 'fields': self.initial_state,
-                 'agents': self.initial_agents}}
+            'emitter_keys': default_emitter_keys,
+        }
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        agents = states['agents']
+        agents = states['agents']['agents']
 
         # uptake/secretion from agents
         delta_exchanges = self.apply_exchanges(agents)
@@ -221,7 +222,7 @@ class DiffusionField(Process):
 
         return {
             'fields': delta_fields,
-            'agents': agent_update}
+            'agents': {'agents': agent_update}}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
@@ -414,16 +415,13 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_random_field_config()
-    saved_data = test_diffusion_field(config, 10)
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_diffusion_field(config, 10)
     plot_field_output(timeseries, config, out_dir, 'random_field')
 
     gaussian_config = get_gaussian_config()
-    gaussian_data = test_diffusion_field(gaussian_config, 10)
-    gaussian_timeseries = convert_to_timeseries(gaussian_data)
+    gaussian_timeseries = test_diffusion_field(gaussian_config, 10)
     plot_field_output(gaussian_timeseries, gaussian_config, out_dir, 'gaussian_field')
 
     secretion_config = get_secretion_agent_config()
-    secretion_data = test_diffusion_field(secretion_config, 10)
-    secretion_timeseries = convert_to_timeseries(secretion_data)
+    secretion_timeseries = test_diffusion_field(secretion_config, 10)
     plot_field_output(secretion_timeseries, secretion_config, out_dir, 'secretion')

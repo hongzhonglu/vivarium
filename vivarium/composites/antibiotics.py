@@ -4,7 +4,6 @@ import math
 import os
 
 from vivarium.compartment.composition import (
-    convert_to_timeseries,
     plot_simulation_output,
     simulate_with_environment,
     get_derivers,
@@ -14,11 +13,10 @@ from vivarium.compartment.composition import (
     REFERENCE_DATA_DIR,
     TEST_OUT_DIR,
     assert_timeseries_close,
-)
+    load_compartment)
 from vivarium.compartment.process import (
     initialize_state,
     COMPARTMENT_STATE,
-    load_compartment,
 )
 from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.antibiotic_transport import (
@@ -119,14 +117,17 @@ def compose_antibiotics(config):
         },
     }
 
-    # Add Derivers
+    # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
     topology.update(derivers['deriver_topology'])
 
     # initialize the states
     states = initialize_state(
-        processes, topology, config.get('initial_state', {}))
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'antibiotic_growth_composite',
@@ -139,6 +140,7 @@ def compose_antibiotics(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -162,7 +164,6 @@ def run_antibiotics_composite():
             # Set so exporter concentration reaches equilibrium
             'AcrAB-TolC': 1e-3,
         },
-        'emitter': 'null',
         'checkers': {
             'antibiotic': {
                 # Set so cell dies after first division
@@ -176,8 +177,7 @@ def run_antibiotics_composite():
 
 
 def test_antibiotics_composite_similar_to_reference():
-    saved_data = run_antibiotics_composite()
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = run_antibiotics_composite()
     flattened = flatten_timeseries(timeseries)
     reference = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
@@ -194,9 +194,7 @@ def main():
         'skip_ports': ['prior_state'],
     }
 
-    saved_state = run_antibiotics_composite()
-    del saved_state[0]  # Delete first record, where everything is 0
-    timeseries = convert_to_timeseries(saved_state)
+    timeseries = run_antibiotics_composite()
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
 

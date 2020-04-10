@@ -5,8 +5,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 import random
 import math
-import copy
-import uuid
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,12 +16,9 @@ import pymunk
 # vivarium imports
 from vivarium.compartment.process import (
     Process,
-    Store,
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
-    simulate_process,
-    process_in_compartment,
-    convert_to_timeseries)
+    simulate_process)
 
 
 # constants
@@ -122,7 +118,7 @@ class Multibody(Process):
             self.add_body_from_center(agent_id, specs)
 
         # all initial agents get a key under a single port
-        ports = {'agents': list(self.agents.keys())}
+        ports = {'agents': ['agents']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -132,17 +128,21 @@ class Multibody(Process):
     def default_settings(self):
         agents = {agent_id: self.get_body_specs(agent_id)
                 for agent_id in self.agents.keys()}
-        state = {'agents': agents}
+        state = {'agents': {'agents': agents}}
 
-        schema = {'agents': {agent_id: {'updater': 'merge'}
-                for agent_id, agent in agents.items()}}
+        schema = {'agents': {'agents': {'updater': 'merge'}}}
+
+        default_emitter_keys = {
+            port_id: keys for port_id, keys in self.ports.items()}
 
         return {
             'state': state,
-            'schema': schema,}
+            'schema': schema,
+            'emitter_keys': default_emitter_keys,
+        }
 
     def next_update(self, timestep, states):
-        agents = states['agents']
+        agents = states['agents']['agents']
 
         # check if an agent has been removed
         removed_agents = [
@@ -165,7 +165,7 @@ class Multibody(Process):
             agent_id: self.get_body_specs(agent_id)
             for agent_id in self.agents.keys()}
 
-        return {'agents': new_agents}
+        return {'agents': {'agents': new_agents}}
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -376,7 +376,6 @@ def plot_agents(ax, agents, agent_colors={}):
     - agents: a dict with {agent_id: agent_data} and
         agent_data a dict with keys location, angle, length, width
     - agent_colors: dict with {agent_id: hsv color}
--
     '''
     for agent_id, agent_data in agents.items():
         color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
@@ -387,12 +386,16 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     bounds = config.get('bounds', DEFAULT_BOUNDS)
 
     # time steps that will be used
-    time_vec = data['time']
+    time_vec = list(data.keys())
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
     # get agents
-    agents = data['agents']
+    agents = set()
+    for time, time_data in data.items():
+        current_agents = list(time_data['agents']['agents'].keys())
+        agents.update(current_agents)
+    agents = list(agents)
 
     agent_colors = {}
     for agent_id in agents:
@@ -411,17 +414,7 @@ def plot_snapshots(data, config, out_dir='out', filename='multibody'):
     for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
         row_idx = 0
         ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
-
-        # get agents_now and plot them
-        agents_now = {}
-        for agent_id, series in agents.items():
-            if series[time_idx]['location'] is not None:
-                agent_data = {
-                    'location': series[time_idx]['location'],
-                    'angle': series[time_idx]['angle'],
-                    'length': series[time_idx]['length'],
-                    'width': series[time_idx]['width']}
-                agents_now[agent_id] = agent_data
+        agents_now = data[time]['agents']['agents']
         plot_agents(ax, agents_now, agent_colors)
 
     fig_path = os.path.join(out_dir, filename)
@@ -443,10 +436,10 @@ def test_multibody(config=random_body_config(), time=1):
     multibody = Multibody(config)
     settings = {
         'total_time': time,
+        'return_raw_data': True,
         'environment_port': 'external',
         'environment_volume': 1e-2}
     return simulate_process(multibody, settings)
-
 
 
 if __name__ == '__main__':
@@ -455,7 +448,5 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = random_body_config(get_n_dummy_agents(10))
-    saved_data = test_multibody(config, 20)
-    timeseries = convert_to_timeseries(saved_data)
-    plot_snapshots(timeseries, config, out_dir, 'bodies')
-
+    data = test_multibody(config, 20)
+    plot_snapshots(data, config, out_dir, 'bodies')

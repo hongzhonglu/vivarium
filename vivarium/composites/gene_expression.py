@@ -4,13 +4,16 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import get_derivers
+from vivarium.compartment.process import (
+    initialize_state
+)
+from vivarium.compartment.composition import get_derivers, load_compartment, simulate_compartment
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
+from vivarium.processes.complexation import Complexation
 from vivarium.processes.division import Division, divide_condition
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
@@ -22,13 +25,15 @@ def compose_gene_expression(config):
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
     degradation = RnaDegradation(config.get('degradation', {}))
+    complexation = Complexation(config.get('complexation', {}))
     division = Division(config)
 
     # place processes in layers
     processes = [
         {'transcription': transcription,
          'translation': translation,
-         'degradation': degradation},
+         'degradation': degradation,
+         'complexation': complexation},
         {'division': division}]
 
     # make the topology
@@ -53,16 +58,25 @@ def compose_gene_expression(config):
             'molecules': 'molecules',
             'global': 'global'},
 
+        'complexation': {
+            'monomers': 'proteins',
+            'complexes': 'proteins'},
+
         'division': {
             'global': 'global'}}
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
+
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'gene_expression_composite',
@@ -74,6 +88,7 @@ def compose_gene_expression(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -155,9 +170,6 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
 
 if __name__ == '__main__':
-    from vivarium.compartment.process import load_compartment, simulate_compartment
-    from vivarium.compartment.composition import convert_to_timeseries
-
     out_dir = os.path.join('out', 'tests', 'gene_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -167,10 +179,9 @@ if __name__ == '__main__':
 
     # run simulation
     sim_settings = {
-        'total_time': 100}
-    saved_state = simulate_compartment(gene_expression_compartment, sim_settings)
-    del saved_state[0]
-    timeseries = convert_to_timeseries(saved_state)
+        'total_time': 100,
+    }
+    timeseries = simulate_compartment(gene_expression_compartment, sim_settings)
 
     plot_settings = {
         'name': 'gene_expression',

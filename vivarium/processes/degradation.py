@@ -4,7 +4,10 @@ import os
 import copy
 
 from vivarium.compartment.process import Process, keys_list
-from vivarium.compartment.composition import simulate_process, convert_to_timeseries, plot_simulation_output
+from vivarium.compartment.composition import (
+    simulate_process,
+    plot_simulation_output
+)
 from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.units import units
 
@@ -69,13 +72,13 @@ class RnaDegradation(Process):
     def default_settings(self):
         default_state = {
             'transcripts': {
-                transcript: 10
+                transcript: 1e3
                 for transcript in self.transcript_order},
             'proteins': {
-                protein: 1
+                protein: 1e0
                 for protein in self.protein_order},
             'molecules': {
-                nucleotide: 100
+                nucleotide: 1e4
                 for nucleotide in self.molecule_order}}
 
         default_emitter_keys = {
@@ -135,11 +138,12 @@ class RnaDegradation(Process):
             'molecules': delta_molecules}
 
 
-def test_rna_degradation(end_time=10):
+def test_rna_degradation(end_time=100):
     rna_degradation = RnaDegradation({})
     settings = {
         'timestep': 1,
-        'total_time': end_time}
+        'total_time': end_time,
+    }
     return simulate_process(rna_degradation, settings)
 
 
@@ -149,8 +153,5 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     plot_settings = {}
-
-    saved_data = test_rna_degradation()
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = test_rna_degradation()
     plot_simulation_output(timeseries, plot_settings, out_dir)

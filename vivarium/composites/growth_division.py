@@ -3,19 +3,23 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state,
-    load_compartment)
+    initialize_state)
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
-    convert_to_timeseries,
-    plot_simulation_output)
+    plot_simulation_output, load_compartment)
 
 # processes
 from vivarium.processes.growth import Growth
-from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.minimal_expression import MinimalExpression
-from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
+from vivarium.processes.division import (
+    Division,
+    divide_condition
+)
+from vivarium.processes.convenience_kinetics import (
+    ConvenienceKinetics,
+    get_glc_lct_config
+)
 
 
 
@@ -54,11 +58,16 @@ def compose_growth_division(config):
 
     # add derivers
     derivers = get_derivers(processes, topology)
-    processes.extend(derivers['deriver_processes'])  # add deriver processes
-    topology.update(derivers['deriver_topology'])  # add deriver topology
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
+
 
     # initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': 'growth_division_composite',
@@ -70,6 +79,7 @@ def compose_growth_division(config):
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
@@ -88,13 +98,12 @@ if __name__ == '__main__':
         'exchange_port': options['exchange_port'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'total_time': 100}
+        'total_time': 100,
+    }
 
     plot_settings = {
         'max_rows': 25,
         'skip_ports': ['prior_state']}
 
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(timeseries, plot_settings, out_dir)

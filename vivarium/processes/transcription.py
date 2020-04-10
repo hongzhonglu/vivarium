@@ -421,7 +421,7 @@ class Transcription(Process):
         self.polymerase_occlusion = self.parameters['polymerase_occlusion']
 
         self.stoichiometry = build_stoichiometry(self.promoter_count)
-        self.initiation = StochasticSystem(self.stoichiometry)
+        self.initiation = StochasticSystem(self.stoichiometry, random_seed=np.random.randint(2**31))
 
         self.ports = {
             'chromosome': ['rnaps', 'rnap_id', 'domains', 'root_domain'],
@@ -439,7 +439,8 @@ class Transcription(Process):
         for index, promoter_key in enumerate(self.promoter_order):
             promoter = promoters[promoter_key]
             binding = promoter.binding_state(factors)
-            affinity = self.promoter_affinities[binding]
+            affinity = self.promoter_affinities.get(binding, 0.0)
+            # print('promoter state - {}: {}'.format(binding, affinity))
             vector[index] = affinity
         return vector
 
@@ -489,7 +490,8 @@ class Transcription(Process):
 
         default_emitter_keys = {
             'chromosome': ['rnaps'],
-            'molecules': self.monomer_ids + [UNBOUND_RNAP_KEY],
+            'molecules': self.monomer_ids,
+            'proteins': [UNBOUND_RNAP_KEY],
             'transcripts': operons}
 
         schema = {
@@ -511,6 +513,10 @@ class Transcription(Process):
         molecules = states['molecules']
         proteins = states['proteins']
         factors = states['factors'] # as concentrations
+
+        # print('concentrations: flhDC - {}, fliA - {}'.format(
+        #     factors['flhDC'],
+        #     factors['fliA']))
 
         promoter_rnaps = chromosome.promoter_rnaps()
         promoter_domains = chromosome.promoter_domains()
@@ -556,6 +562,8 @@ class Transcription(Process):
             self.elongation)
 
         initiation_affinity = self.build_affinity_vector(chromosome.promoters, factors)
+
+        # print('initiation affinity - {}'.format(initiation_affinity))
 
         while time < timestep:
             # build the state vector for the gillespie simulation
