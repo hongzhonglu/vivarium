@@ -344,6 +344,12 @@ def initialize_state(process_layers, topology, initial_state):
 
     return initialized_state
 
+def flatten_process_layers(process_layers):
+    processes = {}
+    for layer in process_layers:
+        processes.update(layer)
+    return processes
+
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
@@ -445,10 +451,7 @@ class Compartment(Store):
 
     def run_derivers(self):
 
-        # flatten all deriver layers into a single deriver dict
-        derivers = {}
-        for stack in self.state['derivers']:
-            derivers.update(stack)
+        derivers = flatten_process_layers(self.state['derivers'])
 
         updates = {}
         for name, process in derivers.items():
@@ -480,9 +483,7 @@ class Compartment(Store):
         time = 0
 
         # flatten all process layers into a single process dict
-        processes = {}
-        for stack in self.state['processes']:
-            processes.update(stack)
+        processes = flatten_process_layers(self.state['processes'])
 
         # keep track of which processes have simulated until when
         front = {
