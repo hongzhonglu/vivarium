@@ -128,8 +128,8 @@ if __name__ == '__main__':
 
     config = get_lattice_config()
     data = test_lattice_environment(config, 10)
-    timeseries = get_timeseries(data)
 
-    plot_field_output(timeseries, config, out_dir, 'lattice_field')
-    plot_snapshots(data, config, out_dir, 'lattice_bodies')
-    
+    # make snapshot plot
+    agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    fields = {time: time_data['fields'] for time, time_data in data.items()}
+    plot_snapshots(agents, fields, config, out_dir, 'snapshots')
