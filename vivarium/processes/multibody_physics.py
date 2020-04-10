@@ -381,29 +381,40 @@ def plot_agents(ax, agents, agent_colors={}):
         color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
         plot_agent(ax, agent_data, color)
 
-def plot_snapshots(agents, fields, config, out_dir='out', filename='multibody'):
+def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
     '''
-
         - agents (dict): with {time: agent_data}
         - fields TODO
         - config (dict): the environment config for the simulation
-
     '''
     n_snapshots = 6
     bounds = config.get('bounds', DEFAULT_BOUNDS)
+    edge_length_x = bounds[0]
+    edge_length_y = bounds[1]
 
     # time steps that will be used
     time_vec = list(agents.keys())
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
-    # get all agent ids
+    # get fields id and range
+    field_ids = []
+    if fields:
+        field_ids = list(fields[time_vec[0]].keys())
+        field_range = {}
+        for field_id in field_ids:
+            field_min = min([field_data[field_id].min() for t, field_data in fields.items()])
+            field_max = max([field_data[field_id].max() for t, field_data in fields.items()])
+            field_range[field_id] = [field_min, field_max]
+
+    # get agent ids
     agent_ids = set()
     for time, time_data in agents.items():
         current_agents = list(time_data.keys())
         agent_ids.update(current_agents)
     agent_ids = list(agent_ids)
 
+    # set agent colors
     agent_colors = {}
     for agent_id in agent_ids:
         hue = random.choice(HUES)  # select random initial hue
@@ -411,7 +422,7 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='multibody'):
         agent_colors[agent_id] = color
 
     # make the figure
-    n_rows = 1
+    n_rows = max(len(field_ids), 1)
     n_cols = n_snapshots + 1  # one column for the colorbar
     fig = plt.figure(figsize=(12 * n_cols, 12 * n_rows))
     grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
@@ -419,10 +430,25 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='multibody'):
 
     # plot snapshot data in each subsequent column
     for col_idx, (time_idx, time) in enumerate(zip(time_indices, snapshot_times), 1):
-        row_idx = 0
-        ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
         agents_now = agents[time]
-        plot_agents(ax, agents_now, agent_colors)
+        if field_ids:
+            for row_idx, field_id in enumerate(field_ids):
+                ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
+                # transpose field to align with agent
+                field = np.transpose(np.array(fields[time][field_id])).tolist()
+                vmin, vmax = field_range[field_id]
+                im = plt.imshow(field,
+                                origin='lower',
+                                extent=[0, edge_length_x, 0, edge_length_y],
+                                vmin=vmin,
+                                vmax=vmax,
+                                cmap='BuPu')
+
+                plot_agents(ax, agents_now, agent_colors)
+        else:
+            row_idx = 0
+            ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
+            plot_agents(ax, agents_now, agent_colors)
 
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
@@ -460,4 +486,4 @@ if __name__ == '__main__':
     # make snapshot
     agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
     fields = {}
-    plot_snapshots(agents, fields, config, out_dir, 'bodies')
+    plot_snapshots(agents, fields, config, out_dir, 'snapshots')
