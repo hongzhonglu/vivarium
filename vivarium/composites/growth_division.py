@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state)
+    initialize_state,
+    BOUNDARY_STATE)
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
@@ -43,8 +44,8 @@ def growth_division(config):
     topology = {
         'transport': {
             'internal': 'cell',
-            'external': 'boundary',
-            'exchange': 'boundary',
+            'external': BOUNDARY_STATE,
+            'exchange': BOUNDARY_STATE,
             'fluxes': 'null',
             'global': 'global'},
         'growth': {
@@ -53,7 +54,7 @@ def growth_division(config):
             'global': 'global'},
         'expression': {
             'internal': 'cell',
-            'external': 'boundary',
+            'external': BOUNDARY_STATE,
             'concentrations': 'cell_concentrations'}}
 
     return {

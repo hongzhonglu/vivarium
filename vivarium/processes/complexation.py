@@ -67,7 +67,10 @@ class Complexation(Process):
             'monomers': self.monomer_ids,
             'complexes': self.complex_ids}
 
-        super(Complexation, self).__init__(ports)
+        parameters = {}
+        parameters.update(initial_parameters)
+
+        super(Complexation, self).__init__(ports, parameters)
 
     def default_settings(self):
         default_state = {

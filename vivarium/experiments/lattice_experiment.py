@@ -5,7 +5,8 @@ import uuid
 
 from vivarium.compartment.process import (
     initialize_state,
-    flatten_process_layers
+    flatten_process_layers,
+    BOUNDARY_STATE
 )
 from vivarium.compartment.composition import (
     simulate_compartment,
@@ -24,10 +25,14 @@ from vivarium.composites.lattice_environment import (
 from vivarium.composites.growth_division import growth_division
 
 
-BOUNDARY_ID = 'boundary'
+
 
 # TODO -- this can be made into a general function
-def get_agents(n_agents):
+def make_agents(settings):
+    n_agents = settings.get('n_agents', {})
+    compartment = settings.get('compartment', {})
+    config = settings.get('config', {})
+
     processes = []
     topologies = {}
     agent_ids = []
@@ -37,7 +42,8 @@ def get_agents(n_agents):
         agent_ids.extend(agent_id)
 
         # make the agent
-        agent = growth_division(config.get('agents', {}))  # TODO -- pass in compartment
+        config.update({'agent_id': agent_id})
+        agent = compartment(config)  # TODO -- pass in compartment
 
         # processes -- each process id is associated with its agent id with a tuple
         a_processes = flatten_process_layers(agent['processes'])
@@ -50,7 +56,7 @@ def get_agents(n_agents):
         for process_id, topology in agent['topology'].items():
             ports = {}
             for port_id, store_id in topology.items():
-                if store_id == BOUNDARY_ID:
+                if store_id == BOUNDARY_STATE:
                     ports[port_id] = store_id
                 else:
                     ports[port_id] = (agent_id, store_id)
@@ -62,7 +68,7 @@ def get_agents(n_agents):
         topologies[agent_id] = a_topology
 
     return {
-        'ids': agent_ids,
+        'agent_ids': agent_ids,
         'processes': processes,
         'topologies': topologies}
 
@@ -79,10 +85,15 @@ def lattice_experiment(config):
     inner_key = 'agents'  # TODO -- get this from config of each env process
 
     # get agent processes and topologies
-    agents = get_agents(n_agents)
+    agents_config = {
+        'n_agents': 2,
+        'compartment': growth_division,
+        'config': {}
+    }
+    agents = make_agents(agents_config)
     agent_processes = agents['processes']
     agent_topologies = agents['topologies']
-    agent_ids = agents['ids']
+    agent_ids = agents['agent_ids']
 
     ## make processes and topology for experiment
     processes = []
@@ -107,10 +118,17 @@ def lattice_experiment(config):
 
     # initialize the states
     # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
-    states = initialize_state(
+    stores = initialize_state(
         all_processes,
         topology,
         config.get('initial_state', {}))
+
+
+
+    print('state: '.format(stores[BOUNDARY_STATE].state))
+    import ipdb; ipdb.set_trace()
+
+
 
     options = {
         'name': config.get('name', 'lattice_environment'),
@@ -120,7 +138,7 @@ def lattice_experiment(config):
     return {
         'processes': processes,
         'derivers': deriver_processes,
-        'states': states,
+        'states': stores,
         'options': options}
 
 
@@ -160,12 +178,11 @@ if __name__ == '__main__':
     data = test_lattice_experiment(config, 10)
     timeseries = get_timeseries(data)
 
-    import ipdb; ipdb.set_trace()
 
     # plot_field_output(timeseries, config, out_dir, 'lattice_field')
 
     # make snapshot
     agents = {time: time_data['boundary'] for time, time_data in data.items()}
     fields = {}
-    plot_snapshots(data, config, out_dir, 'lattice_bodies')
+    plot_snapshots(agents, fields, config, out_dir, 'lattice_bodies')
     

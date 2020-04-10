@@ -11,6 +11,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
 COMPARTMENT_STATE = '__compartment_state__'
+BOUNDARY_STATE = '__boundary_state__'
 
 INFINITY = float('inf')
 VERBOSE = False
@@ -205,6 +206,9 @@ class Process(object):
         default_timestep = self.default_settings().get('time_step', 1.0)
         self.time_step = self.parameters.get('time_step', default_timestep)
 
+        # set agent_id
+        self.agent_id = parameters.get('agent_id')
+
     def local_timestep(self):
         '''
         Returns the favored timestep for this process.
@@ -319,7 +323,7 @@ def initialize_state(process_layers, topology, initial_state):
 
         for process_port, states in process_ports.items():
             try:
-                compartment_port = topology[process_id][process_port]
+                store_id = topology[process_id][process_port]
             except:
                 raise topologyError(
                     'no "{}" port assigned to "{}" process in topology'.format(process_port, process_id))
@@ -329,18 +333,18 @@ def initialize_state(process_layers, topology, initial_state):
 
             # update the states
             # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
-            c_states = deep_merge(default_states, compartment_states.get(compartment_port, {}))
-            compartment_states[compartment_port] = c_states
+            c_states = deep_merge(default_states, compartment_states.get(store_id, {}))
+            compartment_states[store_id] = c_states
 
     # initialize state for each compartment port
     initialized_state = {}
-    for compartment_port, states in compartment_states.items():
-        state_schema = schema.get(compartment_port, {})
+    for store_id, states in compartment_states.items():
+        state_schema = schema.get(store_id, {})
 
         make_state = Store(
-            initial_state=deep_merge(states, dict(initial_state.get(compartment_port, {}))),
+            initial_state=deep_merge(states, dict(initial_state.get(store_id, {}))),
             schema=state_schema)
-        initialized_state[compartment_port] = make_state
+        initialized_state[store_id] = make_state
 
     return initialized_state
 

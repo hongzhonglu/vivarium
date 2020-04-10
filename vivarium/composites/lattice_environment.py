@@ -2,10 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
+from vivarium.compartment.process import (
+    initialize_state,
+    BOUNDARY_STATE,
+)
 from vivarium.compartment.composition import (
     simulate_compartment,
-    load_compartment
+    load_compartment,
 )
 
 # processes
@@ -35,10 +38,10 @@ def get_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'boundary',
+            'agents': BOUNDARY_STATE,
         },
         'diffusion': {
-            'agents': 'boundary',
+            'agents': BOUNDARY_STATE,
             'fields': 'fields'}}
 
     return {

@@ -393,7 +393,7 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='multibody'):
     bounds = config.get('bounds', DEFAULT_BOUNDS)
 
     # time steps that will be used
-    time_vec = list(data.keys())
+    time_vec = list(agents.keys())
     time_indices = np.round(np.linspace(0, len(time_vec) - 1, n_snapshots)).astype(int)
     snapshot_times = [time_vec[i] for i in time_indices]
 
