@@ -48,38 +48,13 @@ def get_environment(config):
         'processes': processes,
         'topology': topology}
 
-def compose_lattice_environment(config):
-    """"""
-    bounds = config.get('bounds', [10, 10])
-    size = config.get('size', [10, 10])
-    molecules = config.get('molecules', ['glc'])
 
-    # get the agents
-    agents_config = config.get('agents', {})
-    agent_ids = list(agents_config.keys())
+def get_environment(config):
+    # declare the processes.
+    multibody = Multibody(config.get('multibody', {}))
+    diffusion = DiffusionField(config.get('diffusion_field', {}))
 
-    ## Declare the processes.
-    # multibody physics
-    multibody_config = random_body_config(agents_config, bounds)
-    multibody = Multibody(multibody_config)
-
-    # diffusion field
-    agents = {
-        agent_id: {
-        'location': boundary['location'],
-        'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
-            for agent_id, boundary in multibody_config['agents'].items()}
-
-    exchange_config = {
-        'molecules': molecules,
-        'n_bins': bounds,
-        'size': size,
-        'agents': agents}
-    diffusion_config = exchange_agent_config(exchange_config)
-    diffusion = DiffusionField(diffusion_config)
-
-    # Place processes in layers
+    # place processes in layers
     processes = [
         {'multibody': multibody,
         'diffusion': diffusion}]
@@ -87,17 +62,61 @@ def compose_lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'agents',
+            'agents': 'boundary',
         },
         'diffusion': {
-            'agents': 'agents',
+            'agents': 'boundary',
             'fields': 'fields'}}
+
+    return {
+        'processes': processes,
+        'topology': topology}
+
+
+
+def compose_lattice_environment(config):
+    """"""
+    bounds = config.get('bounds', [10, 10])
+    size = config.get('size', [10, 10])
+    molecules = config.get('molecules', ['glc'])
+
+    # configure the agents
+    agents_config = config.get('agents', {})
+    agent_ids = list(agents_config.keys())
+
+    # config for the multibody process
+    multibody_config = random_body_config(agents_config, bounds)
+
+    # config for the diffusion proces
+    agents = {
+        agent_id: {
+        'location': boundary['location'],
+        'exchange': {
+            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
+            for agent_id, boundary in multibody_config['agents'].items()}
+    exchange_config = {
+        'molecules': molecules,
+        'n_bins': bounds,
+        'size': size,
+        'agents': agents
+    }
+    diffusion_config = exchange_agent_config(exchange_config)
+
+    # environment gets both process configs
+    environment_config = {
+        'multibody': multibody_config,
+        'diffusion_field': diffusion_config
+    }
+
+    # get the environment compartment
+    environment_compartment = get_environment(environment_config)
+    processes = environment_compartment['processes']
+    topology = environment_compartment['topology']
 
     # add derivers
     deriver_processes = []
 
     # initialize the states
-    # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
     states = initialize_state(
         processes,
         topology,
@@ -156,6 +175,6 @@ if __name__ == '__main__':
     data = test_lattice_environment(config, 10)
 
     # make snapshot plot
-    agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    agents = {time: time_data['boundary']['agents'] for time, time_data in data.items()}
     fields = {time: time_data['fields'] for time, time_data in data.items()}
     plot_snapshots(agents, fields, config, out_dir, 'snapshots')
