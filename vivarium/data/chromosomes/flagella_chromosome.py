@@ -334,28 +334,25 @@ class FlagellaChromosome(object):
             self.promoter_affinities[(promoter, 'fliA')] = 1.0
 
         self.transcripts = [
-            product
-            for products in self.config['genes'].values()
+            (operon, product)
+            for operon, products in self.config['genes'].items()
             for product in products]
 
         self.protein_sequences = {
-            symbol: knowledge_base.proteins[knowledge_base.genes[symbol]['id']]
-            for symbol in self.transcripts}
-
-        self.operon_sequences = {
-            operon: knowledge_base.concatenate_sequences(units)
-            for operon, units in self.config['genes'].items()}
+            (operon, product): knowledge_base.proteins[
+                knowledge_base.genes[product]['id']]['seq']
+            for operon, product in self.transcripts}
 
         self.transcript_templates = {
-            operon: generate_template(
-                operon,
+            key: generate_template(
+                key,
                 len(sequence),
-                self.config['genes'][operon])
-            for operon, sequence in self.operon_sequences.items()}
+                [key[1]])
+            for key, sequence in self.protein_sequences.items()}
 
         self.transcript_affinities = {
             operon: 0.01
-            for operon in self.config['genes'].keys()}
+            for operon in self.transcripts}
 
         self.transcription_factors = [
             'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
