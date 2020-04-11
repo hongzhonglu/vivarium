@@ -24,30 +24,6 @@ from vivarium.processes.diffusion_field import (
     plot_field_output,
 )
 
-# TODO -- use this in compose_lattice_environment
-def get_environment(config):
-    # declare the processes.
-    multibody = Multibody(config)
-    diffusion = DiffusionField(config)
-
-    # place processes in layers
-    processes = [
-        {'multibody': multibody,
-        'diffusion': diffusion}]
-
-    # topology
-    topology = {
-        'multibody': {
-            'agents': BOUNDARY_STATE,
-        },
-        'diffusion': {
-            'agents': BOUNDARY_STATE,
-            'fields': 'fields'}}
-
-    return {
-        'processes': processes,
-        'topology': topology}
-
 
 def get_environment(config):
     # declare the processes.
