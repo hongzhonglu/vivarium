@@ -38,10 +38,10 @@ def get_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'boundary',
+            'agents': BOUNDARY_STATE,
         },
         'diffusion': {
-            'agents': 'boundary',
+            'agents': BOUNDARY_STATE,
             'fields': 'fields'}}
 
     return {

@@ -82,8 +82,8 @@ def compose_growth_division(config):
 
     options = {
         'name': 'growth_division_composite',
-        'environment_port': 'boundary',
-        'exchange_port': 'boundary',
+        'environment_port': BOUNDARY_STATE,
+        'exchange_port': BOUNDARY_STATE,
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition}
