@@ -23,7 +23,7 @@ from vivarium.processes.convenience_kinetics import (
 
 
 
-def compose_growth_division(config):
+def growth_division(config):
 
     # declare the processes
     transport = ConvenienceKinetics(get_glc_lct_config())
@@ -54,7 +54,17 @@ def compose_growth_division(config):
         'expression': {
             'internal': 'cell',
             'external': 'environment',
-            'concentrations': 'cell_concs'}}
+            'concentrations': 'cell_concentrations'}}
+
+    return {
+        'processes': processes,
+        'topology': topology}
+
+
+def compose_growth_division(config):
+    agent = growth_division(config)
+    processes = agent['processes']
+    topology= agent['topology']
 
     # add derivers
     derivers = get_derivers(processes, topology)
