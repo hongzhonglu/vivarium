@@ -95,54 +95,60 @@ def compose_gene_expression(config):
 
 
 # analysis
-def template_plot(templates, out_dir, filename='chromosome_template'):
+def gene_network_plot(operons, out_dir, filename='expression_network'):
+    operon_rgb = [x/255 for x in [239,131,148]]
+    gene_rgb = [x / 255 for x in [249, 204, 86]]
+    # node_size = 2500
+    # node_distance = 0.4
 
-    operons = list(templates.keys())
+    # make graph from templates
+    G = nx.Graph()
+    operon_nodes = []
+    gene_nodes = []
+    edges = {}
+    for operon, genes in operons.items():
+        operon_nodes.append(operon)
+        gene_nodes.extend(genes)
 
-    import ipdb; ipdb.set_trace()
+        G.add_node(operon)
+        G.add_nodes_from(genes)
+
+        # add operon --> gene edge
+        for gene in genes:
+            edge = (operon, gene)
+            edges[edge] = 'gene'
+            G.add_edge(operon, gene)
+
+    # get positions
+    node_distance = 3 / (len(G)**0.5)
+    pos = nx.spring_layout(G, k=node_distance, iterations=100)
+
+    # plot
+    plt.figure(3, figsize=(8, 8))
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=gene_nodes,
+                           with_labels=True,
+                           node_color=gene_rgb,
+                           # node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=operon_nodes,
+                           with_labels=True,
+                           node_color=operon_rgb,
+                           # node_size=node_size,
+                           node_shape='o')
 
 
+    # edges
+    colors = list(range(1,len(edges)+1))
+    nx.draw_networkx_edges(G, pos,
+                           # edge_color=colors,
+                           width=1.5)
 
-    # # get positions
-    # pos = {}
-    # n_rows = max(len(process_nodes), len(store_nodes))
-    # plt.figure(3, figsize=(12, 1.2 * n_rows))
-    #
-    # for idx, node_id in enumerate(process_nodes, 1):
-    #     pos[node_id] = np.array([-1, -idx*node_distance])
-    # for idx, node_id in enumerate(store_nodes, 1):
-    #     pos[node_id] = np.array([1, -idx*node_distance])
-    #
-    #
-    # # plot
-    # nx.draw_networkx_nodes(G, pos,
-    #                        nodelist=process_nodes,
-    #                        with_labels=True,
-    #                        node_color=process_rgb,
-    #                        node_size=node_size,
-    #                        node_shape='o')
-    # nx.draw_networkx_nodes(G, pos,
-    #                        nodelist=store_nodes,
-    #                        with_labels=True,
-    #                        node_color=store_rgb,
-    #                        node_size=node_size,
-    #                        node_shape='s')
-    #
-    # # edges
-    # colors = list(range(1,len(edges)+1))
-    # nx.draw_networkx_edges(G, pos,
-    #                        edge_color=colors,
-    #                        width=1.5)
-    #
-    # # labels
-    # nx.draw_networkx_labels(G, pos,
-    #                         font_size=8,
-    #                         )
-    # if show_ports:
-    #     nx.draw_networkx_edge_labels(G, pos,
-    #                              edge_labels=edges,
-    #                              font_size=6,
-    #                              label_pos=0.85)
+    # labels
+    nx.draw_networkx_labels(G, pos,
+                            font_size=8,
+                            )
 
     # save figure
     fig_path = os.path.join(out_dir, filename)

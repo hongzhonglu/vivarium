@@ -13,7 +13,7 @@ from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import (
     compose_gene_expression,
     plot_gene_expression_output,
-    template_plot
+    gene_network_plot
 )
 
 def get_flg_expression_config():
@@ -165,7 +165,9 @@ if __name__ == '__main__':
     # make expression network plot
     flagella_expression_processes = flagella_expression_compartment.processes
     templates = flagella_expression_processes[0]['transcription'].templates
-    template_plot(templates, out_dir)
+    operons = flagella_expression_processes[0]['transcription'].genes
+    gene_network_plot(operons, out_dir)
+
 
     # run simulation
     settings = {
