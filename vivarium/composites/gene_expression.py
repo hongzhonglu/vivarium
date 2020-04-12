@@ -95,7 +95,7 @@ def compose_gene_expression(config):
 
 
 # analysis
-def gene_network_plot(operons, out_dir, filename='expression_network'):
+def gene_network_plot(operons, out_dir, filename='gene_network'):
     operon_rgb = [x/255 for x in [239,131,148]]
     gene_rgb = [x / 255 for x in [249, 204, 86]]
     # node_size = 2500
