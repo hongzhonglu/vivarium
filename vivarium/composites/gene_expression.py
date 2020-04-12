@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import matplotlib.pyplot as plt
+import networkx as nx
 
 from vivarium.compartment.process import (
     initialize_state
@@ -94,6 +95,64 @@ def compose_gene_expression(config):
 
 
 # analysis
+def template_plot(templates, out_dir, filename='chromosome_template'):
+
+    operons = list(templates.keys())
+
+    import ipdb; ipdb.set_trace()
+
+
+
+    # # get positions
+    # pos = {}
+    # n_rows = max(len(process_nodes), len(store_nodes))
+    # plt.figure(3, figsize=(12, 1.2 * n_rows))
+    #
+    # for idx, node_id in enumerate(process_nodes, 1):
+    #     pos[node_id] = np.array([-1, -idx*node_distance])
+    # for idx, node_id in enumerate(store_nodes, 1):
+    #     pos[node_id] = np.array([1, -idx*node_distance])
+    #
+    #
+    # # plot
+    # nx.draw_networkx_nodes(G, pos,
+    #                        nodelist=process_nodes,
+    #                        with_labels=True,
+    #                        node_color=process_rgb,
+    #                        node_size=node_size,
+    #                        node_shape='o')
+    # nx.draw_networkx_nodes(G, pos,
+    #                        nodelist=store_nodes,
+    #                        with_labels=True,
+    #                        node_color=store_rgb,
+    #                        node_size=node_size,
+    #                        node_shape='s')
+    #
+    # # edges
+    # colors = list(range(1,len(edges)+1))
+    # nx.draw_networkx_edges(G, pos,
+    #                        edge_color=colors,
+    #                        width=1.5)
+    #
+    # # labels
+    # nx.draw_networkx_labels(G, pos,
+    #                         font_size=8,
+    #                         )
+    # if show_ports:
+    #     nx.draw_networkx_edge_labels(G, pos,
+    #                              edge_labels=edges,
+    #                              font_size=6,
+    #                              label_pos=0.85)
+
+    # save figure
+    fig_path = os.path.join(out_dir, filename)
+    plt.figure(3, figsize=(12, 12))
+    plt.axis('off')
+    plt.savefig(fig_path, bbox_inches='tight')
+
+    plt.close()
+
+
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     name = config.get('name', 'gene_expression')

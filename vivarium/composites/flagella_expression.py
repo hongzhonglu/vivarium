@@ -10,7 +10,11 @@ from vivarium.data.chromosomes.flagella_chromosome import flagella_chromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
-from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.composites.gene_expression import (
+    compose_gene_expression,
+    plot_gene_expression_output,
+    template_plot
+)
 
 def get_flg_expression_config():
     plasmid = Chromosome(flagella_chromosome.config)
@@ -157,6 +161,11 @@ if __name__ == '__main__':
 
     # load the compartment
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
+
+    # make expression network plot
+    flagella_expression_processes = flagella_expression_compartment.processes
+    templates = flagella_expression_processes[0]['transcription'].templates
+    template_plot(templates, out_dir)
 
     # run simulation
     settings = {
