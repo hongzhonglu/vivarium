@@ -3,14 +3,19 @@ from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
 from vivarium.states.chromosome import Chromosome
 
-knowledge_base = KnowledgeBase()
 
 ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
 
-ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
-
 class FlagellaChromosome(object):
-    def __init__(self):
+    ecoli_sequence = None
+    knowledge_base = None
+
+    def __init__(self, parameters={}):
+        if self.knowledge_base is None:
+            self.knowledge_base = KnowledgeBase()
+        if self.ecoli_sequence is None:
+            self.ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
+
         self.factor_thresholds = {
             ('flhDp', 'CRP'): 1e-05,
             ('fliLp1', 'flhDC'): 1e-06,
@@ -38,8 +43,10 @@ class FlagellaChromosome(object):
             ('motAp', 'fliA'): 9e-06,
             ('flgMp', 'fliA'): 1.1e-06}
 
+        self.factor_thresholds.update(parameters.get('thresholds', {}))
+
         self.chromosome_config = {
-            'sequence': ecoli_sequence,
+            'sequence': self.ecoli_sequence,
             'genes': {
                 'flhDC': ['flhD', 'flhC'],
                 'fliL': ['fliL', 'fliM', 'fliN', 'fliO', 'fliP', 'fliQ', 'fliR'],
@@ -240,6 +247,9 @@ class FlagellaChromosome(object):
                     'children': []}},
             'rnaps': []}
 
+        self.chromosome = Chromosome(self.chromosome_config)
+        self.chromosome.apply_thresholds(self.factor_thresholds)
+
         self.promoters = [
             'flhDp',
             'fliLp1',
@@ -337,14 +347,17 @@ class FlagellaChromosome(object):
         for promoter in self.fliA_activated:
             self.promoter_affinities[(promoter, 'fliA')] = 1.0
 
+        self.promoter_affinities.update(
+            parameters.get('promoter_affinities', {}))
+
         self.transcripts = [
             (operon, product)
             for operon, products in self.chromosome_config['genes'].items()
             for product in products]
 
         self.protein_sequences = {
-            (operon, product): knowledge_base.proteins[
-                knowledge_base.genes[product]['id']]['seq']
+            (operon, product): self.knowledge_base.proteins[
+                self.knowledge_base.genes[product]['id']]['seq']
             for operon, product in self.transcripts}
 
         self.transcript_templates = {
@@ -357,6 +370,9 @@ class FlagellaChromosome(object):
         self.transcript_affinities = {
             operon: 0.01
             for operon in self.transcripts}
+
+        self.transcript_affinities.update(
+            parameters.get('transcript_affinities', {}))
 
         self.transcription_factors = [
             'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
@@ -424,4 +440,3 @@ class FlagellaChromosome(object):
             'flagellar motor reaction': reaction_default,
             'flagellum reaction': reaction_default}
 
-flagella_chromosome = FlagellaChromosome()

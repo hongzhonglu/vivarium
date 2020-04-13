@@ -207,9 +207,6 @@ class Translation(Process):
         proteins = states['proteins']
         ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
 
-        print('transcripts: {}'.format(transcripts))
-        print('proteins: {}'.format(proteins))
-
         gene_counts = np.array(
             list(transcripts_to_gene_counts(transcripts, self.operons).values()),
             dtype=np.int64)

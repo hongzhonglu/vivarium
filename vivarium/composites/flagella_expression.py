@@ -7,7 +7,7 @@ import numpy as np
 from vivarium.compartment.composition import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
-from vivarium.data.chromosomes.flagella_chromosome import flagella_chromosome
+from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
@@ -15,19 +15,13 @@ from vivarium.composites.gene_expression import compose_gene_expression, plot_ge
 from vivarium.parameters.parameters import parameter_scan
 
 def get_flagella_expression_config(config):
-    chromosome_config = flagella_chromosome.chromosome_config
-    plasmid = Chromosome(chromosome_config)
-    sequences = plasmid.product_sequences()
-    plasmid.apply_thresholds(config.get('thresholds', {}))
-
-    promoter_affinities = flagella_chromosome.promoter_affinities.copy()
-    promoter_affinities.update(config.get('promoter_affinities', {}))
-    transcript_affinities = flagella_chromosome.transcript_affinities.copy()
-    transcript_affinities.update(config.get('transcript_affinities', {}))
+    flagella_data = FlagellaChromosome(config)
+    chromosome_config = flagella_data.chromosome_config
+    sequences = flagella_data.chromosome.product_sequences()
 
     promoters = {
         key: promoter.to_dict()
-        for key, promoter in plasmid.promoters.items()}
+        for key, promoter in flagella_data.chromosome.promoters.items()}
 
     molecules = {}
     for nucleotide in nucleotides.values():
@@ -42,17 +36,17 @@ def get_flagella_expression_config(config):
             'sequence': chromosome_config['sequence'],
             'templates': promoters, # chromosome_config['promoters'],
             'genes': chromosome_config['genes'],
-            'transcription_factors': flagella_chromosome.transcription_factors,
-            'promoter_affinities': promoter_affinities,
+            'transcription_factors': flagella_data.transcription_factors,
+            'promoter_affinities': flagella_data.promoter_affinities,
             'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
 
-            'sequences': flagella_chromosome.protein_sequences,
-            'templates': flagella_chromosome.transcript_templates,
+            'sequences': flagella_data.protein_sequences,
+            'templates': flagella_data.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
-            'transcript_affinities': transcript_affinities,
+            'transcript_affinities': flagella_data.transcript_affinities,
 
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
@@ -69,10 +63,10 @@ def get_flagella_expression_config(config):
                         for transcript in chromosome_config['genes'].keys()}}}},
 
         'complexation': {
-            'monomer_ids': flagella_chromosome.complexation_monomer_ids,
-            'complex_ids': flagella_chromosome.complexation_complex_ids,
-            'stoichiometry': flagella_chromosome.complexation_stoichiometry,
-            'rates': flagella_chromosome.complexation_rates},
+            'monomer_ids': flagella_data.complexation_monomer_ids,
+            'complex_ids': flagella_data.complexation_complex_ids,
+            'stoichiometry': flagella_data.complexation_stoichiometry,
+            'rates': flagella_data.complexation_rates},
 
         'initial_state': {
             'molecules': molecules,
@@ -169,6 +163,7 @@ def plot_flagella_expression():
         os.makedirs(out_dir)
 
     # load the compartment
+    flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
@@ -194,8 +189,8 @@ def plot_flagella_expression():
     plot_config2.update({
         'name': 'flagella',
         'plot_ports': {
-            'transcripts': list(flagella_chromosome.chromosome_config['genes'].keys()),
-            'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
+            'transcripts': list(flagella_data.chromosome_config['genes'].keys()),
+            'proteins': flagella_data.complexation_monomer_ids + flagella_data.complexation_complex_ids,
             'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
 
     plot_timeseries_heatmaps(
@@ -209,6 +204,7 @@ def exponential_range(steps, base, factor):
         for x in range(steps)]
 
 def scan_flagella_expression_parameters():
+    flagella_data = FlagellaChromosome()
     scan_params = {}
 
     steps = 3
@@ -216,24 +212,22 @@ def scan_flagella_expression_parameters():
     thresholds_range = exponential_range(steps, 2.5, 1e-7)
 
     # add promoter affinities
-    for promoter in flagella_chromosome.chromosome_config['promoters'].keys():
+    for promoter in flagella_data.chromosome_config['promoters'].keys():
         scan_params[('promoter_affinities', promoter)] = affinities_range
 
     # add transcript affinities
-    for site in flagella_chromosome.transcript_affinities.keys():
+    for site in flagella_data.transcript_affinities.keys():
         scan_params[('transcript_affinities', site)] = affinities_range
 
     # add transcription factor thresholds
-    for threshold in flagella_chromosome.factor_thresholds.keys():
+    for threshold in flagella_data.factor_thresholds.keys():
         scan_params[('thresholds', threshold)] = thresholds_range
 
     output_values = [
         ('proteins', monomer)
-        for monomer in flagella_chromosome.complexation_monomer_ids] + [
+        for monomer in flagella_data.complexation_monomer_ids] + [
         ('proteins', complex)
-        for complex in flagella_chromosome.complexation_complex_ids]
-
-    import ipdb; ipdb.set_trace()
+        for complex in flagella_data.complexation_complex_ids]
 
     results = parameter_scan(
         generate_flagella_compartment,
