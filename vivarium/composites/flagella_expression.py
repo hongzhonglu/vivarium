@@ -164,10 +164,12 @@ if __name__ == '__main__':
 
     # make expression network plot
     flagella_expression_processes = flagella_expression_compartment.processes
-    templates = flagella_expression_processes[0]['transcription'].templates
     operons = flagella_expression_processes[0]['transcription'].genes
-    gene_network_plot(operons, out_dir)
-
+    promoters = flagella_expression_processes[0]['transcription'].templates
+    data = {
+        'operons': operons,
+        'templates': promoters}
+    gene_network_plot(data, out_dir)
 
     # run simulation
     settings = {

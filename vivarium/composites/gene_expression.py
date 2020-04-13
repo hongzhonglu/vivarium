@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import networkx as nx
 
 from vivarium.compartment.process import (
@@ -95,20 +96,36 @@ def compose_gene_expression(config):
 
 
 # analysis
-def gene_network_plot(operons, out_dir, filename='gene_network'):
-    operon_rgb = [x/255 for x in [239,131,148]]
-    gene_rgb = [x / 255 for x in [249, 204, 86]]
+def gene_network_plot(data, out_dir, filename='gene_network'):
+
+    # plotting parameters
+    color_legend = {
+        'operon': [x/255 for x in [199,164,53]],
+        'gene': [x / 255 for x in [181,99,206]],
+        'promoter': [x / 255 for x in [110,196,86]],
+        'transcription factor': [x / 255 for x in [222,85,80]]}
     # node_size = 2500
     # node_distance = 0.4
 
+    # get data
+    operons = data.get('operons', {})
+    templates = data.get('templates', {})
+
     # make graph from templates
     G = nx.Graph()
-    operon_nodes = []
-    gene_nodes = []
+
+    # initialize node lists for graphing
+    operon_nodes = set()
+    gene_nodes = set()
+    promoter_nodes = set()
+    transcription_factor_nodes = set()
+
     edges = {}
+
+    # add operon --> gene connetions
     for operon, genes in operons.items():
-        operon_nodes.append(operon)
-        gene_nodes.extend(genes)
+        operon_nodes.add(operon)
+        gene_nodes.update(genes)
 
         G.add_node(operon)
         G.add_nodes_from(genes)
@@ -119,22 +136,65 @@ def gene_network_plot(operons, out_dir, filename='gene_network'):
             edges[edge] = 'gene'
             G.add_edge(operon, gene)
 
+    # add transcription factor --> promoter --> operon connections
+    for promoter, specs in templates.items():
+        promoter_nodes.add(promoter)
+
+        promoter_sites = specs['sites']
+        terminators = specs['terminators']
+
+        # add transcription factors
+        for site in promoter_sites:
+            thresholds = site['thresholds']
+            for threshold in thresholds:
+                transcription_factor = threshold[0]
+                transcription_factor_nodes.add(transcription_factor)
+
+                edge = (transcription_factor, promoter)
+                edges[edge] = 'transcription factor'
+                G.add_edge(transcription_factor, promoter)
+
+        # add gene products
+        for site in terminators:
+            products = site['products']
+            for product in products:
+                operon_nodes.add(product)
+                G.add_node(product)
+
+
+                edge = (promoter, product)
+                edges[edge] = 'promoter'
+                G.add_edge(promoter, product)
+
+
     # get positions
     node_distance = 3 / (len(G)**0.5)
-    pos = nx.spring_layout(G, k=node_distance, iterations=100)
+    pos = nx.spring_layout(G, k=node_distance, iterations=500)
 
     # plot
     plt.figure(3, figsize=(8, 8))
     nx.draw_networkx_nodes(G, pos,
                            nodelist=gene_nodes,
                            with_labels=True,
-                           node_color=gene_rgb,
+                           node_color=color_legend['gene'],
                            # node_size=node_size,
                            node_shape='o')
     nx.draw_networkx_nodes(G, pos,
                            nodelist=operon_nodes,
                            with_labels=True,
-                           node_color=operon_rgb,
+                           node_color=color_legend['operon'],
+                           # node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=promoter_nodes,
+                           with_labels=True,
+                           node_color=color_legend['promoter'],
+                           # node_size=node_size,
+                           node_shape='o')
+    nx.draw_networkx_nodes(G, pos,
+                           nodelist=transcription_factor_nodes,
+                           with_labels=True,
+                           node_color=color_legend['transcription factor'],
                            # node_size=node_size,
                            node_shape='o')
 
@@ -149,6 +209,9 @@ def gene_network_plot(operons, out_dir, filename='gene_network'):
     nx.draw_networkx_labels(G, pos,
                             font_size=8,
                             )
+    # make legend
+    legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
+    plt.legend(handles=legend_elements)
 
     # save figure
     fig_path = os.path.join(out_dir, filename)
