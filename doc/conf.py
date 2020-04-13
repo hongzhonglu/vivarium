@@ -73,7 +73,8 @@ autodoc_inherit_docstrings = False
 # The Python dependencies aren't really required for building the docs
 autodoc_mock_imports = [
     'arpeggio', 'cobra', 'confluent_kafka', 'matplotlib',
-    'mpl_toolkits', 'parsimonious', 'pygame', 'pymongo', 'arrow'
+    'mpl_toolkits', 'networkx', 'parsimonious', 'pygame', 'pymongo',
+    'arrow'
 ]
 # Concatenate class and __init__ docstrings
 autoclass_content = 'both'
