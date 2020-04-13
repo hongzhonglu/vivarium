@@ -247,8 +247,12 @@ class FlagellaChromosome(object):
                     'children': []}},
             'rnaps': []}
 
+        # build chromosome and apply thresholds
         self.chromosome = Chromosome(self.chromosome_config)
         self.chromosome.apply_thresholds(self.factor_thresholds)
+        self.chromosome_config['promoters'] = {
+            key: promoter.to_dict()
+            for key, promoter in self.chromosome.promoters.items()}
 
         self.promoters = [
             'flhDp',

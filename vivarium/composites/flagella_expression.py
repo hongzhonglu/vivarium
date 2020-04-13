@@ -19,10 +19,6 @@ def get_flagella_expression_config(config):
     chromosome_config = flagella_data.chromosome_config
     sequences = flagella_data.chromosome.product_sequences()
 
-    promoters = {
-        key: promoter.to_dict()
-        for key, promoter in flagella_data.chromosome.promoters.items()}
-
     molecules = {}
     for nucleotide in nucleotides.values():
         molecules[nucleotide] = 500000
@@ -34,7 +30,7 @@ def get_flagella_expression_config(config):
         'transcription': {
 
             'sequence': chromosome_config['sequence'],
-            'templates': promoters, # chromosome_config['promoters'],
+            'templates': chromosome_config['promoters'],
             'genes': chromosome_config['genes'],
             'transcription_factors': flagella_data.transcription_factors,
             'promoter_affinities': flagella_data.promoter_affinities,
