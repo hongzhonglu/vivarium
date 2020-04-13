@@ -89,6 +89,13 @@ def daughter_locations(parent_location, parent_length, parent_angle):
 class Multibody(Process):
     """
     A multi-body physics process using pymunk
+
+    Notes:
+    - rotational diffusion in liquid medium with viscosity = 1 mPa.s: Dr = 3.5+/-0.3 rad^2/s
+        (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
+    - translational diffusion in liquid medium with viscosity = 1 mPa.s: Dt=100 micrometers^2/s
+        (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
+
     """
     def __init__(self, initial_parameters={}):
 

@@ -23,7 +23,14 @@ from vivarium.processes.diffusion_field import (
 
 
 
-def get_environment(config):
+def get_lattice_environment(config):
+    """
+    Lattice environment
+
+    A two-dimensional lattice environmental model
+
+    """
+
     # declare the processes.
     multibody = Multibody(config.get('multibody', {}))
     diffusion = DiffusionField(config.get('diffusion_field', {}))
@@ -83,7 +90,7 @@ def compose_lattice_environment(config):
     }
 
     # get the environment compartment
-    environment_compartment = get_environment(environment_config)
+    environment_compartment = get_lattice_environment(environment_config)
     processes = environment_compartment['processes']
     topology = environment_compartment['topology']
 
