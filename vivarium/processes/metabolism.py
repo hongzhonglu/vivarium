@@ -140,6 +140,9 @@ class Metabolism(Process):
 
         # schema
         schema = {
+            'internal': {mol_id: {
+                'mass': self.fba.molecular_weights[mol_id]}
+                for mol_id in self.internal_state_ids},
             'reactions': {rxn_id: {
                     'updater': 'set',
                     'divide': 'set'}
@@ -147,10 +150,18 @@ class Metabolism(Process):
             'global': {'mass': {
                     'updater': 'accumulate'}}}
 
+        # derivers
+        deriver_setting = [{
+            'type': 'mass',
+            'source_port': 'internal',
+            'derived_port': 'global',
+            'keys': self.internal_state_ids}]
+
         return {
             'state': self.initial_state,
             'emitter_keys': default_emitter_keys,
-            'schema': schema}
+            'schema': schema,
+            'deriver_setting': deriver_setting}
 
     def next_update(self, timestep, states):
 

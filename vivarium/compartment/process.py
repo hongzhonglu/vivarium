@@ -39,15 +39,7 @@ def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
 def update_merge(key, state_dict, current_value, new_value):
-    # merge dicts, with new_value replacing any shared keys with current_value
-    update = current_value.copy()
-    for k, v in current_value.items():
-        new = new_value.get(k)
-        if isinstance(new, dict):
-            update[k] = deep_merge(dict(v), new)
-        else:
-            update[k] = new
-    return update, {}
+    return deep_merge(dict(current_value), new_value), {}
 
 updater_library = {
     'accumulate': update_accumulate,
@@ -118,6 +110,9 @@ class Store(object):
             if updater:
                 updaters.update({state: updater})
         self.updaters = updaters
+
+    def get_schema(self, keys, schema_type):
+        return {key: self.schema[key].get(schema_type) for key in keys}
 
     def keys(self):
         return self.state.keys()
@@ -215,6 +210,24 @@ class Process(object):
 
     def default_settings(self):
         return {}
+
+
+    def get_schema(self, states, schema_type):
+        '''
+        Requires:
+            - states (dict)
+            - schema_type (str)
+
+        Returns a dictionary with {store_id: {key: schema_value}}
+        for all store_ids and list of keys in states,
+        with schema_value specified by schema_type
+        '''
+
+        schema = {}
+        for store_id, keys in states.items():
+            schema[store_id] = self.states[store_id].get_schema(keys, schema_type)
+
+        return schema
 
     def assign_ports(self, states):
         '''
@@ -344,12 +357,6 @@ def initialize_state(process_layers, topology, initial_state):
 
     return initialized_state
 
-def flatten_process_layers(process_layers):
-    processes = {}
-    for layer in process_layers:
-        processes.update(layer)
-    return processes
-
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
@@ -451,7 +458,10 @@ class Compartment(Store):
 
     def run_derivers(self):
 
-        derivers = flatten_process_layers(self.state['derivers'])
+        # flatten all deriver layers into a single dict
+        derivers = {}
+        for layer in self.state['derivers']:
+            derivers.update(layer)
 
         updates = {}
         for name, process in derivers.items():
@@ -483,7 +493,9 @@ class Compartment(Store):
         time = 0
 
         # flatten all process layers into a single process dict
-        processes = flatten_process_layers(self.state['processes'])
+        processes = {}
+        for layers in self.state['processes']:
+            processes.update(layers)
 
         # keep track of which processes have simulated until when
         front = {

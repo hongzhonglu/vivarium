@@ -24,6 +24,7 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_mass import DeriveMass
 
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
@@ -33,7 +34,9 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 deriver_library = {
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs}
+    'counts_to_mmol': DeriveConcs,
+    'mass': DeriveMass,
+}
 
 
 
