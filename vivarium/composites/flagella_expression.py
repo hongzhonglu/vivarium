@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,10 +12,16 @@ from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.parameters.parameters import parameter_scan
 
-def get_flg_expression_config():
-    plasmid = Chromosome(flagella_chromosome.config)
+def get_flagella_expression_config(config):
+    chromosome_config = flagella_chromosome.chromosome_config
+    plasmid = Chromosome(chromosome_config)
     sequences = plasmid.product_sequences()
+    plasmid.apply_thresholds(config['thresholds'])
+    promoters = {
+        key: promoter.to_dict()
+        for key, promoter in plasmid.promoters.items()}
 
     molecules = {}
     for nucleotide in nucleotides.values():
@@ -22,13 +29,13 @@ def get_flg_expression_config():
     for amino_acid in amino_acids.values():
         molecules[amino_acid] = 100000
 
-    flagella_expression_config = {
+    config = {
 
         'transcription': {
 
-            'sequence': flagella_chromosome.config['sequence'],
-            'templates': flagella_chromosome.config['promoters'],
-            'genes': flagella_chromosome.config['genes'],
+            'sequence': chromosome_config['sequence'],
+            'templates': promoters, # chromosome_config['promoters'],
+            'genes': chromosome_config['genes'],
             'transcription_factors': flagella_chromosome.transcription_factors,
             'promoter_affinities': flagella_chromosome.promoter_affinities,
             'polymerase_occlusion': 30,
@@ -53,7 +60,7 @@ def get_flg_expression_config():
                 'transcripts': {
                     'endoRNAse': {
                         transcript: 1e-23
-                        for transcript in flagella_chromosome.config['genes'].keys()}}}},
+                        for transcript in chromosome_config['genes'].keys()}}}},
 
         'complexation': {
             'monomer_ids': flagella_chromosome.complexation_monomer_ids,
@@ -65,7 +72,7 @@ def get_flg_expression_config():
             'molecules': molecules,
             'transcripts': {
                 gene: 0
-                for gene in flagella_chromosome.config['genes'].keys()},
+                for gene in chromosome_config['genes'].keys()},
             'proteins': {
                 'CpxR': 10,
                 'CRP': 10,
@@ -74,11 +81,11 @@ def get_flg_expression_config():
                 UNBOUND_RIBOSOME_KEY: 10,
                 UNBOUND_RNAP_KEY: 10}}}
 
-    return flagella_expression_config
+    return config
 
 
 def generate_flagella_compartment(config):
-    flagella_expression_config = get_flg_expression_config()
+    flagella_expression_config = get_flagella_expression_config()
 
     return compose_gene_expression(flagella_expression_config)
 
@@ -150,7 +157,7 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
 
 
 
-if __name__ == '__main__':
+def plot_flagella_expression():
     out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -181,7 +188,7 @@ if __name__ == '__main__':
     plot_config2.update({
         'name': 'flagella',
         'plot_ports': {
-            'transcripts': list(flagella_chromosome.config['genes'].keys()),
+            'transcripts': list(flagella_chromosome.chromosome_config['genes'].keys()),
             'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
             'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
 
@@ -189,3 +196,20 @@ if __name__ == '__main__':
         timeseries,
         plot_config2,
         out_dir)
+
+def scan_flagella_expression_parameters():
+    scan_params = {}
+
+    # add promoter affinities
+    import ipdb; ipdb.set_trace()
+
+
+if __name__ == '__main__':
+    commands = ['plot', 'scan']
+    parser = argparse.ArgumentParser(description='flagella expression')
+    parser.add_argument('command', choices=commands)
+    args = parser.parse_args()
+    if args.command == 'scan':
+        scan_flagella_expression_parameters()
+    else:
+        plot_flagella_expression()
