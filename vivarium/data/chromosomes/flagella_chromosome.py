@@ -72,7 +72,7 @@ class FlagellaChromosome(object):
                     'position': 2019618,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': {'flhDC': 1e-06}},
+                        {'thresholds': {'flhDC': 4e-06}},
                         {'thresholds': {'fliA': 1.3e-05}}],
                     'terminators': [
                         {
@@ -84,7 +84,7 @@ class FlagellaChromosome(object):
                     'position': 2013014,
                     'direction': -1,
                     'sites': [
-                        {'thresholds': {'flhDC': 4e-06}},
+                        {'thresholds': {'flhDC': 5e-06}},
                         {'thresholds': {'fliA': 1.1e-05}}],
                     'terminators': [
                         {
@@ -292,7 +292,7 @@ class FlagellaChromosome(object):
                 'fliA': 0.3},
             'flgEp': {
                 'flhDC': 1.0,
-                'fliA': 10.0},
+                'fliA': 4.0},
             'flhBp': {
                 'flhDC': 0.1,
                 'fliA': 0.35},
@@ -331,8 +331,8 @@ class FlagellaChromosome(object):
         print('flhDC_affinities')
         print(flhDC_affinities)
 
-        for promoter in self.flhDC_activated:
-            self.promoter_affinities[(promoter, 'flhDC')] = 1.0
+        # for promoter in self.flhDC_activated:
+        #     self.promoter_affinities[(promoter, 'flhDC')] = 1.0
 
         for promoter in self.fliA_activated:
             self.promoter_affinities[(promoter, 'fliA')] = 1.0

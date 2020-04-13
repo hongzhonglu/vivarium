@@ -37,7 +37,7 @@ def set_nested(dict, keys, value, create_missing=True):
         d[keys[-1]] = value
     return dict
 
-def parameter_scan(composite, scan_params, output_values):
+def parameter_scan(composite, scan_params, output_values, options={}):
 
     n_values = [len(v) for v in scan_params.values()]
     n_combinations = np.prod(np.array(n_values))
@@ -59,14 +59,16 @@ def parameter_scan(composite, scan_params, output_values):
         param_sets.append(new_params)
 
     # simulation settings
-    total_time = 10
+    total_time = options.get('time', 10)
     settings = {
-        'timestep': 1,
+        'timestep': options.get('timestep', 1),
         'total_time': total_time}
 
     # run all parameters, and save results
     results = []
     for params in param_sets:
+        print('running params: {}'.format(params))
+
         params.update(null_emitter)
         new_compartment = load_compartment(composite, params)
         sim_out = simulate_compartment(new_compartment, settings)

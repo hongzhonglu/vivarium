@@ -18,14 +18,20 @@ def get_flagella_expression_config(config):
     chromosome_config = flagella_chromosome.chromosome_config
     plasmid = Chromosome(chromosome_config)
     sequences = plasmid.product_sequences()
-    plasmid.apply_thresholds(config['thresholds'])
+    plasmid.apply_thresholds(config.get('thresholds', {}))
+
+    promoter_affinities = flagella_chromosome.promoter_affinities.copy()
+    promoter_affinities.update(config.get('promoter_affinities', {}))
+    transcript_affinities = flagella_chromosome.transcript_affinities.copy()
+    transcript_affinities.update(config.get('transcript_affinities', {}))
+
     promoters = {
         key: promoter.to_dict()
         for key, promoter in plasmid.promoters.items()}
 
     molecules = {}
     for nucleotide in nucleotides.values():
-        molecules[nucleotide] = 1000000
+        molecules[nucleotide] = 500000
     for amino_acid in amino_acids.values():
         molecules[amino_acid] = 100000
 
@@ -37,7 +43,7 @@ def get_flagella_expression_config(config):
             'templates': promoters, # chromosome_config['promoters'],
             'genes': chromosome_config['genes'],
             'transcription_factors': flagella_chromosome.transcription_factors,
-            'promoter_affinities': flagella_chromosome.promoter_affinities,
+            'promoter_affinities': promoter_affinities,
             'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
@@ -46,7 +52,7 @@ def get_flagella_expression_config(config):
             'sequences': flagella_chromosome.protein_sequences,
             'templates': flagella_chromosome.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
-            'transcript_affinities': flagella_chromosome.transcript_affinities,
+            'transcript_affinities': transcript_affinities,
 
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
@@ -85,7 +91,7 @@ def get_flagella_expression_config(config):
 
 
 def generate_flagella_compartment(config):
-    flagella_expression_config = get_flagella_expression_config()
+    flagella_expression_config = get_flagella_expression_config(config)
 
     return compose_gene_expression(flagella_expression_config)
 
@@ -197,11 +203,45 @@ def plot_flagella_expression():
         plot_config2,
         out_dir)
 
+def exponential_range(steps, base, factor):
+    return [
+        (base ** x) * factor
+        for x in range(steps)]
+
 def scan_flagella_expression_parameters():
     scan_params = {}
 
+    steps = 3
+    affinities_range = exponential_range(steps, 3, 1e-3)
+    thresholds_range = exponential_range(steps, 2.5, 1e-7)
+
     # add promoter affinities
+    for promoter in flagella_chromosome.chromosome_config['promoters'].keys():
+        scan_params[('promoter_affinities', promoter)] = affinities_range
+
+    # add transcript affinities
+    for site in flagella_chromosome.transcript_affinities.keys():
+        scan_params[('transcript_affinities', site)] = affinities_range
+
+    # add transcription factor thresholds
+    for threshold in flagella_chromosome.factor_thresholds.keys():
+        scan_params[('thresholds', threshold)] = thresholds_range
+
+    output_values = [
+        ('proteins', monomer)
+        for monomer in flagella_chromosome.complexation_monomer_ids] + [
+        ('proteins', complex)
+        for complex in flagella_chromosome.complexation_complex_ids]
+
     import ipdb; ipdb.set_trace()
+
+    results = parameter_scan(
+        generate_flagella_compartment,
+        scan_params,
+        output_values,
+        {'time': 5})
+
+    return results
 
 
 if __name__ == '__main__':
