@@ -201,6 +201,8 @@ class Multibody(Process):
             thrust, torque = body.motile_force
             motile_force = [thrust, 0.0]
 
+            motile_force = [10, 0.0]  # TODO -- remove this
+
             # add directly to angular velocity
             body.angular_velocity += torque
             # force-based torque
@@ -208,6 +210,13 @@ class Multibody(Process):
             #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
+
+        # import ipdb;
+        # ipdb.set_trace()
+        # TODO -- get motile force through
+        # TODO -- need to set lattice size?
+
+
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
@@ -489,7 +498,7 @@ def test_multibody(config=random_body_config(), time=1):
 
 motility_test_settings = {
     'timestep': 1,
-    'total_time': 10}
+    'total_time': 50}
 
 def test_motility(config, settings=motility_test_settings):
     # time of motor behavior without chemotaxis
@@ -524,7 +533,6 @@ def test_motility(config, settings=motility_test_settings):
         time += timestep
 
         # TODO -- update motile force and apply to state
-        # agents = state['agents']['agents']
 
         update = compartment.update(timestep)
 
@@ -545,9 +553,14 @@ if __name__ == '__main__':
     # plot_snapshots(agents, fields, config, out_dir, 'snapshots')
 
     # test motility
-    motility_config = random_body_config(1)
+    motility_config = {
+        'jitter_force': 0,
+        'bounds': [100, 100],
+    }
+    motility_config.update(random_body_config(1))
     motility_data = test_motility(motility_config)
-    # make snapshot
+
+    # make motility snapshot
     agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
     fields = {}
     plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
