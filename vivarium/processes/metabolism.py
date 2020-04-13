@@ -199,12 +199,13 @@ class Metabolism(Process):
         internal_state_update = {}
         for reaction_id, coeff1 in self.fba.objective.items():
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
-                internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
+                if coeff2 < 0:  # pull out molecule if it is USED to make biomass (negative coefficient)
+                    internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
 
-                # added biomass
-                mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
-                mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
-                added_mass += mol_mass.to('fg').magnitude
+                    # added biomass
+                    mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
+                    mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
+                    added_mass += mol_mass.to('fg').magnitude
 
         global_update = {'mass': added_mass}
 
@@ -381,7 +382,7 @@ def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
         ax1.plot(series, label=mol_id)
     ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), ncol=2)
     ax1.title.set_text('environment: {} (L)'.format(env_volume))
-    ax1.set_ylabel('concentrations')
+    ax1.set_ylabel('concentrations (logs)')
     ax1.set_yscale('log')
 
     # plot internal counts
@@ -402,7 +403,8 @@ def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
 
     ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
     ax2.title.set_text('internal metabolites')
-    ax2.set_ylabel('delta counts')
+    ax2.set_ylabel('delta counts (log)')
+    ax2.set_yscale('log')
 
     # plot mass
     ax3.plot(mass, label='mass')
