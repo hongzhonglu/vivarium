@@ -382,7 +382,7 @@ def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
         ax1.plot(series, label=mol_id)
     ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), ncol=2)
     ax1.title.set_text('environment: {} (L)'.format(env_volume))
-    ax1.set_ylabel('concentrations')
+    ax1.set_ylabel('concentrations (logs)')
     ax1.set_yscale('log')
 
     # plot internal counts
@@ -403,7 +403,8 @@ def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
 
     ax2.legend(loc='center left', bbox_to_anchor=(1.6, 0.5), ncol=3)
     ax2.title.set_text('internal metabolites')
-    ax2.set_ylabel('delta counts')
+    ax2.set_ylabel('delta counts (log)')
+    ax2.set_yscale('log')
 
     # plot mass
     ax3.plot(mass, label='mass')
