@@ -18,8 +18,9 @@ from vivarium.compartment.process import (
     Process,
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
+    process_in_compartment,
     simulate_process)
-
+from vivarium.processes.Vladimirov2008_motor import run, tumble
 
 # constants
 PI = math.pi
@@ -279,6 +280,7 @@ class Multibody(Process):
         length = specs.get('length')
         width = specs.get('width')
         mass = specs.get('mass')
+        motile_force = specs.get('motile_force', [0, 0])
 
         body, shape = self.agents[body_id]
         position = body.position
@@ -301,6 +303,7 @@ class Multibody(Process):
         new_body.angle = angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
+        new_body.motile_force = motile_force
 
         new_shape.elasticity = shape.elasticity
         new_shape.friction = shape.friction
@@ -323,14 +326,16 @@ class Multibody(Process):
             'angle': body.angle,
             'length': length,
             'width': width,
-            'mass': body.mass}
+            'mass': body.mass,
+            'motile_force': [0, 0]}
 
 
 # test functions
 def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
-def random_body_config(agents=get_n_dummy_agents(10), bounds=[10, 10]):
+def random_body_config(n_agents=10, bounds=[10, 10]):
+    agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
             'location': [
@@ -482,15 +487,67 @@ def test_multibody(config=random_body_config(), time=1):
     return simulate_process(multibody, settings)
 
 
+motility_test_settings = {
+    'timestep': 1,
+    'total_time': 10}
+
+def test_motility(config, settings=motility_test_settings):
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
+
+    total_time = settings['total_time']
+    timestep = settings['timestep']
+    # n_agents = len(config['agents'])
+
+    # make the process
+    multibody = Multibody(config)
+    compartment = process_in_compartment(multibody)
+    agents_store = compartment.states['agents']
+    agents_state = agents_store.state
+
+    # initialize hidden agent motile states, and update agent motile_forces in agent store
+    agent_motile_states = {}
+    motile_forces = {}
+    for agent_id, specs in agents_state['agents'].items():
+        motor_force = run()
+        agent_motile_states[agent_id] = {
+            'motor_state': 1,  # 0 for run, 1 for tumble
+            'time_in_motor_state': 0}
+        motile_forces[agent_id] = {'motile_force': motor_force}
+    compartment.send_updates({'agents': [{'agents': motile_forces}]})
+
+    ## run simulation
+    # test run/tumble
+    time = 0
+    while time < total_time:
+        time += timestep
+
+        # TODO -- update motile force and apply to state
+        # agents = state['agents']['agents']
+
+        update = compartment.update(timestep)
+
+    return compartment.emitter.get_data()
+
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'multibody')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = random_body_config(get_n_dummy_agents(10))
-    data = test_multibody(config, 20)
+    # config = random_body_config(10)
+    # data = test_multibody(config, 20)
+    #
+    # # make snapshot
+    # agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    # fields = {}
+    # plot_snapshots(agents, fields, config, out_dir, 'snapshots')
 
+    # test motility
+    motility_config = random_body_config(1)
+    motility_data = test_motility(motility_config)
     # make snapshot
-    agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
     fields = {}
-    plot_snapshots(agents, fields, config, out_dir, 'snapshots')
+    plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')

@@ -64,9 +64,8 @@ def compose_lattice_environment(config):
     # configure the agents
     agents_config = config.get('agents', {})
     agent_ids = list(agents_config.keys())
-
-    # config for the multibody process
-    multibody_config = random_body_config(agents_config, bounds)
+    n_agents = len(agent_ids)
+    multibody_config = random_body_config(n_agents, bounds)
 
     # config for the diffusion proces
     agents = {
