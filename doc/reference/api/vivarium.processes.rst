@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   vivarium.processes.BiGG_metabolism
    vivarium.processes.Endres2006_chemoreceptor
    vivarium.processes.Kremling2007_transport
    vivarium.processes.Mears2014_flagella_activity

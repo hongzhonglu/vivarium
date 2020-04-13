@@ -94,63 +94,8 @@ class Transcription(Process):
                 * **sequence**: The DNA sequence that includes all the
                   genes whose transcription is being modeled.
                 * **templates** (:py:class:`dict`): Maps from the name
-                  of a promoter to the promoter's specification
-                  dictionary. Each promoter's specification dictionary
-                  must include the following keys:
-
-                    * **id** (:py:class:`str`): The promoter name.
-                    * **position** (:py:class:`int`): The index in the
-                      sequence of the start of the promoter.
-
-                      .. todo:: Is position 0 or 1 indexed?
-
-                    * **direction** (:py:class:`int`): ``1`` if
-                      transcription starting at the promoter should
-                      proceed in the forward direction, ``-1`` to
-                      proceed in the reverse direction.
-                    * **sites** (:py:class:`list`): A list of polymerase
-                      binding sites on the promoter. Each binding site
-                      is specified as a :py:class:`dict` with the
-                      following keys:
-
-                        * **position** (:py:class:`int`): The offset in
-                          chromosome sequence from the start of the
-                          promoter to the start of the binding site.
-                          This value is not currently used and can be
-                          safely set to 0.
-                        * **length** (:py:class:`int`): The length, in
-                          base-pairs, of the promoter. This value is not
-                          currently used and can be safely set to 0.
-                        * **thresholds** (:py:class:`list`): A list of
-                          tuples, each of which has a transcription
-                          factor name as the first element and a
-                          concentration threshold as the second. When
-                          the concentration of the transcription factor
-                          exceeds the threshold, the promoter will bind
-                          the transcription factor.
-
-                    * **terminators** (:py:class:`list`): A list of
-                      transcription terminators, which halt
-                      transcription. As such, which genes are encoded on
-                      a transcript depends on which terminator halts
-                      transcription. Each terminator is specified as a
-                      :py:class:`dict` with the following keys:
-
-                        * **position** (:py:class:`int`): The index in
-                          the chromosome sequence of the terminator.
-                        * **strength** (:py:class:`int`): The relative
-                          strength of the terminator. For example, if
-                          there remain two terminators ahead of the
-                          polymerase, the first of strength 3 and the
-                          second of strength 1, then there is a 75%
-                          chance the polymerase will stop at the first
-                          terminator. If the polymerase does not stop,
-                          it is guaranteed to stop at the second
-                          terminator.
-                        * **products** (:py:class:`list`): A list of the
-                          genes that will be coded for by the
-                          transcript.
-
+                  of an operon to that operon's :term:`template
+                  specification`.
                 * **genes** (:py:class:`dict`): Maps from operon name to
                   a list of the names of the genes in that operon.
                 * **elongation_rate** (:py:class:`float`): The

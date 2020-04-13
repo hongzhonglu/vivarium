@@ -2,6 +2,9 @@
 Glossary
 ========
 
+.. note:: All fully-capitalized words and phrases have the meanings
+    specified in :rfc:`2119`.
+
 .. glossary::
 
     ABM
@@ -111,6 +114,72 @@ Glossary
         for the proteins in the cytoplasm, another for the transcripts
         in the cytoplasm, and one for the transcripts in the nucleus.
         Each :term:`variable` must belong to exactly one store.
+
+    Template
+    Templates
+        A template describes a genetic element, its binding site, and
+        the available downstream termination sites on genetic material.
+        A chromosome has operons as its templates which include sites
+        for RNA binding and release. An mRNA transcript also has
+        templates which describe where a ribosome can bind and will
+        subsequently release the transcript. Templates are defined in
+        :term:`template specifications`.
+
+    Template Specification
+    Template Specifications
+        Template specifications define :term:`templates` as
+        :py:class:`dict` objects with the following keys:
+
+        * **id** (:py:class:`str`): The template name. You SHOULD use
+          the name of the associated operon or transcript.
+        * **position** (:py:class:`int`): The index in the genetic
+          sequence of the start of the genetic element being described.
+          In a chromosome, for example, this would denote the start of
+          the modeled operon's promoter. On mRNA transcripts (where we
+          are describing how ribosomes bind), this SHOULD be set to
+          ``0``.
+
+          .. todo:: Is position 0 or 1 indexed?
+
+        * **direction** (:py:class:`int`): ``1`` if the template should
+          be read in the forward direction, ``-1`` to proceed in the
+          reverse direction.  For mRNA transcripts, this SHOULD be ``1``.
+        * **sites** (:py:class:`list`): A list of binding sites. Each
+          binding site is specified as a :py:class:`dict` with the
+          following keys:
+
+            * **position** (:py:class:`int`): The offset in the sequence
+              from the template *position* to the start of the binding
+              site.  This value is not currently used and MAY be set to
+              0.
+            * **length** (:py:class:`int`): The length, in base-pairs,
+              of the binding site. This value is not currently used and
+              MAY be set to 0.
+            * **thresholds** (:py:class:`list`): A list of tuples, each
+              of which has a factor name as the first element and a
+              concentration threshold as the second. When the
+              concentration of the factor exceeds the threshold, the
+              site will bind the factor. For example, in an operon the
+              factor would be a transcription factor.
+
+        * **terminators** (:py:class:`list`): A list of terminators,
+          which halt reading of the template. As such, which genes are
+          encoded on a template depends on which terminator halts
+          transcription or translation. Each terminator is specified as
+          a :py:class:`dict` with the following keys:
+
+            * **position** (:py:class:`int`): The index in the genetic
+              sequence of the terminator. 
+            * **strength** (:py:class:`int`): The relative strength of
+              the terminator. For example, if there remain two
+              terminators ahead of RNA polymerase, the first of strength
+              3 and the second of strength 1, then there is a 75% chance
+              that the polymerase will stop at the first terminator. If
+              the polymerase does not stop, it is guaranteed to stop at
+              the second terminator.
+            * **products** (:py:class:`list`): A list of the genes that
+              will be transcribed or translated should
+              transcription/translation halt at this terminator.
         
     Timepoint
     Timepoints
