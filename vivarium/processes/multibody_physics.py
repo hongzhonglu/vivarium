@@ -137,6 +137,7 @@ class Multibody(Process):
         agents = {agent_id: self.get_body_specs(agent_id)
                 for agent_id in self.agents.keys()}
         state = {'agents': {'agents': agents}}
+        # state = {'agents': {'agents': {}}}
 
         schema = {'agents': {'agents': {'updater': 'merge'}}}
 
@@ -202,8 +203,6 @@ class Multibody(Process):
             thrust, torque = body.motile_force
             motile_force = [thrust, 0.0]
 
-            motile_force = [10, 0.0]  # TODO -- remove this
-
             # add directly to angular velocity
             body.angular_velocity += torque
             # force-based torque
@@ -211,12 +210,6 @@ class Multibody(Process):
             #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
-
-        # import ipdb;
-        # ipdb.set_trace()
-        # TODO -- get motile force through
-        # TODO -- need to set lattice size?
-
 
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
@@ -327,17 +320,13 @@ class Multibody(Process):
 
     def get_body_specs(self, agent_id):
         body, shape = self.agents[agent_id]
-        width, length = body.dimensions
+        # width, length = body.dimensions
         position = body.position
 
-        # TODO -- velocity? angular velocity? forces?
         return {
             'location': [position[0], position[1]],
             'angle': body.angle,
-            'length': length,
-            'width': width,
-            'mass': body.mass,
-            'motile_force': [0, 0]}
+        }
 
 
 # test functions
@@ -504,10 +493,16 @@ def test_motility(config, settings):
 
     total_time = settings['total_time']
     timestep = settings['timestep']
+    initial_agents_state = config['agents']
 
     # make the process
     multibody = Multibody(config)
     compartment = process_in_compartment(multibody)
+
+    # initialize agent boundary state
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
+    # get initial agent state
     agents_store = compartment.states['agents']
     agents_state = agents_store.state
 
@@ -515,11 +510,11 @@ def test_motility(config, settings):
     agent_motile_states = {}
     motile_forces = {}
     for agent_id, specs in agents_state['agents'].items():
-        motor_force = run()
+        motile_force = run()
         agent_motile_states[agent_id] = {
             'motor_state': 1,  # 0 for run, 1 for tumble
             'time_in_motor_state': 0}
-        motile_forces[agent_id] = {'motile_force': motor_force}
+        motile_forces[agent_id] = {'motile_force': motile_force}
     compartment.send_updates({'agents': [{'agents': motile_forces}]})
 
     ## run simulation
@@ -557,7 +552,7 @@ def test_motility(config, settings):
             agent_motile_states[agent_id] = {
                 'motor_state': motor_state,  # 0 for run, 1 for tumble
                 'time_in_motor_state': time_in_motor_state}
-            motile_forces[agent_id] = {'motile_force': motor_force}
+            motile_forces[agent_id] = {'motile_force': motile_force}
 
         compartment.send_updates({'agents': [{'agents': motile_forces}]})
         update = compartment.update(timestep)
@@ -622,8 +617,8 @@ def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
         speed = analysis['speed']
         avg_speed = np.mean(speed)
         ax1.plot(times, speed, label=agent_id)
+        # ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
 
-    ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
     ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
     ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
     ax1.set_xlabel('time')
