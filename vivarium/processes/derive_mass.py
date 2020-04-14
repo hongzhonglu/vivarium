@@ -56,10 +56,7 @@ class DeriveMass(Process):
                 added_mass = mw * mol
                 mass += added_mass.to('fg') / 1e10  # TODO -- remove this scaling
 
-        # print('mass deriver mass: {}'.format(mass))
-        # print('mass deriver states: {}'.format(states_with_mass['internal']))
-        # import ipdb; ipdb.set_trace()
-        # TODO -- deriver is run 2X for every metabolism update????
+                import ipdb; ipdb.set_trace()
 
         return {
             'global': {'mass': mass.magnitude}}
