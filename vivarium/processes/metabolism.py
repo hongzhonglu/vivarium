@@ -27,6 +27,13 @@ EXCHANGE_THRESHOLD = 1e-6
 GLOBALS = ['volume', 'mass', 'mmol_to_counts']
 
 
+def get_fg_from_counts(counts_dict, mw):
+    composition_mass = sum([
+        coeff / AVOGADRO * mw.get(mol_id, 0.0) * (units.g / units.mol)
+        for mol_id, coeff in counts_dict.items()])  # g
+    return composition_mass.to('fg')
+
+
 class Metabolism(Process):
     """
     A general metabolism process, which sets the FBA problem based on input configuration data.
@@ -68,22 +75,24 @@ class Metabolism(Process):
         global_state = default_state.get('global', {})
         internal_state = default_state.get('internal', {})
         external_state = default_state.get('external', {})
-        initial_mass = global_state.get('mass', 0)
+        initial_mass = global_state.get('mass', 0) * units.fg
         mmol_to_counts = global_state.get('mmol_to_counts', 1)
         density = global_state.get('density') * units.g / units.L
         mw = self.fba.molecular_weights
 
         ## update initial states to match global mass
         ## internal state
-        # get initial internal pools based on objective composition, molecular weights, and initial mass
-        composition = {mol_id: (-coeff if coeff < 0 else 0)
+        # get counts for initial internal pools based on objective composition, molecular weights, and initial target mass
+        composition = {
+            mol_id: (-coeff if coeff < 0 else 0)
             for mol_id, coeff in self.objective_composition.items()}
-        composition_mass = sum([coeff * mw.get(mol_id, 0.0)
-            for mol_id, coeff in composition.items()])
-        scale_mass = initial_mass / composition_mass
-        updated_internal_state = {mol_id: int(scale_mass * coeff * mmol_to_counts)
+        composition_mass = get_fg_from_counts(composition, mw)
+        scaling_factor = (initial_mass / composition_mass).magnitude
+        initial_counts = {mol_id: int(coeff * scaling_factor)
             for mol_id, coeff in composition.items()}
-        updated_internal_state = deep_merge(dict(updated_internal_state), internal_state)
+        # initial_mass = get_fg_from_counts(initial_counts, mw)
+        updated_internal_state = deep_merge(dict(initial_counts), internal_state)
+
 
         ## update global state
         updated_mass = sum([count / mmol_to_counts * mw.get(mol_id, 0.0)
@@ -105,7 +114,7 @@ class Metabolism(Process):
         # save initial state
         self.initial_state = {
             'external': updated_external_state,
-            # 'internal': updated_internal_state,
+            'internal': updated_internal_state,
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
             'flux_bounds': {state_id: self.default_upper_bound
@@ -170,7 +179,6 @@ class Metabolism(Process):
         ## get the state
         external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
-        # volume = states['global']['volume'] * units.fL
         mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
         ## get flux constraints
@@ -208,26 +216,12 @@ class Metabolism(Process):
         # update internal counts from objective flux
         # calculate added mass from the objective molecules' molecular weights
         objective_count = (objective_exchange * mmol_to_counts).magnitude
-        # added_mass = 0.0
         internal_state_update = {}
         for reaction_id, coeff1 in self.fba.objective.items():
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 if coeff2 < 0:  # pull out molecule if it is USED to make biomass (negative coefficient)
                     count = int(-coeff1 * coeff2 * objective_count)
                     internal_state_update[mol_id] = count
-
-        #             # added biomass
-        #             mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
-        #             mol = count / AVOGADRO
-        #             added_mass += (mw * mol).to('fg')
-        #
-        # global_update = {'mass': added_mass.magnitude}
-
-
-        # print('metabolism states: {}'.format(states['internal']))
-        # print('metabolism added mass: {}'.format(added_mass))
-        # import ipdb; ipdb.set_trace()
-
 
         # convert exchange fluxes to counts
         # TODO -- use derive_counts for exchange
@@ -243,7 +237,6 @@ class Metabolism(Process):
             'exchange': exchange_deltas,
             'internal': internal_state_update,
             'reactions': all_fluxes,
-            # 'global': global_update
         }
 
 
@@ -606,7 +599,7 @@ if __name__ == '__main__':
     metabolism = Metabolism(config)
 
     # simulation settings
-    timeline = [(100, {})]  # [(2520, {})]
+    timeline = [(2520, {})]  # [(2520, {})]
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
