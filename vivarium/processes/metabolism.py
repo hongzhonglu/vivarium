@@ -105,12 +105,13 @@ class Metabolism(Process):
         # save initial state
         self.initial_state = {
             'external': updated_external_state,
-            'internal': updated_internal_state,
+            # 'internal': updated_internal_state,
             'reactions': {state_id: 0 for state_id in self.reaction_ids},
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
             'flux_bounds': {state_id: self.default_upper_bound
                             for state_id in self.constrained_reaction_ids},
-            'global': updated_global_state}
+            # 'global': updated_global_state
+        }
 
         ## assign ports
         self.internal_state_ids = list(self.objective_composition.keys())
@@ -141,7 +142,7 @@ class Metabolism(Process):
         # schema
         schema = {
             'internal': {mol_id: {
-                'mass': self.fba.molecular_weights[mol_id]}
+                    'mass': self.fba.molecular_weights[mol_id]}
                 for mol_id in self.internal_state_ids},
             'reactions': {rxn_id: {
                     'updater': 'set',
@@ -161,7 +162,8 @@ class Metabolism(Process):
             'state': self.initial_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema,
-            'deriver_setting': deriver_setting}
+            'deriver_setting': deriver_setting,
+            'time_step': 5}
 
     def next_update(self, timestep, states):
 
@@ -219,6 +221,12 @@ class Metabolism(Process):
                     added_mass += mol_mass.to('fg').magnitude
 
         global_update = {'mass': added_mass}
+
+
+        # print('metabolism states: {}'.format(states['internal']))
+        # print('metabolism added mass: {}'.format(added_mass))
+        # import ipdb; ipdb.set_trace()
+
 
         # convert exchange fluxes to counts
         # TODO -- use derive_counts for exchange

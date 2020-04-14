@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from vivarium.compartment.process import Process
 from vivarium.utils.units import units
 
-
+from vivarium.processes.derive_globals import AVOGADRO
 
 class DeriveMass(Process):
     """"""
@@ -27,19 +27,20 @@ class DeriveMass(Process):
         default_emitter_keys = {'global': ['mass']}
 
         # schema
-        schema = {
-            'global': {
-                'mass': {
-                    'updater': 'set'}}}
+        # schema = {
+        #     'global': {
+        #         'mass': {
+        #             'updater': 'set'}}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'schema': schema}
+            # 'schema': schema
+        }
 
     def next_update(self, timestep, states):
-
-        mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
+        # volume = states['global']['volume'] * units.fL
+        # mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
         mass_schema = self.get_schema(self.in_ports, 'mass')
 
         states_with_mass = {
@@ -49,19 +50,21 @@ class DeriveMass(Process):
 
         mass = 0
         for port, molecules in states_with_mass.items():
-            added_mass = sum(
-                [count / mmol_to_counts * mass_schema[port].get(mol_id, 0.0)
-                for mol_id, count in molecules.items()]) * units.fg
+            for mol_id, count in molecules.items():
+                mw = mass_schema[port].get(mol_id, 0.0) * (units.g / units.mol)
+                mol = count / AVOGADRO
+                added_mass = mw * mol
+                mass += added_mass.to('fg')
 
-            mass += added_mass.magnitude
-
-
-
-        # print('deriver mass: {}'.format(mass))
+        # print('mass deriver mass: {}'.format(mass))
+        # print('mass deriver states: {}'.format(states_with_mass['internal']))
         # import ipdb; ipdb.set_trace()
         # TODO -- deriver is run 2X for every metabolism update????
 
 
 
-        return {
-            'global': {'mass': mass}}
+
+        # return {
+        #     'global': {'mass': mass}}
+
+        return {}
