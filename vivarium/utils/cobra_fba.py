@@ -127,6 +127,13 @@ def extract_model(model):
     # get flux scaling factor based on the objective's predicted added mass
     # this adjusts the BiGG FBA bounds for single-cell rates
     target_added_mass = 301 # fit to hit a doubling time of 2520 sec (42 min) in e_coli_core
+
+
+    # import ipdb; ipdb.set_trace()
+    # TODO -- get this to hit 42 min doubling in metabolism
+
+
+
     solution = model.optimize()
     objective_value = solution.objective_value
 

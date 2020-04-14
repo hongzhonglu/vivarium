@@ -170,7 +170,7 @@ class Metabolism(Process):
         ## get the state
         external_state = states['external']
         constrained_reaction_bounds = states['flux_bounds']  # (units.mmol / units.L / units.s)
-        volume = states['global']['volume'] * units.fL
+        # volume = states['global']['volume'] * units.fL
         mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
         ## get flux constraints
@@ -208,19 +208,20 @@ class Metabolism(Process):
         # update internal counts from objective flux
         # calculate added mass from the objective molecules' molecular weights
         objective_count = (objective_exchange * mmol_to_counts).magnitude
-        added_mass = 0.0
+        # added_mass = 0.0
         internal_state_update = {}
         for reaction_id, coeff1 in self.fba.objective.items():
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 if coeff2 < 0:  # pull out molecule if it is USED to make biomass (negative coefficient)
-                    internal_state_update[mol_id] = int(-coeff1 * coeff2 * objective_count)
+                    count = int(-coeff1 * coeff2 * objective_count)
+                    internal_state_update[mol_id] = count
 
-                    # added biomass
-                    mol_mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
-                    mol_mass = volume * mol_mw.to('g/mmol') * objective_exchange * (units.mmol / units.L)
-                    added_mass += mol_mass.to('fg').magnitude
-
-        global_update = {'mass': added_mass}
+        #             # added biomass
+        #             mw = self.fba.molecular_weights.get(mol_id, 0.0) * (units.g / units.mol)
+        #             mol = count / AVOGADRO
+        #             added_mass += (mw * mol).to('fg')
+        #
+        # global_update = {'mass': added_mass.magnitude}
 
 
         # print('metabolism states: {}'.format(states['internal']))
@@ -242,7 +243,8 @@ class Metabolism(Process):
             'exchange': exchange_deltas,
             'internal': internal_state_update,
             'reactions': all_fluxes,
-            'global': global_update}
+            # 'global': global_update
+        }
 
 
 

@@ -61,10 +61,5 @@ class DeriveMass(Process):
         # import ipdb; ipdb.set_trace()
         # TODO -- deriver is run 2X for every metabolism update????
 
-
-
-
-        # return {
-        #     'global': {'mass': mass}}
-
-        return {}
+        return {
+            'global': {'mass': mass.magnitude}}

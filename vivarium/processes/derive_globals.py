@@ -44,7 +44,7 @@ class DeriveGlobals(Process):
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
         global_state = {
             'growth_rate': 0.0,
-            # 'mass': mass.magnitude,
+            'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
             'prior_mass': mass.magnitude,
