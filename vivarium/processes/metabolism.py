@@ -8,6 +8,12 @@ import matplotlib.pyplot as plt
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
+    save_timeseries,
+    flatten_timeseries,
+    load_timeseries,
+    assert_timeseries_close,
+    REFERENCE_DATA_DIR,
+    TEST_OUT_DIR,
     plot_simulation_output
 )
 from vivarium.utils.make_network import (
@@ -21,6 +27,9 @@ from vivarium.utils.cobra_fba import CobraFBA
 from vivarium.utils.dict_utils import tuplify_port_dicts, deep_merge
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.processes.derive_globals import AVOGADRO
+
+
+NAME = 'metabolism_process'
 
 # external concentrations lower than exchange threshold are considered depleted
 EXCHANGE_THRESHOLD = 1e-6
@@ -346,6 +355,47 @@ def toy_transport():
     }
     return transport_kinetics
 
+# sim functions
+def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
+    metabolism = Metabolism(config)
+
+    # initialize the process
+    stoichiometry = metabolism.fba.stoichiometry
+    reaction_ids = list(stoichiometry.keys())
+    external_mol_ids = metabolism.fba.external_molecules
+    objective = metabolism.fba.objective
+
+    settings = {
+        'environment_port': 'external',
+        'exchange_port': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timestep': 1,
+        'total_time': 10}
+
+    timeseries = simulate_process_with_environment(metabolism, settings)
+    reactions = timeseries['reactions']
+
+    # save fluxes as node size
+    reaction_fluxes = {}
+    for rxn_id in reaction_ids:
+        flux = abs(np.mean(reactions[rxn_id][1:]))
+        reaction_fluxes[rxn_id] = np.log(1000 * flux + 1.1)
+
+    # define node type
+    node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
+    node_types.update({mol_id: 'external_mol' for mol_id in external_mol_ids})
+    node_types.update({rxn_id: 'objective' for rxn_id in objective.keys()})
+    info = {
+        'node_types': node_types,
+        'reaction_fluxes': reaction_fluxes}
+
+    nodes, edges = make_network(stoichiometry, info)
+    save_network(nodes, edges, out_dir)
+
+def run_metabolism(metabolism, settings):
+    sim_settings = default_sim_settings
+    sim_settings.update(settings)
+    return simulate_process_with_environment(metabolism, sim_settings)
 
 # plots
 def plot_exchanges(timeseries, sim_config, out_dir='out', filename='exchanges'):
@@ -474,42 +524,6 @@ def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_use'):
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
-def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
-    metabolism = Metabolism(config)
-
-    # initialize the process
-    stoichiometry = metabolism.fba.stoichiometry
-    reaction_ids = list(stoichiometry.keys())
-    external_mol_ids = metabolism.fba.external_molecules
-    objective = metabolism.fba.objective
-
-    settings = {
-        'environment_port': 'external',
-        'exchange_port': 'exchange',
-        'environment_volume': 1e-6,  # L
-        'timestep': 1,
-        'total_time': 10}
-
-    timeseries = simulate_process_with_environment(metabolism, settings)
-    reactions = timeseries['reactions']
-
-    # save fluxes as node size
-    reaction_fluxes = {}
-    for rxn_id in reaction_ids:
-        flux = abs(np.mean(reactions[rxn_id][1:]))
-        reaction_fluxes[rxn_id] = np.log(1000 * flux + 1.1)
-
-    # define node type
-    node_types = {rxn_id: 'reaction' for rxn_id in reaction_ids}
-    node_types.update({mol_id: 'external_mol' for mol_id in external_mol_ids})
-    node_types.update({rxn_id: 'objective' for rxn_id in objective.keys()})
-    info = {
-        'node_types': node_types,
-        'reaction_fluxes': reaction_fluxes}
-
-    nodes, edges = make_network(stoichiometry, info)
-    save_network(nodes, edges, out_dir)
-
 
 # tests
 default_sim_settings = {
@@ -567,14 +581,28 @@ def test_config(config=get_toy_configuration()):
     print(metabolism.fba.get_reaction_bounds())
     print(metabolism.fba.read_exchange_fluxes())
 
-def run_metabolism(metabolism, settings):
-    sim_settings = default_sim_settings
-    sim_settings.update(settings)
-    return simulate_process_with_environment(metabolism, sim_settings)
+def test_metabolism_similar_to_reference():
+
+    # simulation settings
+    timeline = [(20, {})]  # [(2520, {})]
+    sim_settings = {
+        'environment_port': 'external',
+        'exchange_port': 'exchange',
+        'environment_volume': 1e-5,  # L
+        'timestep': 1,
+        'timeline': timeline}
+
+    timeseries = run_metabolism(metabolism, sim_settings)
+
+    flattened = flatten_timeseries(timeseries)
+    reference = load_timeseries(
+        os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
+    assert_timeseries_close(flattened, reference)
+
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'metabolism')
+    out_dir = os.path.join(TEST_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -583,7 +611,7 @@ if __name__ == '__main__':
     metabolism = Metabolism(config)
 
     # simulation settings
-    timeline = [(2520, {})]  # [(2520, {})]
+    timeline = [(20, {})]  # [(2520, {})]
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
@@ -593,6 +621,8 @@ if __name__ == '__main__':
 
     # run simulation
     timeseries = run_metabolism(metabolism, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
+    save_timeseries(timeseries, out_dir)
+
     volume_ts = timeseries['global']['volume']
     mass_ts = timeseries['global']['mass']
     print('volume growth: {}'.format(volume_ts[-1]/volume_ts[0]))
