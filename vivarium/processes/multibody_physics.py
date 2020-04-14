@@ -20,7 +20,7 @@ from vivarium.compartment.process import (
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
     process_in_compartment,
-    simulate_process)
+    simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
 
 # constants
@@ -534,14 +534,21 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
 def test_multibody(config={'n_agents':1}, time=1):
     body_config = random_body_config(config)
     multibody = Multibody(body_config)
+
+    # initialize agent's boundary state
+    initial_agents_state = body_config['agents']
+    compartment = process_in_compartment(multibody)
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
     settings = {
         'total_time': time,
         'return_raw_data': True,
         'environment_port': 'external',
         'environment_volume': 1e-2}
-    return simulate_process(multibody, settings)
 
-def test_motility(config, settings):
+    return simulate_compartment(compartment, settings)
+
+def simulate_motility(config, settings):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
     tumble_time = 0.14  # s (Berg)
@@ -703,15 +710,6 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # config = random_body_config(10)
-    # data = test_multibody(config, 20)
-    #
-    # # make snapshot
-    # agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
-    # fields = {}
-    # plot_snapshots(agents, fields, config, out_dir, 'snapshots')
-
-
     # test motility
     bounds = [100, 100]
     motility_sim_settings = {
@@ -725,8 +723,8 @@ if __name__ == '__main__':
         'n_agents': 2}
     motility_config.update(random_body_config(body_config))
 
-    # run test
-    motility_data = test_motility(motility_config, motility_sim_settings)
+    # run motility sim
+    motility_data = simulate_motility(motility_config, motility_sim_settings)
 
     # make motility plot
     reduced_data = {time: data['agents'] for time, data in motility_data.items()}

@@ -11,7 +11,6 @@ from vivarium.compartment.composition import (
 # processes
 from vivarium.processes.multibody_physics import (
     Multibody,
-    get_n_dummy_agents,
     random_body_config,
     plot_snapshots,
     DEFAULT_BOUNDS
@@ -19,7 +18,6 @@ from vivarium.processes.multibody_physics import (
 from vivarium.processes.diffusion_field import (
     DiffusionField,
     exchange_agent_config,
-    plot_field_output,
 )
 
 
@@ -120,35 +118,28 @@ def compose_lattice_environment(config):
 
 
 # toy functions/ defaults
-def get_lattice_config():
-    return {
+def get_lattice_config(config={'n_agents':2}):
+    body_config = random_body_config(config)
+    body_config.update({
         'molecules': ['glc'],
         'bounds': DEFAULT_BOUNDS,
-        'size': DEFAULT_BOUNDS,
-        'agents': get_n_dummy_agents(6)}  # no boundary store
+        'size': DEFAULT_BOUNDS})  # no boundary store
+
+    return body_config
 
 def test_lattice_environment(config=get_lattice_config(), time=10):
-    lattice_environment = load_compartment(compose_lattice_environment, config)
+    initial_agents_state = config['agents']
+    compartment = load_compartment(compose_lattice_environment, config)
+
+    # initialize agent boundary state
+    compartment.send_updates({'boundary': [{'agents': initial_agents_state}]})
+
     settings = {
         'return_raw_data': True,
         'total_time': time}
-    return simulate_compartment(lattice_environment, settings)
+    return simulate_compartment(compartment, settings)
 
 
-# TODO -- this is copied from TimeSeriesEmitter -- make a shared function
-def get_timeseries(data):
-    time_vec = list(data.keys())
-    initial_state = data[time_vec[0]]
-    timeseries = {port: {state: []
-                         for state, initial in states.items()}
-                  for port, states in initial_state.items()}
-    timeseries['time'] = time_vec
-
-    for time, all_states in data.items():
-        for port, states in all_states.items():
-            for state_id, state in states.items():
-                timeseries[port][state_id].append(state)
-    return timeseries
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice_environment_composite')
