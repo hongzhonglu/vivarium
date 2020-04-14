@@ -14,6 +14,7 @@ from vivarium.processes.multibody_physics import (
     get_n_dummy_agents,
     random_body_config,
     plot_snapshots,
+    DEFAULT_BOUNDS
 )
 from vivarium.processes.diffusion_field import (
     DiffusionField,
@@ -57,15 +58,18 @@ def get_lattice_environment(config):
 
 def compose_lattice_environment(config):
     """"""
-    bounds = config.get('bounds', [10, 10])
-    size = config.get('size', [10, 10])
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    size = config.get('size', DEFAULT_BOUNDS)
     molecules = config.get('molecules', ['glc'])
 
     # configure the agents
     agents_config = config.get('agents', {})
     agent_ids = list(agents_config.keys())
     n_agents = len(agent_ids)
-    multibody_config = random_body_config(n_agents, bounds)
+    multibody_config = {
+        'n_agents': n_agents,
+        'bounds': bounds}
+    multibody_config.update(random_body_config(multibody_config))
 
     # config for the diffusion proces
     agents = {
@@ -119,8 +123,8 @@ def compose_lattice_environment(config):
 def get_lattice_config():
     return {
         'molecules': ['glc'],
-        'bounds': [10, 10],
-        'size': [10, 10],
+        'bounds': DEFAULT_BOUNDS,
+        'size': DEFAULT_BOUNDS,
         'agents': get_n_dummy_agents(6)}  # no boundary store
 
 def test_lattice_environment(config=get_lattice_config(), time=10):

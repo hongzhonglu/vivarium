@@ -6,7 +6,6 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import random
 import math
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -162,6 +161,7 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agents:
+                # TODO -- check if specs updated before going through the expensive update_body(
                 self.update_body(agent_id, specs)
             else:
                 self.add_body_from_center(agent_id, specs)
@@ -344,7 +344,9 @@ class Multibody(Process):
 def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
-def random_body_config(n_agents=10, bounds=[10, 10]):
+def random_body_config(config):
+    n_agents = config['n_agents']
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
     agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
@@ -359,13 +361,9 @@ def random_body_config(n_agents=10, bounds=[10, 10]):
             'forces': [0, 0]}
         for agent_id in agents.keys()}
 
-    return {
-        'agents': agent_config,
-        'bounds': bounds,
-        'jitter_force': 1e1}
+    return {'agents': agent_config}
 
 def plot_agent(ax, data, color):
-
     # location, orientation, length
     x_center = data['location'][0]
     y_center = data['location'][1]
@@ -455,7 +453,7 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
         agents_now = agents[time]
         if field_ids:
             for row_idx, field_id in enumerate(field_ids):
-                ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
+                ax = init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
                 # transpose field to align with agent
                 field = np.transpose(np.array(fields[time][field_id])).tolist()
                 vmin, vmax = field_range[field_id]
@@ -487,8 +485,9 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def test_multibody(config=random_body_config(), time=1):
-    multibody = Multibody(config)
+def test_multibody(config={'n_agents':1}, time=1):
+    body_config = random_body_config(config)
+    multibody = Multibody(body_config)
     settings = {
         'total_time': time,
         'return_raw_data': True,
@@ -536,7 +535,7 @@ def test_motility(config, settings=motility_test_settings):
     return compartment.emitter.get_data()
 
 
-def plot_motility(timeseries, out_dir='out', filename='motility'):
+def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
     # time of motor behavior without chemotaxis
     run_time = 0.42  # s (Berg)
     tumble_time = 0.14  # s (Berg)
@@ -600,7 +599,6 @@ def plot_motility(timeseries, out_dir='out', filename='motility'):
 
 
 
-
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'multibody')
     if not os.path.exists(out_dir):
@@ -617,9 +615,12 @@ if __name__ == '__main__':
     # test motility
     motility_config = {
         'jitter_force': 0,
-        'bounds': [100, 100],
+        'bounds': [30, 30],
+        'n_agents': 1
     }
-    motility_config.update(random_body_config(1))
+    motility_config.update(random_body_config(motility_config))
+
+    # run test
     motility_data = test_motility(motility_config)
 
     # make motility plot
