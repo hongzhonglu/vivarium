@@ -41,7 +41,15 @@ def update_set(key, state_dict, current_value, new_value):
     return new_value, {}
 
 def update_merge(key, state_dict, current_value, new_value):
-    return deep_merge(dict(current_value), new_value), {}
+    # merge dicts, with new_value replacing any shared keys with current_value
+    update = current_value.copy()
+    for k, v in current_value.items():
+        new = new_value.get(k)
+        if isinstance(new, dict):
+            update[k] = deep_merge(dict(v), new)
+        else:
+            update[k] = new
+    return update, {}
 
 updater_library = {
     'accumulate': update_accumulate,
@@ -371,6 +379,12 @@ def initialize_state(process_layers, topology, initial_state):
 
     return initialized_state
 
+def flatten_process_layers(process_layers):
+    processes = {}
+    for layer in process_layers:
+        processes.update(layer)
+    return processes
+
 class Compartment(Store):
     ''' Track a set of processes and states and the connections between them. '''
 
@@ -472,10 +486,7 @@ class Compartment(Store):
 
     def run_derivers(self):
 
-        # flatten all deriver layers into a single dict
-        derivers = {}
-        for layer in self.state['derivers']:
-            derivers.update(layer)
+        derivers = flatten_process_layers(self.state['derivers'])
 
         updates = {}
         for name, process in derivers.items():
@@ -507,9 +518,7 @@ class Compartment(Store):
         time = 0
 
         # flatten all process layers into a single process dict
-        processes = {}
-        for layers in self.state['processes']:
-            processes.update(layers)
+        processes = flatten_process_layers(self.state['processes'])
 
         # keep track of which processes have simulated until when
         front = {
