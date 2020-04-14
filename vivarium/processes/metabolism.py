@@ -93,19 +93,6 @@ class Metabolism(Process):
         # initial_mass = get_fg_from_counts(initial_counts, mw)
         updated_internal_state = deep_merge(dict(initial_counts), internal_state)
 
-
-        ## update global state
-        updated_mass = sum([count / mmol_to_counts * mw.get(mol_id, 0.0)
-            for mol_id, count in updated_internal_state.items()]) * units.fg
-        updated_volume = (updated_mass.to('g') / density)
-        updated_mmol_to_counts = (AVOGADRO * updated_volume)
-
-        updated_global_state = {
-            'mass': updated_mass.magnitude,
-            'volume': updated_volume.to('fL').magnitude,
-            'mmol_to_counts': updated_mmol_to_counts.to('L/mmol').magnitude,
-            'density': density.magnitude}
-
         ## external state
         updated_external_state = {state_id: 0.0 for state_id in self.fba.external_molecules}
         updated_external_state.update(self.fba.minimal_external)  # optimal minimal media from fba
@@ -119,7 +106,6 @@ class Metabolism(Process):
             'exchange': {state_id: 0 for state_id in self.fba.external_molecules},
             'flux_bounds': {state_id: self.default_upper_bound
                             for state_id in self.constrained_reaction_ids},
-            # 'global': updated_global_state
         }
 
         ## assign ports
@@ -207,7 +193,7 @@ class Metabolism(Process):
         exchange_fluxes = self.fba.read_exchange_fluxes()  # (units.mmol / units.L / units.s)
         internal_fluxes = self.fba.read_internal_fluxes()  # (units.mmol / units.L / units.s)
 
-        # timestep dependence
+        # timestep dependence on fluxes
         exchange_fluxes.update((mol_id, flux * timestep) for mol_id, flux in exchange_fluxes.items())
         internal_fluxes.update((mol_id, flux * timestep) for mol_id, flux in internal_fluxes.items())
 
@@ -218,8 +204,8 @@ class Metabolism(Process):
         for reaction_id, coeff1 in self.fba.objective.items():
             for mol_id, coeff2 in self.fba.stoichiometry[reaction_id].items():
                 if coeff2 < 0:  # pull out molecule if it is USED to make biomass (negative coefficient)
-                    count = int(-coeff1 * coeff2 * objective_count)
-                    internal_state_update[mol_id] = count
+                    added_count = int(-coeff1 * coeff2 * objective_count)
+                    internal_state_update[mol_id] = added_count
 
         # convert exchange fluxes to counts
         # TODO -- use derive_counts for exchange
@@ -597,7 +583,7 @@ if __name__ == '__main__':
     metabolism = Metabolism(config)
 
     # simulation settings
-    timeline = [(200, {})]  # [(2520, {})]
+    timeline = [(2520, {})]  # [(2520, {})]
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
@@ -608,26 +594,28 @@ if __name__ == '__main__':
     # run simulation
     timeseries = run_metabolism(metabolism, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
     volume_ts = timeseries['global']['volume']
-    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+    mass_ts = timeseries['global']['mass']
+    print('volume growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+    print('mass growth: {}'.format(mass_ts[-1] / mass_ts[0]))
 
-    # # plot settings
-    # plot_settings = {
-    #     'max_rows': 30,
-    #     'remove_zeros': True,
-    #     'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
-    #     'overlay': {
-    #         'reactions': 'flux_bounds'}}
-    #
-    # # make plots from simulation output
-    # plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
-    # plot_exchanges(timeseries, sim_settings, out_dir)
-    #
-    # # make plot of energy reactions
-    # stoichiometry = metabolism.fba.stoichiometry
-    # energy_carriers = [get_synonym(mol_id) for mol_id in BiGG_energy_carriers]
-    # energy_reactions = get_reactions(stoichiometry, energy_carriers)
-    # energy_plot_settings = {'reactions': energy_reactions}
-    # energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
-    #
-    # # make a gephi network
-    # run_sim_save_network(get_iAF1260b_config(), out_dir)
+    # plot settings
+    plot_settings = {
+        'max_rows': 30,
+        'remove_zeros': True,
+        'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
+        'overlay': {
+            'reactions': 'flux_bounds'}}
+
+    # make plots from simulation output
+    plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
+    plot_exchanges(timeseries, sim_settings, out_dir)
+
+    # make plot of energy reactions
+    stoichiometry = metabolism.fba.stoichiometry
+    energy_carriers = [get_synonym(mol_id) for mol_id in BiGG_energy_carriers]
+    energy_reactions = get_reactions(stoichiometry, energy_carriers)
+    energy_plot_settings = {'reactions': energy_reactions}
+    energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
+
+    # make a gephi network
+    run_sim_save_network(get_iAF1260b_config(), out_dir)
