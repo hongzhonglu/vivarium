@@ -14,6 +14,7 @@ from matplotlib.colors import hsv_to_rgb
 import pymunk
 
 # vivarium imports
+from vivarium.compartment.emitter import timeseries_from_data
 from vivarium.compartment.process import (
     Process,
     COMPARTMENT_STATE)
@@ -501,10 +502,6 @@ motility_test_settings = {
     'total_time': 50}
 
 def test_motility(config, settings=motility_test_settings):
-    # time of motor behavior without chemotaxis
-    run_time = 0.42  # s (Berg)
-    tumble_time = 0.14  # s (Berg)
-
     total_time = settings['total_time']
     timestep = settings['timestep']
     # n_agents = len(config['agents'])
@@ -539,6 +536,71 @@ def test_motility(config, settings=motility_test_settings):
     return compartment.emitter.get_data()
 
 
+def plot_motility(timeseries, out_dir='out', filename='motility'):
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
+
+    expected_speed = 14.2  # um/s (Berg)
+    expected_angle_between_runs = 68 # degrees (Berg)
+
+    times = timeseries['time']
+    agents = timeseries['agents']
+
+    motility_analysis = {}
+    for agent_id, agent_data in agents.items():
+        previous_location = []
+
+        # go through each time point
+        for time, time_data in zip(times, agent_data):
+            if agent_id not in motility_analysis:
+                previous_time = time
+                previous_location = time_data['location']
+                motility_analysis[agent_id] = {
+                    'speed': [0],
+                }
+            else:
+                location = time_data['location']
+
+                # get speed since last time
+                dt = time - previous_time
+                distance = (
+                    (location[0] - previous_location[0]) ** 2 +
+                    (location[1] - previous_location[1]) ** 2
+                        ) ** 0.5
+                speed = distance / dt  # um/sec
+                motility_analysis[agent_id]['speed'].append(speed)
+
+                # previous_location
+                previous_location = location
+
+    # plot results
+    cols = 1
+    rows = 1
+    fig = plt.figure(figsize=(6 * cols, 1.5 * rows))
+    plt.rcParams.update({'font.size': 12})
+
+    ax1 = plt.subplot(rows, cols, 1)
+    for agent_id, analysis in motility_analysis.items():
+        speed = analysis['speed']
+        avg_speed = np.mean(speed)
+        ax1.plot(times, speed, label=agent_id)
+
+    ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
+    ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
+    ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
+    ax1.set_xlabel('time')
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
+
+
+
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'multibody')
     if not os.path.exists(out_dir):
@@ -559,6 +621,11 @@ if __name__ == '__main__':
     }
     motility_config.update(random_body_config(1))
     motility_data = test_motility(motility_config)
+
+    # make motility plot
+    reduced_data = {time: data['agents'] for time, data in motility_data.items()}
+    motility_timeseries = timeseries_from_data(reduced_data)
+    plot_motility(motility_timeseries, out_dir)
 
     # make motility snapshot
     agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
