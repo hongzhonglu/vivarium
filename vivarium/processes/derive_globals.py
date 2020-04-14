@@ -97,12 +97,6 @@ class DeriveGlobals(Process):
             'growth_rate': growth_rate.magnitude,
             'prior_mass': mass.magnitude}
 
-
-
-        # print('global deriver prior: {}'.format(prior_mass.magnitude))
-        # print('global deriver mass: {}'.format(mass.magnitude))
-
-
         return {
             'global': deriver_update}
 

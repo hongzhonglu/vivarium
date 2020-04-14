@@ -156,9 +156,7 @@ class Metabolism(Process):
             'reactions': {rxn_id: {
                     'updater': 'set',
                     'divide': 'set'}
-                for rxn_id in self.reaction_ids},
-            'global': {'mass': {
-                    'updater': 'accumulate'}}}
+                for rxn_id in self.reaction_ids}}
 
         # derivers
         deriver_setting = [{
@@ -599,11 +597,11 @@ if __name__ == '__main__':
     metabolism = Metabolism(config)
 
     # simulation settings
-    timeline = [(2520, {})]  # [(2520, {})]
+    timeline = [(200, {})]  # [(2520, {})]
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 1e-5,  # L
         'timestep': 1,
         'timeline': timeline}
 
@@ -612,24 +610,24 @@ if __name__ == '__main__':
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
 
-    # plot settings
-    plot_settings = {
-        'max_rows': 30,
-        'remove_zeros': True,
-        'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
-        'overlay': {
-            'reactions': 'flux_bounds'}}
-
-    # make plots from simulation output
-    plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
-    plot_exchanges(timeseries, sim_settings, out_dir)
-
-    # make plot of energy reactions
-    stoichiometry = metabolism.fba.stoichiometry
-    energy_carriers = [get_synonym(mol_id) for mol_id in BiGG_energy_carriers]
-    energy_reactions = get_reactions(stoichiometry, energy_carriers)
-    energy_plot_settings = {'reactions': energy_reactions}
-    energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
-
-    # make a gephi network
-    run_sim_save_network(get_iAF1260b_config(), out_dir)
+    # # plot settings
+    # plot_settings = {
+    #     'max_rows': 30,
+    #     'remove_zeros': True,
+    #     'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
+    #     'overlay': {
+    #         'reactions': 'flux_bounds'}}
+    #
+    # # make plots from simulation output
+    # plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
+    # plot_exchanges(timeseries, sim_settings, out_dir)
+    #
+    # # make plot of energy reactions
+    # stoichiometry = metabolism.fba.stoichiometry
+    # energy_carriers = [get_synonym(mol_id) for mol_id in BiGG_energy_carriers]
+    # energy_reactions = get_reactions(stoichiometry, energy_carriers)
+    # energy_plot_settings = {'reactions': energy_reactions}
+    # energy_synthesis_plot(timeseries, energy_plot_settings, out_dir)
+    #
+    # # make a gephi network
+    # run_sim_save_network(get_iAF1260b_config(), out_dir)

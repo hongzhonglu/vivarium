@@ -27,10 +27,10 @@ class DeriveMass(Process):
         default_emitter_keys = {'global': ['mass']}
 
         # schema
-        # schema = {
-        #     'global': {
-        #         'mass': {
-        #             'updater': 'set'}}}
+        schema = {
+            'global': {
+                'mass': {
+                    'updater': 'set'}}}
 
         return {
             'state': default_state,
@@ -54,7 +54,7 @@ class DeriveMass(Process):
                 mw = mass_schema[port].get(mol_id, 0.0) * (units.g / units.mol)
                 mol = count / AVOGADRO
                 added_mass = mw * mol
-                mass += added_mass.to('fg')
+                mass += added_mass.to('fg') / 1e10  # TODO -- remove this scaling
 
         # print('mass deriver mass: {}'.format(mass))
         # print('mass deriver states: {}'.format(states_with_mass['internal']))
