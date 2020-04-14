@@ -663,7 +663,7 @@ def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
 
     # plot results
     cols = 1
-    rows = 2
+    rows = 3
     fig = plt.figure(figsize=(6 * cols, 1.5 * rows))
     plt.rcParams.update({'font.size': 12})
 
@@ -684,6 +684,12 @@ def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
         thrust = analysis['thrust']
         ax2.plot(times, thrust, label=agent_id)
     ax2.set_ylabel('thrust')
+
+    ax3 = plt.subplot(rows, cols, 3)
+    for agent_id, analysis in motility_analysis.items():
+        torque = analysis['torque']
+        ax3.plot(times, torque, label=agent_id)
+    ax3.set_ylabel('torque')
 
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
