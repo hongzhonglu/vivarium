@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
+from matplotlib.collections import LineCollection
 import pymunk
 
 # vivarium imports
@@ -466,6 +467,60 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
     plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
+def plot_trajectory(agent_timeseries, config, out_dir='out', filename='trajectory'):
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    x_length = bounds[0]
+    y_length = bounds[1]
+    y_ratio = y_length / x_length
+
+    # get agents
+    times = np.array(agent_timeseries['time'])
+    agents = agent_timeseries['agents']
+
+    # get each agent's trajectory
+    trajectories = {}
+    for agent_id, data in agents.items():
+        trajectories[agent_id] = []
+        for time_data in data:
+            x, y = time_data['location']
+            theta = time_data['angle']
+            pos = [x, y, theta]
+            trajectories[agent_id].append(pos)
+
+    # make the figure
+    fig = plt.figure(figsize=(8, 8*y_ratio))
+
+    for agent_id, agent_trajectory in trajectories.items():
+        # convert trajectory to 2D array
+        locations_array = np.array(agent_trajectory)
+        x_coord = locations_array[:, 0]
+        y_coord = locations_array[:, 1]
+
+        # make multi-colored trajectory
+        points = np.array([x_coord, y_coord]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        lc = LineCollection(segments, cmap=plt.get_cmap('cool'))
+        lc.set_array(times)
+        lc.set_linewidth(3)
+
+        # plot line
+        line = plt.gca().add_collection(lc)
+
+        # color bar
+        cbar = plt.colorbar(line)
+        cbar.set_label('time', rotation=270)
+
+        plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+        plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+    plt.xlim((0, x_length))
+    plt.ylim((0, y_length))
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
 def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax = fig.add_subplot(grid[row_idx, col_idx])
     if row_idx == 0:
@@ -670,6 +725,7 @@ if __name__ == '__main__':
     reduced_data = {time: data['agents'] for time, data in motility_data.items()}
     motility_timeseries = timeseries_from_data(reduced_data)
     plot_motility(motility_timeseries, out_dir)
+    plot_trajectory(motility_timeseries, motility_config, out_dir)
 
     # make motility snapshot
     agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
