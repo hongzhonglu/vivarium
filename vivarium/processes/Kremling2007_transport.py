@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
 from vivarium.compartment.process import Process
@@ -445,7 +446,6 @@ def test_transport(sim_time = 10):
     return saved_state
 
 def kremling_figures(saved_state, out_dir='out'):
-    import matplotlib.pyplot as plt
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours

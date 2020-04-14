@@ -6,20 +6,22 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import random
 import math
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
+from matplotlib.collections import LineCollection
 import pymunk
 
 # vivarium imports
+from vivarium.compartment.emitter import timeseries_from_data
 from vivarium.compartment.process import (
     Process,
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
-    simulate_process)
-
+    process_in_compartment,
+    simulate_compartment)
+from vivarium.processes.Vladimirov2008_motor import run, tumble
 
 # constants
 PI = math.pi
@@ -89,6 +91,13 @@ def daughter_locations(parent_location, parent_length, parent_angle):
 class Multibody(Process):
     """
     A multi-body physics process using pymunk
+
+    Notes:
+    - rotational diffusion in liquid medium with viscosity = 1 mPa.s: Dr = 3.5+/-0.3 rad^2/s
+        (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
+    - translational diffusion in liquid medium with viscosity = 1 mPa.s: Dt=100 micrometers^2/s
+        (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
+
     """
     def __init__(self, initial_parameters={}):
 
@@ -129,6 +138,7 @@ class Multibody(Process):
         agents = {agent_id: self.get_body_specs(agent_id)
                 for agent_id in self.agents.keys()}
         state = {'agents': {'agents': agents}}
+        # state = {'agents': {'agents': {}}}
 
         schema = {'agents': {'agents': {'updater': 'merge'}}}
 
@@ -153,6 +163,7 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agents:
+                # TODO -- check if specs updated before going through the expensive update_body(
                 self.update_body(agent_id, specs)
             else:
                 self.add_body_from_center(agent_id, specs)
@@ -200,6 +211,7 @@ class Multibody(Process):
             #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
+
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
@@ -272,6 +284,7 @@ class Multibody(Process):
         length = specs.get('length')
         width = specs.get('width')
         mass = specs.get('mass')
+        motile_force = specs.get('motile_force', [0, 0])
 
         body, shape = self.agents[body_id]
         position = body.position
@@ -294,6 +307,7 @@ class Multibody(Process):
         new_body.angle = angle
         new_body.angular_velocity = body.angular_velocity
         new_body.dimensions = (width, length)
+        new_body.motile_force = motile_force
 
         new_shape.elasticity = shape.elasticity
         new_shape.friction = shape.friction
@@ -307,23 +321,23 @@ class Multibody(Process):
 
     def get_body_specs(self, agent_id):
         body, shape = self.agents[agent_id]
-        width, length = body.dimensions
+        # width, length = body.dimensions
         position = body.position
 
-        # TODO -- velocity? angular velocity? forces?
         return {
             'location': [position[0], position[1]],
             'angle': body.angle,
-            'length': length,
-            'width': width,
-            'mass': body.mass}
+        }
 
 
 # test functions
 def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
-def random_body_config(agents=get_n_dummy_agents(10), bounds=[10, 10]):
+def random_body_config(config):
+    n_agents = config['n_agents']
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
             'location': [
@@ -339,11 +353,9 @@ def random_body_config(agents=get_n_dummy_agents(10), bounds=[10, 10]):
 
     return {
         'agents': agent_config,
-        'bounds': bounds,
-        'jitter_force': 1e1}
+        'bounds': bounds}
 
 def plot_agent(ax, data, color):
-
     # location, orientation, length
     x_center = data['location'][0]
     y_center = data['location'][1]
@@ -433,7 +445,7 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
         agents_now = agents[time]
         if field_ids:
             for row_idx, field_id in enumerate(field_ids):
-                ax = init_axes(fig, bounds[0], bounds[1], grid, row_idx, col_idx, time)
+                ax = init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
                 # transpose field to align with agent
                 field = np.transpose(np.array(fields[time][field_id])).tolist()
                 vmin, vmax = field_range[field_id]
@@ -455,24 +467,242 @@ def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
     plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
+def plot_trajectory(agent_timeseries, config, out_dir='out', filename='trajectory'):
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    x_length = bounds[0]
+    y_length = bounds[1]
+    y_ratio = y_length / x_length
+
+    # get agents
+    times = np.array(agent_timeseries['time'])
+    agents = agent_timeseries['agents']
+
+    # get each agent's trajectory
+    trajectories = {}
+    for agent_id, data in agents.items():
+        trajectories[agent_id] = []
+        for time_data in data:
+            x, y = time_data['location']
+            theta = time_data['angle']
+            pos = [x, y, theta]
+            trajectories[agent_id].append(pos)
+
+    # make the figure
+    fig = plt.figure(figsize=(8, 8*y_ratio))
+
+    for agent_id, agent_trajectory in trajectories.items():
+        # convert trajectory to 2D array
+        locations_array = np.array(agent_trajectory)
+        x_coord = locations_array[:, 0]
+        y_coord = locations_array[:, 1]
+
+        # make multi-colored trajectory
+        points = np.array([x_coord, y_coord]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        lc = LineCollection(segments, cmap=plt.get_cmap('cool'))
+        lc.set_array(times)
+        lc.set_linewidth(3)
+
+        # plot line
+        line = plt.gca().add_collection(lc)
+
+        # color bar
+        cbar = plt.colorbar(line)
+        cbar.set_label('time', rotation=270)
+
+        plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
+        plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
+
+    plt.xlim((0, x_length))
+    plt.ylim((0, y_length))
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
 def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax = fig.add_subplot(grid[row_idx, col_idx])
     if row_idx == 0:
-        plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
+        plot_title = 'time: {:.4f} s'.format(float(time))
         plt.title(plot_title, y=1.08)
     ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     return ax
 
-def test_multibody(config=random_body_config(), time=1):
-    multibody = Multibody(config)
+def test_multibody(config={'n_agents':1}, time=1):
+    body_config = random_body_config(config)
+    multibody = Multibody(body_config)
+
+    # initialize agent's boundary state
+    initial_agents_state = body_config['agents']
+    compartment = process_in_compartment(multibody)
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
     settings = {
         'total_time': time,
         'return_raw_data': True,
         'environment_port': 'external',
         'environment_volume': 1e-2}
-    return simulate_process(multibody, settings)
+
+    return simulate_compartment(compartment, settings)
+
+def simulate_motility(config, settings):
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
+
+    total_time = settings['total_time']
+    timestep = settings['timestep']
+    initial_agents_state = config['agents']
+
+    # make the process
+    multibody = Multibody(config)
+    compartment = process_in_compartment(multibody)
+
+    # initialize agent boundary state
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
+    # get initial agent state
+    agents_store = compartment.states['agents']
+    agents_state = agents_store.state
+
+    # initialize hidden agent motile states, and update agent motile_forces in agent store
+    agent_motile_states = {}
+    motile_forces = {}
+    for agent_id, specs in agents_state['agents'].items():
+        motile_force = run()
+        agent_motile_states[agent_id] = {
+            'motor_state': 1,  # 0 for run, 1 for tumble
+            'time_in_motor_state': 0}
+        motile_forces[agent_id] = {'motile_force': motile_force}
+    compartment.send_updates({'agents': [{'agents': motile_forces}]})
+
+    ## run simulation
+    # test run/tumble
+    time = 0
+    while time < total_time:
+        time += timestep
+
+        # update motile force and apply to state
+        motile_forces = {}
+        for agent_id, motile_state in agent_motile_states.items():
+            motor_state = motile_state['motor_state']
+            time_in_motor_state = motile_state['time_in_motor_state']
+
+            if motor_state == 1:  # tumble
+                if time_in_motor_state < tumble_time:
+                    motile_force = run()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = run()
+                    motor_state = 0
+                    time_in_motor_state = 0
+
+            elif motor_state == 0:  # run
+                if time_in_motor_state < run_time:
+                    motile_force = tumble()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = tumble()
+                    motor_state = 1
+                    time_in_motor_state = 0
+
+            agent_motile_states[agent_id] = {
+                'motor_state': motor_state,  # 0 for run, 1 for tumble
+                'time_in_motor_state': time_in_motor_state}
+            motile_forces[agent_id] = {'motile_force': motile_force}
+
+        compartment.send_updates({'agents': [{'agents': motile_forces}]})
+        update = compartment.update(timestep)
+
+    return compartment.emitter.get_data()
+
+
+def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
+    expected_speed = 14.2  # um/s (Berg)
+    expected_angle_between_runs = 68 # degrees (Berg)
+
+    times = timeseries['time']
+    agents = timeseries['agents']
+
+    motility_analysis = {
+        agent_id: {
+            'speed': [],
+            'angle': [],
+            'thrust': [],
+            'torque': []}
+        for agent_id in agents.keys()}
+
+    for agent_id, agent_data in agents.items():
+        previous_location = [0,0]
+        previous_time = times[0]
+
+        # go through each time point for this agent
+        for time, time_data in zip(times, agent_data):
+            angle = time_data['angle']
+            thrust, torque = time_data['motile_force']
+            location = time_data['location']
+
+            # get speed since last time
+            if time != times[0]:
+                dt = time - previous_time
+                distance = (
+                    (location[0] - previous_location[0]) ** 2 +
+                    (location[1] - previous_location[1]) ** 2
+                        ) ** 0.5
+                speed = distance / dt  # um/sec
+            else:
+                speed = 0.0
+
+            # save data
+            motility_analysis[agent_id]['speed'].append(speed)
+            motility_analysis[agent_id]['angle'].append(angle)
+            motility_analysis[agent_id]['thrust'].append(thrust)
+            motility_analysis[agent_id]['torque'].append(torque)
+
+            # save previous location and time
+            previous_location = location
+            previous_time = time
+
+    # plot results
+    cols = 1
+    rows = 3
+    fig = plt.figure(figsize=(6 * cols, 1.5 * rows))
+    plt.rcParams.update({'font.size': 12})
+
+    ax1 = plt.subplot(rows, cols, 1)
+    for agent_id, analysis in motility_analysis.items():
+        speed = analysis['speed']
+        avg_speed = np.mean(speed)
+        ax1.plot(times, speed, label=agent_id)
+        # ax1.axhline(y=avg_speed, color='b', linestyle='dashed', label='mean')
+
+    ax1.axhline(y=expected_speed, color='r', linestyle='dashed', label='expected mean')
+    ax1.set_ylabel(u'speed \n (\u03bcm/sec)')
+    ax1.set_xlabel('time')
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    ax2 = plt.subplot(rows, cols, 2)
+    for agent_id, analysis in motility_analysis.items():
+        thrust = analysis['thrust']
+        ax2.plot(times, thrust, label=agent_id)
+    ax2.set_ylabel('thrust')
+
+    ax3 = plt.subplot(rows, cols, 3)
+    for agent_id, analysis in motility_analysis.items():
+        torque = analysis['torque']
+        ax3.plot(times, torque, label=agent_id)
+    ax3.set_ylabel('torque')
+
+    fig_path = os.path.join(out_dir, filename)
+    plt.subplots_adjust(wspace=0.7, hspace=0.1)
+    plt.savefig(fig_path, bbox_inches='tight')
+    plt.close(fig)
+
 
 
 if __name__ == '__main__':
@@ -480,10 +710,29 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    config = random_body_config(get_n_dummy_agents(10))
-    data = test_multibody(config, 20)
+    # test motility
+    bounds = [100, 100]
+    motility_sim_settings = {
+        'timestep': 0.01,
+        'total_time': 10}
+    motility_config = {
+        'jitter_force': 0,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 2}
+    motility_config.update(random_body_config(body_config))
 
-    # make snapshot
-    agents = {time: time_data['agents']['agents'] for time, time_data in data.items()}
+    # run motility sim
+    motility_data = simulate_motility(motility_config, motility_sim_settings)
+
+    # make motility plot
+    reduced_data = {time: data['agents'] for time, data in motility_data.items()}
+    motility_timeseries = timeseries_from_data(reduced_data)
+    plot_motility(motility_timeseries, out_dir)
+    plot_trajectory(motility_timeseries, motility_config, out_dir)
+
+    # make motility snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
     fields = {}
-    plot_snapshots(agents, fields, config, out_dir, 'snapshots')
+    plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
