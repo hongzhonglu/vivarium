@@ -707,15 +707,16 @@ if __name__ == '__main__':
 
 
     # test motility
+    bounds = [100, 100]
     motility_sim_settings = {
         'timestep': 0.01,
         'total_time': 10}
     motility_config = {
         'jitter_force': 0,
-        'bounds': [30, 30]}
+        'bounds': bounds}
     body_config = {
-        'bounds': [30, 30],
-        'n_agents': 1}
+        'bounds': bounds,
+        'n_agents': 2}
     motility_config.update(random_body_config(body_config))
 
     # run test
