@@ -6,8 +6,13 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import AVOGADRO
 
 class DeriveMass(Process):
-    """"""
+    """
+    Derives and sets total mass from individual molecular counts
+    that have a mass schema in their stores .
+
+    """
     def __init__(self, initial_parameters={}):
+
 
         ports = initial_parameters['ports']
         ports.update({
@@ -35,12 +40,9 @@ class DeriveMass(Process):
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            # 'schema': schema
-        }
+            'schema': schema}
 
     def next_update(self, timestep, states):
-        # volume = states['global']['volume'] * units.fL
-        # mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
         mass_schema = self.get_schema(self.in_ports, 'mass')
 
         states_with_mass = {
@@ -54,9 +56,7 @@ class DeriveMass(Process):
                 mw = mass_schema[port].get(mol_id, 0.0) * (units.g / units.mol)
                 mol = count / AVOGADRO
                 added_mass = mw * mol
-                mass += added_mass.to('fg') / 1e10  # TODO -- remove this scaling
-
-                import ipdb; ipdb.set_trace()
+                mass += added_mass.to('fg')
 
         return {
             'global': {'mass': mass.magnitude}}

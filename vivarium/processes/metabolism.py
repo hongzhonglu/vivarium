@@ -85,8 +85,6 @@ class Metabolism(Process):
         internal_state = default_state.get('internal', {})
         external_state = default_state.get('external', {})
         initial_mass = global_state.get('mass', 0) * units.fg
-        mmol_to_counts = global_state.get('mmol_to_counts', 1)
-        density = global_state.get('density') * units.g / units.L
         mw = self.fba.molecular_weights
 
         ## update initial states to match global mass
@@ -99,8 +97,10 @@ class Metabolism(Process):
         scaling_factor = (initial_mass / composition_mass).magnitude
         initial_counts = {mol_id: int(coeff * scaling_factor)
             for mol_id, coeff in composition.items()}
-        # initial_mass = get_fg_from_counts(initial_counts, mw)
+        initial_mass = get_fg_from_counts(initial_counts, mw)
         updated_internal_state = deep_merge(dict(initial_counts), internal_state)
+
+        print('metabolism initial mass: {}'.format(initial_mass))
 
         ## external state
         updated_external_state = {state_id: 0.0 for state_id in self.fba.external_molecules}
@@ -165,7 +165,7 @@ class Metabolism(Process):
             'emitter_keys': default_emitter_keys,
             'schema': schema,
             'deriver_setting': deriver_setting,
-            'time_step': 5}
+            'time_step': 2}
 
     def next_update(self, timestep, states):
 
@@ -581,23 +581,21 @@ def test_config(config=get_toy_configuration()):
     print(metabolism.fba.get_reaction_bounds())
     print(metabolism.fba.read_exchange_fluxes())
 
+
+reference_sim_settings = {
+    'environment_port': 'external',
+    'exchange_port': 'exchange',
+    'environment_volume': 1e-5,  # L
+    'timestep': 1,
+    'timeline': [(20, {})]}
+
 def test_metabolism_similar_to_reference():
-
-    # simulation settings
-    timeline = [(20, {})]  # [(2520, {})]
-    sim_settings = {
-        'environment_port': 'external',
-        'exchange_port': 'exchange',
-        'environment_volume': 1e-5,  # L
-        'timestep': 1,
-        'timeline': timeline}
-
-    timeseries = run_metabolism(metabolism, sim_settings)
-
-    flattened = flatten_timeseries(timeseries)
+    config = get_iAF1260b_config()
+    metabolism = Metabolism(config)
+    timeseries = run_metabolism(metabolism, reference_sim_settings)
     reference = load_timeseries(
         os.path.join(REFERENCE_DATA_DIR, NAME + '.csv'))
-    assert_timeseries_close(flattened, reference)
+    assert_timeseries_close(timeseries, reference)
 
 
 
@@ -611,7 +609,7 @@ if __name__ == '__main__':
     metabolism = Metabolism(config)
 
     # simulation settings
-    timeline = [(20, {})]  # [(2520, {})]
+    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
     sim_settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
@@ -620,7 +618,7 @@ if __name__ == '__main__':
         'timeline': timeline}
 
     # run simulation
-    timeseries = run_metabolism(metabolism, sim_settings) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = run_metabolism(metabolism, sim_settings)
     save_timeseries(timeseries, out_dir)
 
     volume_ts = timeseries['global']['volume']
