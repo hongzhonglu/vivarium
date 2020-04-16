@@ -130,6 +130,8 @@ class Transcription(Process):
 
         >>> import random
         >>>
+        >>> import numpy as np
+        >>>
         >>> from vivarium.states.chromosome import (
         ...     toy_chromosome_config,
         ...     Chromosome,
@@ -139,6 +141,7 @@ class Transcription(Process):
         >>> from vivarium.utils.pretty import format_dict
         >>>
         >>> random.seed(0)  # Needed because process is stochastic
+        >>> np.random.seed(0)
         >>> # We will use the toy chromosome from toy_chromosome_config
         >>> print(format_dict(toy_chromosome_config))
         {
@@ -160,6 +163,10 @@ class Transcription(Process):
                 ],
                 "oB": [
                     "B"
+                ],
+                "oBY": [
+                    "B",
+                    "Y"
                 ]
             },
             "promoter_order": [
