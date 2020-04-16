@@ -13,7 +13,7 @@ from vivarium.composites.gene_expression import plot_gene_expression_output
 # processes
 from vivarium.processes.division import Division, divide_condition
 from vivarium.processes.metabolism import Metabolism, get_iAF1260b_config
-from vivarium.processes.convenience_kinetics import ConvenienceKinetics
+from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
 from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
 from vivarium.processes.degradation import RnaDegradation
@@ -27,17 +27,19 @@ def compose_master(config):
     A composite with kinetic transport, metabolism, and gene expression
     """
 
+    t_m_config = default_transport_metabolism_config()
+
     ## Declare the processes.
     # Transport
     # load the kinetic parameters
-    transport_config = config.get('transport', default_transport_config())
+    transport_config = config.get('transport', t_m_config['transport'])
     transport = ConvenienceKinetics(transport_config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
     # Metabolism
     # get target fluxes from transport
     # load regulation function
-    metabolism_config = config.get('metabolism', default_metabolism_config())
+    metabolism_config = config.get('metabolism', t_m_config['metabolism'])
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
@@ -140,22 +142,22 @@ def compose_master(config):
 
 
 # toy functions/ defaults
-def default_metabolism_config():
-    config = get_iAF1260b_config()
+def default_transport_metabolism_config():
+    transport_config = get_glc_lct_config()
+    metabolism_config = get_iAF1260b_config()
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
-    metabolism_config = {
+    metabolism_config.update({
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]}}
+            'EX_lac__D_e': [1.05, 1.0]}})
 
-    config.update(metabolism_config)
+    return {
+        'transport': transport_config,
+        'metabolism': metabolism_config
+    }
 
-    return config
-
-def default_transport_config():
-    return {}
 
 
 
@@ -170,7 +172,7 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeline = [(20, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
         'environment_port': options['environment_port'],
@@ -189,7 +191,7 @@ if __name__ == '__main__':
         'name': 'gene_expression',
         'ports': {
             'transcripts': 'transcripts',
-            'molecules': 'cell',
+            'molecules': 'metabolites',
             'proteins': 'proteins'}}
 
     # saved_state = simulate_compartment(compartment, settings)
