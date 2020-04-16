@@ -172,7 +172,7 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    timeline = [(20, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
         'environment_port': options['environment_port'],
