@@ -100,6 +100,11 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     node_size = 700
     node_distance = 50
 
+    operon_suffix = '_o'
+    tf_suffix = '_tf'
+    promoter_suffix = '_p'
+    gene_suffix = '_g'
+
     # plotting parameters
     color_legend = {
         'operon': [x/255 for x in [199,164,53]],
@@ -124,8 +129,8 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
     # add operon --> gene connections
     for operon, genes in operons.items():
-        operon_name = operon + '_o'
-        gene_names = [gene + '_g' for gene in genes]
+        operon_name = operon + operon_suffix
+        gene_names = [gene + gene_suffix for gene in genes]
 
         operon_nodes.add(operon_name)
         gene_nodes.update(gene_names)
@@ -147,7 +152,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
     # add transcription factor --> promoter --> operon connections
     for promoter, specs in templates.items():
-        promoter_name = promoter + '_p'
+        promoter_name = promoter + promoter_suffix
 
         promoter_nodes.add(promoter_name)
         G.add_node(promoter_name)
@@ -165,7 +170,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
             thresholds = site['thresholds']
             for threshold in thresholds:
                 tf = threshold[0]
-                tf_name = tf + '_tf'
+                tf_name = tf + tf_suffix
 
                 tf_nodes.add(tf_name)
                 G.add_node(tf_name)
@@ -183,7 +188,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         for site in terminators:
             products = site['products']
             for product in products:
-                operon_name = product + '_o'
+                operon_name = product + operon_suffix
 
                 operon_nodes.add(operon_name)
                 G.add_node(operon_name)
@@ -199,6 +204,16 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
     subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
 
+    # make node labels by removing suffix
+    node_labels = {}
+    o_labels = {node: node.replace(operon_suffix,'') for node in operon_nodes}
+    g_labels = {node: node.replace(gene_suffix, '') for node in gene_nodes}
+    p_labels = {node: node.replace(promoter_suffix, '') for node in promoter_nodes}
+    tf_labels = {node: node.replace(tf_suffix, '') for node in tf_nodes}
+    node_labels.update(o_labels)
+    node_labels.update(g_labels)
+    node_labels.update(p_labels)
+    node_labels.update(tf_labels)
 
     # plot
     n_rows = len(list(subgraphs))
@@ -210,6 +225,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         ax = fig.add_subplot(grid[idx, 0])
 
         subgraph = G.subgraph(list(subgraph_nodes))
+        subgraph_node_labels = {node: node_labels[node] for node in subgraph_nodes}
 
         # get positions
         dist = node_distance / (len(subgraph)**0.5)
@@ -221,13 +237,18 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
             node_color = color_legend[type]
             color_map.append(node_color)
 
-        nx.draw(subgraph, pos, node_size=node_size, node_color=color_map, with_labels=True, font_size=8)
+        nx.draw(subgraph, pos, node_size=node_size, node_color=color_map)
 
         # edges
         # colors = list(range(1,len(edges)+1))
         nx.draw_networkx_edges(subgraph, pos,
                                # edge_color=colors,
                                width=1.5)
+
+        nx.draw_networkx_labels(subgraph, pos,
+                                labels=subgraph_node_labels,
+                                font_size=8)
+
         if idx == 0:
             # make legend
             legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
