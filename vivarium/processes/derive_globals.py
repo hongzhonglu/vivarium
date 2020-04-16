@@ -48,7 +48,8 @@ class DeriveGlobals(Process):
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
             'prior_mass': mass.magnitude,
-            'density': density.magnitude}
+            'density': density.magnitude
+        }
 
         default_state = {
             'global': global_state}
@@ -87,7 +88,7 @@ class DeriveGlobals(Process):
         mass = states['global']['mass'] * units.fg
 
         # update volume and growth rate
-        volume =  mass / density
+        volume = mass / density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
         growth_rate = (mass - prior_mass) / timestep / mass
         deriver_update = {
