@@ -103,9 +103,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         'operon': [x/255 for x in [199,164,53]],
         'gene': [x / 255 for x in [181,99,206]],
         'promoter': [x / 255 for x in [110,196,86]],
-        'transcription factor': [x / 255 for x in [222,85,80]]}
-    # node_size = 2500
-    # node_distance = 0.4
+        'transcription_factor': [x / 255 for x in [222,85,80]]}
 
     # get data
     operons = data.get('operons', {})
@@ -118,28 +116,45 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     operon_nodes = set()
     gene_nodes = set()
     promoter_nodes = set()
-    transcription_factor_nodes = set()
+    tf_nodes = set()
 
     edges = {}
 
-    # add operon --> gene connetions
+    # add operon --> gene connections
     for operon, genes in operons.items():
-        operon_nodes.add(operon)
-        gene_nodes.update(genes)
+        operon_name = operon + '_o'
+        gene_names = [gene + '_g' for gene in genes]
 
-        G.add_node(operon)
-        G.add_nodes_from(genes)
+        operon_nodes.add(operon_name)
+        gene_nodes.update(gene_names)
+
+        G.add_node(operon_name)
+        G.add_nodes_from(gene_names)
+
+        # set node attributes
+        operon_attrs = {operon_name: {'type': 'operon'}}
+        gene_attrs = {gene: {'type': 'gene'} for gene in gene_names}
+        nx.set_node_attributes(G, operon_attrs)
+        nx.set_node_attributes(G, gene_attrs)
 
         # add operon --> gene edge
-        for gene in genes:
-            edge = (operon, gene)
+        for gene_name in gene_names:
+            edge = (operon_name, gene_name)
             edges[edge] = 'gene'
-            G.add_edge(operon, gene)
+            G.add_edge(operon_name, gene_name)
 
     # add transcription factor --> promoter --> operon connections
     for promoter, specs in templates.items():
-        promoter_nodes.add(promoter)
+        promoter_name = promoter + '_p'
 
+        promoter_nodes.add(promoter_name)
+        G.add_node(promoter_name)
+
+        # set node attributes
+        promoter_attrs = {promoter_name: {'type': 'promoter'}}
+        nx.set_node_attributes(G, promoter_attrs)
+
+        # get sites and terminators
         promoter_sites = specs['sites']
         terminators = specs['terminators']
 
@@ -147,60 +162,57 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         for site in promoter_sites:
             thresholds = site['thresholds']
             for threshold in thresholds:
-                transcription_factor = threshold[0]
-                transcription_factor_nodes.add(transcription_factor)
+                tf = threshold[0]
+                tf_name = tf + '_tf'
 
-                edge = (transcription_factor, promoter)
+                tf_nodes.add(tf_name)
+                G.add_node(tf_name)
+
+                # set node attributes
+                tf_attrs = {tf_name: {'type': 'transcription_factor'}}
+                nx.set_node_attributes(G, tf_attrs)
+
+                # connect transcription_factor --> promoter
+                edge = (tf_name, promoter_name)
                 edges[edge] = 'transcription factor'
-                G.add_edge(transcription_factor, promoter)
+                G.add_edge(tf_name, promoter_name)
 
         # add gene products
         for site in terminators:
             products = site['products']
             for product in products:
-                operon_nodes.add(product)
-                G.add_node(product)
+                operon_name = product
 
+                operon_nodes.add(operon_name)
+                G.add_node(operon_name)
 
-                edge = (promoter, product)
+                # set node attributes
+                operon_attrs = {operon_name: {'type': 'operon'}}
+                nx.set_node_attributes(G, operon_attrs)
+
+                # connect promoter --> operon
+                edge = (promoter_name, operon_name)
                 edges[edge] = 'promoter'
-                G.add_edge(promoter, product)
+                G.add_edge(promoter_name, operon_name)
 
 
     # get positions
-    node_distance = 3 / (len(G)**0.5)
-    pos = nx.spring_layout(G, k=node_distance, iterations=500)
+    node_distance = 30 / (len(G)**0.5)
+    pos = nx.spring_layout(G, k=node_distance, iterations=1000)
+
+
+    color_map = []
+    for node in G:
+        type = G.nodes[node]['type']
+        node_color = color_legend[type]
+        color_map.append(node_color)
 
     # plot
     plt.figure(3, figsize=(8, 8))
-    nx.draw_networkx_nodes(G, pos,
-                           nodelist=gene_nodes,
-                           with_labels=True,
-                           node_color=color_legend['gene'],
-                           # node_size=node_size,
-                           node_shape='o')
-    nx.draw_networkx_nodes(G, pos,
-                           nodelist=operon_nodes,
-                           with_labels=True,
-                           node_color=color_legend['operon'],
-                           # node_size=node_size,
-                           node_shape='o')
-    nx.draw_networkx_nodes(G, pos,
-                           nodelist=promoter_nodes,
-                           with_labels=True,
-                           node_color=color_legend['promoter'],
-                           # node_size=node_size,
-                           node_shape='o')
-    nx.draw_networkx_nodes(G, pos,
-                           nodelist=transcription_factor_nodes,
-                           with_labels=True,
-                           node_color=color_legend['transcription factor'],
-                           # node_size=node_size,
-                           node_shape='o')
-
+    nx.draw(G, pos, node_color=color_map, with_labels=True)
 
     # edges
-    colors = list(range(1,len(edges)+1))
+    # colors = list(range(1,len(edges)+1))
     nx.draw_networkx_edges(G, pos,
                            # edge_color=colors,
                            width=1.5)
@@ -211,7 +223,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
                             )
     # make legend
     legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
-    plt.legend(handles=legend_elements)
+    plt.legend(handles=legend_elements, bbox_to_anchor=(1.3, 1.0))
 
     # save figure
     fig_path = os.path.join(out_dir, filename)
