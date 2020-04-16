@@ -97,6 +97,8 @@ def compose_gene_expression(config):
 
 # analysis
 def gene_network_plot(data, out_dir, filename='gene_network'):
+    node_size = 700
+    node_distance = 50
 
     # plotting parameters
     color_legend = {
@@ -181,7 +183,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         for site in terminators:
             products = site['products']
             for product in products:
-                operon_name = product
+                operon_name = product + '_o'
 
                 operon_nodes.add(operon_name)
                 G.add_node(operon_name)
@@ -195,35 +197,41 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
                 edges[edge] = 'promoter'
                 G.add_edge(promoter_name, operon_name)
 
+    subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
 
-    # get positions
-    node_distance = 30 / (len(G)**0.5)
-    pos = nx.spring_layout(G, k=node_distance, iterations=1000)
-
-
-    color_map = []
-    for node in G:
-        type = G.nodes[node]['type']
-        node_color = color_legend[type]
-        color_map.append(node_color)
 
     # plot
-    plt.figure(3, figsize=(8, 8))
-    nx.draw(G, pos, node_color=color_map, with_labels=True)
+    n_rows = len(list(subgraphs))
+    n_cols = 1
+    fig = plt.figure(3, figsize=(6*n_cols, 6*n_rows))
+    grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
 
-    # edges
-    # colors = list(range(1,len(edges)+1))
-    nx.draw_networkx_edges(G, pos,
-                           # edge_color=colors,
-                           width=1.5)
+    for idx, subgraph_nodes in enumerate(subgraphs):
+        ax = fig.add_subplot(grid[idx, 0])
 
-    # labels
-    nx.draw_networkx_labels(G, pos,
-                            font_size=8,
-                            )
-    # make legend
-    legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
-    plt.legend(handles=legend_elements, bbox_to_anchor=(1.3, 1.0))
+        subgraph = G.subgraph(list(subgraph_nodes))
+
+        # get positions
+        dist = node_distance / (len(subgraph)**0.5)
+        pos = nx.spring_layout(subgraph, k=dist, iterations=1000)
+
+        color_map = []
+        for node in subgraph:
+            type = subgraph.nodes[node]['type']
+            node_color = color_legend[type]
+            color_map.append(node_color)
+
+        nx.draw(subgraph, pos, node_size=node_size, node_color=color_map, with_labels=True, font_size=8)
+
+        # edges
+        # colors = list(range(1,len(edges)+1))
+        nx.draw_networkx_edges(subgraph, pos,
+                               # edge_color=colors,
+                               width=1.5)
+        if idx == 0:
+            # make legend
+            legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
+            plt.legend(handles=legend_elements, bbox_to_anchor=(1.5, 1.0))
 
     # save figure
     fig_path = os.path.join(out_dir, filename)
