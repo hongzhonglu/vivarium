@@ -121,7 +121,7 @@ class Store(object):
                 updaters.update({state: updater})
         self.updaters = updaters
 
-    def get_schema(self, keys, schema_type):
+    def schema_properties(self, keys, schema_type):
         return {key: self.schema[key].get(schema_type) for key in keys}
 
     def keys(self):
@@ -222,7 +222,7 @@ class Process(object):
         return {}
 
 
-    def get_schema(self, states, schema_type):
+    def schema_properties(self, states, schema_type):
         '''
         Requires:
             - states (dict)
@@ -235,7 +235,7 @@ class Process(object):
 
         schema = {}
         for store_id, keys in states.items():
-            schema[store_id] = self.states[store_id].get_schema(keys, schema_type)
+            schema[store_id] = self.states[store_id].schema_properties(keys, schema_type)
 
         return schema
 

@@ -43,7 +43,7 @@ class DeriveMass(Process):
             'schema': schema}
 
     def next_update(self, timestep, states):
-        mass_schema = self.get_schema(self.in_ports, 'mass')
+        mass_schema = self.schema_properties(self.in_ports, 'mass')
 
         states_with_mass = {
             port: molecules
