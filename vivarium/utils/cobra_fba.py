@@ -133,9 +133,10 @@ def extract_model(model):
     added_mass = 0
     for reaction_id, coeff1 in objective.items():
         for mol_id, coeff2 in stoichiometry[reaction_id].items():
-            mol_mw = molecular_weights.get(mol_id, 0.0)
-            mol_mass = mol_mw * objective_value
-            added_mass += mol_mass
+            if coeff2 < 0: # molecule is used to make biomass (negative coefficient)
+                mol_mw = molecular_weights.get(mol_id, 0.0)
+                mol_mass = mol_mw * objective_value
+                added_mass += mol_mass
     flux_scaling = target_added_mass / added_mass
 
     return {
