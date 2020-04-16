@@ -98,6 +98,11 @@ Glossary
         the state of the model. Each process is an instance of a
         :term:`process class`.
 
+        To learn how to write a process, check out
+        :doc:`our process-writing tutorial</tutorials/write_process>`.
+        For a detailed guide to processes, see :doc:`our guide to
+        processes </guides/processes>`.
+
     Process Class
     Process Classes
         A process class is a Python class that defines a process's
@@ -211,6 +216,12 @@ Glossary
         An update describes how the model state should change due to the
         influence of a :term:`process` over some period of time (usually
         a :term:`timestep`).
+
+    Updater
+    Updaters
+        An updater describes how an update should be applied to the
+        model state to produce the updated state. For example, the
+        update could be added to the old value or replace it.
 
     Variable
     Variables
