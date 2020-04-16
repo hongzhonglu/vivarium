@@ -12,11 +12,12 @@ from vivarium.composites.gene_expression import plot_gene_expression_output
 
 # processes
 from vivarium.processes.division import Division, divide_condition
-from vivarium.processes.metabolism import Metabolism, get_e_coli_core_config
+from vivarium.processes.metabolism import Metabolism, get_iAF1260b_config
 from vivarium.processes.convenience_kinetics import ConvenienceKinetics
 from vivarium.processes.transcription import Transcription
 from vivarium.processes.translation import Translation
 from vivarium.processes.degradation import RnaDegradation
+from vivarium.processes.complexation import Complexation
 
 
 
@@ -47,6 +48,7 @@ def compose_master(config):
     transcription = Transcription(transcription_config)
     translation = Translation(translation_config)
     degradation = RnaDegradation(degradation_config)
+    complexation = Complexation(config.get('complexation', {}))
 
     # Division
     # get initial volume from metabolism
@@ -59,7 +61,8 @@ def compose_master(config):
         {'transport': transport,
          'transcription': transcription,
          'translation': translation,
-         'degradation': degradation},
+         'degradation': degradation,
+         'complexation': complexation},
         {'metabolism': metabolism},
         {'division': division}]
 
@@ -67,32 +70,44 @@ def compose_master(config):
     # for each process, map process ports to store ids
     topology = {
         'transport': {
-            'internal': 'cell',
+            'internal': 'metabolites',
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
             'fluxes': 'flux_bounds',
             'global': 'global'},
+
         'metabolism': {
-            'internal': 'cell',
+            'internal': 'metabolites',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
             'flux_bounds': 'flux_bounds',
             'global': 'global'},
+
         'transcription': {
             'chromosome': 'chromosome',
-            'molecules': 'cell',
-            'transcripts': 'transcripts'},
+            'molecules': 'metabolites',
+            'proteins': 'proteins',
+            'transcripts': 'transcripts',
+            'factors': 'concentrations'},
+
         'translation': {
             'ribosomes': 'ribosomes',
-            'molecules': 'cell',
+            'molecules': 'metabolites',
             'transcripts': 'transcripts',
-            'proteins': 'proteins'},
+            'proteins': 'proteins',
+            'concentrations': 'concentrations'},
+
         'degradation': {
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'molecules': 'cell',
+            'molecules': 'metabolites',
             'global': 'global'},
+
+        'complexation': {
+            'monomers': 'proteins',
+            'complexes': 'proteins'},
+
         'division': {
             'global': 'global'}}
 
@@ -126,7 +141,7 @@ def compose_master(config):
 
 # toy functions/ defaults
 def default_metabolism_config():
-    config = get_e_coli_core_config()
+    config = get_iAF1260b_config()
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
     metabolism_config = {
