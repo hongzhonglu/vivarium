@@ -24,6 +24,7 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_mass import DeriveMass
 
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
@@ -33,7 +34,9 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 deriver_library = {
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs}
+    'counts_to_mmol': DeriveConcs,
+    'mass': DeriveMass,
+}
 
 
 
@@ -54,7 +57,6 @@ def get_derivers(process_list, topology):
     # get deriver configuration
     deriver_config = {}
     full_deriver_topology = {}
-    deriver_topology = {}
     for level in process_list:
         for process_id, process in level.items():
             process_settings = process.default_settings()
@@ -77,6 +79,7 @@ def get_derivers(process_list, topology):
                     print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
+                # make deriver_topology, add to full_deriver_topology
                 deriver_topology = {
                     type: {
                         source_port: source_compartment_port,
@@ -100,24 +103,21 @@ def get_derivers(process_list, topology):
         deriver_processes[type] = deriver_library[type](config)
 
     # add global deriver
-    # TODO -- configure global deriver to get mass
     global_deriver = {
         'global_deriver': DeriveGlobals({})}
-
     global_deriver_topology = {
         'global_deriver': {
             'global': 'global'}}
+    deep_merge(full_deriver_topology, global_deriver_topology)
 
-    deep_merge(deriver_topology, global_deriver_topology)
-
-    # put the global deriver and additional derivers in two layers
+    # put the global deriver and additional derivers in two process layers
     processes = [
         global_deriver,
         deriver_processes]
 
     return {
         'deriver_processes': processes,
-        'deriver_topology': deriver_topology}
+        'deriver_topology': full_deriver_topology}
 
 def get_schema(process_list, topology):
     schema = {}

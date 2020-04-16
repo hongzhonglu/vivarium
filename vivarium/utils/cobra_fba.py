@@ -6,7 +6,9 @@ from cobra.medium import minimal_medium
 
 from cobra import Model, Reaction, Metabolite, Configuration
 from vivarium.data.synonyms import get_synonym
+from vivarium.utils.units import units
 
+from vivarium.processes.derive_globals import AVOGADRO
 
 
 EXTERNAL_PREFIX = 'EX_'
@@ -125,18 +127,21 @@ def extract_model(model):
             pass
 
     # get flux scaling factor based on the objective's predicted added mass
-    # this adjusts the BiGG FBA bounds for single-cell rates
-    target_added_mass = 301 # fit to hit a doubling time of 2520 sec (42 min) in e_coli_core
+    # this adjusts the BiGG FBA bounds to approximate single-cell rates
+    target_added_mass = 4.9e-7  # fit to approximate a doubling time of 2520 sec (42 min) in iAF1260b
+
     solution = model.optimize()
     objective_value = solution.objective_value
-
     added_mass = 0
     for reaction_id, coeff1 in objective.items():
         for mol_id, coeff2 in stoichiometry[reaction_id].items():
             if coeff2 < 0: # molecule is used to make biomass (negative coefficient)
-                mol_mw = molecular_weights.get(mol_id, 0.0)
-                mol_mass = mol_mw * objective_value
-                added_mass += mol_mass
+                mw = molecular_weights.get(mol_id) * (units.g / units.mol)
+                count = int(-coeff1 * coeff2 * objective_value)
+                mol = count / AVOGADRO
+                mol_added_mass = mw * mol
+                added_mass += mol_added_mass.to('fg').magnitude
+
     flux_scaling = target_added_mass / added_mass
 
     return {
