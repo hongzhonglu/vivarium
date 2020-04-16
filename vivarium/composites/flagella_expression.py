@@ -171,34 +171,34 @@ if __name__ == '__main__':
         'templates': promoters}
     gene_network_plot(data, out_dir)
 
-    # run simulation
-    settings = {
-        'total_time': 2400,
-        'verbose': True}
-    timeseries = simulate_compartment(flagella_expression_compartment, settings)
-
-    plot_config = {
-        'name': 'flagella_expression',
-        'ports': {
-            'transcripts': 'transcripts',
-            'proteins': 'proteins',
-            'molecules': 'molecules'}}
-
-    plot_gene_expression_output(
-        timeseries,
-        plot_config,
-        out_dir)
-
-    # just-in-time figure
-    plot_config2 = plot_config.copy()
-    plot_config2.update({
-        'name': 'flagella',
-        'plot_ports': {
-            'transcripts': list(flagella_chromosome.config['genes'].keys()),
-            'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
-            'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
-
-    plot_timeseries_heatmaps(
-        timeseries,
-        plot_config2,
-        out_dir)
+    # # run simulation
+    # settings = {
+    #     'total_time': 2400,
+    #     'verbose': True}
+    # timeseries = simulate_compartment(flagella_expression_compartment, settings)
+    #
+    # plot_config = {
+    #     'name': 'flagella_expression',
+    #     'ports': {
+    #         'transcripts': 'transcripts',
+    #         'proteins': 'proteins',
+    #         'molecules': 'molecules'}}
+    #
+    # plot_gene_expression_output(
+    #     timeseries,
+    #     plot_config,
+    #     out_dir)
+    #
+    # # just-in-time figure
+    # plot_config2 = plot_config.copy()
+    # plot_config2.update({
+    #     'name': 'flagella',
+    #     'plot_ports': {
+    #         'transcripts': list(flagella_chromosome.config['genes'].keys()),
+    #         'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
+    #         'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
+    #
+    # plot_timeseries_heatmaps(
+    #     timeseries,
+    #     plot_config2,
+    #     out_dir)
