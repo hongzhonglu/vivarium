@@ -45,7 +45,7 @@ DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds nu
 ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
 FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
-FORCE_SCALING = 200  # scales from pN
+FORCE_SCALING = 100  # scales from pN
 JITTER_FORCE = 1e-3  # pN
 
 DEFAULT_BOUNDS = [10, 10]
@@ -783,10 +783,10 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     # test motility
-    bounds = [20, 20]
+    bounds = [100, 100]
     motility_sim_settings = {
         'timestep': 0.1,
-        'total_time': 4}
+        'total_time': 5}
     motility_config = {
         'debug': True,
         'jitter_force': 0,
