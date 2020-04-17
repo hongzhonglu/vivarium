@@ -226,8 +226,8 @@ class Multibody(Process):
             # run for a physics timestep
             self.space.step(self.physics_dt)
 
-            if self.pygame_viz:
-                self._update_screen()
+        if self.pygame_viz:
+            self._update_screen()
 
     def apply_motile_force(self, body):
         width, length = body.dimensions
@@ -244,6 +244,7 @@ class Multibody(Process):
             # force-based torque
             # if torque != 0.0:
             #     motile_force = get_force_with_angle(thrust, torque)
+
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
 
@@ -777,7 +778,7 @@ if __name__ == '__main__':
     # test motility
     bounds = [20, 20]
     motility_sim_settings = {
-        'timestep': 0.01,
+        'timestep': 0.1,
         'total_time': 10}
     motility_config = {
         'debug': True,
