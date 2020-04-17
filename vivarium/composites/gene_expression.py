@@ -97,8 +97,8 @@ def compose_gene_expression(config):
 
 # analysis
 def gene_network_plot(data, out_dir, filename='gene_network'):
-    node_size = 700
-    node_distance = 50
+    node_size = 400
+    node_distance = 10
 
     operon_suffix = '_o'
     tf_suffix = '_tf'
@@ -229,7 +229,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
         # get positions
         dist = node_distance / (len(subgraph)**0.5)
-        pos = nx.spring_layout(subgraph, k=dist, iterations=1000)
+        pos = nx.spring_layout(subgraph, k=dist, iterations=500)
 
         color_map = []
         for node in subgraph:
