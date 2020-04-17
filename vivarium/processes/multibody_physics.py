@@ -136,7 +136,6 @@ class Multibody(Process):
 
         # debugging with pygame
         self.pygame_viz = initial_parameters.get('debug', False)
-
         self.pygame_scale = 1
         if self.pygame_viz:
             max_bound = max(bounds)
@@ -195,7 +194,7 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agents:
-                # TODO -- check if specs updated before going through the expensive update_body(
+                # TODO -- check if specs were updated before going through the expensive update_body()
                 self.update_body(agent_id, specs)
             else:
                 self.add_body_from_center(agent_id, specs)
@@ -245,9 +244,7 @@ class Multibody(Process):
             # if torque != 0.0:
             #     motile_force = get_force_with_angle(thrust, torque)
 
-
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
-
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
@@ -359,11 +356,10 @@ class Multibody(Process):
 
     def get_body_specs(self, agent_id):
         body, shape = self.agents[agent_id]
-        # width, length = body.dimensions
         position = body.position
 
         return {
-            'location': [position[0], position[1]],
+            'location': [position[0] / self.pygame_scale, position[1] / self.pygame_scale],
             'angle': body.angle,
         }
 
@@ -471,6 +467,7 @@ def simulate_motility(config, settings):
     # test run/tumble
     time = 0
     while time < total_time:
+        print('time: {}'.format(time))
         time += timestep
 
         # update motile force and apply to state
@@ -623,16 +620,15 @@ def plot_trajectory(agent_timeseries, config, out_dir='out', filename='trajector
 
         # plot line
         line = plt.gca().add_collection(lc)
-
-        # color bar
-        cbar = plt.colorbar(line)
-        cbar.set_label('time', rotation=270)
-
         plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
         plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
 
     plt.xlim((0, x_length))
     plt.ylim((0, y_length))
+
+    # color bar
+    cbar = plt.colorbar(line)  # TODO --adjust this for full timeline
+    cbar.set_label('time', rotation=270)
 
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
@@ -779,7 +775,7 @@ if __name__ == '__main__':
     bounds = [20, 20]
     motility_sim_settings = {
         'timestep': 0.1,
-        'total_time': 10}
+        'total_time': 4}
     motility_config = {
         'debug': True,
         'jitter_force': 0,
