@@ -11,7 +11,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 from matplotlib.collections import LineCollection
+
+# pygame for debugging
+import pygame
+from pygame.key import *
+from pygame.locals import *
+from pygame.color import *
+
+# pymunk imports
+import pymunkoptions
+pymunkoptions.options["debug"] = False
 import pymunk
+import pymunk.pygame_util
 
 # vivarium imports
 from vivarium.compartment.emitter import timeseries_from_data
@@ -22,6 +33,10 @@ from vivarium.compartment.composition import (
     process_in_compartment,
     simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
+
+
+
+DEBUG_SIZE = 600  # size of the pygame debug screen
 
 # constants
 PI = math.pi
@@ -43,6 +58,7 @@ DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 # agent port keys
 AGENT_KEYS = ['location', 'angle', 'volume', 'length', 'width', 'mass', 'forces']
 NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
+
 
 
 def get_volume(length, width):
@@ -88,6 +104,8 @@ def daughter_locations(parent_location, parent_length, parent_angle):
 
     return daughter_locations
 
+
+
 class Multibody(Process):
     """
     A multi-body physics process using pymunk
@@ -115,6 +133,20 @@ class Multibody(Process):
 
         # initialize pymunk space
         self.space = pymunk.Space()
+
+        # debugging with pygame
+        self.pygame_viz = initial_parameters.get('debug', False)
+
+        self.pygame_scale = 1
+        if self.pygame_viz:
+            max_bound = max(bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
+            pygame.init()
+            self._screen = pygame.display.set_mode((
+                int(bounds[0]*self.pygame_scale),
+                int(bounds[1]*self.pygame_scale)))
+            self._clock = pygame.time.Clock()
+            self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
         # add static barriers
         # TODO -- mother machine configuration
@@ -194,6 +226,9 @@ class Multibody(Process):
             # run for a physics timestep
             self.space.step(self.physics_dt)
 
+            if self.pygame_viz:
+                self._update_screen()
+
     def apply_motile_force(self, body):
         width, length = body.dimensions
 
@@ -229,8 +264,8 @@ class Multibody(Process):
 
     def add_barriers(self, bounds):
         """ Create static barriers """
-        x_bound = bounds[0]
-        y_bound = bounds[1]
+        x_bound = bounds[0] * self.pygame_scale
+        y_bound = bounds[1] * self.pygame_scale
 
         static_body = self.space.static_body
         static_lines = [
@@ -245,8 +280,8 @@ class Multibody(Process):
         self.space.add(static_lines)
 
     def add_body_from_center(self, body_id, body):
-        width = body['width']
-        length = body['length']
+        width = body['width'] * self.pygame_scale
+        length = body['length'] * self.pygame_scale
         mass = body['mass']
         center_position = body['location']
         angle = body['angle']
@@ -265,7 +300,9 @@ class Multibody(Process):
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
-        body.position = (center_position[0], center_position[1])
+        body.position = (
+            center_position[0] * self.pygame_scale,
+            center_position[1] * self.pygame_scale)
         body.angle = angle
         body.dimensions = (width, length)
         body.angular_velocity = angular_velocity
@@ -281,9 +318,9 @@ class Multibody(Process):
 
     def update_body(self, body_id, specs):
 
-        length = specs.get('length')
-        width = specs.get('width')
-        mass = specs.get('mass')
+        length = specs['length'] * self.pygame_scale
+        width = specs['width'] * self.pygame_scale
+        mass = specs['mass']
         motile_force = specs.get('motile_force', [0, 0])
 
         body, shape = self.agents[body_id]
@@ -328,6 +365,31 @@ class Multibody(Process):
             'location': [position[0], position[1]],
             'angle': body.angle,
         }
+
+
+    ## functions for debugging with pymunk
+    # pygame functions
+    def _process_events(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                self._running = False
+    def _clear_screen(self):
+        self._screen.fill(THECOLORS["white"])
+
+    def _draw_objects(self):
+        self.space.debug_draw(self._draw_options)
+
+    def _update_screen(self):
+        self._process_events()
+        self._clear_screen()
+        self._draw_objects()
+        pygame.display.flip()
+        # Delay fixed time between frames
+        self._clock.tick(5)
+
+
 
 
 # test functions
@@ -711,11 +773,12 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     # test motility
-    bounds = [100, 100]
+    bounds = [20, 20]
     motility_sim_settings = {
         'timestep': 0.01,
         'total_time': 10}
     motility_config = {
+        'debug': True,
         'jitter_force': 0,
         'bounds': bounds}
     body_config = {
