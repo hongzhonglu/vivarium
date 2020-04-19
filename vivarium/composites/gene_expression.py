@@ -6,10 +6,13 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import networkx as nx
 
-from vivarium.compartment.process import (
-    initialize_state
+from vivarium.compartment.process import initialize_state
+from vivarium.compartment.composition import (
+    get_derivers,
+    load_compartment,
+    simulate_compartment
 )
-from vivarium.compartment.composition import get_derivers, load_compartment, simulate_compartment
+from vivarium.utils.make_network import save_network
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
@@ -99,6 +102,7 @@ def compose_gene_expression(config):
 def gene_network_plot(data, out_dir, filename='gene_network'):
     node_size = 400
     node_distance = 10
+    edge_weight = 1
 
     operon_suffix = '_o'
     tf_suffix = '_tf'
@@ -125,7 +129,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     promoter_nodes = set()
     tf_nodes = set()
 
-    edges = {}
+    edges = []
 
     # add operon --> gene connections
     for operon, genes in operons.items():
@@ -147,7 +151,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         # add operon --> gene edge
         for gene_name in gene_names:
             edge = (operon_name, gene_name)
-            edges[edge] = 'gene'
+            edges.append(edge)
             G.add_edge(operon_name, gene_name)
 
     # add transcription factor --> promoter --> operon connections
@@ -181,7 +185,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
                 # connect transcription_factor --> promoter
                 edge = (tf_name, promoter_name)
-                edges[edge] = 'transcription factor'
+                edges.append(edge)
                 G.add_edge(tf_name, promoter_name)
 
         # add gene products
@@ -199,7 +203,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
                 # connect promoter --> operon
                 edge = (promoter_name, operon_name)
-                edges[edge] = 'promoter'
+                edges.append(edge)
                 G.add_edge(promoter_name, operon_name)
 
     subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
@@ -214,6 +218,33 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     node_labels.update(g_labels)
     node_labels.update(p_labels)
     node_labels.update(tf_labels)
+
+
+    # save network for use in gephi
+    gephi_nodes = {}
+    gephi_edges = [[node1, node2, edge_weight] for (node1, node2) in edges]
+    for node_id in operon_nodes:
+        gephi_nodes[node_id] = {
+            'label': o_labels[node_id],
+            'type': 'operon',
+            'size': 1}
+    for node_id in gene_nodes:
+        gephi_nodes[node_id] = {
+            'label': g_labels[node_id],
+            'type': 'gene',
+            'size': 1}
+    for node_id in promoter_nodes:
+        gephi_nodes[node_id] = {
+            'label': p_labels[node_id],
+            'type': 'promoter',
+            'size': 1}
+    for node_id in tf_nodes:
+        gephi_nodes[node_id] = {
+            'label': tf_labels[node_id],
+            'type': 'transcription factor',
+            'size': 1}
+    save_network(gephi_nodes, gephi_edges, out_dir)
+
 
     # plot
     n_rows = len(list(subgraphs))
