@@ -162,13 +162,13 @@ def get_glc_lct_config():
             ('internal', 'PTSG'): {
                 ('external', 'glc__D_e'): 1e0,  # k_m for external [glc__D_e]
                 ('internal', 'pep_c'): None,  # Set k_m = None to make a reactant non-limiting
-                'kcat_f': 3e5,  # kcat for the forward direction
+                'kcat_f': 2.5e5,  # kcat for the forward direction
             }
         },
         'EX_lcts_e': {
             ('internal', 'LacY'): {
                 ('external', 'lcts_e'): 1e0,
-                'kcat_f': 5e4,
+                'kcat_f': 1e4,
             }
         }
     }
@@ -266,13 +266,6 @@ def test_convenience_kinetics(end_time=2520):
 
 
 def test_convenience_kinetics_correlated_to_reference():
-
-
-
-    # TODO -- replace reference with lcts_e sim data
-
-
-
     timeseries = test_convenience_kinetics()
     flattened = flatten_timeseries(timeseries)
     reference_timeseries = load_timeseries(

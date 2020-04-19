@@ -132,17 +132,17 @@ class ODE_expression(Process):
 # toy config
 def get_lacy_config():
     toy_transcription_rates = {
-        'lacy_RNA': 1e-5}
+        'lacy_RNA': 2e-6}
 
     toy_translation_rates = {
-        'LacY': 3e-4}
+        'LacY': 2e-4}
 
     toy_protein_map = {
         'LacY': 'lacy_RNA'}
 
     toy_degradation_rates = {
         'lacy_RNA': 1e-1,
-        'LacY': 3e-3}
+        'LacY': 1e-4}
 
     initial_state = {
         'internal': {

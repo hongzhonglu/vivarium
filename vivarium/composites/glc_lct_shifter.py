@@ -77,7 +77,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     globals = timeseries['global']
 
     # environment
-    lactose = environment['lac__D_e']
+    lactose = environment['lcts_e']
     glucose = environment['glc__D_e']
 
     # internal
@@ -186,5 +186,8 @@ if __name__ == '__main__':
 
     # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
     plot_diauxic_shift(timeseries, settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)
