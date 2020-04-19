@@ -194,7 +194,7 @@ def get_glc_lct_config():
 
     transport_ports = {
         'internal': [
-            'g6p_c', 'pep_c', 'pyr_c', 'PTSG', 'LacY'],
+            'g6p_c', 'pep_c', 'pyr_c', 'PTSG', 'LacY', 'lcts_p'],
         'external': [
             'glc__D_e', 'lcts_e']
     }
