@@ -14,21 +14,21 @@ from vivarium.compartment.composition import (
 from vivarium.composites.ode_expression import compose_ode_expression
 
 # process configurations
-from vivarium.processes.metabolism import get_e_coli_core_config
+from vivarium.processes.metabolism import get_iAF1260b_config
 from vivarium.processes.convenience_kinetics import get_glc_lct_config
 from vivarium.processes.ode_expression import get_lacy_config
 
 
 # processes configurations
 def get_metabolism_config():
-    config = get_e_coli_core_config()
+    config = get_iAF1260b_config()
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
     metabolism_config = {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]}}
+            'EX_lcts_e': [1.05, 1.0]}}
 
     config.update(metabolism_config)
 
@@ -88,7 +88,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
     # reactions
     glc_exchange = reactions['EX_glc__D_e']
-    lac_exchange = reactions['EX_lac__D_e']
+    lac_exchange = reactions['EX_lcts_e']
 
     # global
     mass = globals['mass']
@@ -153,9 +153,6 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    # timeline = [
-    #     (100, {})]
-
     timeline = [
         (0, {'environment': {
             'glc__D_e': 5.0,
@@ -179,13 +176,13 @@ if __name__ == '__main__':
             ('environment', 'lac__D_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
-            ('reactions', 'EX_lac__D_e'),
+            ('reactions', 'EX_lcts_e'),
             ('cell', 'g6p_c'),
             ('cell', 'PTSG'),
             ('cell', 'lac__D_c'),
             ('cell', 'lacy_RNA'),
             ('cell', 'LacY')],
-        'skip_ports': ['prior_state', 'null']}
+        'skip_ports': ['prior_state', 'null', 'reactions']}
 
     # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
