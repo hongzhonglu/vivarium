@@ -142,31 +142,36 @@ def get_glc_lct_config():
                 ('internal', 'g6p_c'): 1.0,
                 ('external', 'glc__D_e'): -1.0,
                 ('internal', 'pep_c'): -1.0,  # TODO -- PEP requires homeostasis mechanism to avoid depletion
-                ('internal', 'pyr_c'): 1.0},
+                ('internal', 'pyr_c'): 1.0,
+            },
             'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]},
-        'EX_lac__D_e': {
+            'catalyzed by': [('internal', 'PTSG')]
+        },
+        'EX_lcts_e': {
             'stoichiometry': {
-                ('external', 'lac__D_e'): -1.0,
-                ('external', 'h_e'): -1.0,
-                ('internal', 'lac__D_c'): 1.0,
-                ('internal', 'h_c'): 1.0},
+                ('external', 'lcts_e'): -1.0,
+                ('internal', 'lcts_p'): 1.0,
+            },
             'is reversible': False,
-            'catalyzed by': [('internal', 'LacY')]}}
+            'catalyzed by': [('internal', 'LacY')]
+        }
+    }
 
     transport_kinetics = {
         'EX_glc__D_e': {
             ('internal', 'PTSG'): {
-                # k_m for external [glc__D_e]
-                ('external', 'glc__D_e'): 1e-1,
-                # Set k_m = None to make a reactant non-limiting
-                ('internal', 'pep_c'): None,
-                'kcat_f': 3e5}},  # kcat for the forward direction
-        'EX_lac__D_e': {
+                ('external', 'glc__D_e'): 1e0,  # k_m for external [glc__D_e]
+                ('internal', 'pep_c'): None,  # Set k_m = None to make a reactant non-limiting
+                'kcat_f': 2.5e5,  # kcat for the forward direction
+            }
+        },
+        'EX_lcts_e': {
             ('internal', 'LacY'): {
-                ('external', 'lac__D_e'): 1e-1,
-                ('external', 'h_e'): None,
-                'kcat_f': 5e4}}}
+                ('external', 'lcts_e'): 1e0,
+                'kcat_f': 1e4,
+            }
+        }
+    }
 
     transport_initial_state = {
         'internal': {
@@ -174,22 +179,25 @@ def get_glc_lct_config():
             'g6p_c': 0.0,
             'pep_c': 1.8e-1,
             'pyr_c': 0.0,
-            'LacY': 0.0,
-            'lac__D_c': 0.0,
-            'h_c': 100.0},
+            'LacY': 1.0e-6,
+            'lcts_p': 0.0,
+        },
         'external': {
             'glc__D_e': 12.0,
-            'lac__D_e': 10.0,
-            'h_e': 100.0},
+            'lcts_e': 10.0,
+        },
         'fluxes': {  # TODO -- is this needed?
             'EX_glc__D_e': 0.0,
-            'EX_lac__D_e': 0.0}}
+            'EX_lcts_e': 0.0,
+        }
+    }
 
     transport_ports = {
         'internal': [
-            'g6p_c', 'pep_c', 'pyr_c', 'h_c', 'PTSG', 'LacY'],
+            'g6p_c', 'pep_c', 'pyr_c', 'PTSG', 'LacY'],
         'external': [
-            'glc__D_e', 'lac__D_e', 'h_e']}
+            'glc__D_e', 'lcts_e']
+    }
 
     return {
         'reactions': transport_reactions,
@@ -204,26 +212,36 @@ def get_toy_config():
                 ('internal', 'A'): 1,
                 ('external', 'B'): -1},
             'is reversible': False,
-            'catalyzed by': [('internal', 'enzyme1')]}}
+            'catalyzed by': [('internal', 'enzyme1')]
+        }
+    }
 
     toy_kinetics = {
         'reaction1': {
             ('internal', 'enzyme1'): {
                 ('external', 'B'): 0.2,
-                'kcat_f': 5e1}}}
+                'kcat_f': 5e1,
+            }
+        }
+    }
 
     toy_ports = {
         'internal': ['A', 'enzyme1'],
-        'external': ['B']}
+        'external': ['B']
+    }
 
     toy_initial_state = {
         'internal': {
             'A': 1.0,
-            'enzyme1': 1e-1},
+            'enzyme1': 1e-1,
+        },
         'external': {
-            'B': 10.0},
+            'B': 10.0,
+        },
         'fluxes': {
-            'reaction1': 0.0}}
+            'reaction1': 0.0,
+        }
+    }
 
     return {
         'reactions': toy_reactions,
@@ -232,14 +250,14 @@ def get_toy_config():
         'ports': toy_ports}
 
 
-def test_convenience_kinetics(end_time=1000):
+def test_convenience_kinetics(end_time=2520):
     config = get_glc_lct_config()
     kinetic_process = ConvenienceKinetics(config)
 
     settings = {
         'environment_port': 'external',
         'exchange_port': 'exchange',
-        'environment_volume': 1e-13,  # L
+        'environment_volume': 5e-14,  # L
         'timestep': 1,
         'total_time': end_time}
 
