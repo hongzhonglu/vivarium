@@ -165,7 +165,7 @@ class Metabolism(Process):
             'emitter_keys': default_emitter_keys,
             'schema': schema,
             'deriver_setting': deriver_setting,
-            'time_step': 5}
+            'time_step': 2}
 
     def next_update(self, timestep, states):
 
