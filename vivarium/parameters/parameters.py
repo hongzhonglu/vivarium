@@ -44,6 +44,7 @@ def set_nested(dict, keys, value, create_missing=True):
         d[keys[-1]] = value
     return dict
 
+
 def get_parameters_logspace(min, max, number):
     '''
     get list of n parameters logarithmically spaced between min and max

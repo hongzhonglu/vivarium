@@ -202,10 +202,10 @@ class Translation(Process):
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
-        ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
-        proteins = states['proteins']
         molecules = states['molecules']
         transcripts = states['transcripts']
+        proteins = states['proteins']
+        ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
 
         gene_counts = np.array(
             list(transcripts_to_gene_counts(transcripts, self.operons).values()),

@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,40 +7,42 @@ import numpy as np
 from vivarium.compartment.composition import load_compartment, simulate_compartment
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
-from vivarium.data.chromosomes.flagella_chromosome import flagella_chromosome
+from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.parameters.parameters import parameter_scan
 
-def get_flg_expression_config():
-    plasmid = Chromosome(flagella_chromosome.config)
-    sequences = plasmid.product_sequences()
+def get_flagella_expression_config(config):
+    flagella_data = FlagellaChromosome(config)
+    chromosome_config = flagella_data.chromosome_config
+    sequences = flagella_data.chromosome.product_sequences()
 
     molecules = {}
     for nucleotide in nucleotides.values():
-        molecules[nucleotide] = 1000000
+        molecules[nucleotide] = 500000
     for amino_acid in amino_acids.values():
         molecules[amino_acid] = 100000
 
-    flagella_expression_config = {
+    config = {
 
         'transcription': {
 
-            'sequence': flagella_chromosome.config['sequence'],
-            'templates': flagella_chromosome.config['promoters'],
-            'genes': flagella_chromosome.config['genes'],
-            'transcription_factors': flagella_chromosome.transcription_factors,
-            'promoter_affinities': flagella_chromosome.promoter_affinities,
+            'sequence': chromosome_config['sequence'],
+            'templates': chromosome_config['promoters'],
+            'genes': chromosome_config['genes'],
+            'transcription_factors': flagella_data.transcription_factors,
+            'promoter_affinities': flagella_data.promoter_affinities,
             'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
 
-            'sequences': flagella_chromosome.protein_sequences,
-            'templates': flagella_chromosome.transcript_templates,
+            'sequences': flagella_data.protein_sequences,
+            'templates': flagella_data.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
-            'transcript_affinities': flagella_chromosome.transcript_affinities,
+            'transcript_affinities': flagella_data.transcript_affinities,
 
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
@@ -53,19 +56,19 @@ def get_flg_expression_config():
                 'transcripts': {
                     'endoRNAse': {
                         transcript: 1e-23
-                        for transcript in flagella_chromosome.config['genes'].keys()}}}},
+                        for transcript in chromosome_config['genes'].keys()}}}},
 
         'complexation': {
-            'monomer_ids': flagella_chromosome.complexation_monomer_ids,
-            'complex_ids': flagella_chromosome.complexation_complex_ids,
-            'stoichiometry': flagella_chromosome.complexation_stoichiometry,
-            'rates': flagella_chromosome.complexation_rates},
+            'monomer_ids': flagella_data.complexation_monomer_ids,
+            'complex_ids': flagella_data.complexation_complex_ids,
+            'stoichiometry': flagella_data.complexation_stoichiometry,
+            'rates': flagella_data.complexation_rates},
 
         'initial_state': {
             'molecules': molecules,
             'transcripts': {
                 gene: 0
-                for gene in flagella_chromosome.config['genes'].keys()},
+                for gene in chromosome_config['genes'].keys()},
             'proteins': {
                 'CpxR': 10,
                 'CRP': 10,
@@ -74,11 +77,11 @@ def get_flg_expression_config():
                 UNBOUND_RIBOSOME_KEY: 10,
                 UNBOUND_RNAP_KEY: 10}}}
 
-    return flagella_expression_config
+    return config
 
 
 def generate_flagella_compartment(config):
-    flagella_expression_config = get_flg_expression_config()
+    flagella_expression_config = get_flagella_expression_config(config)
 
     return compose_gene_expression(flagella_expression_config)
 
@@ -150,12 +153,13 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
 
 
 
-if __name__ == '__main__':
+def plot_flagella_expression():
     out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     # load the compartment
+    flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
@@ -181,11 +185,61 @@ if __name__ == '__main__':
     plot_config2.update({
         'name': 'flagella',
         'plot_ports': {
-            'transcripts': list(flagella_chromosome.config['genes'].keys()),
-            'proteins': flagella_chromosome.complexation_monomer_ids + flagella_chromosome.complexation_complex_ids,
+            'transcripts': list(flagella_data.chromosome_config['genes'].keys()),
+            'proteins': flagella_data.complexation_monomer_ids + flagella_data.complexation_complex_ids,
             'molecules': list(nucleotides.values()) + list(amino_acids.values())}})
 
     plot_timeseries_heatmaps(
         timeseries,
         plot_config2,
         out_dir)
+
+def exponential_range(steps, base, factor):
+    return [
+        (base ** x) * factor
+        for x in range(steps)]
+
+def scan_flagella_expression_parameters():
+    flagella_data = FlagellaChromosome()
+    scan_params = {}
+
+    steps = 3
+    affinities_range = exponential_range(steps, 3, 1e-3)
+    thresholds_range = exponential_range(steps, 2.5, 1e-7)
+
+    # add promoter affinities
+    for promoter in flagella_data.chromosome_config['promoters'].keys():
+        scan_params[('promoter_affinities', promoter)] = affinities_range
+
+    # add transcript affinities
+    for site in flagella_data.transcript_affinities.keys():
+        scan_params[('transcript_affinities', site)] = affinities_range
+
+    # add transcription factor thresholds
+    for threshold in flagella_data.factor_thresholds.keys():
+        scan_params[('thresholds', threshold)] = thresholds_range
+
+    output_values = [
+        ('proteins', monomer)
+        for monomer in flagella_data.complexation_monomer_ids] + [
+        ('proteins', complex)
+        for complex in flagella_data.complexation_complex_ids]
+
+    results = parameter_scan(
+        generate_flagella_compartment,
+        scan_params,
+        output_values,
+        {'time': 5})
+
+    return results
+
+
+if __name__ == '__main__':
+    commands = ['plot', 'scan']
+    parser = argparse.ArgumentParser(description='flagella expression')
+    parser.add_argument('command', choices=commands)
+    args = parser.parse_args()
+    if args.command == 'scan':
+        scan_flagella_expression_parameters()
+    else:
+        plot_flagella_expression()

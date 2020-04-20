@@ -14,8 +14,7 @@ toy_chromosome_config = {
             'sites': [{
                 'position': 0,
                 'length': 3,
-                'thresholds': [
-                    ('tfA', 0.3)]}],
+                'thresholds': {'tfA': 0.3}}],
             'terminators': [
                 {
                     'position': 6,
@@ -32,8 +31,7 @@ toy_chromosome_config = {
             'sites': [{
                 'position': 0,
                 'length': 3,
-                'thresholds': [
-                    ('tfB', 0.5)]}],
+                'thresholds': {'tfB': 0.5}}],
             'terminators': [
                 {
                     'position': -9,
