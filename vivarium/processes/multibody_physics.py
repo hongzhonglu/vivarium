@@ -11,7 +11,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 from matplotlib.collections import LineCollection
+
+# pygame for debugging
+import pygame
+from pygame.key import *
+from pygame.locals import *
+from pygame.color import *
+
+# pymunk imports
+import pymunkoptions
+pymunkoptions.options["debug"] = False
 import pymunk
+import pymunk.pygame_util
 
 # vivarium imports
 from vivarium.compartment.emitter import timeseries_from_data
@@ -23,6 +34,10 @@ from vivarium.compartment.composition import (
     simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
 
+
+
+DEBUG_SIZE = 600  # size of the pygame debug screen
+
 # constants
 PI = math.pi
 ELASTICITY = 0.95
@@ -30,7 +45,7 @@ DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds nu
 ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
 FRICTION = 0.9  # TODO -- does this do anything?
 PHYSICS_TS = 0.005
-FORCE_SCALING = 15  # scales from pN
+FORCE_SCALING = 100  # scales from pN
 JITTER_FORCE = 1e-3  # pN
 
 DEFAULT_BOUNDS = [10, 10]
@@ -43,6 +58,7 @@ DEFAULT_SV = [100.0/100.0, 70.0/100.0]
 # agent port keys
 AGENT_KEYS = ['location', 'angle', 'volume', 'length', 'width', 'mass', 'forces']
 NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
+
 
 
 def get_volume(length, width):
@@ -88,6 +104,8 @@ def daughter_locations(parent_location, parent_length, parent_angle):
 
     return daughter_locations
 
+
+
 class Multibody(Process):
     """
     A multi-body physics process using pymunk
@@ -111,14 +129,27 @@ class Multibody(Process):
 
         # configured parameters
         self.jitter_force = initial_parameters.get('jitter_force', JITTER_FORCE)
-        bounds = initial_parameters.get('bounds', DEFAULT_BOUNDS)
+        self.bounds = initial_parameters.get('bounds', DEFAULT_BOUNDS)
 
         # initialize pymunk space
         self.space = pymunk.Space()
 
+        # debugging with pygame
+        self.pygame_viz = initial_parameters.get('debug', False)
+        self.pygame_scale = 1
+        if self.pygame_viz:
+            max_bound = max(self.bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
+            pygame.init()
+            self._screen = pygame.display.set_mode((
+                int(bounds[0]*self.pygame_scale),
+                int(bounds[1]*self.pygame_scale)), RESIZABLE)
+            self._clock = pygame.time.Clock()
+            self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
+
         # add static barriers
         # TODO -- mother machine configuration
-        self.add_barriers(bounds)
+        self.add_barriers(self.bounds)
 
         # initialize agents
         self.agents = {}
@@ -163,7 +194,7 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agents:
-                # TODO -- check if specs updated before going through the expensive update_body(
+                # TODO -- check if specs were updated before going through the expensive update_body()
                 self.update_body(agent_id, specs)
             else:
                 self.add_body_from_center(agent_id, specs)
@@ -194,6 +225,9 @@ class Multibody(Process):
             # run for a physics timestep
             self.space.step(self.physics_dt)
 
+        if self.pygame_viz:
+            self._update_screen()
+
     def apply_motile_force(self, body):
         width, length = body.dimensions
 
@@ -211,7 +245,6 @@ class Multibody(Process):
             #     motile_force = get_force_with_angle(thrust, torque)
 
         scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
-
         body.apply_force_at_local_point(scaled_motile_force, motile_location)
 
     def apply_jitter_force(self, body):
@@ -229,8 +262,8 @@ class Multibody(Process):
 
     def add_barriers(self, bounds):
         """ Create static barriers """
-        x_bound = bounds[0]
-        y_bound = bounds[1]
+        x_bound = bounds[0] * self.pygame_scale
+        y_bound = bounds[1] * self.pygame_scale
 
         static_body = self.space.static_body
         static_lines = [
@@ -245,8 +278,8 @@ class Multibody(Process):
         self.space.add(static_lines)
 
     def add_body_from_center(self, body_id, body):
-        width = body['width']
-        length = body['length']
+        width = body['width'] * self.pygame_scale
+        length = body['length'] * self.pygame_scale
         mass = body['mass']
         center_position = body['location']
         angle = body['angle']
@@ -265,7 +298,9 @@ class Multibody(Process):
         body = pymunk.Body(mass, inertia)
         shape.body = body
 
-        body.position = (center_position[0], center_position[1])
+        body.position = (
+            center_position[0] * self.pygame_scale,
+            center_position[1] * self.pygame_scale)
         body.angle = angle
         body.dimensions = (width, length)
         body.angular_velocity = angular_velocity
@@ -281,9 +316,9 @@ class Multibody(Process):
 
     def update_body(self, body_id, specs):
 
-        length = specs.get('length')
-        width = specs.get('width')
-        mass = specs.get('mass')
+        length = specs['length'] * self.pygame_scale
+        width = specs['width'] * self.pygame_scale
+        mass = specs['mass']
         motile_force = specs.get('motile_force', [0, 0])
 
         body, shape = self.agents[body_id]
@@ -321,16 +356,50 @@ class Multibody(Process):
 
     def get_body_specs(self, agent_id):
         body, shape = self.agents[agent_id]
-        # width, length = body.dimensions
         position = body.position
+        rescaled_position = [
+            position[0] / self.pygame_scale,
+            position[1] / self.pygame_scale]
+
+        # enforce bounds
+        rescaled_position = [
+            0 if pos<0 else pos
+            for idx, pos in enumerate(rescaled_position)]
+        rescaled_position = [
+            self.bounds[idx] if pos>self.bounds[idx] else pos
+            for idx, pos in enumerate(rescaled_position)]
 
         return {
-            'location': [position[0], position[1]],
+            'location': rescaled_position,
             'angle': body.angle,
         }
 
 
-# test functions
+    ## functions for debugging with pymunk
+    # pygame functions
+    def _process_events(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                self._running = False
+    def _clear_screen(self):
+        self._screen.fill(THECOLORS["white"])
+
+    def _draw_objects(self):
+        self.space.debug_draw(self._draw_options)
+
+    def _update_screen(self):
+        self._process_events()
+        self._clear_screen()
+        self._draw_objects()
+        pygame.display.flip()
+        # Delay fixed time between frames
+        self._clock.tick(5)
+
+
+
+# configs
 def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
@@ -355,44 +424,101 @@ def random_body_config(config):
         'agents': agent_config,
         'bounds': bounds}
 
-def plot_agent(ax, data, color):
-    # location, orientation, length
-    x_center = data['location'][0]
-    y_center = data['location'][1]
-    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
-    length = data['length']
-    width = data['width']
 
-    # get bottom left position
-    x_offset = (width / 2)
-    y_offset = (length / 2)
-    theta_rad = math.radians(theta)
-    dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
-    dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+# tests and simulations
+def test_multibody(config={'n_agents':1}, time=1):
+    body_config = random_body_config(config)
+    multibody = Multibody(body_config)
 
-    x = x_center - dx
-    y = y_center - dy
+    # initialize agent's boundary state
+    initial_agents_state = body_config['agents']
+    compartment = process_in_compartment(multibody)
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
 
-    # get color, convert to rgb
-    rgb = hsv_to_rgb(color)
+    settings = {
+        'total_time': time,
+        'return_raw_data': True,
+        'environment_port': 'external',
+        'environment_volume': 1e-2}
 
-    # Create a rectangle
-    rect = patches.Rectangle(
-        (x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+    return simulate_compartment(compartment, settings)
 
-    ax.add_patch(rect)
+def simulate_motility(config, settings):
+    # time of motor behavior without chemotaxis
+    run_time = 0.42  # s (Berg)
+    tumble_time = 0.14  # s (Berg)
 
-def plot_agents(ax, agents, agent_colors={}):
-    '''
-    - ax: the axis for plot
-    - agents: a dict with {agent_id: agent_data} and
-        agent_data a dict with keys location, angle, length, width
-    - agent_colors: dict with {agent_id: hsv color}
-    '''
-    for agent_id, agent_data in agents.items():
-        color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
-        plot_agent(ax, agent_data, color)
+    total_time = settings['total_time']
+    timestep = settings['timestep']
+    initial_agents_state = config['agents']
 
+    # make the process
+    multibody = Multibody(config)
+    compartment = process_in_compartment(multibody)
+
+    # initialize agent boundary state
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
+    # get initial agent state
+    agents_store = compartment.states['agents']
+    agents_state = agents_store.state
+
+    # initialize hidden agent motile states, and update agent motile_forces in agent store
+    agent_motile_states = {}
+    motile_forces = {}
+    for agent_id, specs in agents_state['agents'].items():
+        motile_force = run()
+        agent_motile_states[agent_id] = {
+            'motor_state': 1,  # 0 for run, 1 for tumble
+            'time_in_motor_state': 0}
+        motile_forces[agent_id] = {'motile_force': motile_force}
+    compartment.send_updates({'agents': [{'agents': motile_forces}]})
+
+    ## run simulation
+    # test run/tumble
+    time = 0
+    while time < total_time:
+        print('time: {}'.format(time))
+        time += timestep
+
+        # update motile force and apply to state
+        motile_forces = {}
+        for agent_id, motile_state in agent_motile_states.items():
+            motor_state = motile_state['motor_state']
+            time_in_motor_state = motile_state['time_in_motor_state']
+
+            if motor_state == 1:  # tumble
+                if time_in_motor_state < tumble_time:
+                    motile_force = run()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = run()
+                    motor_state = 0
+                    time_in_motor_state = 0
+
+            elif motor_state == 0:  # run
+                if time_in_motor_state < run_time:
+                    motile_force = tumble()
+                    time_in_motor_state += timestep
+                else:
+                    # switch
+                    motile_force = tumble()
+                    motor_state = 1
+                    time_in_motor_state = 0
+
+            agent_motile_states[agent_id] = {
+                'motor_state': motor_state,  # 0 for run, 1 for tumble
+                'time_in_motor_state': time_in_motor_state}
+            motile_forces[agent_id] = {'motile_force': motile_force}
+
+        compartment.send_updates({'agents': [{'agents': motile_forces}]})
+        update = compartment.update(timestep)
+
+    return compartment.emitter.get_data()
+
+
+# plotting
 def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
     '''
         - agents (dict): with {time: agent_data}
@@ -505,122 +631,20 @@ def plot_trajectory(agent_timeseries, config, out_dir='out', filename='trajector
 
         # plot line
         line = plt.gca().add_collection(lc)
-
-        # color bar
-        cbar = plt.colorbar(line)
-        cbar.set_label('time', rotation=270)
-
         plt.plot(x_coord[0], y_coord[0], color=(0.0, 0.8, 0.0), marker='*')  # starting point
         plt.plot(x_coord[-1], y_coord[-1], color='r', marker='*')  # ending point
 
     plt.xlim((0, x_length))
     plt.ylim((0, y_length))
 
+    # color bar
+    cbar = plt.colorbar(line, ticks=[times[0], times[-1]])  # TODO --adjust this for full timeline
+    cbar.set_label('time (s)', rotation=270)
+
     fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.7, hspace=0.1)
     plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
-
-def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
-    ax = fig.add_subplot(grid[row_idx, col_idx])
-    if row_idx == 0:
-        plot_title = 'time: {:.4f} s'.format(float(time))
-        plt.title(plot_title, y=1.08)
-    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
-    ax.set_yticklabels([])
-    ax.set_xticklabels([])
-    return ax
-
-def test_multibody(config={'n_agents':1}, time=1):
-    body_config = random_body_config(config)
-    multibody = Multibody(body_config)
-
-    # initialize agent's boundary state
-    initial_agents_state = body_config['agents']
-    compartment = process_in_compartment(multibody)
-    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
-
-    settings = {
-        'total_time': time,
-        'return_raw_data': True,
-        'environment_port': 'external',
-        'environment_volume': 1e-2}
-
-    return simulate_compartment(compartment, settings)
-
-def simulate_motility(config, settings):
-    # time of motor behavior without chemotaxis
-    run_time = 0.42  # s (Berg)
-    tumble_time = 0.14  # s (Berg)
-
-    total_time = settings['total_time']
-    timestep = settings['timestep']
-    initial_agents_state = config['agents']
-
-    # make the process
-    multibody = Multibody(config)
-    compartment = process_in_compartment(multibody)
-
-    # initialize agent boundary state
-    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
-
-    # get initial agent state
-    agents_store = compartment.states['agents']
-    agents_state = agents_store.state
-
-    # initialize hidden agent motile states, and update agent motile_forces in agent store
-    agent_motile_states = {}
-    motile_forces = {}
-    for agent_id, specs in agents_state['agents'].items():
-        motile_force = run()
-        agent_motile_states[agent_id] = {
-            'motor_state': 1,  # 0 for run, 1 for tumble
-            'time_in_motor_state': 0}
-        motile_forces[agent_id] = {'motile_force': motile_force}
-    compartment.send_updates({'agents': [{'agents': motile_forces}]})
-
-    ## run simulation
-    # test run/tumble
-    time = 0
-    while time < total_time:
-        time += timestep
-
-        # update motile force and apply to state
-        motile_forces = {}
-        for agent_id, motile_state in agent_motile_states.items():
-            motor_state = motile_state['motor_state']
-            time_in_motor_state = motile_state['time_in_motor_state']
-
-            if motor_state == 1:  # tumble
-                if time_in_motor_state < tumble_time:
-                    motile_force = run()
-                    time_in_motor_state += timestep
-                else:
-                    # switch
-                    motile_force = run()
-                    motor_state = 0
-                    time_in_motor_state = 0
-
-            elif motor_state == 0:  # run
-                if time_in_motor_state < run_time:
-                    motile_force = tumble()
-                    time_in_motor_state += timestep
-                else:
-                    # switch
-                    motile_force = tumble()
-                    motor_state = 1
-                    time_in_motor_state = 0
-
-            agent_motile_states[agent_id] = {
-                'motor_state': motor_state,  # 0 for run, 1 for tumble
-                'time_in_motor_state': time_in_motor_state}
-            motile_forces[agent_id] = {'motile_force': motile_force}
-
-        compartment.send_updates({'agents': [{'agents': motile_forces}]})
-        update = compartment.update(timestep)
-
-    return compartment.emitter.get_data()
-
 
 def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
     expected_speed = 14.2  # um/s (Berg)
@@ -703,6 +727,54 @@ def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
     plt.savefig(fig_path, bbox_inches='tight')
     plt.close(fig)
 
+def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
+    ax = fig.add_subplot(grid[row_idx, col_idx])
+    if row_idx == 0:
+        plot_title = 'time: {:.4f} s'.format(float(time))
+        plt.title(plot_title, y=1.08)
+    ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    return ax
+
+def plot_agent(ax, data, color):
+    # location, orientation, length
+    x_center = data['location'][0]
+    y_center = data['location'][1]
+    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
+    length = data['length']
+    width = data['width']
+
+    # get bottom left position
+    x_offset = (width / 2)
+    y_offset = (length / 2)
+    theta_rad = math.radians(theta)
+    dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
+    dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+
+    x = x_center - dx
+    y = y_center - dy
+
+    # get color, convert to rgb
+    rgb = hsv_to_rgb(color)
+
+    # Create a rectangle
+    rect = patches.Rectangle(
+        (x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+
+    ax.add_patch(rect)
+
+def plot_agents(ax, agents, agent_colors={}):
+    '''
+    - ax: the axis for plot
+    - agents: a dict with {agent_id: agent_data} and
+        agent_data a dict with keys location, angle, length, width
+    - agent_colors: dict with {agent_id: hsv color}
+    '''
+    for agent_id, agent_data in agents.items():
+        color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
+        plot_agent(ax, agent_data, color)
+
 
 
 if __name__ == '__main__':
@@ -713,9 +785,10 @@ if __name__ == '__main__':
     # test motility
     bounds = [100, 100]
     motility_sim_settings = {
-        'timestep': 0.01,
-        'total_time': 10}
+        'timestep': 0.1,
+        'total_time': 5}
     motility_config = {
+        'debug': True,
         'jitter_force': 0,
         'bounds': bounds}
     body_config = {
