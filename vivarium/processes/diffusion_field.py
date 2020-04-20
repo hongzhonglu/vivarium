@@ -139,7 +139,16 @@ def make_gradient(gradient, n_bins, size):
 
 
 class DiffusionField(Process):
-    ''''''
+    '''
+    Diffusion in 2-dimensional fields of molecules, with agent locations for uptake and secretion.
+
+    Notes:
+    - Diffusion constant of glucose in 0.5 and 1.5 percent agarose gel = ~6 * 10^-10 m^2/s
+        (Weng et al. 2005. Transport of glucose and poly(ethylene glycol)s in agarose gels).
+    - Conversion to micrometers: 6 * 10^-10 m^2/s = 600 micrometers^2/s.
+
+    '''
+
     def __init__(self, initial_parameters={}):
 
         # initial state

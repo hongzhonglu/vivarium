@@ -12,6 +12,8 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 COMPARTMENT_STATE = '__compartment_state__'
 
+DEFAULT_TIMESTEP = 1.0
+
 INFINITY = float('inf')
 VERBOSE = False
 
@@ -119,6 +121,9 @@ class Store(object):
                 updaters.update({state: updater})
         self.updaters = updaters
 
+    def schema_properties(self, keys, schema_type):
+        return {key: self.schema[key].get(schema_type) for key in keys}
+
     def keys(self):
         return self.state.keys()
 
@@ -216,6 +221,24 @@ class Process(object):
     def default_settings(self):
         return {}
 
+
+    def schema_properties(self, states, schema_type):
+        '''
+        Requires:
+            - states (dict)
+            - schema_type (str)
+
+        Returns a dictionary with {store_id: {key: schema_value}}
+        for all store_ids and list of keys in states,
+        with schema_value specified by schema_type
+        '''
+
+        schema = {}
+        for store_id, keys in states.items():
+            schema[store_id] = self.states[store_id].schema_properties(keys, schema_type)
+
+        return schema
+
     def assign_ports(self, states):
         '''
         Provide States for some or all of the ports this Process expects.
@@ -278,10 +301,22 @@ def get_minimum_timestep(process_layers):
 
     for process_id, process_object in processes.items():
         settings = process_object.default_settings()
-        time_step = settings.get('time_step', 1.0)
+        time_step = settings.get('time_step', DEFAULT_TIMESTEP)
         minimum_step = min(time_step, minimum_step)
 
     return minimum_step
+
+def get_maximum_timestep(process_layers):
+    # get the minimum time_step from all processes
+    processes = merge_dicts(process_layers)
+    maximum_step = 0.0
+
+    for process_id, process_object in processes.items():
+        settings = process_object.default_settings()
+        time_step = settings.get('time_step', DEFAULT_TIMESTEP)
+        maximum_step = max(time_step, maximum_step)
+
+    return maximum_step
 
 def get_schema(process_list, topology):
     schema = {}
@@ -365,7 +400,7 @@ class Compartment(Store):
         self.topology = configuration['topology']
         self.initial_time = configuration.get('initial_time', 0.0)
         self.local_time = 0.0
-        self.time_step = configuration.get('time_step', 1.0)
+        self.time_step = configuration.get('time_step', get_maximum_timestep(processes))
 
         # configure compartment state
         self.states[COMPARTMENT_STATE] = self
