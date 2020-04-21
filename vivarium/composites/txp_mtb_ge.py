@@ -94,17 +94,25 @@ def txp_mtb_ge_compartment(config):
 
 
 
-def compose_txb_mtb_ge(config):
+def compose_txp_mtb_ge(config):
     """
     A composite with kinetic transport, metabolism, and gene expression
     """
+
+    # TODO -- pass metabolism mass in through config.
 
     compartment = txp_mtb_ge_compartment(config)
     processes = compartment['processes']
     topology = compartment['topology']
 
+    # TODO -- globals topology?
+    topology['globals'] = {'global': 'global'}
     # add derivers
-    derivers = get_derivers(processes, topology)
+    deriver_config = {
+        'globals': {},
+        'mass': {'dark_mass': 1339}}  # units.fg
+
+    derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
     all_processes = processes + derivers['deriver_processes']
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
@@ -148,8 +156,8 @@ def default_metabolism_config():
 
 
 # simulate
-def test_txb_mtb_ge(time=10):
-    compartment = load_compartment(compose_txb_mtb_ge)
+def test_txp_mtb_ge(time=10):
+    compartment = load_compartment(compose_txp_mtb_ge)
     options = compartment.configuration
     settings = {
         'environment_port': options['environment_port'],
@@ -161,11 +169,11 @@ def test_txb_mtb_ge(time=10):
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'txb_mtb_ge_composite')
+    out_dir = os.path.join('out', 'tests', 'txp_mtb_ge_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_txb_mtb_ge(100) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_txp_mtb_ge(10) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,

@@ -13,8 +13,12 @@ class DeriveMass(Process):
     """
     def __init__(self, initial_parameters={}):
 
+        dark_mass = initial_parameters.get('dark_mass')
+        # TODO -- add dark mass to schema?
+        # import ipdb; ipdb.set_trace()
+
         source_ports = initial_parameters['source_ports']
-        target_ports = initial_parameters.get('target_ports')
+        target_ports = initial_parameters['target_ports']
 
         if target_ports:
             assert len(target_ports) == 1, 'DeriveMass too many target ports'

@@ -101,18 +101,20 @@ def get_derivers(process_list, topology, config={}):
     for type, deriver_config in deriver_configs.items():
         deriver_processes[type] = deriver_library[type](deriver_config)
 
-    # add global deriver
-    global_deriver = {
-        'global_deriver': DeriveGlobals({})}
-    global_deriver_topology = {
-        'global_deriver': {
-            'global': 'global'}}
-    deep_merge(full_deriver_topology, global_deriver_topology)
+    # TODO -- configure global deriver for all compartments through config
+    # # add global deriver
+    # global_deriver = {
+    #     'global_deriver': DeriveGlobals({})}
+    # global_deriver_topology = {
+    #     'global_deriver': {
+    #         'global': 'global'}}
+    # deep_merge(full_deriver_topology, global_deriver_topology)
 
+    # TODO -- put derivers in order
     # put the global deriver and additional derivers in two process layers
-    processes = [
-        global_deriver,
-        deriver_processes]
+    processes = [deriver_processes]
+        # global_deriver,
+        # deriver_processes]
 
     return {
         'deriver_processes': processes,
