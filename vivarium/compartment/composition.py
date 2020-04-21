@@ -89,12 +89,12 @@ def get_derivers(process_list, topology, config={}):
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
                 # ports for configuration
-                ports = {
-                    source_port: keys,
-                    target_port: keys}
-                deriver_config = {type: {'ports': ports}}
+                ports_config = {type: {
+                    'source_ports': {source_port: keys},
+                    'target_ports': {target_port: keys}
+                }}
 
-                deep_merge(deriver_configs, deriver_config)
+                deep_merge(deriver_configs, ports_config)
 
     # configure the derivers
     deriver_processes = {}

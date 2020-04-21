@@ -14,7 +14,7 @@ class DeriveMass(Process):
     def __init__(self, initial_parameters={}):
 
 
-        ports = initial_parameters['ports']
+        ports = initial_parameters['source_ports']
         ports.update({
             'global': ['mass', 'volume', 'mmol_to_counts']})
 
