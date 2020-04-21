@@ -77,7 +77,7 @@ def parameter_scan(composite, scan_params, output_values, options={}):
     total_time = options.get('time', 10)
     timestep = options.get('timestep', 1)
     simulate_environment = options.get('simulate_with_environment', False)
-    simulation_settings = options.get('simulation_settings')
+    simulation_settings = options.get('simulation_settings', {})
     settings = {
         'timestep': timestep,
         'total_time': total_time,
