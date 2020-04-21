@@ -12,8 +12,6 @@ from vivarium.compartment.composition import (
 
 
 
-DIFFUSION_CONSTANT = 1e-2
-
 def field_from_locations_series(locations_series, molecule_ids, n_bins, times):
     n_times = len(times)
     field_series = {
@@ -73,22 +71,33 @@ def make_location_network(n_bins):
 
 class DiffusionNetwork(Process):
     ''''''
+
+    defaults = {
+        'molecules': ['glc'],
+        'diffusion': 1e-2,
+        'initial_state': {},
+        'membrane_composition': {},
+        'concentrations': {},
+        'channels': {},
+        'network': {},
+    }
+
     def __init__(self, initial_parameters={}):
 
         # parameters
-        molecule_ids = initial_parameters.get('molecules', ['glc'])
-        diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
+        molecule_ids = initial_parameters.get('molecules', self.defaults['molecules'])
+        diffusion = initial_parameters.get('diffusion', self.defaults['diffusion'])
 
         # initial state
-        initial_state = initial_parameters.get('initial_state', {})
-        self.initial_membrane = initial_state.get('membrane_composition', {})
-        self.initial_concentrations = initial_state.get('concentrations', {})
+        initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
+        self.initial_membrane = initial_state.get('membrane_composition', self.defaults['membrane_composition'])
+        self.initial_concentrations = initial_state.get('concentrations', self.defaults['concentrations'])
 
         # membrane channels
-        channels = initial_parameters.get('channels', {})
+        channels = initial_parameters.get('channels', self.defaults['channels'])
 
         # make diffusion network
-        network = initial_parameters.get('network', {})
+        network = initial_parameters.get('network', self.defaults['network'])
         if network.get('type') == 'grid':
             n_bins = network.get('n_bins', (2,1))
             size = network.get('size', (2, 1))
