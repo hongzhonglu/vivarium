@@ -106,6 +106,9 @@ class Emitter(object):
     def emit(self, data):
         print(data)
 
+    def get_timeseries(self):
+        raise Exception('emitter does not get timeseries')
+        return {}
 
 class NullEmitter(Emitter):
     '''

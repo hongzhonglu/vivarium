@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import argparse
 
 from vivarium.compartment.process import initialize_state
 from vivarium.compartment.composition import (
@@ -8,6 +9,10 @@ from vivarium.compartment.composition import (
     simulate_with_environment,
     plot_simulation_output,
     load_compartment)
+from vivarium.parameters.parameters import (
+    parameter_scan,
+    get_parameters_logspace,
+    plot_scan_results)
 
 # processes
 from vivarium.processes.division import (
@@ -93,8 +98,7 @@ def txp_mtb_ge_compartment(config):
 
 
 
-
-def compose_txb_mtb_ge(config):
+def compose_txp_mtb_ge(config):
     """
     A composite with kinetic transport, metabolism, and gene expression
     """
@@ -146,10 +150,9 @@ def default_metabolism_config():
 
     return config
 
-
 # simulate
-def test_txb_mtb_ge(time=10):
-    compartment = load_compartment(compose_txb_mtb_ge)
+def test_txp_mtb_ge(time=10):
+    compartment = load_compartment(compose_txp_mtb_ge)
     options = compartment.configuration
     settings = {
         'environment_port': options['environment_port'],
@@ -158,14 +161,8 @@ def test_txb_mtb_ge(time=10):
         'timeline': [(time, {})]}
     return simulate_with_environment(compartment, settings)
 
-
-
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'txb_mtb_ge_composite')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    timeseries = test_txb_mtb_ge(100) # 2520 sec (42 min) is the expected doubling time in minimal media
+def simulate_txp_mtb_ge(out_dir='out'):
+    timeseries = test_txp_mtb_ge(100) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
@@ -178,3 +175,95 @@ if __name__ == '__main__':
             ('reactions', 'EX_lcts_e')]}
 
     plot_simulation_output(timeseries, plot_settings, out_dir)
+
+
+# parameters
+def scan_txb_mtb_ge():
+    composite_function = compose_txp_mtb_ge
+
+    # parameters to be scanned, and their values
+    scan_params = {
+        ('transport',
+         'kinetic_parameters',
+         'EX_glc__D_e',
+         ('internal', 'PTSG'),
+         'kcat_f'):
+            get_parameters_logspace(1e3, 1e6, 4),
+        ('transport',
+         'kinetic_parameters',
+         'EX_lcts_e',
+         ('internal', 'LacY'),
+         'kcat_f'):
+            get_parameters_logspace(1e3, 1e6, 4),
+    }
+
+    # metrics are the outputs of a scan
+    # target growth_rate for baseline: 0.0005579276493987817
+    metrics = [
+        ('reactions', 'EX_glc__D_e'),
+        ('reactions', 'EX_lcts_e'),
+        ('global', 'mass')
+    ]
+
+
+
+    # TODO -- define conditions
+    conditions = [
+        {
+        'external': {
+            'glc__D_e': 12.0,
+            'lcts_e': 10.0},
+        'internal':{
+            'LacY': 0.0}
+        },
+        {
+        'external': {
+            'glc__D_e': 0.0,
+            'lcts_e': 10.0},
+        'internal':{
+            'LacY': 1.0e-6}
+        },
+    ]
+
+    # targets = {
+    #     'global', 'growth_rate'
+    # }
+
+
+
+    # set up simulation settings and scan options
+    timeline = [(10, {})]
+    sim_settings = {
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timeline': timeline}
+    scan_options = {
+        'simulate_with_environment': True,
+        'simulation_settings': sim_settings}
+
+    # run scan
+    results = parameter_scan(
+        composite_function,
+        scan_params,
+        metrics,
+        scan_options)
+
+    return results
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'txb_mtb_ge_composite')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # run scan with python vivarium/composites/transport_metabolism.py --scan
+    parser = argparse.ArgumentParser(description='transport metabolism composite')
+    parser.add_argument('--scan', '-s', action='store_true', default=False,)
+    args = parser.parse_args()
+
+    if args.scan:
+        results = scan_txb_mtb_ge()
+        plot_scan_results(results, out_dir)
+    else:
+        simulate_txp_mtb_ge(out_dir)
