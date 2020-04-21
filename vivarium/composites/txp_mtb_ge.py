@@ -257,7 +257,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # run scan with python vivarium/composites/transport_metabolism.py --scan
+    # run scan with python vivarium/composites/txp_mtb_ge.py --scan
     parser = argparse.ArgumentParser(description='transport metabolism composite')
     parser.add_argument('--scan', '-s', action='store_true', default=False,)
     args = parser.parse_args()
