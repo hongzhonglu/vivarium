@@ -71,8 +71,8 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
     time = timeseries['time']
     environment = timeseries['environment']
-    cell = timeseries['cell']
-    cell_counts = timeseries['cell_counts']
+    cell = timeseries['cytoplasm']
+    cell_counts = timeseries['cytoplasm_counts']
     reactions = timeseries['reactions']
     globals = timeseries['global']
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     timeline = [
         (0, {'environment': {
             'glc__D_e': 5.0,
-            'lac__D_e': 5.0}
+            'lcts_e': 5.0}
         }),
         (3000, {})]
 
@@ -164,8 +164,7 @@ if __name__ == '__main__':
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
         'environment_volume': 2e-13,  # L
-        'timeline': timeline,
-    }
+        'timeline': timeline}
 
     plot_settings = {
         'max_rows': 20,
@@ -173,18 +172,17 @@ if __name__ == '__main__':
         'overlay': {'reactions': 'flux'},
         'show_state': [
             ('environment', 'glc__D_e'),
-            ('environment', 'lac__D_e'),
+            ('environment', 'lcts_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lcts_e'),
-            ('cell', 'g6p_c'),
-            ('cell', 'PTSG'),
-            ('cell', 'lac__D_c'),
-            ('cell', 'lacy_RNA'),
-            ('cell', 'LacY')],
+            ('cytoplasm', 'g6p_c'),
+            ('cytoplasm', 'PTSG'),
+            ('cytoplasm', 'lcts_p'),
+            ('cytoplasm', 'lacy_RNA'),
+            ('cytoplasm', 'LacY')],
         'skip_ports': ['prior_state', 'null', 'reactions']}
 
-    # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))

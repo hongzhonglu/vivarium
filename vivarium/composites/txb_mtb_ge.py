@@ -47,7 +47,7 @@ def txp_mtb_ge_compartment(config):
     metabolism = Metabolism(metabolism_config)
 
     # Gene expression
-    gene_expression_config = config.get('gene expression', {})  # TODO -- use get_lacy_config())
+    gene_expression_config = config.get('expression', get_lacy_config())
     gene_expression = ODE_expression(gene_expression_config)
 
     # Division
