@@ -19,11 +19,18 @@ class CellularPotts(Process):
     """
     Cellular Potts model
     """
+
+    defaults = {
+        'grid_size': (10, 10),
+        'n_agents': 1,
+        'target_area': 10
+    }
+
     def __init__(self, initial_parameters={}):
 
-        grid_size = initial_parameters.get('grid_size', (10, 10))
-        n_initial = initial_parameters.get('n_agents', 1)
-        self.init_target_area = initial_parameters.get('target_area', 10)
+        grid_size = initial_parameters.get('grid_size', self.defaults['grid_size'])
+        n_initial = initial_parameters.get('n_agents', self.defaults['n_agents'])
+        self.init_target_area = initial_parameters.get('target_area', self.defaults['target_area'])
 
         # configure CPM
         cpm_config = {
