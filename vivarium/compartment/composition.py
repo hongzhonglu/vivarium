@@ -32,10 +32,10 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
+    'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcs,
-    'mass': DeriveMass,
 }
 
 
