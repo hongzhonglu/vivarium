@@ -78,14 +78,20 @@ MOLECULAR_WEIGHTS = {
     'G6P': 260.136,
     'GLC': 180.16,
 }
-# target flux reaction names come from BiGG models
-TARGET_FLUXES = []  # ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+
 
 
 class Transport(Process):
+
+    defaults = {
+        'target_fluxes': [],  # ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+        'parameters': DEFAULT_PARAMETERS
+    }
+
+
     def __init__(self, initial_parameters={}):
         self.dt = 0.01  # timestep for ode integration (seconds)
-        self.target_fluxes = initial_parameters.get('target_fluxes', TARGET_FLUXES)
+        self.target_fluxes = initial_parameters.get('target_fluxes', self.defaults['target_fluxes'])
 
         default_settings = self.default_settings()
         default_state = default_settings['state']
@@ -99,7 +105,7 @@ class Transport(Process):
             'fluxes': self.target_fluxes,
             'global': ['volume']}
 
-        parameters = DEFAULT_PARAMETERS
+        parameters = self.defaults['parameters']
         parameters.update(initial_parameters)
 
         super(Transport, self).__init__(ports, parameters)
