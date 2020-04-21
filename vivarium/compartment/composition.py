@@ -32,15 +32,15 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
+    'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcs,
-    'mass': DeriveMass,
 }
 
 
 
-def get_derivers(process_list, topology):
+def get_derivers(process_list, topology, config={}):
     '''
     get the derivers for a list of processes
 
@@ -53,25 +53,24 @@ def get_derivers(process_list, topology):
         'deriver_topology': topology}
     '''
 
-
     # get deriver configuration
-    deriver_config = {}
+    deriver_configs = config.copy()
     full_deriver_topology = {}
     for level in process_list:
         for process_id, process in level.items():
             process_settings = process.default_settings()
-            setting = process_settings.get('deriver_setting', [])
+            deriver_setting = process_settings.get('deriver_setting', [])
             try:
                 port_map = topology[process_id]
             except:
                 print('{} topology port mismatch'.format(process_id))
                 raise
 
-            for set in setting:
-                type = set['type']
-                keys = set['keys']
-                source_port = set['source_port']
-                target_port = set['derived_port']
+            for setting in deriver_setting:
+                type = setting['type']
+                keys = setting['keys']
+                source_port = setting['source_port']
+                target_port = setting['derived_port']
                 try:
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
@@ -90,17 +89,17 @@ def get_derivers(process_list, topology):
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
                 # ports for configuration
-                ports = {
-                    source_port: keys,
-                    target_port: keys}
-                config = {type: {'ports': ports}}
+                ports_config = {type: {
+                    'source_ports': {source_port: keys},
+                    'target_ports': {target_port: keys}
+                }}
 
-                deep_merge(deriver_config, config)
+                deep_merge(deriver_configs, ports_config)
 
     # configure the derivers
     deriver_processes = {}
-    for type, config in deriver_config.items():
-        deriver_processes[type] = deriver_library[type](config)
+    for type, deriver_config in deriver_configs.items():
+        deriver_processes[type] = deriver_library[type](deriver_config)
 
     # add global deriver
     global_deriver = {
