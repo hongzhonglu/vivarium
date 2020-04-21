@@ -11,11 +11,16 @@ class DeriveMass(Process):
     that have a mass schema in their stores .
 
     """
+
+    defaults = {
+        'dark_mass': 0,
+    }
+
     def __init__(self, initial_parameters={}):
 
-        dark_mass = initial_parameters.get('dark_mass')
+        self.dark_mass = initial_parameters.get('dark_mass', self.defaults['dark_mass'])
         # TODO -- add dark mass to schema?
-        # import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
 
         source_ports = initial_parameters['source_ports']
         target_ports = initial_parameters['target_ports']

@@ -106,6 +106,7 @@ def compose_txp_mtb_ge(config):
     topology = compartment['topology']
 
     # TODO -- globals topology?
+    # TODO -- pass in deriver layers
     topology['globals'] = {'global': 'global'}
     # add derivers
     deriver_config = {
