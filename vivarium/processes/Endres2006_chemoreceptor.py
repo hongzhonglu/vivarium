@@ -61,6 +61,11 @@ def run_to_steady_state(receptor, state, timestep):
 
 
 class ReceptorCluster(Process):
+
+    defaults = {
+        'parameters': DEFAULT_PARAMETERS
+    }
+
     def __init__(self, initial_parameters={}):
 
         self.ligand_id = initial_parameters.get('ligand', LIGAND_ID)
@@ -68,7 +73,8 @@ class ReceptorCluster(Process):
         ports = {
             'internal': ['n_methyl', 'chemoreceptor_activity', 'CheR', 'CheB'],
             'external': [self.ligand_id]}
-        parameters = DEFAULT_PARAMETERS
+
+        parameters = self.defaults['parameters']
         parameters.update(initial_parameters)
 
         super(ReceptorCluster, self).__init__(ports, parameters)
@@ -294,7 +300,7 @@ def plot_output(output, out_dir='out', filename='response'):
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.tick_params(right=False, top=False)
-    ax1.set_ylabel("external ligand \n log(mM) ", fontsize=10)
+    ax1.set_ylabel("external ligand \n (mM) ", fontsize=10)
     # ax1.set_yscale('log')
 
     ax2.set_xticklabels([])
@@ -319,25 +325,25 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # timeline = get_pulse_timeline()
-    # output = test_receptor(timeline)
-    # plot_output(output, out_dir, 'pulse')
-    #
-    # linear_config = {
-    #     'time': 10,
-    #     'slope': 1e-3,
-    #     'speed': 14}
-    # timeline2 = get_linear_step_timeline(linear_config)
-    # output2 = test_receptor(timeline2)
-    # plot_output(output2, out_dir, 'linear')
+    timeline = get_pulse_timeline()
+    output = test_receptor(timeline)
+    plot_output(output, out_dir, 'pulse')
 
-    # exponential_config = {
-    #     'time': 10,
-    #     'base': 1+4e-4,
-    #     'speed': 14}
-    # timeline3 = get_exponential_step_timeline(exponential_config)
-    # output3 = test_receptor(timeline3)
-    # plot_output(output3, out_dir, 'exponential_4e-4')
+    linear_config = {
+        'time': 10,
+        'slope': 1e-3,
+        'speed': 14}
+    timeline2 = get_linear_step_timeline(linear_config)
+    output2 = test_receptor(timeline2)
+    plot_output(output2, out_dir, 'linear')
+
+    exponential_config = {
+        'time': 10,
+        'base': 1+4e-4,
+        'speed': 14}
+    timeline3 = get_exponential_step_timeline(exponential_config)
+    output3 = test_receptor(timeline3)
+    plot_output(output3, out_dir, 'exponential_4e-4')
 
     exponential_random_config = {
         'time': 60,

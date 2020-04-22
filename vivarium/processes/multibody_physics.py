@@ -37,18 +37,10 @@ from vivarium.processes.Vladimirov2008_motor import run, tumble
 
 
 DEBUG_SIZE = 600  # size of the pygame debug screen
+DEFAULT_BOUNDS = [10, 10]
 
 # constants
 PI = math.pi
-ELASTICITY = 0.95
-DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
-ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
-FRICTION = 0.9  # TODO -- does this do anything?
-PHYSICS_TS = 0.005
-FORCE_SCALING = 100  # scales from pN
-JITTER_FORCE = 1e-3  # pN
-
-DEFAULT_BOUNDS = [10, 10]
 
 # colors for phylogeny initial agents
 HUES = [hue/360 for hue in np.linspace(0,360,30)]
@@ -117,19 +109,32 @@ class Multibody(Process):
         (Saragosti, et al. 2012. Modeling E. coli tumbles by rotational diffusion.)
 
     """
+
+    defaults = {
+        'elasticity': 0.95,
+        'damping': 0.05, # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
+        'angular_damping': 0.7,  # less damping for angular velocity seems to improve behavior
+        'friction': 0.9,  # TODO -- does this do anything?
+        'physics_dt': 0.005,
+        'force_scaling': 100,  # scales from pN
+        'jitter_force': 1e-3,  # pN
+        'bounds': DEFAULT_BOUNDS,
+    }
+
+
     def __init__(self, initial_parameters={}):
 
         # hardcoded parameters
-        self.elasticity = ELASTICITY
-        self.friction = FRICTION
-        self.damping = DAMPING
-        self.angular_damping = ANGULAR_DAMPING
-        self.force_scaling = FORCE_SCALING
-        self.physics_dt = PHYSICS_TS
+        self.elasticity = self.defaults['elasticity']
+        self.friction = self.defaults['friction']
+        self.damping = self.defaults['damping']
+        self.angular_damping = self.defaults['angular_damping']
+        self.force_scaling = self.defaults['force_scaling']
+        self.physics_dt = self.defaults['physics_dt']
 
         # configured parameters
-        self.jitter_force = initial_parameters.get('jitter_force', JITTER_FORCE)
-        self.bounds = initial_parameters.get('bounds', DEFAULT_BOUNDS)
+        self.jitter_force = initial_parameters.get('jitter_force', self.defaults['jitter_force'])
+        self.bounds = initial_parameters.get('bounds', self.defaults['bounds'])
 
         # initialize pymunk space
         self.space = pymunk.Space()
