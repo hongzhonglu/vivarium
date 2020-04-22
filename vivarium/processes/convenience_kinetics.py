@@ -75,11 +75,19 @@ class ConvenienceKinetics(Process):
                     'updater': 'set'}
                 for flux_id in self.kinetic_rate_laws.reaction_ids}}
 
+        # derivers
+        deriver_setting = [{
+            'type': 'globals',
+            'source_port': 'global',
+            'derived_port': 'global',
+            'keys': []}]
+
         default_settings = {
             'process_id': 'convenience_kinetics',
             'state': default_state,
             'emitter_keys': default_emitter_keys,
             'schema': schema,
+            'deriver_setting': deriver_setting,
             'time_step': 1.0}
 
         return default_settings
