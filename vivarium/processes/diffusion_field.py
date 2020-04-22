@@ -14,8 +14,6 @@ from vivarium.compartment.composition import simulate_process
 # laplacian kernel for diffusion
 LAPLACIAN_2D = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
 AVOGADRO = constants.N_A
-DIFFUSION_CONSTANT = 5e-1
-DEFAULT_DEPTH = 3000.0  # um
 
 AGENT_KEYS = ['location', 'exchange', 'local_environment']
 
@@ -139,20 +137,40 @@ def make_gradient(gradient, n_bins, size):
 
 
 class DiffusionField(Process):
-    ''''''
+    '''
+    Diffusion in 2-dimensional fields of molecules, with agent locations for uptake and secretion.
+
+    Notes:
+    - Diffusion constant of glucose in 0.5 and 1.5 percent agarose gel = ~6 * 10^-10 m^2/s
+        (Weng et al. 2005. Transport of glucose and poly(ethylene glycol)s in agarose gels).
+    - Conversion to micrometers: 6 * 10^-10 m^2/s = 600 micrometers^2/s.
+
+    '''
+
+    defaults = {
+        'molecules': ['glc'],
+        'initial_state': {},
+        'n_bins': [10, 10],
+        'size': [10, 10],
+        'depth': 3000.0,  # um
+        'diffusion': 5e-1,
+        'gradient': {},
+        'agents': {},
+    }
+
     def __init__(self, initial_parameters={}):
 
         # initial state
-        self.molecule_ids = initial_parameters.get('molecules', ['glc'])
-        self.initial_state = initial_parameters.get('initial_state', {})
+        self.molecule_ids = initial_parameters.get('molecules', self.defaults['molecules'])
+        self.initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
 
         # parameters
-        self.n_bins = initial_parameters.get('n_bins', [10,10])
-        self.size = initial_parameters.get('size', [10, 10])
-        depth = initial_parameters.get('depth', DEFAULT_DEPTH)
+        self.n_bins = initial_parameters.get('n_bins', self.defaults['n_bins'])
+        self.size = initial_parameters.get('size', self.defaults['size'])
+        depth = initial_parameters.get('depth', self.defaults['depth'])
 
         # diffusion
-        diffusion = initial_parameters.get('diffusion', DIFFUSION_CONSTANT)
+        diffusion = initial_parameters.get('diffusion', self.defaults['diffusion'])
         bins_x = self.n_bins[0]
         bins_y = self.n_bins[1]
         length_x = self.size[0]
@@ -169,13 +187,13 @@ class DiffusionField(Process):
         self.bin_volume = total_volume / (length_x * length_y)
 
         # initialize gradient fields
-        gradient = initial_parameters.get('gradient', {})
+        gradient = initial_parameters.get('gradient', self.defaults['gradient'])
         if gradient:
             gradient_fields = make_gradient(gradient, self.n_bins, self.size)
             self.initial_state.update(gradient_fields)
 
         # agents
-        self.initial_agents = initial_parameters.get('agents', {})
+        self.initial_agents = initial_parameters.get('agents', self.defaults['agents'])
 
         # make ports
         ports = {

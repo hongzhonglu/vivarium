@@ -47,6 +47,11 @@ class MotorActivity(Process):
         Vladimirov, N., Lovdok, L., Lebiedz, D., & Sourjik, V. (2008).
         Dependence of bacterial chemotaxis on gradient shape and adaptation rate.
     '''
+
+    defaults = {
+        'parameters': DEFAULT_PARAMETERS
+    }
+
     def __init__(self, initial_parameters={}):
 
         ports = {
@@ -62,7 +67,7 @@ class MotorActivity(Process):
                          'motor_state'],
             'external': []}
 
-        parameters = DEFAULT_PARAMETERS
+        parameters = self.defaults['parameters']
         parameters.update(initial_parameters)
 
         super(MotorActivity, self).__init__(ports, parameters)
@@ -178,7 +183,7 @@ class MotorActivity(Process):
 
 def tumble():
     thrust = 100  # pN
-    tumble_jitter = 1.5  # added to angular velocity
+    tumble_jitter = 2.5  # added to angular velocity
     torque = random.normalvariate(0, tumble_jitter)
     return [thrust, torque]
 

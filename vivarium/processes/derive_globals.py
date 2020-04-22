@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
+import math
 
 from scipy import constants
 import numpy as np
@@ -10,26 +11,49 @@ from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
 
 
-
+PI = math.pi
 AVOGADRO = constants.N_A * 1 / units.mol
+
+
+
+def get_length(volume, width):
+    radius = width / 2
+    cylinder_length = volume / (PI * radius ** 2) + (4 / 3) * PI * radius ** 3
+    length = cylinder_length + width
+
+    return length
 
 
 
 class DeriveGlobals(Process):
     """
-    Process for deriving volume, mmol_to_counts factor, and growth rate
-    from the cell mass
+    Process for deriving volume, mmol_to_counts, and shape from the cell mass
     """
+
+    defaults = {
+        'width': 0.5,  # um
+        'source_ports': {},
+    }
+
     def __init__(self, initial_parameters={}):
+
+        self.width = initial_parameters.get('width', self.defaults['width'])
+        self.source_ports = initial_parameters.get('source_ports', self.defaults['source_ports'])
+        target_ports = initial_parameters.get('target_ports')
+
+        if target_ports:
+            assert len(target_ports) == 1, 'DeriveGlobals too many target ports'
+            assert list(target_ports.keys())[0] == 'global', 'DeriveGlobals requires target port named global'
 
         ports = {
             'global': [
                 'mass',
                 'volume',
-                'growth_rate',
-                'prior_mass',
                 'mmol_to_counts',
-                'density']}
+                'density',
+                'length']}
+
+        ports.update(self.source_ports)
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -42,24 +66,26 @@ class DeriveGlobals(Process):
         density = 1100 * units.g / units.L
         volume = mass/density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
+        length = get_length(volume.magnitude, self.width)
+
         global_state = {
-            'growth_rate': 0.0,
             'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
-            'prior_mass': mass.magnitude,
-            'density': density.magnitude}
+            'density': density.magnitude,
+            'length': length,
+        }
 
         default_state = {
             'global': global_state}
 
         # default emitter keys
         default_emitter_keys = {
-            'global': ['volume', 'growth_rate']}
+            'global': ['volume']}
 
         # schema
-        set_states = ['volume', 'growth_rate', 'prior_mass', 'mmol_to_counts']
-        set_divide = ['density', 'prior_mass']
+        set_states = ['volume', 'mmol_to_counts', 'length']
+        set_divide = ['density']
         schema = {
             'global': {
                 state_id : {
@@ -80,24 +106,20 @@ class DeriveGlobals(Process):
         return default_settings
 
     def next_update(self, timestep, states):
-
         # states
         density = states['global']['density'] * units.g / units.L
-        prior_mass = states['global']['prior_mass'] * units.fg
         mass = states['global']['mass'] * units.fg
 
-        # update volume and growth rate
-        volume =  mass / density
+        # get volume from mass, and more variables from volume
+        volume = mass / density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
-        growth_rate = (mass - prior_mass) / timestep / mass
-        deriver_update = {
-            'volume': volume.to('fL').magnitude,
-            'mmol_to_counts': mmol_to_counts.magnitude,
-            'growth_rate': growth_rate.magnitude,
-            'prior_mass': mass.magnitude}
+        length = get_length(volume.magnitude, self.width)
 
         return {
-            'global': deriver_update}
+            'global': {
+                'volume': volume.to('fL').magnitude,
+                'mmol_to_counts': mmol_to_counts.magnitude,
+                'length': length}}
 
 
 

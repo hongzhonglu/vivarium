@@ -6,12 +6,20 @@ from vivarium.compartment.process import Process
 
 
 class Growth(Process):
+
+    defaults = {
+        'growth_rate': 0.0006}
+
     def __init__(self, initial_parameters={}):
         ports = {
             'global': ['mass', 'volume']}
 
-        parameters = {'growth_rate': 0.0006}
+        growth_rate = initial_parameters.get('growth_rate', self.defaults['growth_rate'])
+
+        parameters = {
+            'growth_rate': growth_rate}
         parameters.update(initial_parameters)
+
         super(Growth, self).__init__(ports, parameters)
 
     def default_settings(self):

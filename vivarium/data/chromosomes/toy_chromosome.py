@@ -1,10 +1,10 @@
 toy_chromosome_config = {
     'sequence': 'ATACGGCACGTGACCGTCAACTTA',
     'genes': {
-        'oA': ['A'],
-        'oAZ': ['A', 'Z'],
-        'oB': ['B'],
-        'oBY': ['B', 'Y']},
+        'oA': ['eA'],
+        'oAZ': ['eA', 'eZ'],
+        'oB': ['eB'],
+        'oBY': ['eB', 'eY']},
     'promoter_order': ['pA', 'pB'],
     'promoters': {
         'pA': {
@@ -14,8 +14,7 @@ toy_chromosome_config = {
             'sites': [{
                 'position': 0,
                 'length': 3,
-                'thresholds': [
-                    ('tfA', 0.3)]}],
+                'thresholds': {'tfA': 0.3}}],
             'terminators': [
                 {
                     'position': 6,
@@ -32,8 +31,7 @@ toy_chromosome_config = {
             'sites': [{
                 'position': 0,
                 'length': 3,
-                'thresholds': [
-                    ('tfB', 0.5)]}],
+                'thresholds': {'tfB': 0.5}}],
             'terminators': [
                 {
                     'position': -9,

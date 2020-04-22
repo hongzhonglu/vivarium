@@ -51,9 +51,7 @@ from vivarium.processes.transcription import Transcription
 from vivarium.composites.master import compose_master
 from vivarium.composites.glc_lct_shifter import compose_glc_lct_shifter
 from vivarium.composites.growth_division import compose_growth_division
-from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
-from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from vivarium.composites.variable_flagella import compose_variable_flagella
+from vivarium.composites.chemotaxis_minimal import compose_simple_chemotaxis
 from vivarium.composites.antibiotics import (
     compose_antibiotics,
 )
@@ -257,7 +255,7 @@ def initialize_glc_lct_shift(boot_config):
     return lattice_config
 
 def initialize_ecoli_core_glc(boot_config):
-    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
+    timeline_str = '0 ecoli_core_GLC 1.0 L + lcts_e 1.0 mmol 0.1 L, 21600 end'
 
     lattice_config = {
         'name': 'ecoli_core',
@@ -272,7 +270,7 @@ def initialize_ecoli_core_glc(boot_config):
             'co2_e',
             'o2_e',
             'glc__D_e',
-            'lac__D_e']}
+            'lcts_e']}
 
     lattice_config.update(boot_config)
     return lattice_config
@@ -463,8 +461,6 @@ class BootEnvironment(BootAgent):
             'shifter': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
-            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
-            'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
             'antibiotic_composite': wrap_boot(
                 wrap_init_composite(compose_antibiotics),
                 {'volume': 1.0},

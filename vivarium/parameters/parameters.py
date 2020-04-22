@@ -7,7 +7,10 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.composition import load_compartment, simulate_compartment
+from vivarium.compartment.composition import (
+    load_compartment,
+    simulate_compartment,
+    simulate_with_environment)
 
 # composites
 from vivarium.composites.master import compose_master
@@ -20,8 +23,12 @@ def get_nested(dict, keys):
     for key in keys[:-1]:
         if key in d:
             d = d[key]
-    if keys[-1] in d:
+    try:
         value = d[keys[-1]]
+    except:
+        value = None
+        print('value not found for: {}'.format(keys))
+
     return value
 
 def set_nested(dict, keys, value, create_missing=True):
@@ -37,21 +44,29 @@ def set_nested(dict, keys, value, create_missing=True):
         d[keys[-1]] = value
     return dict
 
-def parameter_scan(composite, scan_params, output_values):
+
+def get_parameters_logspace(min, max, number):
+    '''
+    get list of n parameters logarithmically spaced between min and max
+    '''
+    range = np.logspace(np.log10(min), np.log10(max), number, endpoint=True)
+    return list(range)
+
+def parameter_scan(composite, scan_params, output_values, options={}):
 
     n_values = [len(v) for v in scan_params.values()]
     n_combinations = np.prod(np.array(n_values))
+    print('parameter scan size: {}'.format(n_combinations))
 
     # get initial parameters
-    compartment = load_compartment(composite, null_emitter)
+    compartment = load_compartment(composite)
     default_params = compartment.current_parameters()
 
-    # make list with combinations of all scanned parameters,
-    # nested in the compartment's default parameters
+    # make list with combinations of all parameter sets for scan
     param_keys = list(scan_params.keys())
     param_values = list(scan_params.values())
-    param_combinations = list(itertools.product(*param_values))
-    param_sets = []
+    param_combinations = list(itertools.product(*param_values))  # this is the set of scanned parameters
+    param_sets = []  # all parameters for the scans, including defaults
     for combo in param_combinations:
         new_params = copy.deepcopy(default_params)
         for param_key, value in zip(param_keys, combo):
@@ -59,28 +74,43 @@ def parameter_scan(composite, scan_params, output_values):
         param_sets.append(new_params)
 
     # simulation settings
-    total_time = 10
+    total_time = options.get('time', 10)
+    timestep = options.get('timestep', 1)
+    simulate_environment = options.get('simulate_with_environment', False)
+    simulation_settings = options.get('simulation_settings', {})
     settings = {
-        'timestep': 1,
-        'total_time': total_time}
+        'timestep': timestep,
+        'total_time': total_time,
+        'return_raw_data': True}
+    settings.update(simulation_settings)
 
     # run all parameters, and save results
     results = []
-    for params in param_sets:
-        params.update(null_emitter)
+    for params_index, params in enumerate(param_sets, 1):
+        print('running parameter set {}/{}'.format(params_index, n_combinations))
+
+        # make a compartment with these parameters
         new_compartment = load_compartment(composite, params)
-        sim_out = simulate_compartment(new_compartment, settings)
-        last_state = sim_out[total_time]
 
-        output = []
-        for output_value in output_values:
-            output.append(get_nested(last_state, output_value))
-        results.append(output)
+        try:
+            if simulate_environment:
+                sim_out = simulate_with_environment(new_compartment, settings)
+            else:
+                sim_out = simulate_compartment(new_compartment, settings)
 
+            last_state = sim_out[total_time]
+
+            output = []
+            for output_value in output_values:
+                output.append(get_nested(last_state, output_value))
+            results.append(output)
+        except:
+            print('failed simulation: parameter set {}'.format(params_index))
 
     # organize the results
     param_combo_ids = [dict(zip(param_keys, combo)) for combo in param_combinations]
-    results_dict = {output_id: [result[out_idx] for result in results]
+    results_dict = {
+        output_id: [result[out_idx] for result in results]
         for out_idx, output_id in enumerate(output_values)}
 
     return {
@@ -92,17 +122,32 @@ def scan_master():
 
     # define scanned parameters, to replace defaults
     scan_params = {
-        ('metabolism', 'model_path'): ['models/e_coli_core.json'],
-        ('transport', 'kinetic_parameters', 'EX_glc__D_e', ('internal','PTSG'), 'kcat_f'): [-1e5, -3e4, -6e3, -3e3, -3e2, -3e1]
+        ('transport',
+         'kinetic_parameters',
+         'EX_glc__D_e',
+         ('internal','PTSG'),
+         'kcat_f'):
+            get_parameters_logspace(1e-3, 1e0, 6)
     }
 
     output_values = [
         ('reactions', 'EX_glc__D_e'),
-        ('reactions', 'GLCpts'),
-        ('cell', 'growth_rate')
-    ]
+        ('reactions', 'GLCptspp'),
+        ('global', 'growth_rate')]
 
-    results = parameter_scan(composite, scan_params, output_values)
+    # set up simulation settings and scan options
+    timeline = [(30, {})]
+    sim_settings = {
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
+        'environment_volume': 1e-6,  # L
+        'timeline': timeline}
+
+    scan_options = {
+        'simulate_with_environment': True,
+        'simulation_settings': sim_settings}
+
+    results = parameter_scan(composite, scan_params, output_values, scan_options)
 
     return results
 
@@ -115,7 +160,7 @@ def set_axes(ax, show_xaxis=False):
         ax.spines['bottom'].set_visible(False)
         ax.tick_params(bottom=False, labelbottom=False)
 
-def plot_scan_results(results, out_dir='out'):
+def plot_scan_results(results, out_dir='out', filename='parameter_scan'):
     parameter_ids = results['parameter combination']
     outputs = results['output']
     param_indexes = list(range(0, len(parameter_ids)))
@@ -157,14 +202,14 @@ def plot_scan_results(results, out_dir='out'):
     ax.axis('off')
 
     # save figure
-    fig_path = os.path.join(out_dir, 'parameter_scan')
+    fig_path = os.path.join(out_dir, filename)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
 
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'parameters', 'scan_master')
+    out_dir = os.path.join('out', 'tests', 'master_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 

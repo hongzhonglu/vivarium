@@ -24,6 +24,7 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_mass import DeriveMass
 
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
@@ -31,13 +32,15 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
+    'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs}
+    'counts_to_mmol': DeriveConcs,
+}
 
 
 
-def get_derivers(process_list, topology):
+def get_derivers(process_list, topology, config={}):
     '''
     get the derivers for a list of processes
 
@@ -50,26 +53,24 @@ def get_derivers(process_list, topology):
         'deriver_topology': topology}
     '''
 
-
     # get deriver configuration
-    deriver_config = {}
+    deriver_configs = config.copy()
     full_deriver_topology = {}
-    deriver_topology = {}
     for level in process_list:
         for process_id, process in level.items():
             process_settings = process.default_settings()
-            setting = process_settings.get('deriver_setting', [])
+            deriver_setting = process_settings.get('deriver_setting', [])
             try:
                 port_map = topology[process_id]
             except:
                 print('{} topology port mismatch'.format(process_id))
                 raise
 
-            for set in setting:
-                type = set['type']
-                keys = set['keys']
-                source_port = set['source_port']
-                target_port = set['derived_port']
+            for setting in deriver_setting:
+                type = setting['type']
+                keys = setting['keys']
+                source_port = setting['source_port']
+                target_port = setting['derived_port']
                 try:
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
@@ -77,6 +78,7 @@ def get_derivers(process_list, topology):
                     print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
+                # make deriver_topology, add to full_deriver_topology
                 deriver_topology = {
                     type: {
                         source_port: source_compartment_port,
@@ -87,37 +89,34 @@ def get_derivers(process_list, topology):
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
                 # ports for configuration
-                ports = {
-                    source_port: keys,
-                    target_port: keys}
-                config = {type: {'ports': ports}}
+                ports_config = {type: {
+                    'source_ports': {source_port: keys},
+                    'target_ports': {target_port: keys}
+                }}
 
-                deep_merge(deriver_config, config)
+                deep_merge(deriver_configs, ports_config)
 
     # configure the derivers
     deriver_processes = {}
-    for type, config in deriver_config.items():
-        deriver_processes[type] = deriver_library[type](config)
+    for type, deriver_config in deriver_configs.items():
+        deriver_processes[type] = deriver_library[type](deriver_config)
 
     # add global deriver
-    # TODO -- configure global deriver to get mass
     global_deriver = {
         'global_deriver': DeriveGlobals({})}
-
     global_deriver_topology = {
         'global_deriver': {
             'global': 'global'}}
+    deep_merge(full_deriver_topology, global_deriver_topology)
 
-    deep_merge(deriver_topology, global_deriver_topology)
-
-    # put the global deriver and additional derivers in two layers
+    # put the global deriver and additional derivers in two process layers
     processes = [
         global_deriver,
         deriver_processes]
 
     return {
         'deriver_processes': processes,
-        'deriver_topology': deriver_topology}
+        'deriver_topology': full_deriver_topology}
 
 def get_schema(process_list, topology):
     schema = {}
@@ -768,7 +767,7 @@ def load_compartment(composite, boot_config={}):
     options = composite_config['options']
     options.update({
         'emitter': boot_config.get('emitter', 'timeseries'),
-        'time_step': boot_config.get('time_step', 1.0)})
+        'time_step': boot_config.get('time_step', 1.0)})   # TODO -- let compartment handle its own timestep
 
     return Compartment(processes, derivers, states, options)
 
