@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import math
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
@@ -517,8 +519,6 @@ def kremling_figures(saved_state, out_dir='out'):
 
 
 def plot_all_state(saved_state, out_dir='out'):
-    import matplotlib.pyplot as plt
-    import math
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
