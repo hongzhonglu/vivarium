@@ -19,26 +19,33 @@ from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.units import units
 
-EMPTY_ROLES = {
-    'internal': [],
-    'external': []}
 
-EMPTY_STATES = {
-    'internal': {},
-    'external': {}}
+
 NAME = 'convenience_kinetics'
 
 
+
 class ConvenienceKinetics(Process):
+
+    defaults = {
+        'reactions': {},
+        'initial_state': {
+            'internal': {},
+            'external': {}},
+        'kinetic_parameters': {},
+        'ports': {
+            'internal': [],
+            'external': []}
+    }
 
     def __init__(self, initial_parameters={}):
         self.nAvogadro = constants.N_A * 1 / units.mol
 
         # retrieve initial parameters
-        self.reactions = initial_parameters.get('reactions', {})
-        self.initial_state = initial_parameters.get('initial_state', EMPTY_STATES)
-        kinetic_parameters = initial_parameters.get('kinetic_parameters', {})
-        ports = initial_parameters.get('ports', EMPTY_ROLES)
+        self.reactions = initial_parameters.get('reactions', self.defaults['reactions'])
+        self.initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
+        kinetic_parameters = initial_parameters.get('kinetic_parameters', self.defaults['kinetic_parameters'])
+        ports = initial_parameters.get('ports', self.defaults['ports'])
 
         # make the kinetic model
         self.kinetic_rate_laws = KineticFluxModel(self.reactions, kinetic_parameters)

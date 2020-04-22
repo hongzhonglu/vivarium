@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+
 import numpy as np
 import scipy.constants as constants
+import matplotlib.pyplot as plt
 
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge
@@ -52,21 +54,30 @@ class MembranePotential(Process):
     '''
     Need to add a boot method for this process to vivarium/environment/boot.py for it to run on its own
     '''
-    def __init__(self, config={}):
 
-        # set states
-        self.initial_states = config.get('states', DEFAULT_STATE)
-
-        # set parameters
-        parameters = {
+    defaults = {
+        'states': DEFAULT_STATE,
+        'parameters': DEFAULT_PARAMETERS,
+        'permeability': PERMEABILITY_MAP,
+        'charge': CHARGE_MAP,
+        'constants': {
             'R': constants.gas_constant,  # (J * K^-1 * mol^-1) gas constant
             'F': constants.physical_constants['Faraday constant'][0], # (C * mol^-1) Faraday constant
             'k': constants.Boltzmann, # (J * K^-1) Boltzmann constant
             }
-        parameters.update(config.get('parameters', DEFAULT_PARAMETERS))
+    }
 
-        self.permeability = config.get('permeability', PERMEABILITY_MAP)
-        self.charge = config.get('charge', CHARGE_MAP)
+
+    def __init__(self, config={}):
+
+        # set states
+        self.initial_states = config.get('states', self.defaults['states'])
+        self.permeability = config.get('permeability', self.defaults['permeability'])
+        self.charge = config.get('charge', self.defaults['charge'])
+
+        # set parameters
+        parameters = self.defaults['constants']
+        parameters.update(config.get('parameters', self.defaults['parameters']))
 
         # get list of internal and external states
         internal_states = list(self.initial_states['internal'].keys())
@@ -219,7 +230,6 @@ def test_mem_potential():
     return saved_state
 
 def plot_mem_potential(saved_state, out_dir='out'):
-    import matplotlib.pyplot as plt
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours

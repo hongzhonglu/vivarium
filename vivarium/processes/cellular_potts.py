@@ -19,11 +19,18 @@ class CellularPotts(Process):
     """
     Cellular Potts model
     """
+
+    defaults = {
+        'grid_size': (10, 10),
+        'n_agents': 1,
+        'target_area': 10
+    }
+
     def __init__(self, initial_parameters={}):
 
-        grid_size = initial_parameters.get('grid_size', (10, 10))
-        n_initial = initial_parameters.get('n_agents', 1)
-        self.init_target_area = initial_parameters.get('target_area', 10)
+        grid_size = initial_parameters.get('grid_size', self.defaults['grid_size'])
+        n_initial = initial_parameters.get('n_agents', self.defaults['n_agents'])
+        self.init_target_area = initial_parameters.get('target_area', self.defaults['target_area'])
 
         # configure CPM
         cpm_config = {
@@ -261,7 +268,7 @@ def get_cpm_minimum_config():
         'target_area': 10,
         'animate': True}
 
-def test_CPM(cpm_config = get_cpm_minimum_config(), time=5):
+def run_CPM(cpm_config = get_cpm_minimum_config(), time=5):
     # load process
     expression = CellularPotts(cpm_config)
 
@@ -281,5 +288,5 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     cpm_config = get_cpm_config()
-    saved_data = test_CPM(cpm_config, 30)
+    saved_data = run_CPM(cpm_config, 30)
 
