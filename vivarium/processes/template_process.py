@@ -7,12 +7,20 @@ class Template(Process):
     '''
     Need to add a boot method for this process to vivarium/environment/boot.py for it to run on its own
     '''
+
+    defaults = {
+        'parameters': {}
+    }
+
     def __init__(self, initial_parameters={}):
+
         ports = {
             'internal': ['states'],
             'external': ['states'],
         }
-        parameters = {}
+
+        parameters = initial_parameters.get(
+            'parameters', self.defaults['parameters'])
 
         super(Template, self).__init__(ports, parameters)
 

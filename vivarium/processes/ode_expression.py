@@ -20,19 +20,34 @@ class ODE_expression(Process):
     TODO -- kinetic regulation, cooperativity, autoinhibition, autactivation
     '''
 
+    defaults = {
+        'transcription_rates': {},
+        'translation_rates': {},
+        'degradation_rates': {},
+        'protein_map': {},
+        'regulation': {},
+        'regulators': [],
+        'initial_state': {},
+    }
+
     def __init__(self, initial_parameters={}):
 
         # ode gene expression
-        self.transcription = initial_parameters.get('transcription_rates', {})
-        self.translation = initial_parameters.get('translation_rates', {})
-        self.degradation = initial_parameters.get('degradation_rates', {})
-        self.protein_map = initial_parameters.get('protein_map', {})
+        self.transcription = initial_parameters.get(
+            'transcription_rates', self.defaults['transcription_rates'])
+        self.translation = initial_parameters.get(
+            'translation_rates', self.defaults['translation_rates'])
+        self.degradation = initial_parameters.get(
+            'degradation_rates', self.defaults['degradation_rates'])
+        self.protein_map = initial_parameters.get(
+            'protein_map', self.defaults['protein_map'])
 
         # boolean regulation
-        regulation_logic = initial_parameters.get('regulation', {})
+        regulation_logic = initial_parameters.get(
+            'regulation', self.defaults['regulation'])
         self.regulation = {
             gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
-        regulators = initial_parameters.get('regulators', [])
+        regulators = initial_parameters.get('regulators', self.defaults['regulators'])
         internal_regulators = [state_id for port_id, state_id in regulators if port_id == 'internal']
         external_regulators = [state_id for port_id, state_id in regulators if port_id == 'external']
 
@@ -40,7 +55,7 @@ class ODE_expression(Process):
         states = list(self.transcription.keys()) + list(self.translation.keys())
         null_states = {'internal': {
             state_id: 0 for state_id in states}}
-        initialized_states = initial_parameters.get('initial_state', {})
+        initialized_states = initial_parameters.get('initial_state', self.defaults['initial_state'])
         self.initial_state = deep_merge(null_states, initialized_states)
         internal = list(self.initial_state.get('internal', {}).keys())
         external = list(self.initial_state.get('external', {}).keys())
