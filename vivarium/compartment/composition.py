@@ -59,14 +59,8 @@ def get_derivers(process_list, topology, config={}):
     deriver_configs = process_derivers['deriver_configs']
     deriver_topology = process_derivers['deriver_topology']
 
-    # update with config
+    # update deriver_configs
     deriver_configs = deep_merge(deriver_configs, config)
-
-    # # add globals topology, since it does not have a declared topology within process
-    # if 'globals' in deriver_configs:
-    #     globals_topology = {
-    #         'globals': {'global': 'global'}}
-    #     deriver_topology = deep_merge(deriver_topology, globals_topology)
 
     # configure the deriver processes
     deriver_processes = {}
@@ -81,7 +75,7 @@ def get_derivers(process_list, topology, config={}):
         'deriver_topology': deriver_topology}
 
 def get_deriver_config_from_proceses(process_list, topology):
-    ''' get the deriver configuration from deriver_settings processes'''
+    ''' get the deriver configuration from processes' deriver_settings'''
 
     deriver_configs = {}
     full_deriver_topology = {}

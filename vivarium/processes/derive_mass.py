@@ -73,7 +73,7 @@ class DeriveMass(Process):
                 added_mass = mw * mol
                 mass += added_mass.to('fg')
 
-        mass += self.dark_mass  # TODO -- add dark mass to schema
+        mass += self.dark_mass * units.fg # TODO -- add dark mass to schema
 
         return {
             'global': {'mass': mass.magnitude}}
