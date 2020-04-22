@@ -30,10 +30,8 @@ from vivarium.processes.derive_globals import AVOGADRO
 
 
 NAME = 'metabolism_process'
-
-# external concentrations lower than exchange threshold are considered depleted
-EXCHANGE_THRESHOLD = 1e-6
 GLOBALS = ['volume', 'mass', 'mmol_to_counts']
+
 
 
 def get_fg_from_counts(counts_dict, mw):
@@ -41,6 +39,7 @@ def get_fg_from_counts(counts_dict, mw):
         coeff / AVOGADRO * mw.get(mol_id, 0.0) * (units.g / units.mol)
         for mol_id, coeff in counts_dict.items()])  # g
     return composition_mass.to('fg')
+
 
 
 class Metabolism(Process):
@@ -54,21 +53,35 @@ class Metabolism(Process):
         - external_molecules (list) -- the external molecules
         - reversible_reactions (list)
     """
+
+    defaults = {
+        'constrained_reaction_ids': [],
+        'default_upper_bound': 1000.0,
+        'regulation': {},
+        'initial_state': {},
+        'exchange_threshold': 1e-6, # external concs lower than exchange_threshold are considered depleted
+    }
+
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
 
         # initialize FBA
         self.fba = CobraFBA(initial_parameters)
         self.reaction_ids = self.fba.reaction_ids()
+        self.exchange_threshold = self.defaults['exchange_threshold']
 
         # additional FBA options
-        self.constrained_reaction_ids = initial_parameters.get('constrained_reaction_ids', [])
-        self.default_upper_bound = initial_parameters.get('default_upper_bound', 1000.0)
+        self.constrained_reaction_ids = initial_parameters.get(
+            'constrained_reaction_ids', self.defaults['constrained_reaction_ids'])
+        self.default_upper_bound = initial_parameters.get(
+            'default_upper_bound', self.defaults['default_upper_bound'])
 
         # get regulation functions
-        regulation_logic = initial_parameters.get('regulation', {})
+        regulation_logic = initial_parameters.get(
+            'regulation', self.defaults['regulation'])
         self.regulation = {
-            reaction: build_rule(logic) for reaction, logic in regulation_logic.items()}
+            reaction: build_rule(logic)
+            for reaction, logic in regulation_logic.items()}
 
         # get molecules from fba objective
         self.objective_composition = {}
@@ -80,7 +93,7 @@ class Metabolism(Process):
                     self.objective_composition[mol_id] = coeff1 * coeff2
 
         ## Get initial state from state specified in parameters
-        default_state = initial_parameters.get('initial_state', {})
+        default_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
         global_state = default_state.get('global', {})
         internal_state = default_state.get('internal', {})
         external_state = default_state.get('external', {})
@@ -177,7 +190,7 @@ class Metabolism(Process):
         ## get flux constraints
         # exchange_constraints based on external availability
         exchange_constraints = {mol_id: 0.0
-            for mol_id, conc in external_state.items() if conc <= EXCHANGE_THRESHOLD}
+            for mol_id, conc in external_state.items() if conc <= self.exchange_threshold}
 
         # get state of regulated reactions (True/False)
         flattened_states = tuplify_port_dicts(states)

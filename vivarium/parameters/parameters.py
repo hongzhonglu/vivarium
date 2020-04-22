@@ -44,6 +44,7 @@ def set_nested(dict, keys, value, create_missing=True):
         d[keys[-1]] = value
     return dict
 
+
 def get_parameters_logspace(min, max, number):
     '''
     get list of n parameters logarithmically spaced between min and max
@@ -76,7 +77,7 @@ def parameter_scan(composite, scan_params, output_values, options={}):
     total_time = options.get('time', 10)
     timestep = options.get('timestep', 1)
     simulate_environment = options.get('simulate_with_environment', False)
-    simulation_settings = options.get('simulation_settings')
+    simulation_settings = options.get('simulation_settings', {})
     settings = {
         'timestep': timestep,
         'total_time': total_time,

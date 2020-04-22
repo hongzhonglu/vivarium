@@ -490,7 +490,7 @@ class Compartment(Store):
 
         updates = {}
         for name, process in derivers.items():
-            new_update = process.update_for(1)  # timestep shouldn't influence derivers
+            new_update = process.update_for(0)  # timestep shouldn't influence derivers
             updates = self.collect_updates(updates, name, new_update)
 
         for key, update in updates.items():

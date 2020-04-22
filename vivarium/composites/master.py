@@ -151,7 +151,7 @@ def default_transport_metabolism_config():
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]}})
+            'EX_lcts_e': [1.05, 1.0]}})
 
     return {
         'transport': transport_config,

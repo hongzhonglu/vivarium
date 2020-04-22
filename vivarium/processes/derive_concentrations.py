@@ -13,9 +13,15 @@ class DeriveConcs(Process):
     def __init__(self, initial_parameters={}):
         self.avogadro = AVOGADRO
 
-        ports = initial_parameters.get('ports')
-        ports.update({
-            'global': ['volume', 'mmol_to_counts']})
+        source_ports = initial_parameters.get('source_ports')
+        target_ports = initial_parameters.get('target_ports')
+
+        assert len(target_ports) == 1, 'DeriveConcs too many target ports'
+        assert list(target_ports.keys())[0] == 'concentrations', 'DeriveConcs requires target port named concentrations'
+
+        ports = {'global': ['volume', 'mmol_to_counts']}
+        ports.update(source_ports)
+        ports.update(target_ports)
 
         parameters = {}
         parameters.update(initial_parameters)

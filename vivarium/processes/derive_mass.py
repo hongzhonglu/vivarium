@@ -13,10 +13,16 @@ class DeriveMass(Process):
     """
     def __init__(self, initial_parameters={}):
 
+        source_ports = initial_parameters['source_ports']
+        target_ports = initial_parameters.get('target_ports')
 
-        ports = initial_parameters['ports']
-        ports.update({
-            'global': ['mass', 'volume', 'mmol_to_counts']})
+        if target_ports:
+            assert len(target_ports) == 1, 'DeriveMass too many target ports'
+            assert list(target_ports.keys())[0] == 'global', 'DeriveMass requires target port named global'
+
+        ports = {
+            'global': ['mass', 'volume', 'mmol_to_counts']}
+        ports.update(source_ports)
 
         self.in_ports = {
             port_id: keys

@@ -49,24 +49,7 @@ INITIAL_STATE = {
     'motile_torque': 0,
 }
 
-# motile force parameters
-DEFAULT_N_FLAGELLA = 5
-DEFAULT_PMF = 170  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg H, E. coli in motion, 2004, pg 113)
-SINGLE_FLAGELLA_THRUST = 25  # (pN) (Berg H, E. coli in motion, 2004, pg 113)
 
-TUMBLE_JITTER = 0.4
-TUMBLE_SCALING = 0.5/DEFAULT_PMF
-RUN_SCALING = 1/DEFAULT_PMF
-
-def tumble(n_flagella, PMF):
-    force = TUMBLE_SCALING * PMF * SINGLE_FLAGELLA_THRUST * n_flagella
-    torque = random.normalvariate(0, TUMBLE_JITTER)
-    return [force, torque]
-
-def run(n_flagella, PMF):
-    force = RUN_SCALING * PMF * SINGLE_FLAGELLA_THRUST * n_flagella
-    torque = 0.0
-    return [force, torque]
 
 class FlagellaActivity(Process):
     '''
@@ -82,9 +65,26 @@ class FlagellaActivity(Process):
         - Flagella will need to be separated upon division, rather than having each daughter inherit all the flagella.
     '''
 
+    defaults = {
+        'flagella': 5,
+        'parameters': DEFAULT_PARAMETERS,
+        'initial_state': INITIAL_STATE,
+
+        # motile force parameters
+        'PMF': 170,  # PMF ~170mV at pH 7, ~140mV at pH 7.7 (Berg H, E. coli in motion, 2004, pg 113)
+        'flagellum_thrust': 25,  # (pN) (Berg H, E. coli in motion, 2004, pg 113)
+        'tumble_jitter': 0.4,
+    }
+
     def __init__(self, initial_parameters={}):
 
-        self.n_flagella = initial_parameters.get('flagella', DEFAULT_N_FLAGELLA)
+        self.n_flagella = initial_parameters.get('flagella', self.defaults['flagella'])
+        self.flagellum_thrust = initial_parameters.get('flagellum_thrust', self.defaults['flagellum_thrust'])
+        self.tumble_jitter = initial_parameters.get('tumble_jitter', self.defaults['tumble_jitter'])
+        self.tumble_scaling = 0.5/self.defaults['PMF']
+        self.run_scaling = 1 / self.defaults['PMF']
+
+
         self.flagella_ids = [str(uuid.uuid1()) for flagella in range(self.n_flagella)]
 
         ports = {
@@ -105,7 +105,7 @@ class FlagellaActivity(Process):
                 'flagella'],
             'external': []}
 
-        parameters = DEFAULT_PARAMETERS
+        parameters = self.defaults['parameters']
         parameters.update(initial_parameters)
 
         super(FlagellaActivity, self).__init__(ports, parameters)
@@ -115,11 +115,11 @@ class FlagellaActivity(Process):
         # default state
         # flagella motor state: -1 for CCW, 1 for CW
         # motile state: -1 for run, 1 for tumble, 0 for no state
-        internal = INITIAL_STATE
+        internal = self.defaults['initial_state']
         default_state = {
             'external': {},
             'membrane': {
-                'PMF': DEFAULT_PMF,
+                'PMF': self.defaults['PMF'],
                 'PROTONS': 0},
             'flagella_counts': {
                 'flagella': self.n_flagella},
@@ -224,10 +224,10 @@ class FlagellaActivity(Process):
         # motile state: -1 for run, 1 for tumble, 0 for no state
         if any(state == 1 for state in flagella_update.values()):
             motile_state = 1
-            [force, torque] = tumble(n_flagella, PMF)
+            [force, torque] = self.tumble(n_flagella, PMF)
         elif len(flagella_update) > 0:
             motile_state = -1
-            [force, torque] = run(n_flagella, PMF)
+            [force, torque] = self.run(n_flagella, PMF)
         else:
             motile_state = 0
             force = 0
@@ -284,6 +284,15 @@ class FlagellaActivity(Process):
 
         return new_motor_state
 
+    def tumble(self, n_flagella, PMF):
+        force = self.tumble_scaling * PMF * self.flagellum_thrust * n_flagella
+        torque = random.normalvariate(0, self.tumble_jitter)
+        return [force, torque]
+
+    def run(self, n_flagella, PMF):
+        force = self.run_scaling * PMF * self.flagellum_thrust * n_flagella
+        torque = 0.0
+        return [force, torque]
 
 
 # testing functions

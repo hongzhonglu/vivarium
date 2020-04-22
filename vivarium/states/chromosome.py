@@ -201,6 +201,17 @@ class Chromosome(Datum):
                 self.position_domains(child, position)
                 for child in domain.children])
 
+    def apply_thresholds(self, thresholds):
+        for path, level in thresholds.items():
+            promoter, factor = path
+            found = False
+            for site in self.promoters[promoter].sites:
+                if factor in site.thresholds:
+                    site.thresholds[factor] = level
+                    found = True
+            if not found:
+                print('binding site not found for {} with level {}'.format(path, level))
+
     def bind_rnap(self, promoter_index, domain):
         self.rnap_id += 1
         promoter_key = self.promoter_order[promoter_index]
