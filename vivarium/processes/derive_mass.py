@@ -18,9 +18,9 @@ class DeriveMass(Process):
 
     def __init__(self, initial_parameters={}):
 
-        self.dark_mass = initial_parameters.get('dark_mass', self.defaults['dark_mass'])
+        self.dark_mass = initial_parameters.get(
+            'dark_mass', self.defaults['dark_mass'])
         # TODO -- add dark mass to schema?
-        import ipdb; ipdb.set_trace()
 
         source_ports = initial_parameters['source_ports']
         target_ports = initial_parameters['target_ports']
@@ -72,6 +72,8 @@ class DeriveMass(Process):
                 mol = count / AVOGADRO
                 added_mass = mw * mol
                 mass += added_mass.to('fg')
+
+        mass += self.dark_mass  # TODO -- add dark mass to schema
 
         return {
             'global': {'mass': mass.magnitude}}
