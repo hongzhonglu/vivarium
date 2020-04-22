@@ -14,11 +14,17 @@ def divide_condition(compartment):
 
 
 class Division(Process):
+
+    defaults = {
+        'initial_state': {},
+        'volume': 1.2,
+    }
+
     def __init__(self, initial_parameters={}):
         self.division = 0
 
-        initial_state = initial_parameters.get('initial_state', {})
-        initial_volume = initial_state.get('global', {}).get('volume', 1.2)  # L
+        initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
+        initial_volume = initial_state.get('global', {}).get('volume', self.defaults['volume'])
         division_volume = initial_volume * 2
 
         ports = {'global': ['volume', 'division']}

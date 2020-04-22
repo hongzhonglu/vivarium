@@ -14,8 +14,6 @@ from vivarium.compartment.composition import (
 
 
 
-default_step_size = 1
-
 class MinimalExpression(Process):
     '''
     a minimal protein expression process.
@@ -24,11 +22,17 @@ class MinimalExpression(Process):
     parameters:
         expression_rates (dict) with {'mol_id': probability_of_expression (1/sec)}
     '''
+
+    defaults = {
+        'step_size': 1,
+        'regulation': {},
+    }
+
     def __init__(self, initial_parameters={}):
 
         expression_rates = initial_parameters.get('expression_rates')
         self.internal_states = list(expression_rates.keys()) if expression_rates else []
-        regulation_logic = initial_parameters.get('regulation', {})
+        regulation_logic = initial_parameters.get('regulation', self.defaults['regulation'])
         self.regulation = {
             gene_id: build_rule(logic) for gene_id, logic in regulation_logic.items()}
         regulators = initial_parameters.get('regulators', [])
@@ -42,7 +46,7 @@ class MinimalExpression(Process):
 
         parameters = {
             'expression_rates': expression_rates,
-            'step_size': initial_parameters.get('step_size', default_step_size)}
+            'step_size': initial_parameters.get('step_size', self.defaults['step_size'])}
 
         parameters.update(initial_parameters)
 
