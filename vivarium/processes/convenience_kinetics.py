@@ -19,24 +19,23 @@ from vivarium.utils.kinetic_rate_laws import KineticFluxModel
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.units import units
 
-EMPTY_ROLES = {
-    'internal': [],
-    'external': []}
 
-EMPTY_STATES = {
-    'internal': {},
-    'external': {}}
+
 NAME = 'convenience_kinetics'
+
 
 
 class ConvenienceKinetics(Process):
 
     defaults = {
         'reactions': {},
-        'initial_state': EMPTY_STATES,
+        'initial_state': {
+            'internal': {},
+            'external': {}},
         'kinetic_parameters': {},
-        'ports': EMPTY_ROLES
-
+        'ports': {
+            'internal': [],
+            'external': []}
     }
 
     def __init__(self, initial_parameters={}):
