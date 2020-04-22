@@ -178,7 +178,7 @@ def simulate_txp_mtb_ge(out_dir='out'):
 
 
 # parameters
-def scan_txb_mtb_ge():
+def scan_txp_mtb_ge():
     composite_function = compose_txp_mtb_ge
 
     # parameters to be scanned, and their values
@@ -253,7 +253,7 @@ def scan_txb_mtb_ge():
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'txb_mtb_ge_composite')
+    out_dir = os.path.join('out', 'tests', 'txp_mtb_ge_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.scan:
-        results = scan_txb_mtb_ge()
+        results = scan_txp_mtb_ge()
         plot_scan_results(results, out_dir)
     else:
         simulate_txp_mtb_ge(out_dir)

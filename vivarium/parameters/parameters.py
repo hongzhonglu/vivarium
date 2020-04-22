@@ -151,15 +151,6 @@ def scan_master():
 
     return results
 
-def set_axes(ax, show_xaxis=False):
-    ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(right=False, top=False)
-    if not show_xaxis:
-        ax.spines['bottom'].set_visible(False)
-        ax.tick_params(bottom=False, labelbottom=False)
-
 def plot_scan_results(results, out_dir='out', filename='parameter_scan'):
     parameter_ids = results['parameter combination']
     outputs = results['output']
@@ -179,17 +170,12 @@ def plot_scan_results(results, out_dir='out', filename='parameter_scan'):
     col_idx = 0
     for output_id, output in outputs.items():
         ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
-        ax.plot(param_indexes, output)
+        ax.scatter(param_indexes, output)
         ax.set_ylabel(output_id)
+        ax.set_xticks(param_indexes)
+        ax.set_xlabel('parameter set #')
 
         row_idx += 1
-        if row_idx == base_rows:
-            # if last row of column
-            set_axes(ax, True)
-            ax.set_xticks(param_indexes)
-            ax.set_xlabel('parameter set #')
-        else:
-            set_axes(ax)
 
     # parameter ids as text
     text_row = 0.08
