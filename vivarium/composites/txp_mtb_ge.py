@@ -99,18 +99,12 @@ def compose_txp_mtb_ge(config):
     A composite with kinetic transport, metabolism, and gene expression
     """
 
-    # TODO -- pass metabolism mass in through config.
-
     compartment = txp_mtb_ge_compartment(config)
     processes = compartment['processes']
     topology = compartment['topology']
 
-    # TODO -- globals topology?
-    # TODO -- pass in deriver layers
-    topology['globals'] = {'global': 'global'}
     # add derivers
     deriver_config = {
-        'globals': {},
         'mass': {'dark_mass': 1339}}  # units.fg
 
     derivers = get_derivers(processes, topology, deriver_config)
