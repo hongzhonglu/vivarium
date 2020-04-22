@@ -77,7 +77,7 @@ class ShepherdControl(ActorControl):
 
         # define experimental environment and agents
         experiment_id = 'growth_division'
-        environment_type = 'lattice'
+        environment_type = 'ecoli_core_glc'
         agents = {
             'growth_division': 1}
 
