@@ -41,24 +41,23 @@ def txp_mtb_ge_compartment(config):
     ## Declare the processes.
     # Transport
     # load the kinetic parameters
-    transport_config = config.get('transport', get_glc_lct_config())
+    transport_config = config.get('transport', {})
     transport = ConvenienceKinetics(transport_config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
     # Metabolism
     # get target fluxes from transport
-    metabolism_config = config.get('metabolism', default_metabolism_config())
+    metabolism_config = config.get('metabolism', {})
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
     # Gene expression
-    gene_expression_config = config.get('expression', get_lacy_config())
+    gene_expression_config = config.get('expression', {})
     gene_expression = ODE_expression(gene_expression_config)
 
     # Division
     # get initial volume from metabolism
     division_config = config.get('division', {})
-    # division_config.update({'initial_state': metabolism.initial_state})  # TODO -- metabolism no longer has an initial volume
     division = Division(division_config)
 
     # Place processes in layers
@@ -103,14 +102,21 @@ def compose_txp_mtb_ge(config):
     A composite with kinetic transport, metabolism, and gene expression
     """
 
+    # set config
+    initial_mass = config.get('initial_mass', 1339)
+    config['metabolism'] = config.get('metabolism', default_metabolism_config())
+    config['metabolism']['initial_mass'] = initial_mass
+    config['transport'] = config.get('transport', get_glc_lct_config())
+    config['expression'] = config.get('transport', get_lacy_config())
+    config['division'] = config.get('division', {'division_volume': 2.4})
+
+    # get compartment
     compartment = txp_mtb_ge_compartment(config)
     processes = compartment['processes']
     topology = compartment['topology']
 
     # add derivers
-    deriver_config = {
-        'mass': {'dark_mass': 1339}}  # units.fg
-
+    deriver_config = {}
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
     all_processes = processes + derivers['deriver_processes']
@@ -144,6 +150,7 @@ def default_metabolism_config():
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
     metabolism_config = {
+        ''
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
