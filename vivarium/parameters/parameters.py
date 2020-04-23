@@ -52,7 +52,18 @@ def get_parameters_logspace(min, max, number):
     range = np.logspace(np.log10(min), np.log10(max), number, endpoint=True)
     return list(range)
 
-def parameter_scan(composite, scan_params, output_values, options={}):
+def parameter_scan(config):
+    '''
+    Pass in a config (dict) with a composite, scan_parameters, output_values, and options,
+
+    Returns a list of all parameter combinations, and a dictionary with output values for those parameters
+    '''
+
+    composite = config['composite']
+    scan_params = config['scan_parameters']
+    output_values = config['output_values']
+    options = config['options']
+
 
     n_values = [len(v) for v in scan_params.values()]
     n_combinations = np.prod(np.array(n_values))
@@ -147,7 +158,12 @@ def scan_master():
         'simulate_with_environment': True,
         'simulation_settings': sim_settings}
 
-    results = parameter_scan(composite, scan_params, output_values, scan_options)
+    scan_config = {
+        'composite': composite,
+        'scan_parameters': scan_params,
+        'output_values': output_values,
+        'options': scan_options}
+    results = parameter_scan(scan_config)
 
     return results
 

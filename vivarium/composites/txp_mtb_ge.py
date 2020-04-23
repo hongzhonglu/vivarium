@@ -253,11 +253,12 @@ def scan_txp_mtb_ge():
         'simulation_settings': sim_settings}
 
     # run scan
-    results = parameter_scan(
-        composite_function,
-        scan_params,
-        metrics,
-        scan_options)
+    scan_config = {
+        'composite': composite_function,
+        'scan_parameters': scan_params,
+        'output_values': metrics,
+        'options': scan_options}
+    results = parameter_scan(scan_config)
 
     return results
 

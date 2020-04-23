@@ -225,11 +225,12 @@ def scan_flagella_expression_parameters():
         ('proteins', complex)
         for complex in flagella_data.complexation_complex_ids]
 
-    results = parameter_scan(
-        generate_flagella_compartment,
-        scan_params,
-        output_values,
-        {'time': 5})
+    scan_config = {
+        'composite': generate_flagella_compartment,
+        'scan_parameters': scan_params,
+        'output_values': output_values,
+        'options': {'time': 5}}
+    results = parameter_scan(scan_config)
 
     return results
 
