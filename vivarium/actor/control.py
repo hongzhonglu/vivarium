@@ -65,7 +65,7 @@ class ActorControl(Actor):
 
     def get_experiment_id(self, name='lattice'):
         time_stamp = filepath.timestamp()
-        return time_stamp + '_' + name + '_' + '000000'  # TODO (Eran) -- ID could use str(uuid.uuid1())
+        return name + '_' + time_stamp
 
     def trigger_execution(self, agent_id=''):
         """Start or resume simulation."""

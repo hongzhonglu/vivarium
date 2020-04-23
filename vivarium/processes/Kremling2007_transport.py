@@ -1,14 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import math
+
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
 from vivarium.environment.make_media import Media
-from vivarium.utils.dict_utils import merge_dicts
-
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis
@@ -79,30 +80,37 @@ MOLECULAR_WEIGHTS = {
     'G6P': 260.136,
     'GLC': 180.16,
 }
-# target flux reaction names come from BiGG models
-TARGET_FLUXES = []  # ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+
 
 
 class Transport(Process):
+
+    defaults = {
+        'target_fluxes': [],  # ['glc__D_e', 'GLCpts', 'PPS', 'PYK']
+        'parameters': DEFAULT_PARAMETERS
+    }
+
+
     def __init__(self, initial_parameters={}):
         self.dt = 0.01  # timestep for ode integration (seconds)
-        self.target_fluxes = initial_parameters.get('target_fluxes', TARGET_FLUXES)
+        self.target_fluxes = initial_parameters.get('target_fluxes', self.defaults['target_fluxes'])
 
         default_settings = self.default_settings()
         default_state = default_settings['state']
         internal_state = default_state['internal']
         external_state = default_state['external']
 
-        roles = {
+        ports = {
             'external': list(external_state.keys()),
             'exchange': list(external_state.keys()),
             'internal': list(internal_state.keys()),
-            'fluxes': self.target_fluxes}
+            'fluxes': self.target_fluxes,
+            'global': ['volume']}
 
-        parameters = DEFAULT_PARAMETERS
+        parameters = self.defaults['parameters']
         parameters.update(initial_parameters)
 
-        super(Transport, self).__init__(roles, parameters)
+        super(Transport, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -141,10 +149,11 @@ class Transport(Process):
         self.environment_ids = list(external.keys())
 
         default_state = {
-            'internal': merge_dicts([internal, {'volume': 1}]),  # TODO -- get volume with deriver?
+            'internal': internal,
             'external': external,
             'exchange': {state_id: 0.0 for state_id in self.environment_ids},
-            'fluxes': {}}
+            'fluxes': {},
+            'global': {'volume': 1}}
 
         # default emitter keys
         default_emitter_keys = {
@@ -152,19 +161,32 @@ class Transport(Process):
             'external': ['G6P', 'GLC', 'LAC'],
             'fluxes': self.target_fluxes}
 
-        # default updaters
-        default_updaters = {
-            'internal': {state_id: 'set' for state_id in [
-                'mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']},  # reactions set values directly
-            'external': {},  # reactions set values directly
-            'exchange': {mol_id: 'accumulate' for mol_id in self.environment_ids},  # all external values use default 'delta' udpater
-            'fluxes': {state_id: 'set' for state_id in self.target_fluxes}}
+        # schema
+        set_internal = ['mass', 'UHPT', 'LACZ', 'PTSG', 'G6P', 'PEP', 'PYR', 'XP']
+        internal_schema = {
+            state_id: {
+                'updater': 'set',
+                'divide': 'set'}
+            for state_id in set_internal}
+        fluxes_schema = {
+            state_id: {
+                'updater': 'set',
+                'divide': 'set'}
+            for state_id in self.target_fluxes}
+        exchange_schema = {
+            mol_id: {
+                'updater': 'accumulate'}
+            for mol_id in self.environment_ids}
 
+        schema = {
+            'internal': internal_schema,
+            'fluxes': fluxes_schema,
+            'exchange': exchange_schema}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 
@@ -310,7 +332,7 @@ class Transport(Process):
         t = np.arange(0, timestep_hours, dt_hours)
 
         # get states
-        volume = states['internal']['volume'] * 1e-15  # convert volume fL to L
+        volume = states['global']['volume'] * 1e-15  # convert volume fL to L
         combined_state = {
             'mass': states['internal']['mass'],  # mass
             'UHPT': states['internal']['UHPT'],
@@ -415,27 +437,23 @@ def test_transport(sim_time = 10):
         state['internal'].update(update['internal'])
 
         # use exchange to update external state, reset exchange
-        volume = state['internal']['volume'] * 1e-15  # convert volume fL to L
+        volume = state['global']['volume'] * 1e-15  # convert volume fL to L
         for mol_id, delta_count in update['exchange'].items():
             delta_conc = counts_to_millimolar(delta_count, volume)
             state['external'][mol_id] += delta_conc
             state['exchange'][mol_id] = 0
 
         # save state
-        for role in ['internal', 'external']:
-             for state_id, value in state[role].items():
-                 if state_id in saved_state[role].keys():
-                     saved_state[role][state_id].append(value)
+        for port in ['internal', 'external']:
+             for state_id, value in state[port].items():
+                 if state_id in saved_state[port].keys():
+                     saved_state[port][state_id].append(value)
                  else:
-                     saved_state[role][state_id] = [value]
+                     saved_state[port][state_id] = [value]
 
     return saved_state
 
 def kremling_figures(saved_state, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    import math
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours
@@ -501,10 +519,6 @@ def kremling_figures(saved_state, out_dir='out'):
 
 
 def plot_all_state(saved_state, out_dir='out'):
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    import math
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours

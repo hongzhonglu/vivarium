@@ -2,17 +2,22 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.actor.process import initialize_state
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+from vivarium.compartment.process import (
+    initialize_state)
+from vivarium.compartment.composition import (
+    get_derivers,
+    simulate_with_environment,
+    plot_simulation_output, load_compartment)
+from vivarium.composites.gene_expression import plot_gene_expression_output
 
 # processes
-from vivarium.processes.deriver import Deriver
-from vivarium.processes.division import Division, divide_condition, divide_state
-from vivarium.processes.metabolism import Metabolism
-from vivarium.processes.convenience_kinetics import ConvenienceKinetics
-from vivarium.processes.minimal_expression import MinimalExpression
-from vivarium.processes.minimal_degradation import MinimalDegradation
+from vivarium.processes.division import Division, divide_condition
+from vivarium.processes.metabolism import Metabolism, get_iAF1260b_config
+from vivarium.processes.convenience_kinetics import ConvenienceKinetics, get_glc_lct_config
+from vivarium.processes.transcription import Transcription
+from vivarium.processes.translation import Translation
+from vivarium.processes.degradation import RnaDegradation
+from vivarium.processes.complexation import Complexation
 
 
 
@@ -22,26 +27,30 @@ def compose_master(config):
     A composite with kinetic transport, metabolism, and gene expression
     """
 
+    t_m_config = default_transport_metabolism_config()
+
     ## Declare the processes.
     # Transport
     # load the kinetic parameters
-    transport_config = config.get('transport', default_transport_config())
+    transport_config = config.get('transport', t_m_config['transport'])
     transport = ConvenienceKinetics(transport_config)
     target_fluxes = transport.kinetic_rate_laws.reaction_ids
 
     # Metabolism
     # get target fluxes from transport
     # load regulation function
-    metabolism_config = config.get('metabolism', default_metabolism_config())
+    metabolism_config = config.get('metabolism', t_m_config['metabolism'])
     metabolism_config.update({'constrained_reaction_ids': target_fluxes})
     metabolism = Metabolism(metabolism_config)
 
-    # expression/degradation
-    expression_config = config.get('expression', {})
-    expression = MinimalExpression(expression_config)
-
+    # expression
+    transcription_config = config.get('transcription', {})
+    translation_config = config.get('translation', {})
     degradation_config = config.get('degradation', {})
-    degradation = MinimalDegradation(degradation_config)
+    transcription = Transcription(transcription_config)
+    translation = Translation(translation_config)
+    degradation = RnaDegradation(degradation_config)
+    complexation = Complexation(config.get('complexation', {}))
 
     # Division
     # get initial volume from metabolism
@@ -49,144 +58,110 @@ def compose_master(config):
     division_config.update({'initial_state': metabolism.initial_state})
     division = Division(division_config)
 
-    # Other processes
-    deriver_config = config.get('deriver', {})
-    deriver = Deriver(deriver_config)
-
     # Place processes in layers
     processes = [
         {'transport': transport,
-         'expression': expression,
-         'degradation': degradation},
+         'transcription': transcription,
+         'translation': translation,
+         'degradation': degradation,
+         'complexation': complexation},
         {'metabolism': metabolism},
-        {'deriver': deriver,
-         'division': division}
-    ]
+        {'division': division}]
 
     # Make the topology
-    # for each process, map process roles to compartment roles
+    # for each process, map process ports to store ids
     topology = {
         'transport': {
-            'internal': 'cell',
+            'internal': 'metabolites',
             'external': 'environment',
             'exchange': 'null',  # metabolism's exchange is used
-            'fluxes': 'flux_bounds'},
+            'fluxes': 'flux_bounds',
+            'global': 'global'},
+
         'metabolism': {
-            'internal': 'cell',
+            'internal': 'metabolites',
             'external': 'environment',
             'reactions': 'reactions',
             'exchange': 'exchange',
-            'flux_bounds': 'flux_bounds'},
-        'expression' : {
-            'internal': 'cell_counts'},  # updates counts, which the deriver converts to concentrations
-        'degradation': {
-            'internal': 'cell_counts'},
-        'division': {
-            'internal': 'cell'},
-        'deriver': {
-            'counts': 'cell_counts',
-            'state': 'cell',
-            'prior_state': 'prior_state'},
-    }
+            'flux_bounds': 'flux_bounds',
+            'global': 'global'},
 
-    # Initialize the states
-    states = initialize_state(processes, topology, config.get('initial_state', {}))
+        'transcription': {
+            'chromosome': 'chromosome',
+            'molecules': 'metabolites',
+            'proteins': 'proteins',
+            'transcripts': 'transcripts',
+            'factors': 'concentrations'},
+
+        'translation': {
+            'ribosomes': 'ribosomes',
+            'molecules': 'metabolites',
+            'transcripts': 'transcripts',
+            'proteins': 'proteins',
+            'concentrations': 'concentrations'},
+
+        'degradation': {
+            'transcripts': 'transcripts',
+            'proteins': 'proteins',
+            'molecules': 'metabolites',
+            'global': 'global'},
+
+        'complexation': {
+            'monomers': 'proteins',
+            'complexes': 'proteins'},
+
+        'division': {
+            'global': 'global'}}
+
+    # add derivers
+    derivers = get_derivers(processes, topology)
+    deriver_processes = derivers['deriver_processes']
+    all_processes = processes + derivers['deriver_processes']
+    topology.update(derivers['deriver_topology'])  # add derivers to the topology
+
+    # initialize the states
+    states = initialize_state(
+        all_processes,
+        topology,
+        config.get('initial_state', {}))
 
     options = {
         'name': config.get('name', 'master_composite'),
-        'environment_role': 'environment',
-        'exchange_role': 'exchange',
+        'environment_port': 'environment',
+        'exchange_port': 'exchange',
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition,
-        'divide_state': divide_state}
+        'divide_condition': divide_condition}
 
     return {
         'processes': processes,
+        'derivers': deriver_processes,
         'states': states,
         'options': options}
 
 
 
 # toy functions/ defaults
-def default_metabolism_config():
-    def regulation(state):
-        regulation_logic = {
-            'EX_lac__D_e': bool(not state[('external', 'glc__D_e')] > 0.1),
-        }
-        return regulation_logic
+def default_transport_metabolism_config():
+    transport_config = get_glc_lct_config()
+    metabolism_config = get_iAF1260b_config()
 
-    metabolism_file = os.path.join('models', 'e_coli_core.json')
-
-    # initial state
-    # internal
-    mass = 1339 * units.fg
-    density = 1100 * units.g/units.L
-    volume = mass.to('g') / density
-    internal = {
-            'mass': mass.magnitude,  # fg
-            'volume': volume.to('fL').magnitude}
-
-    # external
-    # TODO -- generalize external to whatever BiGG model is loaded
-    make_media = Media()
-    external = make_media.get_saved_media('ecoli_core_GLC')
-    initial_state = {
-        'internal': internal,
-        'external': external}
-
-    return {
+    # set flux bond tolerance for reactions in ode_expression's lacy_config
+    metabolism_config.update({
         'moma': False,
         'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0]},
-        'model_path': metabolism_file,
-        'regulation': regulation,
-        'initial_state': initial_state}
-
-def default_transport_config():
-    transport_reactions = {
-        'EX_glc__D_e': {
-            'stoichiometry': {
-                ('internal', 'g6p_c'): 1.0,
-                ('external', 'glc__D_e'): -1.0,
-            },
-            'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]}}
-
-    transport_kinetics = {
-        'EX_glc__D_e': {
-            ('internal', 'PTSG'): {
-                ('external', 'glc__D_e'): 1e-1,
-                ('internal', 'pep_c'): None,
-                'kcat_f': -3e5}}}
-
-    transport_initial_state = {
-        'internal': {
-            'g6p_c': 0.0,
-            'pep_c': 1.8e-1,
-            'pyr_c': 0.0,
-            'PTSG': 1.8e-6},
-        'external': {
-            'glc__D_e': 12.0},
-        'fluxes': {
-            'EX_glc__D_e': 0.0}}  # TODO -- is this needed?
-
-    transport_roles = {
-        'internal': ['g6p_c', 'pep_c', 'pyr_c', 'PTSG'],
-        'external': ['glc__D_e']}
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lcts_e': [1.05, 1.0]}})
 
     return {
-        'reactions': transport_reactions,
-        'kinetic_parameters': transport_kinetics,
-        'initial_state': transport_initial_state,
-        'roles': transport_roles}
+        'transport': transport_config,
+        'metabolism': metabolism_config
+    }
+
 
 
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, convert_to_timeseries, plot_simulation_output, \
-        simulate_with_environment
-
     out_dir = os.path.join('out', 'tests', 'master_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -194,26 +169,34 @@ if __name__ == '__main__':
     compartment = load_compartment(compose_master)
 
     # settings for simulation and plot
-    options = compose_master({})['options']
+    options = compartment.configuration
 
     # define timeline
-    timeline = [(1000, {})]
+    timeline = [(2520, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
 
     settings = {
-        'environment_role': options['environment_role'],
-        'exchange_role': options['exchange_role'],
+        'environment_port': options['environment_port'],
+        'exchange_port': options['exchange_port'],
         'environment_volume': 1e-13,  # L
-        'timeline': timeline}
+        'timeline': timeline,
+    }
 
     plot_settings = {
         'max_rows': 20,
         'remove_zeros': True,
         'overlay': {'reactions': 'flux_bounds'},
-        'skip_roles': ['prior_state', 'null']
-        }
+        'skip_ports': ['prior_state', 'null']}
+
+    expression_plot_settings = {
+        'name': 'gene_expression',
+        'ports': {
+            'transcripts': 'transcripts',
+            'molecules': 'metabolites',
+            'proteins': 'proteins'}}
 
     # saved_state = simulate_compartment(compartment, settings)
-    saved_data = simulate_with_environment(compartment, settings)
-    del saved_data[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_data)
+    timeseries = simulate_with_environment(compartment, settings)
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+    plot_gene_expression_output(timeseries, expression_plot_settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

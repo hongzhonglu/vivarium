@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import random
+import math
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from vivarium.analysis.analysis import Analysis, get_compartment
-from vivarium.actor.process import deep_merge
+from vivarium.utils.dict_utils import deep_merge
 
 
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
@@ -40,12 +41,12 @@ class Snapshots(Analysis):
             times = compartment_history['time']
 
             # get history of all tags
-            roles = [role for role in list(compartment_history.keys()) if role not in ['time']]
+            ports = [port for port in list(compartment_history.keys()) if port not in ['time']]
             tags_history = {}
             for tag in tags:
-                for role in roles:
-                    if tag in compartment_history[role]:
-                        tags_history.update({tag: compartment_history[role][tag]})
+                for port in ports:
+                    if tag in compartment_history[port]:
+                        tags_history.update({tag: compartment_history[port][tag]})
 
             # arrange data by time, for easy integration with environment data
             time_dict = {time: {} for time in times}
@@ -289,11 +290,21 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
 
         # location, orientation, length
         volume = data['volume']
-        x = data['location'][0]
-        y = data['location'][1]
+        x_center = data['location'][0]
+        y_center = data['location'][1]
         theta = data['location'][2] / np.pi * 180 + 90 # rotate 90 degrees to match field
         length = volume_to_length(volume, cell_radius)
         width = cell_radius * 2
+
+        # get bottom left position
+        x_offset = (width / 2)
+        y_offset = (length / 2)
+        theta_rad = math.radians(theta)
+        dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
+        dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+
+        x = x_center - dx
+        y = y_center - dy
 
         # get color, convert to rgb
         agent_color = agent_colors.get(agent_id, DEFAULT_COLOR)

@@ -2,7 +2,7 @@ import random
 import copy
 import numpy as np
 
-from vivarium.data.chromosome import test_chromosome_config
+from vivarium.data.chromosomes.toy_chromosome import toy_chromosome_config
 from vivarium.data.nucleotides import nucleotides
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Polymerase, BindingSite, Terminator, Template, Elongation, polymerize_to, add_merge
@@ -22,7 +22,12 @@ def frequencies(l):
     return result
 
 def rna_bases(sequence):
-    return sequence.replace('T', 'U')
+    sequence = sequence.replace('A', 'U')
+    sequence = sequence.replace('T', 'A')
+    sequence = sequence.replace('C', 'x')
+    sequence = sequence.replace('G', 'C')
+    sequence = sequence.replace('x', 'G')
+    return sequence
 
 def sequence_monomers(sequence, begin, end):
     if begin < end:
@@ -89,11 +94,11 @@ class Domain(Datum):
 class RnapTerminator(Terminator):
     def operon_from(self, genes, promoter):
         return Operon({
-            'id': self.product[0], # assume there is only one operon product
+            'id': self.products[0], # assume there is only one operon product
             'position': promoter.position,
             'direction': promoter.direction,
             'length': (self.position - promoter.position) * promoter.direction,
-            'genes': genes.get(self.product[0], [])})
+            'genes': genes.get(self.products[0], [])})
 
 class Promoter(Template):
     '''
@@ -116,9 +121,10 @@ class Rnap(Polymerase):
     defaults = {
         'id': 0,
         'template': None,
+        'template_index': 0,
         'terminator': 0,
         'domain': 0,
-        'state': None, # other states: ['bound', 'transcribing', 'complete']
+        'state': None, # other states: ['bound', 'polymerizing', 'occluding', 'complete']
         'position': 0}
 
     def __init__(self, config):
@@ -190,7 +196,7 @@ class Chromosome(Datum):
             for promoter_key in self.promoter_order}
 
         for rnap in self.rnaps:
-            if rnap.is_bound():
+            if rnap.is_occluding():
                 by_promoter[rnap.template][rnap.domain] = rnap
 
         return by_promoter
@@ -211,11 +217,25 @@ class Chromosome(Datum):
                 self.promoters[promoter_key].position)
             for promoter_key in self.promoter_order}
 
-    def bind_rnap(self, promoter_key, domain):
+    def apply_thresholds(self, thresholds):
+        for path, level in thresholds.items():
+            promoter, factor = path
+            found = False
+            for site in self.promoters[promoter].sites:
+                if factor in site.thresholds:
+                    site.thresholds[factor] = level
+                    found = True
+            if not found:
+                print('binding site not found for {} with level {}'.format(path, level))
+
+    def bind_rnap(self, promoter_index, domain):
         self.rnap_id += 1
+        promoter_key = self.promoter_order[promoter_index]
+
         new_rnap = Rnap({
             'id': self.rnap_id,
             'template': promoter_key,
+            'template_index': promoter_index,
             'domain': domain,
             'position': 0})
         new_rnap.bind()
@@ -225,7 +245,7 @@ class Chromosome(Datum):
     def terminator_distance(self):
         distance = INFINITY
         for rnap in self.rnaps:
-            if rnap.is_transcribing():
+            if rnap.is_polymerizing():
                 promoter = self.promoters[rnap.template]
 
                 # rnap position is relative to the promoter it is bound to
@@ -240,6 +260,26 @@ class Chromosome(Datum):
         if distance == INFINITY:
             distance = 1
         return distance
+
+    def sequences(self):
+        return {
+            promoter_key: rna_bases(sequence_monomers(
+                self.sequence,
+                promoter.position,
+                promoter.last_terminator().position))
+            for promoter_key, promoter in self.promoters.items()}
+
+    def product_sequences(self):
+        sequences = {}
+        for promoter_key, promoter in self.promoters.items():
+            for terminator in promoter.terminators:
+                for product in terminator.products:
+                    sequences[product] = rna_bases(sequence_monomers(
+                        self.sequence,
+                        promoter.position,
+                        terminator.position))
+
+        return sequences
 
     def next_polymerize(self, elongation_limit=INFINITY, monomer_limits={}):
         distance = self.terminator_distance()
@@ -350,8 +390,8 @@ class Chromosome(Datum):
 
 
 def test_chromosome():
-    chromosome = Chromosome(test_chromosome_config)
-    print(chromosome.promoters['pA'].terminators[0].product)
+    chromosome = Chromosome(toy_chromosome_config)
+    print(chromosome.promoters['pA'].terminators[0].products)
     print(chromosome)
 
     print('operons:')

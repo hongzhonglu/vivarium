@@ -1,13 +1,25 @@
 import os
 from vivarium.utils.units import units
 
-from scipy import constants
-
+from vivarium.compartment.composition import load_compartment, simulate_compartment
 from vivarium.data.proteins import GFP
-from vivarium.data.chromosome import gfp_plasmid_config
-from vivarium.processes.translation import generate_template
+from vivarium.data.chromosomes.gfp_chromosome import gfp_plasmid_config
+from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
+from vivarium.utils.polymerize import generate_template
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.processes.transcription import UNBOUND_RNAP_KEY
+from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.environment.make_media import Media
+
+from vivarium.processes.derive_globals import AVOGADRO
+
+def degradation_sequences(sequence, promoters):
+    return {
+        promoter.last_terminator().product[0]: rna_bases(sequence_monomers(
+            sequence,
+            promoter.position,
+            promoter.last_terminator().position))
+        for promoter_key, promoter in promoters.items()}
 
 def generate_gfp_compartment(config):
     media = Media()
@@ -17,17 +29,27 @@ def generate_gfp_compartment(config):
 
     # TODO: deal with volume
     volume = 1e-15 * units.L
-    avogadro = constants.N_A * 1 / units.mol
-    mmol_to_count = avogadro.to('1/mmol') * volume.to('L')
+    mmol_to_counts = AVOGADRO.to('1/mmol') * volume.to('L')
     
-    print(mmol_to_count)
+    print(mmol_to_counts)
 
     PURE_counts = {
-        key: int(value * mmol_to_count)
+        key: int(value * mmol_to_counts)
         for key, value in PURE.items()}
 
     print(PURE)
     print(PURE_counts)
+
+    plasmid = Chromosome(gfp_plasmid_config)
+    sequences = plasmid.product_sequences()
+
+    print(sequences)
+
+    proteins = {
+        UNBOUND_RNAP_KEY: PURE_counts[UNBOUND_RNAP_KEY],
+        UNBOUND_RIBOSOME_KEY: PURE_counts[UNBOUND_RIBOSOME_KEY],
+        'GFP': 0,
+        'endoRNAse': 1}
 
     gfp_config = {
 
@@ -37,9 +59,9 @@ def generate_gfp_compartment(config):
             'templates': gfp_plasmid_config['promoters'],
             'genes': gfp_plasmid_config['genes'],
             'promoter_affinities': {
-                'T7': 0.5},
+                ('T7',): 0.001},
 
-            'advancement_rate': 10.0,
+            'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
@@ -50,20 +72,29 @@ def generate_gfp_compartment(config):
                 'GFP_RNA': generate_template(
                     'GFP_RNA', len(GFP.sequence), ['GFP'])},
             'transcript_affinities': {
-                'GFP_RNA': 0.1},
+                'GFP_RNA': 0.001},
 
             'elongation_rate': 22,
-            'advancement_rate': 10.0},
+            'polymerase_occlusion': 50},
+
+        'degradation': {
+            
+            'sequences': sequences,
+            'catalysis_rates': { # TODO: provide kcat for each RNA variety
+                'endoRNAse': 0},
+            'degradation_rates': {
+                'transcripts': {
+                    'endoRNAse': {
+                        'GFP_RNA': 1e-23}}}},
 
         'initial_state': {
             'molecules': PURE_counts,
-            'transcripts': {'GFP_RNA': 0}}}
+            'transcripts': {'GFP_RNA': 0},
+            'proteins': proteins}}
 
     return compose_gene_expression(gfp_config)
 
 if __name__ == '__main__':
-    from vivarium.actor.process import load_compartment, simulate_compartment, convert_to_timeseries
-
     out_dir = os.path.join('out', 'tests', 'gfp_expression_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -73,9 +104,18 @@ if __name__ == '__main__':
 
     # run simulation
     settings = {
-        'total_time': 40}
-    saved_state = simulate_compartment(gfp_expression_compartment, settings)
-    del saved_state[0]  # remove the first state
-    timeseries = convert_to_timeseries(saved_state)
-    plot_gene_expression_output(timeseries, 'gfp_expression', out_dir)
-    
+        'total_time': 100,
+    }
+    timeseries = simulate_compartment(gfp_expression_compartment, settings)
+
+    plot_config = {
+        'name': 'gfp_expression',
+        'ports': {
+            'transcripts': 'transcripts',
+            'molecules': 'molecules',
+            'proteins': 'proteins'}}
+
+    plot_gene_expression_output(
+        timeseries,
+        plot_config,
+        out_dir)

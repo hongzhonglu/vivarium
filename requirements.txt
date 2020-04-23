@@ -19,7 +19,8 @@ cffi==1.13.2
 cobra==0.17.1
 confluent-kafka==0.11.5
 matplotlib==2.2.2
-numpy==1.14.6
+networkx==2.4
+numpy==1.15.3
 parsimonious==0.8.1
 Pint==0.9
 pygame==1.9.6
@@ -29,5 +30,5 @@ pytest==4.6.5
 pytest-benchmark==3.2.2
 scipy==1.4.1
 scs==2.0.2
-stochastic-arrow==0.2.0
+stochastic-arrow==0.4.1
 swiglpk==1.4.4

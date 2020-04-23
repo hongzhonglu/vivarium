@@ -3,27 +3,17 @@ import numpy as np
 import random
 from arrow import StochasticSystem
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.data.amino_acids import amino_acids
 from vivarium.utils.datum import Datum
-from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, build_rates, all_products
+from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products, generate_template
+from vivarium.utils.dict_utils import deep_merge
 
 class Ribosome(Polymerase):
     pass
 
 class Transcript(Template):
     pass
-
-def generate_template(id, length, product):
-    return {
-        'id': id,
-        'position': 0,
-        'direction': 1,
-        'sites': [],
-        'terminators': [
-            {'position': length,
-             'strength': 1.0,
-             'product': product}]}
 
 def shuffle(l):
     l = [item for item in l]
@@ -36,32 +26,74 @@ def random_string(alphabet, length):
         string += random.choice(alphabet)
     return string
 
+VERBOSE = True
+UNBOUND_RIBOSOME_KEY = 'Ribosome'
+
+monomer_symbols = []
+monomer_ids = []
+
+for symbol, id in amino_acids.items():
+    monomer_symbols.append(symbol)
+    monomer_ids.append(id)
+
+A = random_string(monomer_symbols, 20)
+Z = random_string(monomer_symbols, 60)
+B = random_string(monomer_symbols, 30)
+Y = random_string(monomer_symbols, 40)
+
+default_translation_parameters = {
+
+    'sequences': {
+        ('oA', 'eA'): A,
+        ('oAZ', 'eA'): A,
+        ('oAZ', 'eZ'): Z,
+        ('oB', 'eB'): B,
+        ('oBY', 'eB'): B,
+        ('oBY', 'eY'): Y},
+
+    'templates': {
+        ('oA', 'eA'): generate_template(('oA', 'eA'), 20, ['eA']),
+        ('oAZ', 'eA'): generate_template(('oAZ', 'eA'), 20, ['eA']),
+        ('oAZ', 'eZ'): generate_template(('oAZ', 'eZ'), 60, ['eZ']),
+        ('oB', 'eB'): generate_template(('oB', 'eB'), 30, ['eB']),
+        ('oBY', 'eB'): generate_template(('oBY', 'eB'), 30, ['eB']),
+        ('oBY', 'eY'): generate_template(('oBY', 'eY'), 40, ['eY'])},
+
+    'transcript_affinities': {
+        ('oA', 'eA'): 1.0,
+        ('oAZ', 'eA'): 2.0,
+        ('oAZ', 'eZ'): 5.0,
+        ('oB', 'eB'): 1.0,
+        ('oBY', 'eB'): 2.0,
+        ('oBY', 'eY'): 5.0},
+
+    'elongation_rate': 5.0,
+    'polymerase_occlusion': 10,
+    'symbol_to_monomer': amino_acids,
+    'monomer_ids': monomer_ids,
+    'concentration_keys': []}
+
+def gather_genes(affinities):
+    genes = {}
+    for operon, product in affinities.keys():
+        if not operon in genes:
+            genes[operon] = []
+        genes[operon].append(product)
+    return genes
+
+def transcripts_to_gene_counts(transcripts, operons):
+    counts = {}
+    for transcript, genes in operons.items():
+        for gene in genes:
+            counts[(transcript, gene)] = transcripts.get(transcript, 0)
+    return counts
+
 class Translation(Process):
     def __init__(self, initial_parameters={}):
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
-        self.unbound_ribosomes_key = 'Ribosome'
 
-        self.default_parameters = {
-            'sequences': {
-                'oA': random_string(self.monomer_symbols, 20),
-                'oAZ': random_string(self.monomer_symbols, 50),
-                'oB': random_string(self.monomer_symbols, 30),
-                'oBY': random_string(self.monomer_symbols, 70)},
-            'templates': {
-                'oA': generate_template('oA', 20, ['eA']),
-                'oAZ': generate_template('oAZ', 50, ['eA', 'eZ']),
-                'oB': generate_template('oB', 30, ['eB']),
-                'oBY': generate_template('oBY', 70, ['eB', 'eY'])},
-            'transcript_affinities': {
-                'oA': 1.0,
-                'oAZ': 1.0,
-                'oB': 1.0,
-                'oBY': 1.0},
-            'elongation_rate': 5.0,
-            'advancement_rate': 10.0,
-            'symbol_to_monomer': amino_acids,
-            'monomer_ids': self.monomer_ids}
+        self.default_parameters = default_translation_parameters
 
         templates = initial_parameters.get(
             'templates',
@@ -75,93 +107,109 @@ class Translation(Process):
             initial_parameters.get(
                 'transcript_affinities',
                 self.default_parameters['transcript_affinities']).keys())
-        self.default_parameters['molecule_ids'] = self.monomer_ids + [
-            self.unbound_ribosomes_key]
+        self.default_parameters['molecule_ids'] = self.monomer_ids
 
-        parameters = copy.deepcopy(self.default_parameters)
-        parameters.update(initial_parameters)
+        self.parameters = copy.deepcopy(self.default_parameters)
+        self.parameters.update(initial_parameters)
 
-        self.sequences = parameters['sequences']
-        self.templates = parameters['templates']
+        self.sequences = self.parameters['sequences']
+        self.templates = self.parameters['templates']
 
-        self.transcript_affinities = parameters['transcript_affinities']
-        self.transcript_order = parameters['transcript_order']
+        self.transcript_affinities = self.parameters['transcript_affinities']
+        self.operons = gather_genes(self.transcript_affinities)
+        self.operon_order = list(self.operons.keys())
+        self.transcript_order = self.parameters['transcript_order']
         self.transcript_count = len(self.transcript_order)
 
-        self.monomer_ids = parameters['monomer_ids']
-        self.molecule_ids = parameters['molecule_ids']
-        self.protein_ids = parameters['protein_ids']
-        self.symbol_to_monomer = parameters['symbol_to_monomer']
+        self.monomer_ids = self.parameters['monomer_ids']
+        self.molecule_ids = self.parameters['molecule_ids']
+        self.protein_ids = self.parameters['protein_ids']
+        self.symbol_to_monomer = self.parameters['symbol_to_monomer']
         self.elongation = 0
-        self.elongation_rate = parameters['elongation_rate']
-        self.advancement_rate = parameters['advancement_rate']
+        self.elongation_rate = self.parameters['elongation_rate']
+        self.polymerase_occlusion = self.parameters['polymerase_occlusion']
+        self.concentration_keys = self.parameters['concentration_keys']
 
         self.affinity_vector = np.array([
             self.transcript_affinities[transcript_key]
             for transcript_key in self.transcript_order], dtype=np.float64)
 
         self.stoichiometry = build_stoichiometry(self.transcript_count)
-        self.rates = build_rates(
-            self.affinity_vector,
-            self.advancement_rate)
 
-        self.initiation = StochasticSystem(self.stoichiometry, self.rates)
+        self.initiation = StochasticSystem(self.stoichiometry)
 
         self.ribosome_id = 0
 
-        self.roles = {
+        concentration_keys = self.concentration_keys + self.protein_ids
+        self.ports = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
-            'transcripts': self.transcript_order,
-            'proteins': self.protein_ids}
+            'transcripts': list(self.operons.keys()),
+            'proteins': concentration_keys + [UNBOUND_RIBOSOME_KEY],
+            'concentrations': concentration_keys}
 
-        print('translation parameters: {}'.format(parameters))
+        if VERBOSE:
+            print('translation parameters: {}'.format(self.parameters))
 
-        super(Translation, self).__init__(self.roles, parameters)
+        super(Translation, self).__init__(self.ports, self.parameters)
 
     def default_settings(self):
         default_state = {
             'ribosomes': {
                 'ribosomes': []},
-            'molecules': dict({
-                self.unbound_ribosomes_key: 10}),
+            'molecules': {},
             'transcripts': {
                 transcript_id: 1
-                for transcript_id in self.transcript_order},
-            'proteins': {
-                protein_id: 0
-                for protein_id in self.protein_ids}}
+                for transcript_id in self.operons.keys()},
+            'proteins': dict({
+                UNBOUND_RIBOSOME_KEY: 10})}
+
+        default_state['proteins'].update({
+            protein_id: 0
+            for protein_id in self.protein_ids})
 
         default_state['molecules'].update({
-            monomer_id: 100
+            monomer_id: 200
             for monomer_id in self.monomer_ids})
+
+        default_state = deep_merge(
+            default_state,
+            self.parameters.get('initial_state', {}))
 
         operons = list(default_state['transcripts'].keys())
         default_emitter_keys = {
             'ribosomes': ['ribosomes'],
-            'molecules': self.monomer_ids + [self.unbound_ribosomes_key],
+            'molecules': self.monomer_ids,
             'transcripts': operons,
-            'proteins': self.protein_ids}
+            'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
 
-        default_updaters = {
-            'ribosomes': {'ribosomes': 'set'},
-            'molecules': {},
-            'transcripts': {},
-            'proteins': {}}
+        deriver_setting = [{
+            'type': 'counts_to_mmol',
+            'source_port': 'proteins',
+            'derived_port': 'concentrations',
+            'keys': self.protein_ids + self.concentration_keys}]
+
+        # schema
+        schema = {
+            'ribosomes': {
+                'ribosomes': {'updater': 'set'}}}
 
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters,
-            'parameters': self.default_parameters}
+            'schema': schema,
+            'deriver_setting': deriver_setting,
+            'parameters': self.parameters}
 
     def next_update(self, timestep, states):
-        ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
         molecules = states['molecules']
         transcripts = states['transcripts']
-        transcript_counts = np.array([
-            transcripts.get(transcript_key, 0)
-            for transcript_key in self.transcript_order], dtype=np.int64)
+        proteins = states['proteins']
+        ribosomes = list(map(Ribosome, states['ribosomes']['ribosomes']))
+
+        gene_counts = np.array(
+            list(transcripts_to_gene_counts(transcripts, self.operons).values()),
+            dtype=np.int64)
 
         # Find out how many transcripts are currently blocked by a
         # newly initiated ribosome
@@ -184,9 +232,9 @@ class Translation(Process):
         # will operate on, essentially going back and forth between
         # bound and unbound states.
 
-        original_unbound_ribosomes = states['molecules'][self.unbound_ribosomes_key]
+        original_unbound_ribosomes = proteins[UNBOUND_RIBOSOME_KEY]
         monomer_limits = {
-            monomer: states['molecules'][monomer]
+            monomer: molecules[monomer]
             for monomer in self.monomer_ids}
         unbound_ribosomes = original_unbound_ribosomes
 
@@ -206,87 +254,76 @@ class Translation(Process):
         while time < timestep:
             # build the state vector for the gillespie simulation
             substrate = np.concatenate([
-                transcript_counts - bound_transcripts,
+                gene_counts - bound_transcripts,
                 bound_transcripts,
                 [unbound_ribosomes]])
 
             # find number of monomers until next terminator
-            # distance = chromosome.terminator_distance()
-            distance = 1
+            distance = 1 / self.elongation_rate
 
             # find interval of time that elongates to the point of the next terminator
-            interval = min(distance / self.elongation_rate, timestep - time)
+            interval = min(distance, timestep - time)
+
+            if interval == distance:
+                # perform the elongation until the next event
+                terminations, monomer_limits, ribosomes = elongation.step(
+                    interval,
+                    monomer_limits,
+                    ribosomes)
+                unbound_ribosomes += terminations
+            else:
+                elongation.store_partial(interval)
+                terminations = 0
 
             # run simulation for interval of time to next terminator
-            result = self.initiation.evolve(interval, substrate)
+            result = self.initiation.evolve(
+                interval,
+                substrate,
+                self.affinity_vector)
 
             # go through each event in the simulation and update the state
             ribosome_bindings = 0
             for now, event in zip(result['time'], result['events']):
-
-                # perform the elongation until the next event
-                terminations, monomer_limits, ribosomes = elongation.elongate(
-                    time + now,
-                    self.elongation_rate,
-                    monomer_limits,
-                    ribosomes)
-                unbound_ribosomes += terminations
-
                 # ribosome has bound the transcript
-                if event < self.transcript_count:
-                    transcript_key = self.transcript_order[event]
-                    # transcript = self.templates[transcript_key]
-                    bound_transcripts[event] += 1
+                transcript_key = self.transcript_order[event]
+                bound_transcripts[event] += 1
 
-                    self.ribosome_id += 1
-                    new_ribosome = Ribosome({
-                        'id': self.ribosome_id,
-                        'template': transcript_key,
-                        'position': 0})
-                    new_ribosome.bind()
-                    ribosomes.append(new_ribosome)
-                    ribosomes_by_transcript[transcript_key].append(new_ribosome)
+                self.ribosome_id += 1
+                new_ribosome = Ribosome({
+                    'id': self.ribosome_id,
+                    'template': transcript_key,
+                    'position': 0})
+                new_ribosome.bind()
+                new_ribosome.start_polymerizing()
+                ribosomes.append(new_ribosome)
 
-                    ribosome_bindings += 1
-                    unbound_ribosomes -= 1
-                # ribosome has begun polymerizing its protein
-                else:
-                    transcript_index = event - self.transcript_count
-                    transcript_key = self.transcript_order[transcript_index]
+                ribosome_bindings += 1
+                unbound_ribosomes -= 1
 
-                    bound_transcripts[transcript_index] -= 1
-
-                    ribosome = ribosomes_by_transcript[transcript_key].pop()
-                    ribosome.start_transcribing()
-
-            # now that all events have been accounted for, elongate
-            # until the end of this interval.
-            terminations, monomer_limits, ribosomes = elongation.elongate(
-                time + interval,
-                self.elongation_rate,
-                monomer_limits,
-                ribosomes)
-            unbound_ribosomes += terminations
+            # deal with occluding rnap
+            for ribosome in ribosomes:
+                if ribosome.is_unoccluding(self.polymerase_occlusion):
+                    bound_transcripts[ribosome.template_index] -= 1
+                    ribosome.unocclude()
 
             time += interval
 
         # track how far elongation proceeded to start from next iteration
         self.elongation = elongation.elongation - int(elongation.elongation)
 
-        molecules = {
-            self.unbound_ribosomes_key: unbound_ribosomes - original_unbound_ribosomes}
+        proteins = {
+            UNBOUND_RIBOSOME_KEY: unbound_ribosomes - original_unbound_ribosomes}
+        proteins.update(elongation.complete_polymers)
 
-        molecules.update({
+        molecules = {
             key: count * -1
-            for key, count in elongation.monomers.items()})
+            for key, count in elongation.monomers.items()}
 
         update = {
             'ribosomes': {
                 'ribosomes': [ribosome.to_dict() for ribosome in ribosomes]},
             'molecules': molecules,
-            'proteins': elongation.complete_polymers}
-
-        # print('translation update: {}'.format(update))
+            'proteins': proteins}
 
         return update
 
@@ -306,7 +343,8 @@ def test_translation():
 
     states = {
         'ribosomes': {'ribosomes': []},
-        'molecules': {translation.unbound_ribosomes_key: 10},
+        'molecules': {},
+        'proteins': {UNBOUND_RIBOSOME_KEY: 10},
         'transcripts': {
             'oA': 10,
             'oAZ': 10,

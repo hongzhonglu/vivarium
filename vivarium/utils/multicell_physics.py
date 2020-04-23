@@ -21,30 +21,83 @@ import pymunk.pygame_util
 PI = math.pi
 
 ELASTICITY = 0.95
-FRICTION = 0.9
+DAMPING = 0.05  # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
+ANGULAR_DAMPING = 0.7  # less damping for angular velocity seems to improve behavior
+FRICTION = 0.9  # TODO -- does this do anything?
+PHYSICS_TS = 0.005
+FORCE_SCALING = 15  # scales from pN
+
+
+def get_force_with_angle(force, angle):
+    x = force * math.cos(angle)
+    y = force * math.sin(angle)
+    return [x, y]
+
+def front_from_corner(width, length, corner_position, angle):
+    half_width = width/2
+    dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
+    dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+    front_position = [corner_position[0] + dx, corner_position[1] + dy]
+    return np.array([front_position[0], front_position[1], angle])
+
+def corner_from_center(width, length, center_position, angle):
+    half_length = length/2
+    half_width = width/2
+    dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
+    dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
+    corner_position = [center_position[0] - dx, center_position[1] - dy]
+
+    return np.array([corner_position[0], corner_position[1], angle])
+
+def random_body_position(body):
+    ''' pick a random point along the boundary'''
+    width, length = body.dimensions
+    if random.randint(0, 1) == 0:
+        # force along ends
+        if random.randint(0, 1) == 0:
+            # force on the left end
+            location = (random.uniform(0, width), 0)
+        else:
+            # force on the right end
+            location = (random.uniform(0, width), length)
+    else:
+        # force along length
+        if random.randint(0, 1) == 0:
+            # force on the bottom end
+            location = (0, random.uniform(0, length))
+        else:
+            # force on the top end
+            location = (width, random.uniform(0, length))
+
+    return location
+
 
 
 class MultiCellPhysics(object):
     ''''''
-    def __init__(self, bounds, translation_jitter, rotation_jitter, debug=False):
-        self.pygame_scale = 700 / bounds[0]
-        self.pygame_viz = debug
+    def __init__(self, bounds, jitter_force, debug=False, debug_scale=20):
+
         self.elasticity = ELASTICITY
         self.friction = FRICTION
-        self.translation_jitter = translation_jitter
-        self.rotation_jitter = rotation_jitter
+        self.damping = DAMPING
+        self.angular_damping = ANGULAR_DAMPING
+        self.force_scaling = FORCE_SCALING
+        self.jitter_force = jitter_force
 
         # Space
         self.space = pymunk.Space()
 
         # Physics
-        self.timestep = 1
-        self.physics_steps_per_frame = 10
-        self.physics_dt = self.timestep / self.physics_steps_per_frame
+        self.physics_dt = PHYSICS_TS
 
+        # Debugging with pygame
+        self.pygame_viz = debug
+        self.pygame_scale = 1
         if self.pygame_viz:
+            self.pygame_scale = debug_scale
             pygame.init()
-            self._screen = pygame.display.set_mode((710, 710))
+            self._screen = pygame.display.set_mode((
+                int(bounds[0]*self.pygame_scale), int(bounds[1]*self.pygame_scale)))
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
@@ -76,69 +129,61 @@ class MultiCellPhysics(object):
         # Delay fixed time between frames
         self._clock.tick(5)
 
-    def random_body_position(self, body):
-        ''' pick a random point along the boundary'''
-        width, length = body.dimensions
-        if random.randint(0, 1) == 0:
-            # force along ends
-            if random.randint(0, 1) == 0:
-                # force on the left end
-                location = (0, random.uniform(0, width))
-            else:
-                # force on the right end
-                location = (length, random.uniform(0, width))
-        else:
-            # force along length
-            if random.randint(0, 1) == 0:
-                # force on the bottom end
-                location = (random.uniform(0, length), 0)
-            else:
-                # force on the top end
-                location = (random.uniform(0, length), width)
-
-        return location
-
-    def apply_motile_force(self, cell_id, force, torque):
+    def update_motile_force(self, cell_id, force, torque):
         body, shape = self.cells[cell_id]
         body.motile_force = (force, torque)
 
+    def apply_motile_force(self, body):
+        width, length = body.dimensions
+
+        # motile forces
+        motile_location = (width / 2, 0)  # apply force at back end of body
+        motile_force = [0.0, 0.0]
+        if hasattr(body, 'motile_force'):
+            thrust, torque = body.motile_force
+            motile_force = [thrust, 0.0]
+
+            # add directly to angular velocity
+            body.angular_velocity += torque
+
+            ## force-based torque
+            # if torque != 0.0:
+            #     motile_force = get_force_with_angle(thrust, torque)
+
+        scaled_motile_force = [thrust * self.force_scaling for thrust in motile_force]
+        body.apply_force_at_local_point(scaled_motile_force, motile_location)
+
+    def apply_jitter_force(self, body):
+        # jitter forces
+        jitter_location = random_body_position(body)
+        jitter_force = [
+            random.normalvariate(0, self.jitter_force),
+            random.normalvariate(0, self.jitter_force)]
+        scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
+        body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+
+    def apply_viscous_force(self, body):
+        # dampen the velocity
+        body.velocity = body.velocity * self.damping + (body.force / body.mass) * self.physics_dt
+        body.angular_velocity = body.angular_velocity * self.angular_damping + body.torque / body.moment * self.physics_dt
+
     def run_incremental(self, run_for):
+        assert self.physics_dt < run_for
+
         time = 0
         while time < run_for:
-            time += self.timestep
+            time += self.physics_dt
 
-            # Progress time forward
-            for x in range(self.physics_steps_per_frame * self.timestep):
-                for body in self.space.bodies:
-                    width, length = body.dimensions
-
-                    # random jitter
-                    jitter_torque = random.normalvariate(0, self.rotation_jitter)
-                    jitter_force = [
-                        random.normalvariate(0, self.translation_jitter),
-                        random.normalvariate(0, self.translation_jitter)]
-                    location = (length/2, width/2)  #self.random_body_position(body)
-
-                    # motile forces
-                    motile_torque = 0.0
-                    motile_force = [0.0, 0.0]
-                    if hasattr(body, 'motile_force'):
-                        force, motile_torque = body.motile_force
-                        motile_force = [force, 0.0]  # force is applied in the positive x-direction (forward)
-
-                    body.angular_velocity = (jitter_torque + motile_torque)  # TODO (eran) add to angular velocity rather than replace it. Needs better damping first
-                    total_force = [a + b for a, b in zip(jitter_force, motile_force)]
-                    body.apply_force_at_local_point(total_force, location)
-
-                self.space.step(self.physics_dt)
-
-            # Disable momentum at low Reynolds number (the ratio of inertial and viscous forces)
+            # apply forces
             for body in self.space.bodies:
-                body.velocity -= (0.5 * body.velocity * self.timestep)
-                body.angular_velocity -= (0.5 * body.angular_velocity * self.timestep)  # TODO (Eran) this should be function of viscosity
+                self.apply_jitter_force(body)
+                self.apply_motile_force(body)
+                self.apply_viscous_force(body)
 
-            if self.pygame_viz:
-                self._update_screen()
+            self.space.step(self.physics_dt)
+
+        if self.pygame_viz:
+            self._update_screen()
 
     def update_cell(self, cell_id, length, width, mass):
         ''' create a new body and new shape at the cell's same center position and angle '''
@@ -224,7 +269,11 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         corner_position = body.position
         angle = body.angle
-        front_position = self.front_from_corner(width*self.pygame_scale, length*self.pygame_scale, corner_position, angle)
+        front_position = front_from_corner(
+            width,
+            length,
+            corner_position,
+            angle)
         return np.array([front_position[0] / self.pygame_scale, front_position[1] / self.pygame_scale, angle])
 
     def get_center(self, cell_id):
@@ -238,28 +287,12 @@ class MultiCellPhysics(object):
         width, length = body.dimensions
         center_position = body.position
         angle = body.angle
-        corner_position = self.corner_from_center(
-            width * self.pygame_scale,
-            length * self.pygame_scale,
+        corner_position = corner_from_center(
+            width,
+            length,
             center_position,
             angle)
         return np.array([corner_position[0] / self.pygame_scale, corner_position[1] / self.pygame_scale, angle])
-
-    def front_from_corner(self, width, length, corner_position, angle):
-        half_width = width/2
-        dx = length * math.cos(angle) + half_width * math.cos(angle + PI/2)  # PI/2 gives a half-rotation for the width component
-        dy = length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        front_position = [corner_position[0] + dx, corner_position[1] + dy]
-        return np.array([front_position[0], front_position[1], angle])
-
-    def corner_from_center(self, width, length, center_position, angle):
-        half_length = length/2
-        half_width = width/2
-        dx = half_length * math.cos(angle) + half_width * math.cos(angle + PI/2)
-        dy = half_length * math.sin(angle) + half_width * math.sin(angle + PI/2)
-        corner_position = [center_position[0] - dx, center_position[1] - dy]
-
-        return np.array([corner_position[0], corner_position[1], angle])
 
     def add_barriers(self, bounds):
         """ Create static barriers """
@@ -279,83 +312,57 @@ class MultiCellPhysics(object):
         self.space.add(static_lines)
 
 
+
 # testing functions
-def set_motile_force(physics, agent_id, object_id):
-    body, shape = physics.cells[agent_id]
-    obj_body, obj_shape = physics.cells[object_id]
-
-    obj_position = physics.get_center(object_id)  # obj_body.position
-    position = physics.get_front(agent_id)
-    angle = body.angle
-
-    obj_distance = obj_position - position
-    obj_angle = math.atan2(obj_distance[1],obj_distance[0])
-    obj_relative_angle = obj_angle - angle
-
-    # run/tumble
-    if abs(obj_relative_angle) < PI/4:
-        # run
-        force = 15000.0
-        torque = 0.0
-        print('RUN!')
-    else:
-        # tumble
-        force = 5000.0
-        torque = random.normalvariate(0, 0.02)  #random.uniform(-0.005, 0.005)  #random.uniform(-50000.0, 50000.0)  # random.normalvariate(0, 5000.0) #5000.0 #random.uniform(0.0, 2*PI)
-        print('TUMBLE!')
-
-    physics.apply_motile_force(agent_id, force, torque)
-
-
-# For testing with pygame
 if __name__ == '__main__':
 
-    bounds = [20.0, 20.0]
+    total_time = 100
+    time_step = 1
 
-    agent_id = 1
+    bounds = [10.0, 10.0]
+    jitter_force = 5.0e0
+
+    # make physics instance
+    physics = MultiCellPhysics(
+        bounds,
+        jitter_force,
+        True)
+
+    # initialize n agents
+    n_agents = 3
+    agent_ids = list(range(n_agents))
+
+    # agent initial conditions
+    growth = 0.1
     volume = 1.0
     width = 0.5
     length = 2.0
     cell_density = 1100
     mass = volume * cell_density
-    translation_jitter = 0.5
-    rotation_jitter = 0.005
 
-    position = (2.0, 2.0)
-    angle = PI/2
+    # add cells
+    for agent_id in agent_ids:
+        position = np.array([
+            np.random.uniform(0, bounds[0]),
+            np.random.uniform(0, bounds[1])])
+        angle = np.random.uniform(0, 2 * PI)
 
-    # make physics instance
-    physics = MultiCellPhysics(
-        bounds,
-        translation_jitter,
-        rotation_jitter,
-        True)
+        physics.add_cell_from_center(
+            cell_id=agent_id,
+            width=width,
+            length=length,
+            mass=mass,
+            center_position=position,
+            angle=angle)
 
-    # add cell
-    physics.add_cell_from_center(
-        cell_id = agent_id,
-        width = width,
-        length = length,
-        mass = mass,
-        position = position,
-        angle = angle,
-    )
+    # run simulation
+    time = 0
+    while time < total_time:
+        time += time_step
 
-    # add object
-    object_id = 999
-    physics.add_cell_from_center(
-        cell_id=object_id,    # agent_id,
-        width=0.5,          # width
-        length=0.5,          # length
-        mass=100000.0,       # mass
-        position=(14.0, 14.0),     # position
-        angle=0.0,          # angle
-    )
-
-    running = True
-    growth = 0.1  # 0.02
-    while running:
-        length += growth
-        physics.update_cell(agent_id, length, width, mass)
-        # set_motile_force(physics, agent_id, object_id)
-        physics.run_incremental(5)
+        for agent_id in agent_ids:
+            (body, shape) = physics.cells[agent_id]
+            (width, length) = body.dimensions
+            length += growth
+            physics.update_cell(agent_id, length, width, mass)
+            physics.run_incremental(time_step)

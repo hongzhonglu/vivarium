@@ -7,6 +7,7 @@ import struct
 from confluent_kafka import Producer, Consumer, KafkaError
 
 import vivarium.actor.event as event
+from vivarium.utils.dict_utils import tuple_to_str_keys, str_to_tuple_keys
 
 # Chunk header: type and size.
 # TODO(jerry): Move CHUNK_HEADER to a shared module.
@@ -168,6 +169,8 @@ class Actor(object):
                 # suggests it needs a `payload` argument. Suppress the warning.
                 # noinspection PyArgumentList
                 message = self.decode_payload(raw.value())
+                str_to_tuple_keys(message)
+
                 if not message:
                     continue
 
@@ -196,7 +199,8 @@ class Actor(object):
         if print_send:
             self.print_message(topic, message, False)
 
-        payload = self.encode_payload(message)
+        str_message = tuple_to_str_keys(message)  # convert tuple keys to str keys
+        payload = self.encode_payload(str_message)
 
         self.producer.produce(
             topic,

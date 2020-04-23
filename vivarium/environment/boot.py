@@ -27,7 +27,7 @@ from vivarium.actor.inner import Inner
 from vivarium.actor.outer import Outer
 from vivarium.actor.boot import BootAgent
 from vivarium.actor.control import DEFAULT_EMITTER_CONFIG
-from vivarium.actor.emitter import get_emitter, configure_emitter
+from vivarium.compartment.emitter import get_emitter, configure_emitter
 
 # environment
 from vivarium.environment.lattice import EnvironmentSpatialLattice
@@ -37,22 +37,24 @@ from vivarium.utils.units import units
 
 # processes
 from vivarium.processes.transport_lookup import TransportLookup
-from vivarium.processes.BiGG_metabolism import BiGGMetabolism
+from vivarium.processes.metabolism import Metabolism
 from vivarium.processes.Kremling2007_transport import Transport
 from vivarium.processes.growth import Growth
 from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.Endres2006_chemoreceptor import ReceptorCluster
 from vivarium.processes.Vladimirov2008_motor import MotorActivity
 from vivarium.processes.membrane_potential import MembranePotential
+from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.transcription import Transcription
 
 # composites
 from vivarium.composites.master import compose_master
 from vivarium.composites.glc_lct_shifter import compose_glc_lct_shifter
 from vivarium.composites.growth_division import compose_growth_division
-from vivarium.composites.simple_chemotaxis import compose_simple_chemotaxis
-from vivarium.composites.PMF_chemotaxis import compose_pmf_chemotaxis
-from vivarium.composites.variable_flagella import compose_variable_flagella
+from vivarium.composites.chemotaxis_minimal import compose_simple_chemotaxis
+from vivarium.composites.antibiotics import (
+    compose_antibiotics,
+)
 
 
 DEFAULT_COLOR = [0.6, 0.4, 0.3]
@@ -82,6 +84,7 @@ def wrap_init_composite(make_composite):
         # set up the the composite
         composite_config = make_composite(boot_config)
         processes = composite_config['processes']
+        derivers = composite_config['derivers']
         states = composite_config['states']
         options = composite_config['options']
         topology = options['topology']
@@ -91,7 +94,7 @@ def wrap_init_composite(make_composite):
         options.update({'emitter': emitter})
 
         # create the compartment
-        return LatticeCompartment(processes, states, options)
+        return LatticeCompartment(processes, derivers, states, options)
 
     return initialize
 
@@ -152,11 +155,6 @@ class EnvironmentActor(Outer):
             'lattice': lattice,
             'simulations': simulations}
 
-    def update_state(self):
-        self.send(
-            self.topics['visualization_receive'],
-            self.build_state(),
-            print_send=False)
 
 # Define environment initialization functions
 def initialize_lattice(boot_config):
@@ -173,8 +171,8 @@ def initialize_lattice(boot_config):
     else:
         lattice_config.update({'media_id': media_id})
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_glc_g6p_small(boot_config):
     # set up media
@@ -189,8 +187,8 @@ def initialize_glc_g6p_small(boot_config):
         'patches_per_edge_x': 1,
     }
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_custom_small(boot_config):
     # set up media
@@ -223,8 +221,8 @@ def initialize_custom_small(boot_config):
         'patches_per_edge_x': 1,
     }
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_glc_g6p(boot_config):
     timeline_str = '0 GLC_G6P, 3600 end'
@@ -234,8 +232,8 @@ def initialize_glc_g6p(boot_config):
         'emit_fields': ['GLC', 'G6P']
     }
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_glc_lct(boot_config):
     timeline_str = '0 GLC_LCT, 3600 end'
@@ -245,8 +243,8 @@ def initialize_glc_lct(boot_config):
         'emit_fields': ['GLC', 'LCTS']
     }
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_glc_lct_shift(boot_config):
     timeline_str = '0 GLC_G6P, 1800 GLC_LCT, 3600 end'
@@ -254,98 +252,123 @@ def initialize_glc_lct_shift(boot_config):
         'name': 'glc_lct_shift',
         'timeline_str': timeline_str}
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_ecoli_core_glc(boot_config):
-    # timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, ' \
-    #                '1800 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L - glc__D_e Infinity, ' \
-    #                '3600 end'
-
-    timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 1.0 mmol 0.1 L, 21600 end'
+    timeline_str = '0 ecoli_core_GLC 1.0 L + lcts_e 1.0 mmol 0.1 L, 21600 end'
 
     lattice_config = {
-        'name': 'ecoli_core_glc',
-        'diffusion': 1e-4,
-        'depth': 1e-4,
+        'name': 'ecoli_core',
         'timeline_str': timeline_str,
+        'edge_length_x': 15.0,
+        'patches_per_edge_x': 10,
+        'run_for': 5.0,
+        'diffusion': 1e-3,
+        'depth': 2e-2,
+        'translation_jitter': 1e-1,
         'emit_fields': [
+            'co2_e',
+            'o2_e',
             'glc__D_e',
-            'lac__D_e']
-    }
+            'lcts_e']}
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_measp(boot_config):
     media_id = 'MeAsp_media'
     media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
+             'MeAsp': 80.0}
     new_media = {media_id: media}
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
+    timeline_str = '0 {}, 600 end'.format(media_id)
     lattice_config = {
         'name': 'measp',
         'new_media': new_media,
         'timeline_str': timeline_str,
         'emit_fields': ['MeAsp'],
-        'run_for': 1.0,
+        'run_for': 0.1,
         'static_concentrations': True,
-        'gradient': {
-            'type': 'gaussian',
-            'molecules': {
-                'GLC': {
-                    'center': [0.5, 0.5],
-                    'deviation': 30.0},
-                'MeAsp': {
-                    'center': [0.5, 0.5],
-                    'deviation': 30.0}
-            }},
-        'diffusion': 0.0,
-        'rotation_jitter': 0.005,
-        'edge_length_x': 50.0,
-        'patches_per_edge_x': 40}
-
-    boot_config.update(lattice_config)
-    return boot_config
-
-def initialize_measp_long(boot_config):
-    media_id = 'MeAsp_media'
-    media = {'GLC': 20.0,  # assumes mmol/L
-             'MeAsp': 1.0}
-    new_media = {media_id: media}
-    timeline_str = '0 {}, 3600 end'.format(media_id)  # (2hr*60*60 = 7200 s), (7hr*60*60 = 25200 s)
-    lattice_config = {
-        'name': 'measp_long',
-        'new_media': new_media,
-        'timeline_str': timeline_str,
-        'emit_fields': ['GLC','MeAsp'],
-        'run_for': 1.0,
-        'static_concentrations': True,
+        'emit_frequency': 20,
         'gradient': {
             'type': 'linear',
             'molecules': {
                 'GLC': {
-                    'center': [0.0, 0.0],
-                    'slope': -1.0/150.0},
+                    'center': [0.5, 0.5],
+                    'slope': -1e-2},
                 'MeAsp': {
-                    'center': [1.0, 1.0],
-                    'slope': -1.0/150.0}
+                    'center': [0.5, 0.5],
+                    'slope': -1e-2}
             }},
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
-        'edge_length_x': 200.0,
-        'edge_length_y': 50.0,
+        'edge_length_x': 50.0,
         'patches_per_edge_x': 40}
+
+    lattice_config.update(boot_config)
+    return lattice_config
+
+def initialize_measp_long(boot_config):
+    media_id = 'MeAsp_media'
+    media = {'GLC': 0.01,  # assumes mmol/L
+             'MeAsp': 0.01}
+    new_media = {media_id: media}
+    timeline_str = '0 {}, 100 end'.format(media_id)
+    lattice_config = {
+        'name': 'measp_long',
+        'new_media': new_media,
+        'timeline_str': timeline_str,
+        'emit_fields': [],  # don't emit fields due to large lattice size
+        'run_for': 0.1,  # high coupling between cell and env requires short exchange timestep
+        'static_concentrations': True,
+        'cell_placement': [0.1, 0.5],  # place cells at bottom of gradient
+        'gradient': {
+            'type': 'exponential',
+            'molecules': {
+                'GLC': {
+                    'center': [0.0, 0.5],
+                    'base': 1+6e-4},
+                'MeAsp': {
+                    'center': [0.0, 0.5],
+                    'base': 1+6e-4}
+            }},
+        'jitter_force': 1e-2,
+        'edge_length_x': 4000.0,
+        'edge_length_y': 800.0,
+        'patches_per_edge_x': 4000  # need high resolution for receptors to detect change
+    }
+
+    lattice_config.update(boot_config)
+    return lattice_config
+
+def initialize_antibiotic(boot_config):
+    media_id = 'antibiotic_media'
+    media = {
+        'antibiotic': 1.0,  # mmol/L
+    }
+    new_media = {media_id: media}
+    lattice_config = {
+        'name': 'measp_long',
+        'new_media': new_media,
+        'timeline_str': '0 {}, 7200 end'.format(media_id),
+        'emit_fields': ['antibiotic'],
+        'run_for': 1.0,  # timestep, in sec
+        'rotation_jitter': 0.005,
+        'edge_length_x': 10.0,  # µm
+        'edge_length_y': 10.0,  # µm
+        'depth': 1.0,  # µm
+        # Patches discretize space for diffusion
+        'patches_per_edge_x': 1,
+    }
 
     boot_config.update(lattice_config)
     return boot_config
 
 
 def initialize_measp_large(boot_config):
-
     ## Make media: GLC_G6P with MeAsp
     # get GLC_G6P media
     make_media = Media()
+    media_id = 'GLC_G6P'
     media1 = make_media.get_saved_media('GLC_G6P', True)
 
     # make MeAsp media
@@ -363,33 +386,22 @@ def initialize_measp_large(boot_config):
     new_media = {media_id: media}
     timeline_str = '0 {}, 3600 end'.format(media_id)
 
-    emit_field = ['GLC', 'MeAsp']
-
     lattice_config = {
-        'name': 'measp_large',
+        'name': 'swarm_experiment',
+        'description': 'a large experiment for running swarms of chemotactic cells',
+        'cell_placement': [0.5, 0.5],  # place cells at center of lattice
         'timeline_str': timeline_str,
         'new_media': new_media,
-        'run_for': 1.0,
-        'cell_placement': [0.5, 0.5],  # place cells at center of lattice
-        'emit_fields': emit_field,
+        'run_for': 0.1,
+        'emit_fields': ['MeAsp', 'GLC'],
         'static_concentrations': False,
-        'gradient': {
-            'type': 'linear',
-            'molecules': {
-                'GLC': {
-                    'center': [0.0, 0.0],
-                    'slope': -1.0 / 250.0},
-                'MeAsp': {
-                    'center': [1.0, 1.0],
-                    'slope': -1.0 / 250.0}
-            }},
-        # 'diffusion': 0.001,
-        'rotation_jitter': 0.005,
+        'diffusion': 0.001,
         'edge_length_x': 200.0,
+        'edge_length_y': 200.0,
         'patches_per_edge_x': 50}
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 def initialize_measp_timeline(boot_config):
     # Endres and Wingreen (2006) use + 100 uM = 0.1 mmol for attractant. 0.2 b/c of dilution.
@@ -406,13 +418,12 @@ def initialize_measp_timeline(boot_config):
         'run_for': 1.0,
         'static_concentrations': True,
         'diffusion': 0.0,
-        'rotation_jitter': 0.005,
         'edge_length_x': 100.0,
         'patches_per_edge_x': 50,
     }
 
-    boot_config.update(lattice_config)
-    return boot_config
+    lattice_config.update(boot_config)
+    return lattice_config
 
 
 class BootEnvironment(BootAgent):
@@ -421,36 +432,41 @@ class BootEnvironment(BootAgent):
         self.agent_types = {
             # environments
             'lattice': wrap_boot_environment(initialize_lattice),
-            'sugar1': wrap_boot_environment(initialize_glc_g6p),
-            'sugar1_small': wrap_boot_environment(initialize_glc_g6p_small),
-            'sugar2': wrap_boot_environment(initialize_glc_lct),
-            'sugar_shift': wrap_boot_environment(initialize_glc_lct_shift),
+            'glc_g6p': wrap_boot_environment(initialize_glc_g6p),
+            'glc_g6p_small': wrap_boot_environment(initialize_glc_g6p_small),
+            'glc_lct': wrap_boot_environment(initialize_glc_lct),
+            'glc_lct_shift': wrap_boot_environment(initialize_glc_lct_shift),
             'ecoli_core_glc': wrap_boot_environment(initialize_ecoli_core_glc),
             'custom': wrap_boot_environment(initialize_custom_small),
             'measp': wrap_boot_environment(initialize_measp),
             'measp_long': wrap_boot_environment(initialize_measp_long),
             'measp_large': wrap_boot_environment(initialize_measp_large),
             'measp_timeline': wrap_boot_environment(initialize_measp_timeline),
+            'antibiotic_environment': wrap_boot_environment(initialize_antibiotic),
 
             # basic compartments
             'lookup': wrap_boot(wrap_init_basic(TransportLookup), {'volume': 1.0}),
-            'metabolism': wrap_boot(wrap_init_basic(BiGGMetabolism), {'volume': 1.0}),
+            'metabolism': wrap_boot(wrap_init_basic(Metabolism), {'volume': 1.0}),
             'transport': wrap_boot(wrap_init_basic(Transport), {'volume': 1.0}),
             'growth': wrap_boot(wrap_init_basic(Growth), {'volume': 1.0}),
             'expression': wrap_boot(wrap_init_basic(MinimalExpression), {'volume': 1.0}),
             'receptor': wrap_boot(wrap_init_basic(ReceptorCluster), {'volume': 1.0}),
             'motor': wrap_boot(wrap_init_basic(MotorActivity), {'volume': 1.0}),
             'membrane_potential': wrap_boot(wrap_init_basic(MembranePotential), {'volume': 1.0}),
+            'antibiotic_transport': wrap_boot(
+                wrap_init_basic(AntibioticTransport), {'volume': 1.0}),
             'transcription': wrap_boot(wrap_init_basic(Transcription), {'volume': 1.0}),
 
             # composite compartments
             'master': wrap_boot(wrap_init_composite(compose_master), {'volume': 1.0}),
-            'glc_lct': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
+            'shifter': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
             'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
             'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
-            'pmf_chemotaxis': wrap_boot(wrap_init_composite(compose_pmf_chemotaxis), {'volume': 1.0}),
-            'flagella_chemotaxis': wrap_boot(wrap_init_composite(compose_variable_flagella), {'volume': 1.0}),
-            }
+            'antibiotic_composite': wrap_boot(
+                wrap_init_composite(compose_antibiotics),
+                {'volume': 1.0},
+            ),
+        }
 
 def run():
     boot = BootEnvironment()

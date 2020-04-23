@@ -1,11 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+
 import numpy as np
 import scipy.constants as constants
+import matplotlib.pyplot as plt
 
-from vivarium.actor.process import Process, deep_merge
-from vivarium.utils.units import units
+from vivarium.compartment.process import Process
+from vivarium.utils.dict_utils import deep_merge
 
 # PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)
 # Ecoli internal pH in range 7.6-7.8 (Berg)
@@ -52,34 +54,43 @@ class MembranePotential(Process):
     '''
     Need to add a boot method for this process to vivarium/environment/boot.py for it to run on its own
     '''
-    def __init__(self, config={}):
 
-        # set states
-        self.initial_states = config.get('states', DEFAULT_STATE)
-
-        # set parameters
-        parameters = {
+    defaults = {
+        'states': DEFAULT_STATE,
+        'parameters': DEFAULT_PARAMETERS,
+        'permeability': PERMEABILITY_MAP,
+        'charge': CHARGE_MAP,
+        'constants': {
             'R': constants.gas_constant,  # (J * K^-1 * mol^-1) gas constant
             'F': constants.physical_constants['Faraday constant'][0], # (C * mol^-1) Faraday constant
             'k': constants.Boltzmann, # (J * K^-1) Boltzmann constant
             }
-        parameters.update(config.get('parameters', DEFAULT_PARAMETERS))
+    }
 
-        self.permeability = config.get('permeability', PERMEABILITY_MAP)
-        self.charge = config.get('charge', CHARGE_MAP)
+
+    def __init__(self, config={}):
+
+        # set states
+        self.initial_states = config.get('states', self.defaults['states'])
+        self.permeability = config.get('permeability', self.defaults['permeability'])
+        self.charge = config.get('charge', self.defaults['charge'])
+
+        # set parameters
+        parameters = self.defaults['constants']
+        parameters.update(config.get('parameters', self.defaults['parameters']))
 
         # get list of internal and external states
         internal_states = list(self.initial_states['internal'].keys())
         external_states = list(self.initial_states['external'].keys())
 
-        # set roles
-        roles = {
+        # set ports
+        ports = {
             'internal': internal_states + ['c_in'],
             'membrane': ['PMF', 'd_V', 'd_pH'],  # proton motive force (PMF), electrical difference (d_V), pH difference (d_pH)
             'external': external_states + ['c_out', 'T'],
         }
 
-        super(MembranePotential, self).__init__(roles, parameters)
+        super(MembranePotential, self).__init__(ports, parameters)
 
     def default_settings(self):
 
@@ -90,17 +101,20 @@ class MembranePotential(Process):
         # default emitter keys
         default_emitter_keys = {'membrane': ['d_V', 'd_pH', 'PMF']}
 
-        # default updaters
-        default_updaters = {
+
+        # schema
+        set_membrane = ['d_V', 'd_pH', 'PMF']
+        schema = {
             'membrane': {
-                'd_V': 'set',
-                'd_pH': 'set',
-                'PMF': 'set'}}
+                state_id : {
+                    'updater': 'set',
+                    'divide': 'set'}
+                for state_id in set_membrane}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 
@@ -199,12 +213,12 @@ def test_mem_potential():
         saved_state['time'].append(time)
 
         # update external state
-        for role in ['internal', 'external']:
-            for state_id, value in state[role].items():
-                if state_id in saved_state[role].keys():
-                    saved_state[role][state_id].append(value)
+        for port in ['internal', 'external']:
+            for state_id, value in state[port].items():
+                if state_id in saved_state[port].keys():
+                    saved_state[port][state_id].append(value)
                 else:
-                    saved_state[role][state_id] = [value]
+                    saved_state[port][state_id] = [value]
 
         # update membrane state from update
         for state_id, value in update['membrane'].items():
@@ -216,7 +230,6 @@ def test_mem_potential():
     return saved_state
 
 def plot_mem_potential(saved_state, out_dir='out'):
-    import matplotlib.pyplot as plt
 
     data_keys = [key for key in saved_state.keys() if key is not 'time']
     time_vec = [float(t) / 3600 for t in saved_state['time']]  # convert to hours

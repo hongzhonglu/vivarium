@@ -8,7 +8,7 @@ from vivarium.actor.control import DEFAULT_KAFKA_CONFIG, DEFAULT_EMITTER_CONFIG,
 from vivarium.actor.outer import Outer
 from vivarium.actor.inner import Inner
 from vivarium.actor.stub import SimulationStub, EnvironmentStub
-from vivarium.actor.process import deep_merge
+from vivarium.utils.dict_utils import deep_merge
 
 def boot_outer(agent_id, agent_type, actor_config):
     """
@@ -67,16 +67,16 @@ class BootAgent(object):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--id',
+            '-i', '--id',
             required=True,
             help='id of the new agent')
 
         parser.add_argument(
-            '--outer-id',
+            '-o', '--outer-id',
             help="ID of the new agent's outer environment agent")
 
         parser.add_argument(
-            '--type',
+            '-t', '--type',
             required=True,
             choices=self.agent_types,
             help='type of the new agent')

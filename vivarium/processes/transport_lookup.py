@@ -1,10 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import csv
 from scipy import constants
 
-from vivarium.actor.process import Process
+from vivarium.compartment.process import Process
 from vivarium.environment.make_media import Media
 from vivarium.environment.look_up import LookUp
 from vivarium.utils.rate_law_utilities import load_reactions
@@ -70,14 +69,15 @@ class TransportLookup(Process):
         # make look up object
         self.look_up = LookUp()
 
-        roles = {
-            'internal': internal_molecule_ids + ['volume'],
+        ports = {
+            'internal': internal_molecule_ids,
             'external': self.external_molecule_ids,
-            'exchange': self.external_molecule_ids}
+            'exchange': self.external_molecule_ids,
+            'global': ['volume']}
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(TransportLookup, self).__init__(roles, parameters)
+        super(TransportLookup, self).__init__(ports, parameters)
 
 
     def default_settings(self):
@@ -87,7 +87,7 @@ class TransportLookup(Process):
         make_media = Media()
         media = make_media.get_saved_media(media_id)
         default_state = {
-            'internal': {'volume': 1},
+            'global': {'volume': 1},
             'external': media,
             'exchange': {state_id: 0.0 for state_id in self.external_molecule_ids}}
 
@@ -97,23 +97,24 @@ class TransportLookup(Process):
             'external': self.external_molecule_ids,
             'exchange': []}
 
-        # default updaters
-        default_updaters = {
-            'internal': {},  # reactions set values directly
-            'external': {},  # reactions set values directly
-            'exchange': {mol_id: 'accumulate' for mol_id in self.external_molecule_ids}}  # all external values use default 'delta' udpater
+        # schema
+        schema = {
+            'exchange': {
+                mol_id : {
+                    'updater': 'accumulate'}
+                for mol_id in self.external_molecule_ids}}
 
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
-            'updaters': default_updaters}
+            'schema': schema}
 
         return default_settings
 
     def next_update(self, timestep, states):
         external = states['external'] # TODO -- use external state? if concentrations near 0, cut off flux?
 
-        volume = states['internal']['volume'] * units.fL
+        volume = states['global']['volume'] * units.fL
         mmol_to_counts = self.nAvogadro.to('1/mmol') * volume.to('L')
 
         # get transport fluxes

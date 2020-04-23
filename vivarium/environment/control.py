@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import copy
 import time
 import uuid
 
 from vivarium.actor.control import ActorControl, AgentCommand
-from vivarium.environment.make_media import Media
-from vivarium.utils.units import units
+
 
 
 class ShepherdControl(ActorControl):
@@ -16,363 +14,232 @@ class ShepherdControl(ActorControl):
         super(ShepherdControl, self).__init__(str(uuid.uuid1()), actor_config)
 
     def add_cell(self, agent_type, actor_config):
-        # TODO(jerry): Bring back the --variant choice?
         self.add_agent(
-            str(uuid.uuid1()),
+            agent_type + '-' + str(uuid.uuid1()),
             agent_type,
             actor_config)
 
-    def lattice_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id()
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
-
-        # make media
-        media_id = args.get('media', 'minimal')
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 {}, 7200 end'.format(media_id)
-
-        lattice_config = copy.deepcopy(actor_config)
-        lattice_config.update({
-            'name': 'lattice_experiment',
-            'timeline_str': timeline_str,
-            'media_id': media_id,
-            'emit_fields': ['GLC'],
-            'boot': 'vivarium.environment.boot',
-            'run_for': 4.0,
-            'diffusion': 1000,
-            'edge_length_x': 20,
-            'patches_per_edge_x': 10,
-            'translation_jitter': 0.1,
-            'rotation_jitter': 0.01})
-
-        self.add_agent(experiment_id, 'lattice', lattice_config)
-
-        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
-
-        cell_config = dict(actor_config, **{
-            'boot': args.get('agent_boot', 'vivarium.environment.boot'),
-            'outer_id': experiment_id,
-            'working_dir': args['working_dir']})
-
-        for index in range(num_cells):
-            self.add_cell(
-                args['type'] or 'lookup',
-                dict(cell_config, seed=index))
-
-    def long_lattice_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id()
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
-
-        # make media
-        media_id = args.get('media', 'minimal')
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 {}, 3600 end'.format(media_id)
-
-        emit_fields = ['GLC']
-
-        lattice_config = {
-            'name': 'long_lattice_experiment',
-            'timeline_str': timeline_str,
-            'media_id': media_id,
-            'emit_fields': emit_fields,
-            'boot': 'vivarium.environment.boot',
-            'run_for': 4.0,
-            'edge_length_x': 80.0,
-            'edge_length_y': 20.0,
-            'patches_per_edge_x': 8,
-            'translation_jitter': 0.1,
-            'rotation_jitter': 0.01}
-
+    def init_experiment(self, args, exp_config):
+        default_experiment_id = exp_config.get('default_experiment_id', 'experiment')
+        lattice_config = exp_config.get('lattice_config')
+        environment_type = exp_config.get('environment_type')
+        actor_config = exp_config.get('actor_config')
         actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        agents = exp_config['agents']
 
-        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'lookup', dict(actor_config, **{
-                'boot': args.get('agent_boot', 'vivarium.environment.boot'),
-                'boot_config': {},
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
-
-    def large_lattice_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
+        # get from args
+        experiment_id = args.get('experiment_id')
         if not experiment_id:
-            experiment_id = self.get_experiment_id('large_lattice')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
+            experiment_id = self.get_experiment_id(default_experiment_id)
 
-        media_id = args.get('media', 'minimal')
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 {}, 7200 end'.format(media_id)
+        print('Creating experiment id {}: {} environment, with agents {}\n'.format(
+            experiment_id, environment_type, agents))
 
-        emit_fields = ['GLC']
+        # boot environment
+        self.add_agent(experiment_id, environment_type, actor_config)
+        time.sleep(10) # wait for the environment to boot
 
+        # boot agents
+        index = 0
+        for agent_type, number in agents.items():
+            for agent in range(number):
+                self.add_cell(agent_type or args['type'], dict(actor_config, **{
+                    'boot': 'vivarium.environment.boot',
+                    'outer_id': experiment_id,
+                    'working_dir': args['working_dir'],
+                    'seed': index}))
+                index += 1
+
+    def lattice_experiment(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'lattice_experiment'
+        environment_type = 'lattice'
+        agents = {
+            'growth_division': 1}
+
+        # overwrite default environment config
         lattice_config = {
-            'name': 'large_lattice_experiment',
-            'timeline_str': timeline_str,
-            'media_id': media_id,
-            'emit_fields': emit_fields,
-            'run_for': 2.0,
-            'edge_length_x': 50.0,
-            'patches_per_edge_x': 10,
-            'gradient': {
-                'type': 'linear',
-                'molecules': {
-                    'GLC': {
-                        'center': [0.0, 0.0],
-                        'slope': -1.0 / 250.0},
-                }},
+            'name': 'lattice_experiment',
+            'description': (
+                'minimal growth_division agents are placed '
+                'in a lattice environment')}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
+
+        self.init_experiment(args, exp_config)
+
+    def growth_division_experiment(self, args, actor_config):
+
+        # define experimental environment and agents
+        experiment_id = 'growth_division'
+        environment_type = 'ecoli_core_glc'
+        agents = {
+            'growth_division': 1}
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'growth_division_experiment',
+            'description': (
+                'minimal growth_division agents are placed '
+                'in a lattice environment')}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
+
+        self.init_experiment(args, exp_config)
+
+    def antibiotic_experiment(self, args, actor_config):
+        experiment_id = 'antibiotic'
+        environment_type = 'antibiotic_environment'
+        agents = {'antibiotic_composite': 3}
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'antibiotic_experiment',
+            'description': (
+                'antibiotic_composite agents are placed in '
+                'an environment with antibiotics'
+            ),
         }
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents,
+        }
 
-        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
+        self.init_experiment(args, exp_config)
 
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'ecoli', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
-
-    def small_lattice_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('small_lattice')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
-
-        media_id = args.get('media', 'minimal')
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 {}, 3600 end'.format(media_id)
-
-        emit_fields = ['GLC']
-
-        lattice_config = {
-            'name': 'small_lattice_experiment',
-            'timeline_str': timeline_str,
-            'run_for': 2.0,
-            'emit_fields': emit_fields,
-            'edge_length_x': 10.0,
-            'patches_per_edge_x': 10}
-
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
-
-        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
-
-    def glc_g6p_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('glc-g6p')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
-
-        media_id = 'GLC_G6P'
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 {}, 3600 end'.format(media_id)
-
-        emit_fields = ['GLC', 'G6P']
-
-        lattice_config = {
-            'name': 'glc_g6p_experiment',
-            'timeline_str': timeline_str,
-            'run_for': 2.0,
-            'emit_fields': emit_fields}
-
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
-
-        time.sleep(10)  # TODO(jerry): Wait for the Lattice to boot
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'metabolism', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
 
     def ecoli_core_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('glc-g6p')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
 
-        timeline_str = args.get('timeline')
-        if not timeline_str:
-            timeline_str = '0 ecoli_core_GLC 1.0 L + lac__D_e 2.0 mmol 0.1 L, 21600 end'
+        # define experiment: environment type and agent type
+        experiment_id = 'gluc-lact'
+        environment_type = 'ecoli_core_glc'
+        agents = {
+            'shifter': 2}
 
+        # overwrite default environment config
         lattice_config = {
-            'name': 'ecoli_core_experiment',
-            'timeline_str': timeline_str,
-            'edge_length_x': 15.0,
-            'patches_per_edge_x': 15,
-            'run_for': 2.0,
-            'diffusion': 1e-3,
-            'depth': 1e-2,
-            'translation_jitter': 1.0,
-            'emit_fields': [
-                'glc__D_e',
-                'lac__D_e']}
+            'name': 'ecoli_core_glc_lct',
+            'description': (
+                'glucose-lactose diauxic shifters are placed in '
+                'a shallow environment with glucose and lactose. '
+                'They start off with no LacY, and so uptake only '
+                'glucose, but LacY is expressed upon depletion of '
+                'glucose and they begin to uptake lactose. Cells '
+                'have an e_coli_core BiGG metabolism, kinetic '
+                'transport of glucose and lactose, and ode-based '
+                'gene expression of LacY')}
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
 
-        time.sleep(10)
+        self.init_experiment(args, exp_config)
 
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'kinetic_FBA', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'working_dir': args['working_dir'],
-                'seed': index}))
+    def chemotaxis_square(self, args, actor_config):
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp'
+        agents = {
+            'minimal_chemotaxis': 4}
+
+        # overwrite default environment config
+        lattice_config = {
+            'name': 'chemotaxis square experiment',
+            'description': (
+                'a square environment with a static gradient of '
+                'glucose and a-methyl-DL-aspartic acid (MeAsp) '
+                'for observing chemotactic cells in action. Optimal '
+                'chemotaxis is observed in a narrow range of CheA '
+                'activity, where concentration of CheY-P falls into '
+                'the operating range of flagellar motors.')}
+
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
+
+        self.init_experiment(args, exp_config)
 
     def chemotaxis_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('chemotaxis')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
+        # define experiment: environment type and agent type
+        experiment_id = 'chemotaxis'
+        environment_type = 'measp_long'
+        agents = {
+            'minimal_chemotaxis': 1,
+            'motor': 1}
 
-        media_id = 'MeAsp'
-        media = {'GLC': 20.0,
-                 'MeAsp': 1.0}
-        new_media = {media_id: media}
-        # timeline_str = '0 {}, 14400 end'.format(media_id)
-        timeline_str = '0 {}, 1800 end'.format(media_id)
-
+        # overwrite default environment config
         lattice_config = {
             'name': 'chemotaxis_experiment',
-            'description': 'a large enivronment with a static gradient for observing chemotactic cells',
-            'timeline_str': timeline_str,
-            'new_media': new_media,
-            'run_for' : 0.05,
-            'emit_fields': ['MeAsp', 'GLC'],
-            'static_concentrations': True,
-            'cell_placement': [0.5, 0.001],  # place cells away from gradient
-            'gradient': {
-                'type': 'linear',
-                'molecules': {
-                    'GLC': {
-                        'center': [0.5, 1.0],
-                        'slope': -1.0/150.0},
-                    'MeAsp': {
-                        'center': [0.5, 1.0],
-                        'slope': -1.0/150.0}
-                }},
-            'diffusion': 0.0,
-            # 'translation_jitter': 0.1,
-            # 'rotation_jitter': 0.05,
-            'edge_length_x': 100.0,
-            'edge_length_y': 500.0,
-            'patches_per_edge_x': 50}
+            'description': (
+                'a long environment with a static gradient of glucose '
+                'and a-methyl-DL-aspartic acid (MeAsp) for observing '
+                'chemotactic cells in action. Optimal chemotaxis is '
+                'observed in a narrow range of CheA activity, where '
+                'concentration of CheY-P falls into the operating range '
+                'of flagellar motors.')}
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
 
-        # give lattice time before adding the cells
-        time.sleep(15)
-
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'seed': index}))
-
+        self.init_experiment(args, exp_config)
 
     def swarm_experiment(self, args, actor_config):
-        experiment_id = args['experiment_id']
-        if not experiment_id:
-            experiment_id = self.get_experiment_id('chemotaxis')
-        num_cells = args['number']
-        print('Creating lattice agent_id {} and {} cell agents\n'.format(
-            experiment_id, num_cells))
+        # define experiment: environment type and agent type
+        experiment_id = 'swarm'
+        environment_type = 'measp_large'
+        agents = {
+            'minimal_chemotaxis': 1}
 
-        ## Make media: GLC_G6P with MeAsp
-        # get GLC_G6P media
-        make_media = Media()
-        media_id = 'GLC_G6P'
-        media1 = make_media.get_saved_media('GLC_G6P', True)
-
-        # make MeAsp media
-        ingredients = {
-            'MeAsp': {
-                'counts': 1.0 * units.mmol,
-                'volume': 0.001 * units.L}}
-        media2 = make_media.make_recipe(ingredients, True)
-
-        # combine the medias
-        media = make_media.combine_media(media1, 0.999 * units.L, media2, 0.001 * units.L)
-        media_id = 'GLC_G6P_MeAsp'
-
-        # make timeline with new media
-        new_media = {media_id: media}
-        timeline_str = '0 {}, 3600 end'.format(media_id)
-
+        # overwrite default environment config
         lattice_config = {
             'name': 'swarm_experiment',
-            'description': 'a large experiment for running swarms of chemotactic cells',
-            'cell_placement': [0.5, 0.5], # place cells at center of lattice
-            'timeline_str': timeline_str,
-            'new_media': new_media,
-            'run_for' : 2.0,
-            'emit_fields': ['MeAsp', 'GLC'],
-            'static_concentrations': False,
-            'diffusion': 0.001,
-            'edge_length_x': 100.0,
-            'edge_length_y': 100.0,
-            'patches_per_edge_x': 50}
+            'description': (
+                'a large experiment for running swarms of chemotactic cells')}
 
-        actor_config['boot_config'].update(lattice_config)
-        self.add_agent(experiment_id, 'lattice', actor_config)
+        exp_config = {
+            'default_experiment_id': experiment_id,
+            'lattice_config': lattice_config,
+            'environment_type': environment_type,
+            'actor_config': actor_config,
+            'agents': agents}
 
-        # give lattice time before adding the cells
-        time.sleep(15)
+        self.init_experiment(args, exp_config)
 
-        for index in range(num_cells):
-            self.add_cell(args['type'] or 'chemotaxis', dict(actor_config, **{
-                'boot': 'vivarium.environment.boot',
-                'outer_id': experiment_id,
-                'seed': index}))
+
 
 class EnvironmentCommand(AgentCommand):
     """
-    Extend `AgentCommand` with new commands related to the lattice and ecoli experiments
+    Extend `AgentCommand` with new commands related to the experiments
     """
 
     def __init__(self, choices=[], description=''):
         full_description = '''
     Run an agent for the environmental context simulation.
-    
+
     The commands are:
     `add --id OUTER_ID [--type T] [--config C]` ask the Shepherd to add an agent of
         type T with JSON configuration C to the environment OUTER_ID,
@@ -392,13 +259,13 @@ class EnvironmentCommand(AgentCommand):
     ''' + description
 
         full_choices = [
-            'long-experiment',
-            'large-experiment',
-            'small-experiment',
+            'growth-division-experiment',
+            'ecoli-core-experiment',
+            'chemotaxis-square',
             'chemotaxis-experiment',
             'swarm-experiment',
-            'glc-g6p-experiment',
-            'ecoli-core-experiment'] + choices
+            'antibiotic_experiment',
+            ] + choices
 
         super(EnvironmentCommand, self).__init__(
             full_choices,
@@ -411,34 +278,22 @@ class EnvironmentCommand(AgentCommand):
         control.lattice_experiment(args, self.actor_config)
         control.shutdown()
 
-    def long_experiment(self, args):
-        self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
-        control.long_lattice_experiment(args, self.actor_config)
-        control.shutdown()
-
-    def large_experiment(self, args):
-        self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
-        control.large_lattice_experiment(args, self.actor_config)
-        control.shutdown()
-
-    def small_experiment(self, args):
-        self.require(args, 'number', 'working_dir')
-        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
-        control.small_lattice_experiment(args, self.actor_config)
-        control.shutdown()
-
-    def glc_g6p_experiment(self, args):
+    def growth_division_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
-        control.glc_g6p_experiment(args, self.actor_config)
+        control.growth_division_experiment(args, self.actor_config)
         control.shutdown()
 
     def ecoli_core_experiment(self, args):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.ecoli_core_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def chemotaxis_square(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.chemotaxis_square(args, self.actor_config)
         control.shutdown()
 
     def chemotaxis_experiment(self, args):
@@ -451,6 +306,12 @@ class EnvironmentCommand(AgentCommand):
         self.require(args, 'number')
         control = ShepherdControl({'kafka_config': self.get_kafka_config()})
         control.swarm_experiment(args, self.actor_config)
+        control.shutdown()
+
+    def antibiotic_experiment(self, args):
+        self.require(args, 'number')
+        control = ShepherdControl({'kafka_config': self.get_kafka_config()})
+        control.antibiotic_experiment(args, self.actor_config)
         control.shutdown()
 
     def add_arguments(self, parser):
