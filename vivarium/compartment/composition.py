@@ -773,9 +773,7 @@ def load_compartment(composite, boot_config={}):
     derivers = composite_config.get('derivers', [])
     states = composite_config['states']
     options = composite_config['options']
-    options.update({
-        'emitter': boot_config.get('emitter', 'timeseries'),
-        'time_step': boot_config.get('time_step', 1.0)})   # TODO -- let compartment handle its own timestep
+    options['emitter'] = boot_config.get('emitter', 'timeseries')
 
     return Compartment(processes, derivers, states, options)
 
