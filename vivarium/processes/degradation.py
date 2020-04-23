@@ -87,9 +87,17 @@ class RnaDegradation(Process):
             'molecules': self.molecule_order,
             'global': []}
 
+        # derivers
+        deriver_setting = [{
+            'type': 'globals',
+            'source_port': 'global',
+            'derived_port': 'global',
+            'keys': []}]
+
         return {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
+            'deriver_setting': deriver_setting,
             'parameters': self.parameters}
 
     def next_update(self, timestep, states):
