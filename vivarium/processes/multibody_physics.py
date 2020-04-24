@@ -7,16 +7,13 @@ import random
 import math
 
 import numpy as np
+
+import matplotlib
+matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 from matplotlib.collections import LineCollection
-
-# pygame for debugging
-import pygame
-from pygame.key import *
-from pygame.locals import *
-from pygame.color import *
 
 # pymunk imports
 import pymunkoptions
@@ -139,18 +136,8 @@ class Multibody(Process):
         # initialize pymunk space
         self.space = pymunk.Space()
 
-        # debugging with pygame
-        self.pygame_viz = initial_parameters.get('debug', False)
-        self.pygame_scale = 1
-        if self.pygame_viz:
-            max_bound = max(self.bounds)
-            self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
-            pygame.init()
-            self._screen = pygame.display.set_mode((
-                int(bounds[0]*self.pygame_scale),
-                int(bounds[1]*self.pygame_scale)), RESIZABLE)
-            self._clock = pygame.time.Clock()
-            self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
+        self.pygame_scale = 1  # TODO -- remove
+
 
         # add static barriers
         # TODO -- mother machine configuration
@@ -161,6 +148,13 @@ class Multibody(Process):
         agents = initial_parameters.get('agents', {})
         for agent_id, specs in agents.items():
             self.add_body_from_center(agent_id, specs)
+
+        self.animate = initial_parameters.get('debug', False)
+        if self.animate:
+            plt.ion()
+            self.ax = plt.gca()
+            self.ax.set_aspect('equal')
+            self.animate_frame(agents)
 
         # all initial agents get a key under a single port
         ports = {'agents': ['agents']}
@@ -212,6 +206,9 @@ class Multibody(Process):
             agent_id: self.get_body_specs(agent_id)
             for agent_id in self.agents.keys()}
 
+        if self.animate:
+            self.animate_frame(agents)
+
         return {'agents': {'agents': new_agents}}
 
     def run(self, timestep):
@@ -229,9 +226,6 @@ class Multibody(Process):
 
             # run for a physics timestep
             self.space.step(self.physics_dt)
-
-        if self.pygame_viz:
-            self._update_screen()
 
     def apply_motile_force(self, body):
         width, length = body.dimensions
@@ -380,28 +374,43 @@ class Multibody(Process):
         }
 
 
-    ## functions for debugging with pymunk
-    # pygame functions
-    def _process_events(self):
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                self._running = False
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                self._running = False
-    def _clear_screen(self):
-        self._screen.fill(THECOLORS["white"])
+    ## debug visualization
+    def animate_frame(self, agents):
 
-    def _draw_objects(self):
-        self.space.debug_draw(self._draw_options)
 
-    def _update_screen(self):
-        self._process_events()
-        self._clear_screen()
-        self._draw_objects()
-        pygame.display.flip()
-        # Delay fixed time between frames
-        self._clock.tick(5)
+        plt.cla()
+        for agent_id, data in agents.items():
+            # color = agent_colors.get(agent_id, [DEFAULT_HUE] + DEFAULT_SV)
+            # plot_agent(ax, agent_data, color)
 
+            # location, orientation, length
+            x_center = data['location'][0]
+            y_center = data['location'][1]
+            angle = data['angle'] / PI * 180 + 90  # rotate 90 degrees to match field
+            length = data['length']
+            width = data['width']
+
+            # get bottom left position
+            x_offset = (width / 2)
+            y_offset = (length / 2)
+            theta_rad = math.radians(angle)
+            dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
+            dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+
+            x = x_center - dx
+            y = y_center - dy
+
+            # get color, convert to rgb
+            # rgb = hsv_to_rgb(color)
+
+            # Create a rectangle
+            rect = patches.Rectangle((x, y), width, length, angle=angle, linewidth=2, edgecolor='w')  #, facecolor=rgb)
+            self.ax.add_patch(rect)
+
+        plt.xlim([0, self.bounds[0]])
+        plt.ylim([0, self.bounds[1]])
+        plt.draw()
+        plt.pause(0.01)
 
 
 # configs
@@ -523,7 +532,46 @@ def simulate_motility(config, settings):
     return compartment.emitter.get_data()
 
 
+
 # plotting
+def plot_agent(ax, data, color):
+    # location, orientation, length
+    x_center = data['location'][0]
+    y_center = data['location'][1]
+    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
+    length = data['length']
+    width = data['width']
+
+    # get bottom left position
+    x_offset = (width / 2)
+    y_offset = (length / 2)
+    theta_rad = math.radians(theta)
+    dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
+    dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
+
+    x = x_center - dx
+    y = y_center - dy
+
+    # get color, convert to rgb
+    rgb = hsv_to_rgb(color)
+
+    # Create a rectangle
+    rect = patches.Rectangle(
+        (x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+
+    ax.add_patch(rect)
+
+def plot_agents(ax, agents, agent_colors={}):
+    '''
+    - ax: the axis for plot
+    - agents: a dict with {agent_id: agent_data} and
+        agent_data a dict with keys location, angle, length, width
+    - agent_colors: dict with {agent_id: hsv color}
+    '''
+    for agent_id, agent_data in agents.items():
+        color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
+        plot_agent(ax, agent_data, color)
+
 def plot_snapshots(agents, fields, config, out_dir='out', filename='snapshots'):
     '''
         - agents (dict): with {time: agent_data}
@@ -742,44 +790,6 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def plot_agent(ax, data, color):
-    # location, orientation, length
-    x_center = data['location'][0]
-    y_center = data['location'][1]
-    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
-    length = data['length']
-    width = data['width']
-
-    # get bottom left position
-    x_offset = (width / 2)
-    y_offset = (length / 2)
-    theta_rad = math.radians(theta)
-    dx = x_offset * math.cos(theta_rad) - y_offset * math.sin(theta_rad)
-    dy = x_offset * math.sin(theta_rad) + y_offset * math.cos(theta_rad)
-
-    x = x_center - dx
-    y = y_center - dy
-
-    # get color, convert to rgb
-    rgb = hsv_to_rgb(color)
-
-    # Create a rectangle
-    rect = patches.Rectangle(
-        (x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
-
-    ax.add_patch(rect)
-
-def plot_agents(ax, agents, agent_colors={}):
-    '''
-    - ax: the axis for plot
-    - agents: a dict with {agent_id: agent_data} and
-        agent_data a dict with keys location, angle, length, width
-    - agent_colors: dict with {agent_id: hsv color}
-    '''
-    for agent_id, agent_data in agents.items():
-        color = agent_colors.get(agent_id, [DEFAULT_HUE]+DEFAULT_SV)
-        plot_agent(ax, agent_data, color)
-
 
 
 if __name__ == '__main__':
@@ -788,7 +798,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     # test motility
-    bounds = [100, 100]
+    bounds = [20, 20]
     motility_sim_settings = {
         'timestep': 0.1,
         'total_time': 5}
