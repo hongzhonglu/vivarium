@@ -150,7 +150,6 @@ def default_metabolism_config():
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
     metabolism_config = {
-        ''
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
@@ -208,40 +207,37 @@ def scan_txp_mtb_ge():
     }
 
     # metrics are the outputs of a scan
-    # target growth_rate for baseline: 0.0005579276493987817
     metrics = [
         ('reactions', 'EX_glc__D_e'),
         ('reactions', 'EX_lcts_e'),
         ('global', 'mass')
     ]
 
-
-
-    # TODO -- define conditions
+    # define conditions
     conditions = [
+        # {}, # default
         {
-        'external': {
+        'environment': {
             'glc__D_e': 12.0,
             'lcts_e': 10.0},
-        'internal':{
+        'cytoplasm':{
             'LacY': 0.0}
         },
         {
-        'external': {
+        'environment': {
             'glc__D_e': 0.0,
             'lcts_e': 10.0},
-        'internal':{
+        'cytoplasm':{
             'LacY': 1.0e-6}
         },
     ]
 
+    ## TODO -- add targets
     # targets = {
     #     'global', 'growth_rate'
     # }
 
-
-
-    # set up simulation settings and scan options
+    # set up scan options
     timeline = [(10, {})]
     sim_settings = {
         'environment_port': 'environment',
@@ -256,7 +252,8 @@ def scan_txp_mtb_ge():
     scan_config = {
         'composite': composite_function,
         'scan_parameters': scan_params,
-        'output_values': metrics,
+        'conditions': conditions,
+        'metrics': metrics,
         'options': scan_options}
     results = parameter_scan(scan_config)
 

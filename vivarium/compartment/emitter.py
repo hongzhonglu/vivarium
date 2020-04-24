@@ -59,8 +59,6 @@ def get_emitter_keys(process, topology):
 
         default_settings = process_object.default_settings()
         process_keys = default_settings.get('emitter_keys', {})
-        if not process_keys:
-            print('no emitter keys in process {}'.format(process_id))
         for port, keys in process_keys.items():
             compartment_name = process_ports[port]
             if compartment_name in emitter_keys.keys():
