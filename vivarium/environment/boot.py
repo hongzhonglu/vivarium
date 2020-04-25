@@ -84,6 +84,7 @@ def wrap_init_composite(make_composite):
         # set up the the composite
         composite_config = make_composite(boot_config)
         processes = composite_config['processes']
+        derivers = composite_config['derivers']
         states = composite_config['states']
         options = composite_config['options']
         topology = options['topology']
@@ -93,7 +94,7 @@ def wrap_init_composite(make_composite):
         options.update({'emitter': emitter})
 
         # create the compartment
-        return LatticeCompartment(processes, states, options)
+        return LatticeCompartment(processes, derivers, states, options)
 
     return initialize
 

@@ -32,15 +32,17 @@ class DeriveGlobals(Process):
 
     defaults = {
         'width': 0.5,  # um
-        'source_ports': {},
     }
 
     def __init__(self, initial_parameters={}):
 
         self.width = initial_parameters.get('width', self.defaults['width'])
-        self.source_ports = initial_parameters.get('source_ports', self.defaults['source_ports'])
+        source_ports = initial_parameters.get('source_ports')
         target_ports = initial_parameters.get('target_ports')
 
+        if source_ports:
+            assert len(source_ports) == 1, 'DeriveGlobals too many source ports'
+            assert list(source_ports.keys())[0] == 'global', 'DeriveGlobals requires source port named global'
         if target_ports:
             assert len(target_ports) == 1, 'DeriveGlobals too many target ports'
             assert list(target_ports.keys())[0] == 'global', 'DeriveGlobals requires target port named global'
@@ -52,8 +54,6 @@ class DeriveGlobals(Process):
                 'mmol_to_counts',
                 'density',
                 'length']}
-
-        ports.update(self.source_ports)
 
         parameters = {}
         parameters.update(initial_parameters)

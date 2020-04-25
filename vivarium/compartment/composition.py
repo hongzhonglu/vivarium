@@ -45,17 +45,41 @@ def get_derivers(process_list, topology, config={}):
     get the derivers for a list of processes
 
     requires:
-        - process_list -- (list) with configured processes
-        - topology -- (dict) with topology of the processes connected to compartment ports
+        - process_list: (list) with configured processes
+        - topology: (dict) with topology of the processes connected to compartment ports
+        - config: (dict) with deriver configurations, which are used to make deriver processes
 
     returns: (dict) with:
         {'deriver_processes': processes,
         'deriver_topology': topology}
     '''
 
-    # get deriver configuration
-    deriver_configs = config.copy()
+    # get deriver configuration from processes
+    process_derivers = get_deriver_config_from_proceses(process_list, topology)
+    deriver_configs = process_derivers['deriver_configs']
+    deriver_topology = process_derivers['deriver_topology']
+
+    # update deriver_configs
+    deriver_configs = deep_merge(deriver_configs, config)
+
+    # configure the deriver processes
+    deriver_processes = {}
+    for deriver_type, deriver_config in deriver_configs.items():
+        deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
+
+    # TODO -- put derivers in order
+    processes = [deriver_processes]
+
+    return {
+        'deriver_processes': processes,
+        'deriver_topology': deriver_topology}
+
+def get_deriver_config_from_proceses(process_list, topology):
+    ''' get the deriver configuration from processes' deriver_settings'''
+
+    deriver_configs = {}
     full_deriver_topology = {}
+
     for level in process_list:
         for process_id, process in level.items():
             process_settings = process.default_settings()
@@ -67,7 +91,7 @@ def get_derivers(process_list, topology, config={}):
                 raise
 
             for setting in deriver_setting:
-                type = setting['type']
+                deriver_type = setting['type']
                 keys = setting['keys']
                 source_port = setting['source_port']
                 target_port = setting['derived_port']
@@ -80,7 +104,7 @@ def get_derivers(process_list, topology, config={}):
 
                 # make deriver_topology, add to full_deriver_topology
                 deriver_topology = {
-                    type: {
+                    deriver_type: {
                         source_port: source_compartment_port,
                         target_port: target_compartment_port,
                         'global': 'global'}}
@@ -88,35 +112,18 @@ def get_derivers(process_list, topology, config={}):
 
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
-                # ports for configuration
-                ports_config = {type: {
+                ports_config = {
                     'source_ports': {source_port: keys},
-                    'target_ports': {target_port: keys}
-                }}
+                    'target_ports': {target_port: keys}}
 
-                deep_merge(deriver_configs, ports_config)
-
-    # configure the derivers
-    deriver_processes = {}
-    for type, deriver_config in deriver_configs.items():
-        deriver_processes[type] = deriver_library[type](deriver_config)
-
-    # add global deriver
-    global_deriver = {
-        'global_deriver': DeriveGlobals({})}
-    global_deriver_topology = {
-        'global_deriver': {
-            'global': 'global'}}
-    deep_merge(full_deriver_topology, global_deriver_topology)
-
-    # put the global deriver and additional derivers in two process layers
-    processes = [
-        global_deriver,
-        deriver_processes]
+                # ports for configuration
+                deriver_config = {deriver_type: ports_config}
+                deep_merge(deriver_configs, deriver_config)
 
     return {
-        'deriver_processes': processes,
+        'deriver_configs': deriver_configs,
         'deriver_topology': full_deriver_topology}
+
 
 def get_schema(process_list, topology):
     schema = {}
@@ -146,6 +153,7 @@ def process_in_compartment(process, settings={}):
     process_settings = process.default_settings()
     compartment_state_port = settings.get('compartment_state_port')
     emitter = settings.get('emitter', 'timeseries')
+    deriver_config = settings.get('deriver_config', {})
 
     processes = [{'process': process}]
     topology = {
@@ -160,7 +168,7 @@ def process_in_compartment(process, settings={}):
         topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
     # add derivers
-    derivers = get_derivers(processes, topology)
+    derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
     all_processes = processes + derivers['deriver_processes']
     topology.update(derivers['deriver_topology'])
@@ -765,9 +773,7 @@ def load_compartment(composite, boot_config={}):
     derivers = composite_config.get('derivers', [])
     states = composite_config['states']
     options = composite_config['options']
-    options.update({
-        'emitter': boot_config.get('emitter', 'timeseries'),
-        'time_step': boot_config.get('time_step', 1.0)})   # TODO -- let compartment handle its own timestep
+    options['emitter'] = boot_config.get('emitter', 'timeseries')
 
     return Compartment(processes, derivers, states, options)
 
