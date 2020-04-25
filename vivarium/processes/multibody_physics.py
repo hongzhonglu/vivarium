@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import argparse
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 import random
@@ -155,8 +156,8 @@ class Multibody(Process):
             self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
             pygame.init()
             self._screen = pygame.display.set_mode((
-                int(bounds[0]*self.pygame_scale),
-                int(bounds[1]*self.pygame_scale)), RESIZABLE)
+                int(self.bounds[0]*self.pygame_scale),
+                int(self.bounds[1]*self.pygame_scale)), RESIZABLE)
             self._clock = pygame.time.Clock()
             self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
@@ -844,18 +845,9 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-
-
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'multibody')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
+def run_mother_machine():
     # run mother machine
     bounds = [20, 20]
-    motility_sim_settings = {
-        'timestep': 0.1,
-        'total_time': 100}
     mm_config = {
         'debug': True,
         'animate': False,
@@ -869,7 +861,7 @@ if __name__ == '__main__':
     multibody = Multibody(mm_config)
     data = simulate_process(multibody)
 
-
+def run_motility(out_dir):
     # test motility
     bounds = [20, 20]
     motility_sim_settings = {
@@ -897,3 +889,20 @@ if __name__ == '__main__':
     agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
     fields = {}
     plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
+
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'multibody')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    parser = argparse.ArgumentParser(description='multibody')
+    parser.add_argument('--mother', '-m', action='store_true', default=False)
+    parser.add_argument('--motility', '-o', action='store_true', default=False)
+    args = parser.parse_args()
+
+    if args.mother:
+        run_mother_machine()
+    elif args.motility:
+        run_motility(out_dir)
