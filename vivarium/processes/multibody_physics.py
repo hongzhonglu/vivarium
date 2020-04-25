@@ -206,10 +206,14 @@ class Multibody(Process):
     def next_update(self, timestep, states):
         agents = states['agents']['agents']
 
-        # check if an agent has been removed
+        # if an agent has been removed from the agents store,
+        # remove it from space and agent_bodies
         removed_agents = [
-            agent_id for agent_id in self.agent_bodies.keys() if agent_id not in agents.keys()]
+            agent_id for agent_id in self.agent_bodies.keys()
+            if agent_id not in agents.keys()]
         for agent_id in removed_agents:
+            body, shape = self.agent_bodies[agent_id]
+            self.space.remove(body, shape)
             del self.agent_bodies[agent_id]
 
         # update agents, add new agents
@@ -586,6 +590,154 @@ def simulate_motility(config, settings):
 
     return compartment.emitter.get_data()
 
+def run_mother_machine():
+    # run mother machine
+    bounds = [20, 20]
+    mm_config = {
+        'debug': True,
+        'animate': False,
+        'mother_machine': True,
+        'jitter_force': 2,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 6}
+    mm_config.update(random_body_config(body_config))
+    multibody = Multibody(mm_config)
+
+    settings = {
+        'total_time': 60
+    }
+    data = simulate_process(multibody, settings)
+
+def run_motility(out_dir):
+    # test motility
+    bounds = [20, 20]
+    motility_sim_settings = {
+        'timestep': 0.05,
+        'total_time': 5}
+    motility_config = {
+        'animate': True,
+        'jitter_force': 0,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 6}
+    motility_config.update(random_body_config(body_config))
+
+    # run motility sim
+    motility_data = simulate_motility(motility_config, motility_sim_settings)
+
+    # make motility plot
+    reduced_data = {time: data['agents'] for time, data in motility_data.items()}
+    motility_timeseries = timeseries_from_data(reduced_data)
+    plot_motility(motility_timeseries, out_dir)
+    plot_trajectory(motility_timeseries, motility_config, out_dir)
+
+    # make motility snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
+
+def run_growth_division():
+    bounds = [20, 20]
+    settings = {
+        'growth_rate': 0.1,
+        'division_volume': 1,
+        'total_time': 60}
+    config = {
+        'animate': True,
+        'jitter_force': 1e-1,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 4}
+    config.update(random_body_config(body_config))
+    return simulate_growth_division(config, settings)
+
+def simulate_growth_division(config, settings):
+    ## initialize the compartment and agent boundary states
+    # get initial agents
+    initial_agents_state = config['agents']
+
+    # make the process
+    multibody = Multibody(config)
+    compartment = process_in_compartment(multibody)
+
+    # # initialize agent boundary state
+    # compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
+    # get initial agent state
+    agents_store = compartment.states['agents']
+
+    ## run simulation
+    # get simulation settings
+    growth_rate = settings.get('growth_rate', 0.0006)
+    division_volume = settings.get('division_volume', 0.4)
+    total_time = settings.get('total_time', 10)
+    timestep = compartment.time_step
+
+    time = 0
+    while time < total_time:
+        time += timestep
+
+        agents_state = agents_store.state
+        agent_updates = {}
+        remove_agents = []
+        add_agents = {}
+        for agent_id, state in agents_state['agents'].items():
+            location = state['location']
+            angle = state['angle']
+            length = state['length']
+            width = state['width']
+            mass = state['mass']
+
+            # update
+            new_mass = mass + mass * growth_rate
+            new_length = length + length * growth_rate
+            new_volume = get_volume(new_length, width)
+
+            if new_volume > division_volume:
+                daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
+
+                # daughter state with updated values
+                half_mass = new_mass / 2
+                half_length = new_length / 2
+                new_locations = daughter_locations(location, length, angle)
+
+                daughter_states = {}
+                for index, daughter_id in enumerate(daughter_ids):
+                    daughter_state = state.copy()
+                    daughter_state.update({
+                        'location': new_locations[index],
+                        'mass': half_mass,
+                        'length': half_length})
+                    daughter_states[daughter_id] = daughter_state
+
+                # remove mother from store, add daughters
+                remove_agents.append(agent_id)
+                add_agents.update(daughter_states)
+                agent_updates.update(daughter_states)  # TODO -- why is this not updating the store?
+
+            else:
+                agent_updates[agent_id] = {
+                    'volume': new_volume,
+                    'length': new_length,
+                    'mass': new_mass}
+
+        for agent_id in remove_agents:
+            # remove from store
+            del agents_state['agents'][agent_id]
+
+        if add_agents:
+            # add to store
+            agents_state['agents'].update(add_agents)
+
+        # update compartment
+        compartment.send_updates({'agents': [{'agents': agent_updates}]})
+        compartment.update(timestep)
+
+    return compartment.emitter.get_data()
 
 
 # plotting
@@ -845,148 +997,6 @@ def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax.set_xticklabels([])
     return ax
 
-def run_mother_machine():
-    # run mother machine
-    bounds = [20, 20]
-    mm_config = {
-        'debug': True,
-        'animate': False,
-        'mother_machine': True,
-        'jitter_force': 2,
-        'bounds': bounds}
-    body_config = {
-        'bounds': bounds,
-        'n_agents': 6}
-    mm_config.update(random_body_config(body_config))
-    multibody = Multibody(mm_config)
-
-    settings = {
-        'total_time': 60
-    }
-    data = simulate_process(multibody, settings)
-
-def run_motility(out_dir):
-    # test motility
-    bounds = [20, 20]
-    motility_sim_settings = {
-        'timestep': 0.05,
-        'total_time': 5}
-    motility_config = {
-        'animate': True,
-        'jitter_force': 0,
-        'bounds': bounds}
-    body_config = {
-        'bounds': bounds,
-        'n_agents': 6}
-    motility_config.update(random_body_config(body_config))
-
-    # run motility sim
-    motility_data = simulate_motility(motility_config, motility_sim_settings)
-
-    # make motility plot
-    reduced_data = {time: data['agents'] for time, data in motility_data.items()}
-    motility_timeseries = timeseries_from_data(reduced_data)
-    plot_motility(motility_timeseries, out_dir)
-    plot_trajectory(motility_timeseries, motility_config, out_dir)
-
-    # make motility snapshot
-    agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
-    fields = {}
-    plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
-
-def run_growth():
-    bounds = [20, 20]
-    settings = {
-        'growth_rate': 0.05,
-        'division_volume': 1,
-        'total_time': 60}
-    config = {
-        'debug': True,
-        'jitter_force': 10,
-        'bounds': bounds}
-    body_config = {
-        'bounds': bounds,
-        'n_agents': 4}
-    config.update(random_body_config(body_config))
-    return simulate_growth(config, settings)
-
-
-def simulate_growth(config, settings):
-    ## initialize the compartment and agent boundary states
-    # get initial agents
-    initial_agents_state = config['agents']
-
-    # make the process
-    multibody = Multibody(config)
-    compartment = process_in_compartment(multibody)
-
-    # initialize agent boundary state
-    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
-
-    # get initial agent state
-    agents_store = compartment.states['agents']
-
-    ## run simulation
-    # get simulation settings
-    growth_rate = settings.get('growth_rate', 0.0006)
-    division_volume = settings.get('division_volume', 0.4)
-    total_time = settings.get('total_time', 10)
-    timestep = compartment.time_step
-
-    time = 0
-    while time < total_time:
-        time += timestep
-
-        agents_state = agents_store.state
-        agent_updates = {}
-        remove_agents = []
-        for agent_id, state in agents_state['agents'].items():
-            location = state['location']
-            angle = state['angle']
-            length = state['length']
-            width = state['width']
-            mass = state['mass']
-
-            # update
-            new_mass = mass + mass * growth_rate
-            new_length = length + length * growth_rate
-            new_volume = get_volume(new_length, width)
-
-            if new_volume > division_volume:
-                daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
-
-                # daughter state with updated values
-                half_mass = new_mass / 2
-                half_length = new_length / 2
-                new_locations = daughter_locations(location, length, angle)
-
-                daughter_states = {}
-                for index, daughter_id in enumerate(daughter_ids):
-                    daughter_state = state.copy()
-                    daughter_state.update({
-                        'location': new_locations[index],
-                        'mass': half_mass,
-                        'length': half_length})
-                    daughter_states[daughter_id] = daughter_state
-
-                # TODO -- for division, remove mother from store, add daughters
-                remove_agents.append(agent_id)
-                agent_updates.update(daughter_states)
-
-            else:
-                agent_updates[agent_id] = {
-                    'volume': new_volume,
-                    'length': new_length,
-                    'mass': new_mass}
-
-        for agent_id in remove_agents:
-            del agents_state['agents'][agent_id]
-
-        # update compartment
-        compartment.send_updates({'agents': [{'agents': agent_updates}]})
-        compartment.update(timestep)
-
-    return compartment.emitter.get_data()
 
 
 if __name__ == '__main__':
@@ -1005,4 +1015,4 @@ if __name__ == '__main__':
     elif args.motility:
         run_motility(out_dir)
     elif args.growth:
-        data = run_growth()
+        data = run_growth_division()
