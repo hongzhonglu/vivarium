@@ -21,6 +21,12 @@ pymunkoptions.options["debug"] = False
 import pymunk
 import pymunk.pygame_util
 
+# pygame for debugging
+import pygame
+from pygame.key import *
+from pygame.locals import *
+from pygame.color import *
+
 # vivarium imports
 from vivarium.compartment.emitter import timeseries_from_data
 from vivarium.compartment.process import (
@@ -119,6 +125,8 @@ class Multibody(Process):
         'jitter_force': 1e-3,  # pN
         'bounds': DEFAULT_BOUNDS,
         'mother_machine': False,
+        'animate': False,
+        'debug': False,
     }
 
 
@@ -139,8 +147,18 @@ class Multibody(Process):
         # initialize pymunk space
         self.space = pymunk.Space()
 
+        # debug screen with pygame
+        self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
         self.pygame_scale = 1  # TODO -- remove
-
+        if self.pygame_viz:
+            max_bound = max(self.bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
+            pygame.init()
+            self._screen = pygame.display.set_mode((
+                int(bounds[0]*self.pygame_scale),
+                int(bounds[1]*self.pygame_scale)), RESIZABLE)
+            self._clock = pygame.time.Clock()
+            self._draw_options = pymunk.pygame_util.DrawOptions(self._screen)
 
         # add static barriers
         # TODO -- mother machine configuration
@@ -153,7 +171,8 @@ class Multibody(Process):
         for agent_id, specs in self.initial_agents.items():
             self.add_body_from_center(agent_id, specs)
 
-        self.animate = initial_parameters.get('debug', False)
+        # interactive plot for visualization
+        self.animate = initial_parameters.get('animate', self.defaults['animate'])
         if self.animate:
             plt.ion()
             self.ax = plt.gca()
@@ -228,6 +247,9 @@ class Multibody(Process):
             # run for a physics timestep
             self.space.step(self.physics_dt)
 
+        if self.pygame_viz:
+            self._update_screen()
+
     def apply_motile_force(self, body):
         width, length = body.dimensions
 
@@ -275,7 +297,7 @@ class Multibody(Process):
 
         if self.mother_machine:
             channel_height = y_bound
-            channel_space = 2
+            channel_space = 30
             n_lines = math.floor(x_bound/channel_space)
 
             machine_lines = [
@@ -389,15 +411,11 @@ class Multibody(Process):
         }
 
 
-    ## debug visualization
+    ## matplotlib interactive plot
     def animate_frame(self, agents):
-
 
         plt.cla()
         for agent_id, data in agents.items():
-            # color = agent_colors.get(agent_id, [DEFAULT_HUE] + DEFAULT_SV)
-            # plot_agent(ax, agent_data, color)
-
             # location, orientation, length
             x_center = data['location'][0]
             y_center = data['location'][1]
@@ -415,17 +433,38 @@ class Multibody(Process):
             x = x_center - dx
             y = y_center - dy
 
-            # get color, convert to rgb
-            # rgb = hsv_to_rgb(color)
-
             # Create a rectangle
-            rect = patches.Rectangle((x, y), width, length, angle=angle, linewidth=2, edgecolor='w')  #, facecolor=rgb)
+            rect = patches.Rectangle((x, y), width, length, angle=angle, linewidth=2, edgecolor='w')
             self.ax.add_patch(rect)
 
         plt.xlim([0, self.bounds[0]])
         plt.ylim([0, self.bounds[1]])
         plt.draw()
         plt.pause(0.05)
+
+
+    ## pygame visualization (for debugging)
+    def _process_events(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self._running = False
+            elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                self._running = False
+
+    def _clear_screen(self):
+        self._screen.fill(THECOLORS["white"])
+
+    def _draw_objects(self):
+        self.space.debug_draw(self._draw_options)
+
+    def _update_screen(self):
+        self._process_events()
+        self._clear_screen()
+        self._draw_objects()
+        pygame.display.flip()
+        # Delay fixed time between frames
+        self._clock.tick(5)
+
 
 
 # configs
@@ -812,22 +851,23 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # # run mother machine
-    # bounds = [20, 20]
-    # motility_sim_settings = {
-    #     'timestep': 0.1,
-    #     'total_time': 60}
-    # mm_config = {
-    #     'debug': True,
-    #     'mother_machine': True,
-    #     'jitter_force': 2,
-    #     'bounds': bounds}
-    # body_config = {
-    #     'bounds': bounds,
-    #     'n_agents': 6}
-    # mm_config.update(random_body_config(body_config))
-    # multibody = Multibody(mm_config)
-    # data = simulate_process(multibody)
+    # run mother machine
+    bounds = [20, 20]
+    motility_sim_settings = {
+        'timestep': 0.1,
+        'total_time': 100}
+    mm_config = {
+        'debug': True,
+        'animate': False,
+        'mother_machine': True,
+        'jitter_force': 2,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 6}
+    mm_config.update(random_body_config(body_config))
+    multibody = Multibody(mm_config)
+    data = simulate_process(multibody)
 
 
     # test motility
@@ -836,7 +876,7 @@ if __name__ == '__main__':
         'timestep': 0.05,
         'total_time': 5}
     motility_config = {
-        'debug': True,
+        'animate': True,
         'jitter_force': 0,
         'bounds': bounds}
     body_config = {
