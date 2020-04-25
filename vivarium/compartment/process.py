@@ -105,6 +105,48 @@ KEY_TYPE = 'U31'
 def keys_list(d):
     return list(d.keys())
 
+class State(object):
+    def __init__(self, schema):
+        self.schema = schema
+        self.default = schema.get('default')
+        self.updater = schema.get('updater')
+        self.units = schema.get('units')
+        self.value = self.default
+        self.children = {
+            key: State(subschema)
+            for key, subschema in schema.get('children', {}).items()}
+
+    def traverse(self, f):
+        subvalues = {
+            key: state.traverse(f)
+            for key, state in self.children.items()}
+        return f(self, subvalues)
+
+    def get_in(self, path):
+        if path:
+            step = self.children.get(path[0])
+            if step:
+                return step.get_in(path[1:])
+        else:
+            return self    
+
+    def schema_properties(self, paths, key):
+        result = {}
+        for path in paths:
+            state = self.get_in(path)
+            if state:
+                result[path] = state.schema.get(key)
+        return result
+
+    def apply_update(self, update):
+        '''
+        Take an arbitrary tree of updates and distribute it throughout
+        the state tree.
+        '''
+
+        return update
+
+
 class Store(object):
     ''' Represents a set of named values. '''
 

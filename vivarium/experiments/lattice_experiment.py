@@ -19,8 +19,7 @@ from vivarium.processes.diffusion_field import plot_field_output
 
 # compartments
 from vivarium.composites.lattice_environment import (
-    get_environment,
-    get_timeseries
+    get_lattice_environment,
 )
 from vivarium.composites.growth_division import growth_division
 
@@ -79,7 +78,7 @@ def lattice_experiment(config):
     n_agents = config.get('n_agents')
 
     # get the environment
-    environment = get_environment(config.get('environment', {}))
+    environment = get_lattice_environment(config.get('environment', {}))
     environment_processes = flatten_process_layers(environment['processes'])
     environment_topology = environment['topology']
     inner_key = 'agents'  # TODO -- get this from config of each env process
@@ -176,13 +175,11 @@ if __name__ == '__main__':
 
     config = get_lattice_config()
     data = test_lattice_experiment(config, 10)
-    timeseries = get_timeseries(data)
 
-
+    # timeseries = get_timeseries(data)
     # plot_field_output(timeseries, config, out_dir, 'lattice_field')
 
     # make snapshot
     agents = {time: time_data['boundary'] for time, time_data in data.items()}
     fields = {}
     plot_snapshots(agents, fields, config, out_dir, 'lattice_bodies')
-    
