@@ -610,11 +610,11 @@ def simulate_motility(config, settings):
     return compartment.emitter.get_data()
 
 def run_mother_machine():
-    bounds = [20, 20]
+    bounds = [30, 30]
     settings = {
         'growth_rate': 0.05,
         'division_volume': 1.0,
-        'total_time': 60}
+        'total_time': 120}
     config = {
         'animate': True,
         # 'debug': True,
@@ -623,7 +623,7 @@ def run_mother_machine():
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 1}
+        'n_agents': 8}
     config.update(mother_machine_body_config(body_config))
     return simulate_growth_division(config, settings)
 
@@ -660,6 +660,7 @@ def run_growth_division():
     bounds = [20, 20]
     settings = {
         'growth_rate': 0.1,
+        'growth_rate_noise': 0.01,
         'division_volume': 1,
         'total_time': 60}
     config = {
@@ -684,6 +685,7 @@ def simulate_growth_division(config, settings):
     ## run simulation
     # get simulation settings
     growth_rate = settings.get('growth_rate', 0.0006)
+    growth_rate_noise = settings.get('growth_rate_noise', 0.0)
     division_volume = settings.get('division_volume', 0.4)
     total_time = settings.get('total_time', 10)
     timestep = compartment.time_step
@@ -704,8 +706,9 @@ def simulate_growth_division(config, settings):
             mass = state['mass']
 
             # update
-            new_mass = mass + mass * growth_rate
-            new_length = length + length * growth_rate
+            growth_rate2 = growth_rate + np.random.normal(0.0, growth_rate_noise)
+            new_mass = mass + mass * growth_rate2
+            new_length = length + length * growth_rate2
             new_volume = get_volume(new_length, width)
 
             if new_volume > division_volume:
