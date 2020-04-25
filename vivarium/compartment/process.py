@@ -112,13 +112,15 @@ class State(object):
 
         self.schema = base_schema
         self.values = {}
+        self.children = {}
+
         for key, schema in self.schema.items():
-            children = schema.get('children')
             initial = initial_state.get(key)
-            if children:
-                self.values[key] = State(children, initial)
-            else:
-                self.values[key] = initial or schema.get('default')
+            self.values[key] = initial or schema.get('default')
+
+            children = schema.get('children')
+            for child, subschema in children:
+                self.children[child] = State(subschema, initial)
 
     def get_in(self, path):
         if len(path) > 1:
@@ -152,7 +154,7 @@ class State(object):
             schema = self.schema[key]
             children = schema.get('children')
             if children:
-                
+                self.children[key]
 
 
 class Store(object):
@@ -729,28 +731,31 @@ def test_timescales():
 
 def test_recursive_store():
     schema = {
+        'temperature': {
+            'default': 0.0,
+            'updater': 'delta'},
         'patches': {
             'children': {
                 'a': {
                     'concentrations'
                     'concentration': {
                         'default': 0.0,
-                        'updater': 'set'}}},
+                        'updater': 'set'}}}},
         'simulations': {
             'children': {
                 '1': {
                     'boundary': {
                         'external': {
                             'default': 0.0,
-                            'updater': 'set'}}
+                            'updater': 'set'}},
                     'transcripts': {
                         'flhDC': {
                             'default': 0,
-                            'updater': 'accumulate'}}
+                            'updater': 'accumulate'}},
                     'proteins': {
                         'flagella': {
                             'default': 0,
-                            'updater': 'accumulate'}}}}}
+                            'updater': 'accumulate'}}}}}}
 
 if __name__ == '__main__':
     test_timescales()
