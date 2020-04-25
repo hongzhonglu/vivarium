@@ -297,8 +297,8 @@ class Multibody(Process):
         ]
 
         if self.mother_machine:
-            channel_height = y_bound
-            channel_space = 30
+            channel_height = y_bound * 0.8
+            channel_space = 25
             n_lines = math.floor(x_bound/channel_space)
 
             machine_lines = [
@@ -859,7 +859,11 @@ def run_mother_machine():
         'n_agents': 6}
     mm_config.update(random_body_config(body_config))
     multibody = Multibody(mm_config)
-    data = simulate_process(multibody)
+
+    settings = {
+        'total_time': 60
+    }
+    data = simulate_process(multibody, settings)
 
 def run_motility(out_dir):
     # test motility
@@ -890,6 +894,99 @@ def run_motility(out_dir):
     fields = {}
     plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
 
+def run_growth():
+    bounds = [20, 20]
+    settings = {
+        'growth_rate': 0.05,
+        'division_volume': 1,
+        'total_time': 60}
+    config = {
+        'debug': True,
+        'jitter_force': 10,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 4}
+    config.update(random_body_config(body_config))
+    return simulate_growth(config, settings)
+
+
+def simulate_growth(config, settings):
+    ## initialize the compartment and agent boundary states
+    # get initial agents
+    initial_agents_state = config['agents']
+
+    # make the process
+    multibody = Multibody(config)
+    compartment = process_in_compartment(multibody)
+
+    # initialize agent boundary state
+    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+
+    # get initial agent state
+    agents_store = compartment.states['agents']
+
+    ## run simulation
+    # get simulation settings
+    growth_rate = settings.get('growth_rate', 0.0006)
+    division_volume = settings.get('division_volume', 0.4)
+    total_time = settings.get('total_time', 10)
+    timestep = compartment.time_step
+
+    time = 0
+    while time < total_time:
+        time += timestep
+
+        agents_state = agents_store.state
+        agent_updates = {}
+        remove_agents = []
+        for agent_id, state in agents_state['agents'].items():
+            location = state['location']
+            angle = state['angle']
+            length = state['length']
+            width = state['width']
+            mass = state['mass']
+
+            # update
+            new_mass = mass + mass * growth_rate
+            new_length = length + length * growth_rate
+            new_volume = get_volume(new_length, width)
+
+            if new_volume > division_volume:
+                daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
+
+                # daughter state with updated values
+                half_mass = new_mass / 2
+                half_length = new_length / 2
+                new_locations = daughter_locations(location, length, angle)
+
+                daughter_states = {}
+                for index, daughter_id in enumerate(daughter_ids):
+                    daughter_state = state.copy()
+                    daughter_state.update({
+                        'location': new_locations[index],
+                        'mass': half_mass,
+                        'length': half_length})
+                    daughter_states[daughter_id] = daughter_state
+
+                # TODO -- for division, remove mother from store, add daughters
+                remove_agents.append(agent_id)
+                agent_updates.update(daughter_states)
+
+            else:
+                agent_updates[agent_id] = {
+                    'volume': new_volume,
+                    'length': new_length,
+                    'mass': new_mass}
+
+        for agent_id in remove_agents:
+            del agents_state['agents'][agent_id]
+
+        # update compartment
+        compartment.send_updates({'agents': [{'agents': agent_updates}]})
+        compartment.update(timestep)
+
+    return compartment.emitter.get_data()
 
 
 if __name__ == '__main__':
@@ -900,9 +997,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='multibody')
     parser.add_argument('--mother', '-m', action='store_true', default=False)
     parser.add_argument('--motility', '-o', action='store_true', default=False)
+    parser.add_argument('--growth', '-g', action='store_true', default=False)
     args = parser.parse_args()
 
     if args.mother:
         run_mother_machine()
     elif args.motility:
         run_motility(out_dir)
+    elif args.growth:
+        data = run_growth()
