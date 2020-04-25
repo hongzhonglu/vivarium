@@ -28,6 +28,7 @@ from vivarium.compartment.process import (
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
     process_in_compartment,
+    simulate_process,
     simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
 
@@ -108,6 +109,7 @@ class Multibody(Process):
     """
 
     defaults = {
+        'initial_agents': {},
         'elasticity': 0.95,
         'damping': 0.05, # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
         'angular_damping': 0.7,  # less damping for angular velocity seems to improve behavior
@@ -116,6 +118,7 @@ class Multibody(Process):
         'force_scaling': 100,  # scales from pN
         'jitter_force': 1e-3,  # pN
         'bounds': DEFAULT_BOUNDS,
+        'mother_machine': False,
     }
 
 
@@ -141,12 +144,13 @@ class Multibody(Process):
 
         # add static barriers
         # TODO -- mother machine configuration
+        self.mother_machine = initial_parameters.get('mother_machine', self.defaults['mother_machine'])
         self.add_barriers(self.bounds)
 
         # initialize agents
-        self.agents = {}
-        agents = initial_parameters.get('agents', {})
-        for agent_id, specs in agents.items():
+        self.agent_bodies = {}
+        self.initial_agents = initial_parameters.get('agents', self.defaults['initial_agents'])
+        for agent_id, specs in self.initial_agents.items():
             self.add_body_from_center(agent_id, specs)
 
         self.animate = initial_parameters.get('debug', False)
@@ -154,7 +158,7 @@ class Multibody(Process):
             plt.ion()
             self.ax = plt.gca()
             self.ax.set_aspect('equal')
-            self.animate_frame(agents)
+            self.animate_frame(self.initial_agents)
 
         # all initial agents get a key under a single port
         ports = {'agents': ['agents']}
@@ -165,10 +169,8 @@ class Multibody(Process):
         super(Multibody, self).__init__(ports, parameters)
 
     def default_settings(self):
-        agents = {agent_id: self.get_body_specs(agent_id)
-                for agent_id in self.agents.keys()}
-        state = {'agents': {'agents': agents}}
-        # state = {'agents': {'agents': {}}}
+
+        state = {'agents': {'agents': self.initial_agents}}
 
         schema = {'agents': {'agents': {'updater': 'merge'}}}
 
@@ -186,14 +188,13 @@ class Multibody(Process):
 
         # check if an agent has been removed
         removed_agents = [
-            agent_id for agent_id in self.agents.keys() if agent_id not in agents.keys()]
+            agent_id for agent_id in self.agent_bodies.keys() if agent_id not in agents.keys()]
         for agent_id in removed_agents:
-            del self.agents[agent_id]
+            del self.agent_bodies[agent_id]
 
         # update agents, add new agents
         for agent_id, specs in agents.items():
-            if agent_id in self.agents:
-                # TODO -- check if specs were updated before going through the expensive update_body()
+            if agent_id in self.agent_bodies:
                 self.update_body(agent_id, specs)
             else:
                 self.add_body_from_center(agent_id, specs)
@@ -203,8 +204,8 @@ class Multibody(Process):
 
         # get new agent specs
         new_agents = {
-            agent_id: self.get_body_specs(agent_id)
-            for agent_id in self.agents.keys()}
+            agent_id: self.get_body_position(agent_id)
+            for agent_id in self.agent_bodies.keys()}
 
         if self.animate:
             self.animate_frame(agents)
@@ -271,6 +272,20 @@ class Multibody(Process):
             pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), 0.0),
             pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), 0.0),
         ]
+
+        if self.mother_machine:
+            channel_height = y_bound
+            channel_space = 2
+            n_lines = math.floor(x_bound/channel_space)
+
+            machine_lines = [
+                pymunk.Segment(
+                    static_body,
+                    (channel_space * line, 0),
+                    (channel_space * line, channel_height), 0.0)
+                for line in range(n_lines)]
+            static_lines += machine_lines
+
         for line in static_lines:
             line.elasticity = 0.0  # no bounce
             line.friction = 0.9
@@ -311,7 +326,7 @@ class Multibody(Process):
         self.space.add(body, shape)
 
         # add body to agents dictionary
-        self.agents[body_id] = (body, shape)
+        self.agent_bodies[body_id] = (body, shape)
 
     def update_body(self, body_id, specs):
 
@@ -320,7 +335,7 @@ class Multibody(Process):
         mass = specs['mass']
         motile_force = specs.get('motile_force', [0, 0])
 
-        body, shape = self.agents[body_id]
+        body, shape = self.agent_bodies[body_id]
         position = body.position
         angle = body.angle
 
@@ -351,10 +366,10 @@ class Multibody(Process):
         self.space.remove(body, shape)
 
         # update body
-        self.agents[body_id] = (new_body, new_shape)
+        self.agent_bodies[body_id] = (new_body, new_shape)
 
-    def get_body_specs(self, agent_id):
-        body, shape = self.agents[agent_id]
+    def get_body_position(self, agent_id):
+        body, shape = self.agent_bodies[agent_id]
         position = body.position
         rescaled_position = [
             position[0] / self.pygame_scale,
@@ -410,7 +425,7 @@ class Multibody(Process):
         plt.xlim([0, self.bounds[0]])
         plt.ylim([0, self.bounds[1]])
         plt.draw()
-        plt.pause(0.01)
+        plt.pause(0.05)
 
 
 # configs
@@ -797,10 +812,28 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # # run mother machine
+    # bounds = [20, 20]
+    # motility_sim_settings = {
+    #     'timestep': 0.1,
+    #     'total_time': 60}
+    # mm_config = {
+    #     'debug': True,
+    #     'mother_machine': True,
+    #     'jitter_force': 2,
+    #     'bounds': bounds}
+    # body_config = {
+    #     'bounds': bounds,
+    #     'n_agents': 6}
+    # mm_config.update(random_body_config(body_config))
+    # multibody = Multibody(mm_config)
+    # data = simulate_process(multibody)
+
+
     # test motility
     bounds = [20, 20]
     motility_sim_settings = {
-        'timestep': 0.1,
+        'timestep': 0.05,
         'total_time': 5}
     motility_config = {
         'debug': True,
@@ -808,7 +841,7 @@ if __name__ == '__main__':
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 2}
+        'n_agents': 6}
     motility_config.update(random_body_config(body_config))
 
     # run motility sim
