@@ -150,10 +150,9 @@ class Multibody(Process):
 
         # debug screen with pygame
         self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
-        self.pygame_scale = 1  # TODO -- remove
+        max_bound = max(self.bounds)
+        self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
         if self.pygame_viz:
-            max_bound = max(self.bounds)
-            self.pygame_scale = DEBUG_SIZE / max_bound  # increase scale for showing on screen during debug
             pygame.init()
             self._screen = pygame.display.set_mode((
                 int(self.bounds[0]*self.pygame_scale),
@@ -206,6 +205,10 @@ class Multibody(Process):
     def next_update(self, timestep, states):
         agents = states['agents']['agents']
 
+        # animate before update
+        if self.animate:
+            self.animate_frame(agents)
+
         # if an agent has been removed from the agents store,
         # remove it from space and agent_bodies
         removed_agents = [
@@ -226,15 +229,12 @@ class Multibody(Process):
         # run simulation
         self.run(timestep)
 
-        # get new agent specs
-        new_agents = {
+        # get new agent position
+        agent_position = {
             agent_id: self.get_body_position(agent_id)
             for agent_id in self.agent_bodies.keys()}
 
-        if self.animate:
-            self.animate_frame(agents)
-
-        return {'agents': {'agents': new_agents}}
+        return {'agents': {'agents': agent_position}}
 
     def run(self, timestep):
         assert self.physics_dt < timestep
@@ -302,7 +302,7 @@ class Multibody(Process):
 
         if self.mother_machine:
             channel_height = y_bound * 0.8
-            channel_space = 25
+            channel_space = 20
             n_lines = math.floor(x_bound/channel_space)
 
             machine_lines = [
@@ -418,7 +418,6 @@ class Multibody(Process):
 
     ## matplotlib interactive plot
     def animate_frame(self, agents):
-
         plt.cla()
         for agent_id, data in agents.items():
             # location, orientation, length
@@ -497,6 +496,26 @@ def random_body_config(config):
         'agents': agent_config,
         'bounds': bounds}
 
+def mother_machine_body_config(config):
+    n_agents = config['n_agents']
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    agents = get_n_dummy_agents(n_agents)
+    agent_config = {
+        agent_id: {
+            'location': [
+                np.random.uniform(0, bounds[0]),
+                0.01],
+            'angle': PI/2,
+            'volume': 1,
+            'length': 1.0,
+            'width': 0.5,
+            'mass': 1,
+            'forces': [0, 0]}
+        for agent_idx, agent_id in enumerate(agents.keys())}
+
+    return {
+        'agents': agent_config,
+        'bounds': bounds}
 
 # tests and simulations
 def test_multibody(config={'n_agents':1}, time=1):
@@ -591,24 +610,22 @@ def simulate_motility(config, settings):
     return compartment.emitter.get_data()
 
 def run_mother_machine():
-    # run mother machine
     bounds = [20, 20]
-    mm_config = {
-        'debug': True,
-        'animate': False,
+    settings = {
+        'growth_rate': 0.05,
+        'division_volume': 1.0,
+        'total_time': 60}
+    config = {
+        'animate': True,
+        # 'debug': True,
         'mother_machine': True,
-        'jitter_force': 2,
+        'jitter_force': 0.5e0,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 6}
-    mm_config.update(random_body_config(body_config))
-    multibody = Multibody(mm_config)
-
-    settings = {
-        'total_time': 60
-    }
-    data = simulate_process(multibody, settings)
+        'n_agents': 1}
+    config.update(mother_machine_body_config(body_config))
+    return simulate_growth_division(config, settings)
 
 def run_motility(out_dir):
     # test motility
@@ -656,16 +673,10 @@ def run_growth_division():
     return simulate_growth_division(config, settings)
 
 def simulate_growth_division(config, settings):
-    ## initialize the compartment and agent boundary states
-    # get initial agents
-    initial_agents_state = config['agents']
 
     # make the process
     multibody = Multibody(config)
     compartment = process_in_compartment(multibody)
-
-    # # initialize agent boundary state
-    # compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
 
     # get initial agent state
     agents_store = compartment.states['agents']
