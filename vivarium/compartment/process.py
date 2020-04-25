@@ -106,29 +106,33 @@ def keys_list(d):
     return list(d.keys())
 
 class State(object):
-    def __init__(self, schema):
-        self.schema = schema
-        self.default = schema.get('default')
-        self.updater = schema.get('updater')
-        self.units = schema.get('units')
-        self.value = self.default
-        self.children = {
-            key: State(subschema)
-            for key, subschema in schema.get('children', {}).items()}
+    def __init__(self, base_schema, initial_state=None):
+        if initial_state is None:
+            initial_state = {}
 
-    def traverse(self, f):
-        subvalues = {
-            key: state.traverse(f)
-            for key, state in self.children.items()}
-        return f(self, subvalues)
+        self.schema = base_schema
+        self.values = {}
+        for key, schema in self.schema.items():
+            children = schema.get('children')
+            initial = initial_state.get(key)
+            if children:
+                self.values[key] = State(children, initial)
+            else:
+                self.values[key] = initial or schema.get('default')
 
     def get_in(self, path):
-        if path:
-            step = self.children.get(path[0])
+        if len(path) > 1:
+            step = self.values.get(path[0])
             if step:
                 return step.get_in(path[1:])
+        elif len(path) == 1:
+            key = path[0]
+            if key in self.values:
+                return self.values[key]
+            else:
+                raise ValueException("key does not exist in store: {}".format(key))
         else:
-            return self    
+            return None
 
     def schema_properties(self, paths, key):
         result = {}
@@ -144,7 +148,11 @@ class State(object):
         the state tree.
         '''
 
-        return update
+        for key, value in update.items():
+            schema = self.schema[key]
+            children = schema.get('children')
+            if children:
+                
 
 
 class Store(object):
@@ -718,6 +726,31 @@ def test_timescales():
         configuration)
 
     compartment.update(10.0)
+
+def test_recursive_store():
+    schema = {
+        'patches': {
+            'children': {
+                'a': {
+                    'concentrations'
+                    'concentration': {
+                        'default': 0.0,
+                        'updater': 'set'}}},
+        'simulations': {
+            'children': {
+                '1': {
+                    'boundary': {
+                        'external': {
+                            'default': 0.0,
+                            'updater': 'set'}}
+                    'transcripts': {
+                        'flhDC': {
+                            'default': 0,
+                            'updater': 'accumulate'}}
+                    'proteins': {
+                        'flagella': {
+                            'default': 0,
+                            'updater': 'accumulate'}}}}}
 
 if __name__ == '__main__':
     test_timescales()
