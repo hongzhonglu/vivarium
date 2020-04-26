@@ -10,7 +10,7 @@ from vivarium.compartment.composition import (
     plot_simulation_output,
     plot_compartment_topology)
 from vivarium.composites.gene_expression import plot_gene_expression_output
-from vivarium.composites.flagella_expression import get_flg_expression_config
+from vivarium.composites.flagella_expression import get_flagella_expression_config
 
 # processes
 from vivarium.processes.division import (
@@ -55,7 +55,7 @@ def compose_chemotaxis_master(config):
     metabolism = Metabolism(metabolism_config)
 
     # flagella expression
-    flg_expression_config = get_flg_expression_config()
+    flg_expression_config = get_flagella_expression_config({})
     transcription = Transcription(flg_expression_config['transcription'])
     translation = Translation(flg_expression_config['translation'])
     degradation = RnaDegradation(flg_expression_config['degradation'])
