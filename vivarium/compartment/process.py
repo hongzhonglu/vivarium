@@ -114,7 +114,7 @@ class Schema(object):
         self.value = self.default
         self.schema = {
             key: Schema(schema)
-            for key, schema in config.get('schema')}
+            for key, schema in config.get('schema', {}).items()}
 
     def get_value(self):
         if self.schema:
