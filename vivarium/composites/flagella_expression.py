@@ -238,9 +238,10 @@ def scan_flagella_expression_parameters():
 if __name__ == '__main__':
     commands = ['plot', 'scan']
     parser = argparse.ArgumentParser(description='flagella expression')
-    parser.add_argument('command', choices=commands)
+    parser.add_argument('--scan', '-s', action='store_true', default=False,)
     args = parser.parse_args()
-    if args.command == 'scan':
+
+    if args.scan:
         scan_flagella_expression_parameters()
     else:
         plot_flagella_expression()
