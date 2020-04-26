@@ -4,7 +4,11 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.composition import load_compartment, simulate_compartment
+from vivarium.compartment.composition import (
+    load_compartment,
+    simulate_compartment,
+    plot_simulation_output
+)
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
@@ -196,6 +200,18 @@ def plot_flagella_expression():
         timeseries,
         plot_config2,
         out_dir)
+
+    # make a basic sim output
+    plot_settings = {
+        'max_rows': 25,
+        'remove_zeros': False,
+        'skip_ports': ['chromosome', 'ribosomes']}
+
+    plot_simulation_output(
+        timeseries,
+        plot_settings,
+        out_dir)
+
 
 def exponential_range(steps, base, factor):
     return [

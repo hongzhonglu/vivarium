@@ -469,27 +469,27 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             # check if series is a list of ints or floats
-            # TODO -- plot non-numeric states as well (in particular dicts)
             if not all(isinstance(state, (int, float)) for state in series):
-                break
-
-            # plot line at zero if series crosses the zero line
-            if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
-                zero_line = [0 for t in time_vec]
-                ax.plot(time_vec, zero_line, 'k--')
-
-            if (port, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo', linewidth=2)
+                ax.title.set_text(str(port) + ': ' + str(state_id))
+                ax.title.set_fontsize(16)
             else:
-                ax.plot(time_vec, series)
+                # plot line at zero if series crosses the zero line
+                if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                    zero_line = [0 for t in time_vec]
+                    ax.plot(time_vec, zero_line, 'k--')
 
-            # overlay
-            if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
-                ax.legend()
+                if (port, state_id) in show_state:
+                    ax.plot(time_vec, series, 'indigo', linewidth=2)
+                else:
+                    ax.plot(time_vec, series)
 
-            ax.title.set_text(str(port) + ': ' + str(state_id))
-            ax.title.set_fontsize(16)
+                # overlay
+                if state_id in top_timeseries.keys():
+                    ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
+                    ax.legend()
+
+                ax.title.set_text(str(port) + ': ' + str(state_id))
+                ax.title.set_fontsize(16)
 
             if row_idx == columns[col_idx]-1:
                 # if last row of column
