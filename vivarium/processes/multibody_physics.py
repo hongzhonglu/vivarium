@@ -151,7 +151,8 @@ class Multibody(Process):
         # debug screen with pygame
         self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
         max_bound = max(self.bounds)
-        self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
+        self.pygame_scale = 1
+        # self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
         if self.pygame_viz:
             pygame.init()
             self._screen = pygame.display.set_mode((
@@ -367,6 +368,12 @@ class Multibody(Process):
         position = body.position
         angle = body.angle
 
+
+
+        print('angle: {}'.format(angle))
+
+
+
         # make shape, moment of inertia, and add a body
         half_length = length/2
         half_width = width/2
@@ -390,8 +397,8 @@ class Multibody(Process):
         new_shape.friction = shape.friction
 
         # swap bodies
-        self.space.add(new_body, new_shape)
         self.space.remove(body, shape)
+        self.space.add(new_body, new_shape)
 
         # update body
         self.agent_bodies[body_id] = (new_body, new_shape)
@@ -399,6 +406,7 @@ class Multibody(Process):
     def get_body_position(self, agent_id):
         body, shape = self.agent_bodies[agent_id]
         position = body.position
+        angle = body.angle
         rescaled_position = [
             position[0] / self.pygame_scale,
             position[1] / self.pygame_scale]
@@ -411,9 +419,13 @@ class Multibody(Process):
             self.bounds[idx] if pos>self.bounds[idx] else pos
             for idx, pos in enumerate(rescaled_position)]
 
+
+        print('get angle: {}'.format(angle))
+        # import ipdb; ipdb.set_trace()
+
         return {
             'location': rescaled_position,
-            'angle': body.angle,
+            'angle': angle,
         }
 
 
@@ -622,7 +634,7 @@ def simulate_motility(config, settings):
 def run_mother_machine():
     bounds = [30, 30]
     channel_height = 0.8 * bounds[1]
-    channel_space = 0.8
+    channel_space = 2  #0.8
 
     settings = {
         'growth_rate': 0.05,
@@ -641,7 +653,7 @@ def run_mother_machine():
         'bounds': bounds,
         'channel_height': channel_height,
         'channel_space': channel_space,
-        'n_agents': 8}
+        'n_agents': 1}
     config.update(mother_machine_body_config(body_config))
     return simulate_growth_division(config, settings)
 
