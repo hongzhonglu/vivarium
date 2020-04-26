@@ -4,6 +4,7 @@ import os
 import random
 import math
 import uuid
+import argparse
 
 import numpy as np
 from numpy import linspace
@@ -505,22 +506,7 @@ def plot_motor_PMF(output, out_dir='out'):
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
-
-if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    zero_flagella = {'flagella': 0}
-    timeline = [(10, {})]
-    output1 = test_activity(zero_flagella, timeline)
-    plot_activity(output1, out_dir, 'motor_control_zero_flagella')
-
-    five_flagella = {'flagella': 5}
-    timeline = [(10, {})]
-    output2 = test_activity(five_flagella, timeline)
-    plot_activity(output2, out_dir, 'motor_control')
-
+def run_variable_flagella(out_dir):
     # variable flagella
     init_params = {'flagella': 5}
     timeline = [
@@ -533,7 +519,33 @@ if __name__ == '__main__':
                 'flagella': 4}}),
         (10, {})]
     output3 = test_activity(init_params, timeline)
-    plot_activity(output3, out_dir, 'motor_control_variable')
+    plot_activity(output3, out_dir, 'variable_flagella')
 
     output3 = test_motor_PMF()
     plot_motor_PMF(output3, out_dir)
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    parser = argparse.ArgumentParser(description='flagella expression')
+    parser.add_argument('--variable', '-v', action='store_true', default=False,)
+    args = parser.parse_args()
+
+    if args.variable:
+        run_variable_flagella(out_dir)
+    else:
+        zero_flagella = {'flagella': 0}
+        timeline = [(10, {})]
+        output1 = test_activity(zero_flagella, timeline)
+        plot_activity(output1, out_dir, 'motor_control_zero_flagella')
+
+        five_flagella = {'flagella': 5}
+        timeline = [(10, {})]
+        output2 = test_activity(five_flagella, timeline)
+        plot_activity(output2, out_dir, 'motor_control')
+
+        run_variable_flagella(out_dir)
+
+
