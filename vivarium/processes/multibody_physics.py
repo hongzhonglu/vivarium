@@ -301,8 +301,9 @@ class Multibody(Process):
         ]
 
         if self.mother_machine:
-            channel_height = y_bound * 0.8
-            channel_space = 20
+            channel_height = self.mother_machine.get('channel_height') * self.pygame_scale
+            channel_space = self.mother_machine.get('channel_space') * self.pygame_scale
+
             n_lines = math.floor(x_bound/channel_space)
 
             machine_lines = [
@@ -611,14 +612,18 @@ def simulate_motility(config, settings):
 
 def run_mother_machine():
     bounds = [30, 30]
+    channel_height = 0.8 * bounds[1]
     settings = {
         'growth_rate': 0.05,
         'division_volume': 1.0,
+        'channel_height': channel_height,
         'total_time': 120}
     config = {
-        'animate': True,
-        # 'debug': True,
-        'mother_machine': True,
+        # 'animate': True,
+        'debug': True,
+        'mother_machine': {
+            'channel_height': channel_height,
+            'channel_space': 1},
         'jitter_force': 0.5e0,
         'bounds': bounds}
     body_config = {
@@ -687,6 +692,7 @@ def simulate_growth_division(config, settings):
     growth_rate = settings.get('growth_rate', 0.0006)
     growth_rate_noise = settings.get('growth_rate_noise', 0.0)
     division_volume = settings.get('division_volume', 0.4)
+    channel_height = settings.get('channel_height')
     total_time = settings.get('total_time', 10)
     timestep = compartment.time_step
 
@@ -711,7 +717,9 @@ def simulate_growth_division(config, settings):
             new_length = length + length * growth_rate2
             new_volume = get_volume(new_length, width)
 
-            if new_volume > division_volume:
+            if channel_height and location[1] > channel_height:
+                remove_agents.append(agent_id)
+            elif new_volume > division_volume:
                 daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
 
                 # daughter state with updated values
