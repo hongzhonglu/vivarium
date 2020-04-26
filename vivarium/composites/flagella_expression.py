@@ -219,17 +219,18 @@ def scan_flagella_expression_parameters():
     for threshold in flagella_data.factor_thresholds.keys():
         scan_params[('thresholds', threshold)] = thresholds_range
 
-    output_values = [
+        metrics = [
         ('proteins', monomer)
         for monomer in flagella_data.complexation_monomer_ids] + [
         ('proteins', complex)
         for complex in flagella_data.complexation_complex_ids]
 
-    results = parameter_scan(
-        generate_flagella_compartment,
-        scan_params,
-        output_values,
-        {'time': 5})
+    scan_config = {
+        'composite': generate_flagella_compartment,
+        'scan_parameters': scan_params,
+        'metrics': metrics,
+        'options': {'time': 5}}
+    results = parameter_scan(scan_config)
 
     return results
 

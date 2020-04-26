@@ -17,20 +17,17 @@ class Division(Process):
 
     defaults = {
         'initial_state': {},
-        'volume': 1.2,
+        'division_volume': 2.4,  # fL
     }
 
     def __init__(self, initial_parameters={}):
         self.division = 0
-
-        initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
-        initial_volume = initial_state.get('global', {}).get('volume', self.defaults['volume'])
-        division_volume = initial_volume * 2
+        division_volume = initial_parameters.get('division_volume', self.defaults['division_volume'])
 
         ports = {'global': ['volume', 'division']}
 
-        parameters = {'division_volume': division_volume}  # TODO -- make division at 2X initial_volume?  Pass this in from initial_parameters
-        parameters.update(initial_parameters)
+        parameters = {
+            'division_volume': division_volume}  # TODO -- make division at 2X initial_volume?  Pass this in from initial_parameters
 
         super(Division, self).__init__(ports, parameters)
 
@@ -39,7 +36,7 @@ class Division(Process):
         # default state
         globals = {
             'volume': 1.2,
-            'division': False}
+            'division': 0}
         default_state = {'global': globals}
 
         # default emitter keys
