@@ -30,18 +30,17 @@ def npize(d):
 
     return keys, values
 
-
 ## updater functions
 # these function take in a variable key, the entire store's dict,
 # the variable's current value, the variable's current update,
 # and returns a new value, and other updates
-def update_accumulate(key, state_dict, current_value, new_value):
-    return current_value + new_value, {}
+def update_accumulate(current_value, new_value):
+    return current_value + new_value
 
-def update_set(key, state_dict, current_value, new_value):
-    return new_value, {}
+def update_set(current_value, new_value):
+    return new_value
 
-def update_merge(key, state_dict, current_value, new_value):
+def update_merge(current_value, new_value):
     # merge dicts, with new_value replacing any shared keys with current_value
     update = current_value.copy()
     for k, v in current_value.items():
@@ -50,7 +49,7 @@ def update_merge(key, state_dict, current_value, new_value):
             update[k] = deep_merge(dict(v), new)
         else:
             update[k] = new
-    return update, {}
+    return update
 
 updater_library = {
     'accumulate': update_accumulate,
@@ -104,6 +103,57 @@ KEY_TYPE = 'U31'
 
 def keys_list(d):
     return list(d.keys())
+
+class Schema(object):
+    def __init__(self, config):
+        self.config = config
+        self.updater = config.get('updater')
+        if isinstance(self.updater, str):
+            self.updater = updater_library[self.updater]
+        self.default = config.get('default')
+        self.value = self.default
+        self.schema = {
+            key: Schema(schema)
+            for key, schema in config.get('schema')}
+
+    def get_value(self):
+        if self.schema:
+            return {
+                key: schema.get_value()
+                for key, schema in self.schema.items()}
+        else:
+            return self.value
+
+    def get_in(self, path):
+        if len(path) > 0:
+            step = path[0]
+            schema = self.schema.get(step)
+            if schema:
+                return schema.get_in(path[1:])
+            else:
+                # TODO: more handling for bad paths?
+                return None
+        else:
+            return self.get_value()
+
+    def apply_update(self, update):
+        if self.schema:
+            for key, value in update.items():
+                schema = self.schema[key]
+                schema.apply_update(value)
+        else:
+            self.value = self.updater(self.value, update)
+
+    def state_for(self, keys):
+        if isinstance(keys, list):
+            return {
+                key: self.schema[key].get_value()
+                for key in keys}
+        else:
+            return {
+                key: self.schema[key].state_for(subtree)
+                for key, subtree in keys.items()}
+
 
 class State(object):
     def __init__(self, base_schema, initial_state=None):
@@ -731,31 +781,36 @@ def test_timescales():
 
 def test_recursive_store():
     schema = {
-        'temperature': {
-            'default': 0.0,
-            'updater': 'delta'},
-        'patches': {
-            'children': {
-                'a': {
-                    'concentrations'
-                    'concentration': {
-                        'default': 0.0,
-                        'updater': 'set'}}}},
-        'simulations': {
-            'children': {
-                '1': {
-                    'boundary': {
-                        'external': {
-                            'default': 0.0,
-                            'updater': 'set'}},
-                    'transcripts': {
-                        'flhDC': {
-                            'default': 0,
-                            'updater': 'accumulate'}},
-                    'proteins': {
-                        'flagella': {
-                            'default': 0,
-                            'updater': 'accumulate'}}}}}}
+        'schema': {
+            'temperature': {
+                'default': 0.0,
+                'updater': 'delta'},
+            'patches': {
+                'schema': {
+                    'a': {
+                        'schema': {
+                            'concentration': {
+                                'default': 0.0,
+                                'updater': 'set'}}}}},
+            'simulations': {
+                'schema': {
+                    '1': {
+                        'schema': {
+                            'boundary': {
+                                'schema': {
+                                    'external': {
+                                        'default': 0.0,
+                                        'updater': 'set'}}},
+                            'transcripts': {
+                                'schema': {
+                                    'flhDC': {
+                                        'default': 0,
+                                        'updater': 'accumulate'}}},
+                            'proteins': {
+                                'schema': {
+                                    'flagella': {
+                                        'default': 0,
+                                        'updater': 'accumulate'}}}}}}}}}
 
 if __name__ == '__main__':
     test_timescales()
