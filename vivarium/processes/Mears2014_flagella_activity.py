@@ -353,12 +353,13 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     flagella_activity = output['flagella_activity']['flagella']
     time_vec = output['time']
 
-    # get flagella ids
-    flagella_ids = set()
+    # get flagella ids by order appearance
+    flagella_ids = []
     for state in flagella_activity:
         flg_ids = list(state.keys())
-        flagella_ids.update(flg_ids)
-    flagella_ids = list(flagella_ids)
+        for flg_id in flg_ids:
+            if flg_id not in flagella_ids:
+                flagella_ids.append(flg_id)
 
     # make flagella activity grid
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
@@ -482,7 +483,7 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
-def plot_motor_PMF(output, out_dir='out'):
+def plot_motor_PMF(output, out_dir='out', figname='motor_PMF'):
     motile_state = output['motile_state']
     motile_force = output['motile_force']
     motile_torque = output['motile_torque']
@@ -502,7 +503,7 @@ def plot_motor_PMF(output, out_dir='out'):
     ax1.set_ylabel('force')
 
     # save figure
-    fig_path = os.path.join(out_dir, 'motor_PMF')
+    fig_path = os.path.join(out_dir, figname)
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
@@ -511,18 +512,15 @@ def run_variable_flagella(out_dir):
     init_params = {'flagella': 5}
     timeline = [
         (0, {}),
-        (2, {
+        (60, {
             'flagella_counts': {
                 'flagella': 6}}),
-        (4, {
+        (200, {
             'flagella_counts': {
-                'flagella': 4}}),
-        (10, {})]
+                'flagella': 7}}),
+        (240, {})]
     output3 = test_activity(init_params, timeline)
     plot_activity(output3, out_dir, 'variable_flagella')
-
-    output3 = test_motor_PMF()
-    plot_motor_PMF(output3, out_dir)
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')
