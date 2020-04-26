@@ -12,7 +12,10 @@ from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
-from vivarium.parameters.parameters import parameter_scan
+from vivarium.parameters.parameters import (
+    parameter_scan,
+    get_parameters_logspace
+)
 
 def get_flagella_expression_config(config):
     flagella_data = FlagellaChromosome(config)
@@ -203,21 +206,17 @@ def scan_flagella_expression_parameters():
     flagella_data = FlagellaChromosome()
     scan_params = {}
 
-    steps = 3
-    affinities_range = exponential_range(steps, 3, 1e-3)
-    thresholds_range = exponential_range(steps, 2.5, 1e-7)
-
-    # add promoter affinities
-    for promoter in flagella_data.chromosome_config['promoters'].keys():
-        scan_params[('promoter_affinities', promoter)] = affinities_range
+    # # add promoter affinities
+    # for promoter in flagella_data.chromosome_config['promoters'].keys():
+    #     scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
 
     # add transcript affinities
     for site in flagella_data.transcript_affinities.keys():
-        scan_params[('transcript_affinities', site)] = affinities_range
+        scan_params[('transcript_affinities', site)] = get_parameters_logspace(1e-3, 1e0, 4)
 
-    # add transcription factor thresholds
-    for threshold in flagella_data.factor_thresholds.keys():
-        scan_params[('thresholds', threshold)] = thresholds_range
+    # # add transcription factor thresholds
+    # for threshold in flagella_data.factor_thresholds.keys():
+    #     scan_params[('thresholds', threshold)] = get_parameters_logspace(1e-7, 1e-4, 4)
 
         metrics = [
         ('proteins', monomer)
@@ -230,6 +229,11 @@ def scan_flagella_expression_parameters():
         'scan_parameters': scan_params,
         'metrics': metrics,
         'options': {'time': 5}}
+
+
+    print('number of paramters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
+    import ipdb; ipdb.set_trace()
+
     results = parameter_scan(scan_config)
 
     return results
