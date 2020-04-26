@@ -53,6 +53,7 @@ class FlagellaChromosome(object):
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgM': ['flgM', 'flgN'],
                 'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
@@ -61,8 +62,7 @@ class FlagellaChromosome(object):
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
                 'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
-                'motA': ['motA', 'motB', 'cheA', 'cheW'],
-                'flgM': ['flgM', 'flgN']},
+                'motA': ['motA', 'motB', 'cheA', 'cheW']},
             'promoters': {
                 'flhDp': {
                     'id': 'flhDp',
