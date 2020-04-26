@@ -500,19 +500,28 @@ def random_body_config(config):
 def mother_machine_body_config(config):
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
+    channel_space = config.get('channel_space', 1)
+
+    # possible locations, shuffled for index-in
+    n_spaces = math.floor(bounds[0]/channel_space)
+    assert n_agents < n_spaces, 'more agents than mother machine spaces'
+
+    possible_locations = [
+        [x*channel_space - channel_space/2, 0.01]
+        for x in range(1, n_spaces)]
+    random.shuffle(possible_locations)
+
     agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
-            'location': [
-                np.random.uniform(0, bounds[0]),
-                0.01],
+            'location': possible_locations[index],
             'angle': PI/2,
             'volume': 1,
             'length': 1.0,
             'width': 0.5,
             'mass': 1,
             'forces': [0, 0]}
-        for agent_idx, agent_id in enumerate(agents.keys())}
+        for index, agent_id in enumerate(agents.keys())}
 
     return {
         'agents': agent_config,
@@ -613,6 +622,8 @@ def simulate_motility(config, settings):
 def run_mother_machine():
     bounds = [30, 30]
     channel_height = 0.8 * bounds[1]
+    channel_space = 0.8
+
     settings = {
         'growth_rate': 0.05,
         'division_volume': 1.0,
@@ -623,11 +634,13 @@ def run_mother_machine():
         # 'debug': True,
         'mother_machine': {
             'channel_height': channel_height,
-            'channel_space': 1},
+            'channel_space': channel_space},
         'jitter_force': 0.5e0,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
+        'channel_height': channel_height,
+        'channel_space': channel_space,
         'n_agents': 8}
     config.update(mother_machine_body_config(body_config))
     return simulate_growth_division(config, settings)
