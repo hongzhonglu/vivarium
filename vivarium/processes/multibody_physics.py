@@ -439,7 +439,7 @@ class Multibody(Process):
             y = y_center - dy
 
             # Create a rectangle
-            rect = patches.Rectangle((x, y), width, length, angle=angle, linewidth=2, edgecolor='w')
+            rect = patches.Rectangle((x, y), width, length, angle=angle, linewidth=1, edgecolor='b')
             self.ax.add_patch(rect)
 
         plt.xlim([0, self.bounds[0]])
@@ -619,8 +619,8 @@ def run_mother_machine():
         'channel_height': channel_height,
         'total_time': 120}
     config = {
-        # 'animate': True,
-        'debug': True,
+        'animate': True,
+        # 'debug': True,
         'mother_machine': {
             'channel_height': channel_height,
             'channel_space': 1},
