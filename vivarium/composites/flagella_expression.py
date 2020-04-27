@@ -11,7 +11,10 @@ from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
-from vivarium.composites.gene_expression import compose_gene_expression, plot_gene_expression_output
+from vivarium.composites.gene_expression import (
+    compose_gene_expression,
+    plot_gene_expression_output,
+    gene_network_plot)
 from vivarium.parameters.parameters import parameter_scan
 
 def get_flagella_expression_config(config):
@@ -153,14 +156,19 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
 
 
 
-def plot_flagella_expression():
-    out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
+def plot_flagella_expression(out_dir='out'):
     # load the compartment
     flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
+
+    # make expression network plot
+    flagella_expression_processes = flagella_expression_compartment.processes
+    operons = flagella_expression_processes[0]['transcription'].genes
+    promoters = flagella_expression_processes[0]['transcription'].templates
+    data = {
+        'operons': operons,
+        'templates': promoters}
+    gene_network_plot(data, out_dir)
 
     # run simulation
     settings = {
@@ -236,11 +244,16 @@ def scan_flagella_expression_parameters():
 
 
 if __name__ == '__main__':
-    commands = ['plot', 'scan']
+    out_dir = os.path.join('out', 'tests', 'flagella_expression_composite')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # run scan with python vivarium/composites/flagella_expression.py --scan
     parser = argparse.ArgumentParser(description='flagella expression')
-    parser.add_argument('command', choices=commands)
+    parser.add_argument('--scan', '-s', action='store_true', default=False,)
     args = parser.parse_args()
-    if args.command == 'scan':
-        scan_flagella_expression_parameters()
+
+    if args.scan:
+        results = scan_flagella_expression_parameters()
     else:
-        plot_flagella_expression()
+        plot_flagella_expression(out_dir)

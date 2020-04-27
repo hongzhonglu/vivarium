@@ -3,11 +3,16 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+import networkx as nx
 
-from vivarium.compartment.process import (
-    initialize_state
+from vivarium.compartment.process import initialize_state
+from vivarium.compartment.composition import (
+    get_derivers,
+    load_compartment,
+    simulate_compartment
 )
-from vivarium.compartment.composition import get_derivers, load_compartment, simulate_compartment
+from vivarium.utils.make_network import save_network
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
@@ -94,6 +99,201 @@ def compose_gene_expression(config):
 
 
 # analysis
+def gene_network_plot(data, out_dir, filename='gene_network'):
+    node_size = 400
+    node_distance = 10
+    edge_weight = 1
+
+    operon_suffix = '_o'
+    tf_suffix = '_tf'
+    promoter_suffix = '_p'
+    gene_suffix = '_g'
+
+    # plotting parameters
+    color_legend = {
+        'operon': [x/255 for x in [199,164,53]],
+        'gene': [x / 255 for x in [181,99,206]],
+        'promoter': [x / 255 for x in [110,196,86]],
+        'transcription_factor': [x / 255 for x in [222,85,80]]}
+
+    # get data
+    operons = data.get('operons', {})
+    templates = data.get('templates', {})
+
+    # make graph from templates
+    G = nx.Graph()
+
+    # initialize node lists for graphing
+    operon_nodes = set()
+    gene_nodes = set()
+    promoter_nodes = set()
+    tf_nodes = set()
+
+    edges = []
+
+    # add operon --> gene connections
+    for operon, genes in operons.items():
+        operon_name = operon + operon_suffix
+        gene_names = [gene + gene_suffix for gene in genes]
+
+        operon_nodes.add(operon_name)
+        gene_nodes.update(gene_names)
+
+        G.add_node(operon_name)
+        G.add_nodes_from(gene_names)
+
+        # set node attributes
+        operon_attrs = {operon_name: {'type': 'operon'}}
+        gene_attrs = {gene: {'type': 'gene'} for gene in gene_names}
+        nx.set_node_attributes(G, operon_attrs)
+        nx.set_node_attributes(G, gene_attrs)
+
+        # add operon --> gene edge
+        for gene_name in gene_names:
+            edge = (operon_name, gene_name)
+            edges.append(edge)
+            G.add_edge(operon_name, gene_name)
+
+    # add transcription factor --> promoter --> operon connections
+    for promoter, specs in templates.items():
+        promoter_name = promoter + promoter_suffix
+
+        promoter_nodes.add(promoter_name)
+        G.add_node(promoter_name)
+
+        # set node attributes
+        promoter_attrs = {promoter_name: {'type': 'promoter'}}
+        nx.set_node_attributes(G, promoter_attrs)
+
+        # get sites and terminators
+        promoter_sites = specs['sites']
+        terminators = specs['terminators']
+
+        # add transcription factors
+        for site in promoter_sites:
+            thresholds = site['thresholds']
+            for threshold in thresholds:
+                tf = threshold[0]
+                tf_name = tf + tf_suffix
+
+                tf_nodes.add(tf_name)
+                G.add_node(tf_name)
+
+                # set node attributes
+                tf_attrs = {tf_name: {'type': 'transcription_factor'}}
+                nx.set_node_attributes(G, tf_attrs)
+
+                # connect transcription_factor --> promoter
+                edge = (tf_name, promoter_name)
+                edges.append(edge)
+                G.add_edge(tf_name, promoter_name)
+
+        # add gene products
+        for site in terminators:
+            products = site['products']
+            for product in products:
+                operon_name = product + operon_suffix
+
+                operon_nodes.add(operon_name)
+                G.add_node(operon_name)
+
+                # set node attributes
+                operon_attrs = {operon_name: {'type': 'operon'}}
+                nx.set_node_attributes(G, operon_attrs)
+
+                # connect promoter --> operon
+                edge = (promoter_name, operon_name)
+                edges.append(edge)
+                G.add_edge(promoter_name, operon_name)
+
+    subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
+
+    # make node labels by removing suffix
+    node_labels = {}
+    o_labels = {node: node.replace(operon_suffix,'') for node in operon_nodes}
+    g_labels = {node: node.replace(gene_suffix, '') for node in gene_nodes}
+    p_labels = {node: node.replace(promoter_suffix, '') for node in promoter_nodes}
+    tf_labels = {node: node.replace(tf_suffix, '') for node in tf_nodes}
+    node_labels.update(o_labels)
+    node_labels.update(g_labels)
+    node_labels.update(p_labels)
+    node_labels.update(tf_labels)
+
+
+    # save network for use in gephi
+    gephi_nodes = {}
+    gephi_edges = [[node1, node2, edge_weight] for (node1, node2) in edges]
+    for node_id in operon_nodes:
+        gephi_nodes[node_id] = {
+            'label': o_labels[node_id],
+            'type': 'operon',
+            'size': 1}
+    for node_id in gene_nodes:
+        gephi_nodes[node_id] = {
+            'label': g_labels[node_id],
+            'type': 'gene',
+            'size': 1}
+    for node_id in promoter_nodes:
+        gephi_nodes[node_id] = {
+            'label': p_labels[node_id],
+            'type': 'promoter',
+            'size': 1}
+    for node_id in tf_nodes:
+        gephi_nodes[node_id] = {
+            'label': tf_labels[node_id],
+            'type': 'transcription factor',
+            'size': 1}
+    save_network(gephi_nodes, gephi_edges, out_dir)
+
+
+    # plot
+    n_rows = len(list(subgraphs))
+    n_cols = 1
+    fig = plt.figure(3, figsize=(6*n_cols, 6*n_rows))
+    grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
+
+    for idx, subgraph_nodes in enumerate(subgraphs):
+        ax = fig.add_subplot(grid[idx, 0])
+
+        subgraph = G.subgraph(list(subgraph_nodes))
+        subgraph_node_labels = {node: node_labels[node] for node in subgraph_nodes}
+
+        # get positions
+        dist = node_distance / (len(subgraph)**0.5)
+        pos = nx.spring_layout(subgraph, k=dist, iterations=500)
+
+        color_map = []
+        for node in subgraph:
+            type = subgraph.nodes[node]['type']
+            node_color = color_legend[type]
+            color_map.append(node_color)
+
+        nx.draw(subgraph, pos, node_size=node_size, node_color=color_map)
+
+        # edges
+        # colors = list(range(1,len(edges)+1))
+        nx.draw_networkx_edges(subgraph, pos,
+                               # edge_color=colors,
+                               width=1.5)
+
+        nx.draw_networkx_labels(subgraph, pos,
+                                labels=subgraph_node_labels,
+                                font_size=8)
+
+        if idx == 0:
+            # make legend
+            legend_elements = [Patch(facecolor=color, label=name) for name, color in color_legend.items()]
+            plt.legend(handles=legend_elements, bbox_to_anchor=(1.5, 1.0))
+
+    # save figure
+    fig_path = os.path.join(out_dir, filename)
+    plt.figure(3, figsize=(12, 12))
+    plt.axis('off')
+    plt.savefig(fig_path, bbox_inches='tight')
+
+    plt.close()
+
+
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     name = config.get('name', 'gene_expression')
