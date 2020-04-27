@@ -112,6 +112,7 @@ class State(object):
             self.updater = updater_library[self.updater]
         self.default = config.get('default')
         self.value = self.default
+        self.properties = config.get('properties', {})
         self.children = {
             key: State(child)
             for key, child in config.get('children', {}).items()}
@@ -373,12 +374,17 @@ class Store(object):
 
 
 class Process(object):
-    def __init__(self, ports, parameters=None):
+    def __init__(
+            self,
+            ports,
+            subprocesses=None,
+            parameters=None):
         ''' Declare what ports this process expects. '''
 
         self.ports = ports
         self.parameters = parameters or {}
         self.states = None
+        self.subprocesses = subprocesses
 
         default_timestep = self.default_settings().get('time_step', 1.0)
         self.time_step = self.parameters.get('time_step', default_timestep)
@@ -396,7 +402,6 @@ class Process(object):
 
     def default_settings(self):
         return {}
-
 
     def schema_properties(self, states, schema_type):
         '''
@@ -444,6 +449,11 @@ class Process(object):
         self.default_parameters[derived_key] = f(present)
         return self.default_parameters[derived_key]
 
+    def find_states(self, tree, topology):
+        return {
+            port: tree.state_for(topology[port], keys)
+            for port, keys in self.ports}
+
     def next_update(self, timestep, states):
         '''
         Find the next update given the current states this process cares about.
@@ -454,10 +464,79 @@ class Process(object):
             port: {}
             for port, values in self.ports.items()}
 
+    def update(self, timestep, state, topology):
+        ''' Run each process for the given time step and update the related states. '''
+
+        time = 0
+        processes = self.subprocesses
+
+        # keep track of which processes have simulated until when
+        front = {
+            process_name: {
+                'time': 0,
+                'update': {}}
+            for process_name in processes.keys()}
+
+        while time < timestep:
+            step = INFINITY
+
+            if VERBOSE:
+                for state_id in self.states:
+                    print('{}: {}'.format(time, self.states[state_id].to_dict()))
+
+            for process_name, process in processes.items():
+                process_time = front[process_name]['time']
+
+                if process_time <= time:
+                    future = min(process_time + process.local_timestep(), timestep)
+                    interval = future - process_time
+                    states = self.find_states(state, topology[process_name])
+                    update = process.next_update(interval, states)
+                    # update = process.update_for(interval)
+
+                    if interval < step:
+                        step = interval
+                    front[process_name]['time'] = future
+                    front[process_name]['update'] = update
+
+            if step == INFINITY:
+                # no processes ran, jump to next process
+                next_event = timestep
+                for process_name in front.keys():
+                    if front[process_name]['time'] < next_event:
+                        next_event = front[process_name]['time']
+                time = next_event
+            else:
+                # at least one process ran, apply updates and continue
+                future = time + step
+
+                updates = {}
+                for process_name, advance in front.items():
+                    if advance['time'] <= future:
+                        updates = self.collect_updates(updates, process_name, advance['update'])
+                        advance['update'] = {}
+
+                self.send_updates(updates)
+
+                time = future
+
+        for process_name, advance in front.items():
+            assert advance['time'] == time == timestep
+            assert len(advance['update']) == 0
+
+        self.local_time += timestep
+
+        # run emitters
+        self.emit_data()
+
+
 
 def connect_topology(process, derivers, states, topology):
-    ''' Given a set of processes and states, and a description of the connections
-        between them, link the ports in each process to the state they refer to.'''
+    '''
+    Given a set of processes and states, and a description of the connections
+    between them, link the ports in each process to the state they refer to.
+    '''
+
     process_layers = process + derivers
     for processes in process_layers:
         for name, process in processes.items():
