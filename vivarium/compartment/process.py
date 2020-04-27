@@ -104,7 +104,7 @@ KEY_TYPE = 'U31'
 def keys_list(d):
     return list(d.keys())
 
-class Schema(object):
+class State(object):
     def __init__(self, config):
         self.config = config
         self.updater = config.get('updater')
@@ -112,99 +112,172 @@ class Schema(object):
             self.updater = updater_library[self.updater]
         self.default = config.get('default')
         self.value = self.default
-        self.schema = {
-            key: Schema(schema)
-            for key, schema in config.get('schema', {}).items()}
+        self.children = {
+            key: State(child)
+            for key, child in config.get('children', {}).items()}
 
     def get_value(self):
-        if self.schema:
+        if self.children:
             return {
-                key: schema.get_value()
-                for key, schema in self.schema.items()}
+                key: child.get_value()
+                for key, child in self.children.items()}
         else:
             return self.value
 
-    def get_in(self, path):
+    def get_path(self, path):
         if len(path) > 0:
             step = path[0]
-            schema = self.schema.get(step)
-            if schema:
-                return schema.get_in(path[1:])
+            child = self.children.get(step)
+            if child:
+                return child.get_in(path[1:])
             else:
                 # TODO: more handling for bad paths?
                 return None
         else:
-            return self.get_value()
+            return self
+
+    def get_in(self, path):
+        return self.get_in(path).get_value()
 
     def apply_update(self, update):
-        if self.schema:
+        if self.children:
             for key, value in update.items():
-                schema = self.schema[key]
-                schema.apply_update(value)
+                child = self.children[key]
+                child.apply_update(value)
         else:
             self.value = self.updater(self.value, update)
 
-    def state_for(self, keys):
-        if isinstance(keys, list):
-            return {
-                key: self.schema[key].get_value()
-                for key in keys}
-        else:
-            return {
-                key: self.schema[key].state_for(subtree)
-                for key, subtree in keys.items()}
+    def get_template(self, template):
+        '''
+        Pass in a template dict with None for each value you want to
+        retrieve from the tree!
+        '''
 
-
-class State(object):
-    def __init__(self, base_schema, initial_state=None):
-        if initial_state is None:
-            initial_state = {}
-
-        self.schema = base_schema
-        self.values = {}
-        self.children = {}
-
-        for key, schema in self.schema.items():
-            initial = initial_state.get(key)
-            self.values[key] = initial or schema.get('default')
-
-            children = schema.get('children')
-            for child, subschema in children:
-                self.children[child] = State(subschema, initial)
-
-    def get_in(self, path):
-        if len(path) > 1:
-            step = self.values.get(path[0])
-            if step:
-                return step.get_in(path[1:])
-        elif len(path) == 1:
-            key = path[0]
-            if key in self.values:
-                return self.values[key]
+        state = {}
+        for key, value in template.items():
+            child = self.children[key]
+            if value is None:
+                state[key] = child.get_value()
             else:
-                raise ValueException("key does not exist in store: {}".format(key))
-        else:
-            return None
+                state[key] = child.get_template(value)
+        return state
 
-    def schema_properties(self, paths, key):
-        result = {}
-        for path in paths:
-            state = self.get_in(path)
-            if state:
-                result[path] = state.schema.get(key)
-        return result
+    def state_for(self, path, keys):
+        state = self.get_path(path)
+        return {
+            key: state.children[key].get_value()
+            for key in keys}
 
-    def apply_update(self, update):
-        '''
-        Take an arbitrary tree of updates and distribute it throughout
-        the state tree.
-        '''
 
-        for key, value in update.items():
-            schema = self.schema[key]
-            children = schema.get('children')
-            if children:
-                self.children[key]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# class State(object):
+#     def __init__(self, base_schema, initial_state=None):
+#         if initial_state is None:
+#             initial_state = {}
+
+#         self.schema = base_schema
+#         self.values = {}
+#         self.children = {}
+
+#         for key, schema in self.schema.items():
+#             initial = initial_state.get(key)
+#             self.values[key] = initial or schema.get('default')
+
+#             children = schema.get('children')
+#             for child, subschema in children:
+#                 self.children[child] = State(subschema, initial)
+
+#     def get_in(self, path):
+#         if len(path) > 1:
+#             step = self.values.get(path[0])
+#             if step:
+#                 return step.get_in(path[1:])
+#         elif len(path) == 1:
+#             key = path[0]
+#             if key in self.values:
+#                 return self.values[key]
+#             else:
+#                 raise ValueException("key does not exist in store: {}".format(key))
+#         else:
+#             return None
+
+#     def schema_properties(self, paths, key):
+#         result = {}
+#         for path in paths:
+#             state = self.get_in(path)
+#             if state:
+#                 result[path] = state.schema.get(key)
+#         return result
+
+#     def apply_update(self, update):
+#         '''
+#         Take an arbitrary tree of updates and distribute it throughout
+#         the state tree.
+#         '''
+
+#         for key, value in update.items():
+#             schema = self.schema[key]
+#             children = schema.get('children')
+#             if children:
+#                 self.children[key]
 
 
 class Store(object):
@@ -256,18 +329,15 @@ class Store(object):
                 updater = updater_library[updater]
 
             try:
-                self.new_state[key], other_updates = updater(
-                    key,
-                    self.state,
+                self.new_state[key] = updater(
                     self.new_state[key],
                     value)
+
             except TypeError as e:
                 log.error(
                     'bad update - {}: {}, {}'.format(
                         key, value, self.new_state[key]))
                 raise e
-
-            self.new_state.update(other_updates)
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
@@ -780,37 +850,84 @@ def test_timescales():
     compartment.update(10.0)
 
 def test_recursive_store():
-    schema = {
-        'schema': {
+    store_config = {
+        'children': {
             'temperature': {
                 'default': 0.0,
-                'updater': 'delta'},
+                'updater': 'accumulate'},
             'patches': {
-                'schema': {
+                'children': {
                     'a': {
-                        'schema': {
+                        'children': {
                             'concentration': {
                                 'default': 0.0,
                                 'updater': 'set'}}}}},
             'simulations': {
-                'schema': {
+                'children': {
                     '1': {
-                        'schema': {
+                        'children': {
+                            'location': {
+                                'default': (0, 0),
+                                'updater': 'set'},
                             'boundary': {
-                                'schema': {
+                                'children': {
                                     'external': {
+                                        'default': 0.0,
+                                        'updater': 'set'},
+                                    'internal': {
                                         'default': 0.0,
                                         'updater': 'set'}}},
                             'transcripts': {
-                                'schema': {
+                                'children': {
                                     'flhDC': {
+                                        'default': 0,
+                                        'updater': 'accumulate'},
+                                    'fliA': {
                                         'default': 0,
                                         'updater': 'accumulate'}}},
                             'proteins': {
-                                'schema': {
+                                'children': {
+                                    'ribosome': {
+                                        'default': 0,
+                                        'updater': 'set'},
+                                    'flagella': {
+                                        'default': 0,
+                                        'updater': 'accumulate'}}}}},
+                    '2': {
+                        'children': {
+                            'location': {
+                                'default': (0, 0),
+                                'updater': 'set'},
+                            'boundary': {
+                                'children': {
+                                    'external': {
+                                        'default': 0.0,
+                                        'updater': 'set'},
+                                    'internal': {
+                                        'default': 0.0,
+                                        'updater': 'set'}}},
+                            'transcripts': {
+                                'children': {
+                                    'flhDC': {
+                                        'default': 0,
+                                        'updater': 'accumulate'},
+                                    'fliA': {
+                                        'default': 0,
+                                        'updater': 'accumulate'}}},
+                            'proteins': {
+                                'children': {
+                                    'ribosome': {
+                                        'default': 0,
+                                        'updater': 'set'},
                                     'flagella': {
                                         'default': 0,
                                         'updater': 'accumulate'}}}}}}}}}
 
+    state = State(store_config)
+    import ipdb; ipdb.set_trace()
+    state.apply_updates({})
+    state.state_for({})
+
 if __name__ == '__main__':
     test_timescales()
+    test_recursive_store()
