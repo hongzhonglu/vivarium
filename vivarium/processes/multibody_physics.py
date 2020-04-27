@@ -150,9 +150,11 @@ class Multibody(Process):
 
         # debug screen with pygame
         self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
-        max_bound = max(self.bounds)
-        self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
+        self.pygame_scale = 1  # pygame_scale scales the debug screen
         if self.pygame_viz:
+            max_bound = max(self.bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound
+            self.force_scaling *= self.pygame_scale
             pygame.init()
             self._screen = pygame.display.set_mode((
                 int(self.bounds[0]*self.pygame_scale),
@@ -279,8 +281,12 @@ class Multibody(Process):
         jitter_force = [
             random.normalvariate(0, self.jitter_force),
             random.normalvariate(0, self.jitter_force)]
-        scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
-        body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+        scaled_jitter_force = [
+            force * self.force_scaling
+            for force in jitter_force]
+        body.apply_force_at_local_point(
+            scaled_jitter_force,
+            jitter_location)
 
     def apply_viscous_force(self, body):
         # dampen the velocity
@@ -390,8 +396,8 @@ class Multibody(Process):
         new_shape.friction = shape.friction
 
         # swap bodies
-        self.space.add(new_body, new_shape)
         self.space.remove(body, shape)
+        self.space.add(new_body, new_shape)
 
         # update body
         self.agent_bodies[body_id] = (new_body, new_shape)
@@ -500,19 +506,28 @@ def random_body_config(config):
 def mother_machine_body_config(config):
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
+    channel_space = config.get('channel_space', 1)
+
+    # possible locations, shuffled for index-in
+    n_spaces = math.floor(bounds[0]/channel_space)
+    assert n_agents < n_spaces, 'more agents than mother machine spaces'
+
+    possible_locations = [
+        [x*channel_space - channel_space/2, 0.01]
+        for x in range(1, n_spaces)]
+    random.shuffle(possible_locations)
+
     agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
-            'location': [
-                np.random.uniform(0, bounds[0]),
-                0.01],
+            'location': possible_locations[index],
             'angle': PI/2,
             'volume': 1,
             'length': 1.0,
             'width': 0.5,
             'mass': 1,
             'forces': [0, 0]}
-        for agent_idx, agent_id in enumerate(agents.keys())}
+        for index, agent_id in enumerate(agents.keys())}
 
     return {
         'agents': agent_config,
@@ -613,6 +628,8 @@ def simulate_motility(config, settings):
 def run_mother_machine():
     bounds = [30, 30]
     channel_height = 0.8 * bounds[1]
+    channel_space = 0.8
+
     settings = {
         'growth_rate': 0.05,
         'division_volume': 1.0,
@@ -620,15 +637,16 @@ def run_mother_machine():
         'total_time': 120}
     config = {
         'animate': True,
-        # 'debug': True,
         'mother_machine': {
             'channel_height': channel_height,
-            'channel_space': 1},
-        'jitter_force': 0.5e0,
+            'channel_space': channel_space},
+        'jitter_force': 5e-2,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 8}
+        'channel_height': channel_height,
+        'channel_space': channel_space,
+        'n_agents': 6}
     config.update(mother_machine_body_config(body_config))
     return simulate_growth_division(config, settings)
 
