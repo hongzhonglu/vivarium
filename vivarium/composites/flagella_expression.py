@@ -28,9 +28,9 @@ def get_flagella_expression_config(config):
 
     molecules = {}
     for nucleotide in nucleotides.values():
-        molecules[nucleotide] = 500000
+        molecules[nucleotide] = 5000000
     for amino_acid in amino_acids.values():
-        molecules[amino_acid] = 100000
+        molecules[amino_acid] = 1000000
 
     config = {
 
@@ -50,7 +50,6 @@ def get_flagella_expression_config(config):
             'templates': flagella_data.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
             'transcript_affinities': flagella_data.transcript_affinities,
-
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
 
@@ -81,8 +80,8 @@ def get_flagella_expression_config(config):
                 'CRP': 10,
                 'Fnr': 10,
                 'endoRNAse': 1,
-                UNBOUND_RIBOSOME_KEY: 10,
-                UNBOUND_RNAP_KEY: 10}}}
+                UNBOUND_RIBOSOME_KEY: 100,  # e. coli has ~ 20000 ribosomes
+                UNBOUND_RNAP_KEY: 100}}}
 
     return config
 
@@ -203,9 +202,9 @@ def plot_flagella_expression():
 
     # make a basic sim output
     plot_settings = {
-        'max_rows': 25,
+        'max_rows': 30,
         'remove_zeros': False,
-        'skip_ports': ['chromosome', 'ribosomes']}
+        'skip_ports': ['chromosome']}
 
     plot_simulation_output(
         timeseries,

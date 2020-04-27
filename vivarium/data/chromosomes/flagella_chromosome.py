@@ -372,7 +372,7 @@ class FlagellaChromosome(object):
             for key, sequence in self.protein_sequences.items()}
 
         self.transcript_affinities = {
-            operon: 0.01
+            operon: 1e-2
             for operon in self.transcripts}
 
         self.transcript_affinities.update(
