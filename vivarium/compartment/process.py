@@ -113,6 +113,7 @@ class State(object):
         self.default = config.get('default')
         self.value = self.default
         self.properties = config.get('properties', {})
+        self.processes = config.get('processes', {})
         self.children = {
             key: State(child)
             for key, child in config.get('children', {}).items()}
@@ -464,70 +465,70 @@ class Process(object):
             port: {}
             for port, values in self.ports.items()}
 
-    def update(self, timestep, state, topology):
-        ''' Run each process for the given time step and update the related states. '''
+    # def update(self, timestep, state, topology):
+    #     ''' Run each process for the given time step and update the related states. '''
 
-        time = 0
-        processes = self.subprocesses
+    #     time = 0
+    #     processes = self.subprocesses
 
-        # keep track of which processes have simulated until when
-        front = {
-            process_name: {
-                'time': 0,
-                'update': {}}
-            for process_name in processes.keys()}
+    #     # keep track of which processes have simulated until when
+    #     front = {
+    #         process_name: {
+    #             'time': 0,
+    #             'update': {}}
+    #         for process_name in processes.keys()}
 
-        while time < timestep:
-            step = INFINITY
+    #     while time < timestep:
+    #         step = INFINITY
 
-            if VERBOSE:
-                for state_id in self.states:
-                    print('{}: {}'.format(time, self.states[state_id].to_dict()))
+    #         if VERBOSE:
+    #             for state_id in self.states:
+    #                 print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            for process_name, process in processes.items():
-                process_time = front[process_name]['time']
+    #         for process_name, process in processes.items():
+    #             process_time = front[process_name]['time']
 
-                if process_time <= time:
-                    future = min(process_time + process.local_timestep(), timestep)
-                    interval = future - process_time
-                    states = self.find_states(state, topology[process_name])
-                    update = process.next_update(interval, states)
-                    # update = process.update_for(interval)
+    #             if process_time <= time:
+    #                 future = min(process_time + process.local_timestep(), timestep)
+    #                 interval = future - process_time
+    #                 states = self.find_states(state, topology[process_name])
+    #                 update = process.next_update(interval, states)
+    #                 # update = process.update_for(interval)
 
-                    if interval < step:
-                        step = interval
-                    front[process_name]['time'] = future
-                    front[process_name]['update'] = update
+    #                 if interval < step:
+    #                     step = interval
+    #                 front[process_name]['time'] = future
+    #                 front[process_name]['update'] = update
 
-            if step == INFINITY:
-                # no processes ran, jump to next process
-                next_event = timestep
-                for process_name in front.keys():
-                    if front[process_name]['time'] < next_event:
-                        next_event = front[process_name]['time']
-                time = next_event
-            else:
-                # at least one process ran, apply updates and continue
-                future = time + step
+    #         if step == INFINITY:
+    #             # no processes ran, jump to next process
+    #             next_event = timestep
+    #             for process_name in front.keys():
+    #                 if front[process_name]['time'] < next_event:
+    #                     next_event = front[process_name]['time']
+    #             time = next_event
+    #         else:
+    #             # at least one process ran, apply updates and continue
+    #             future = time + step
 
-                updates = {}
-                for process_name, advance in front.items():
-                    if advance['time'] <= future:
-                        updates = self.collect_updates(updates, process_name, advance['update'])
-                        advance['update'] = {}
+    #             updates = {}
+    #             for process_name, advance in front.items():
+    #                 if advance['time'] <= future:
+    #                     updates = self.collect_updates(updates, process_name, advance['update'])
+    #                     advance['update'] = {}
 
-                self.send_updates(updates)
+    #             self.send_updates(updates)
 
-                time = future
+    #             time = future
 
-        for process_name, advance in front.items():
-            assert advance['time'] == time == timestep
-            assert len(advance['update']) == 0
+    #     for process_name, advance in front.items():
+    #         assert advance['time'] == time == timestep
+    #         assert len(advance['update']) == 0
 
-        self.local_time += timestep
+    #     self.local_time += timestep
 
-        # run emitters
-        self.emit_data()
+    #     # run emitters
+    #     self.emit_data()
 
 
 
@@ -640,12 +641,14 @@ def flatten_process_layers(process_layers):
         processes.update(layer)
     return processes
 
-class Compartment(Store):
+class Experiment():
     ''' Track a set of processes and states and the connections between them. '''
 
     def __init__(self, processes, derivers, states, configuration):
-        ''' Given a set of processes and states, and a topology describing their
-            connections, perform those connections. '''
+        '''
+        Given a set of processes and states, and a topology describing their
+        connections, perform those connections.
+        '''
 
         self.processes = processes
         self.states = states
