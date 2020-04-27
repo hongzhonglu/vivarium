@@ -245,10 +245,7 @@ def scan_flagella_expression_parameters():
         'metrics': metrics,
         'options': {'time': 5}}
 
-
-    print('number of paramters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
-    import ipdb; ipdb.set_trace()
-
+    print('number of parameters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
     results = parameter_scan(scan_config)
 
     return results
