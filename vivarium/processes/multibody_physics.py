@@ -150,10 +150,11 @@ class Multibody(Process):
 
         # debug screen with pygame
         self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
-        max_bound = max(self.bounds)
-        self.pygame_scale = 1
-        # self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
+        self.pygame_scale = 1  # pygame_scale scales the debug screen
         if self.pygame_viz:
+            max_bound = max(self.bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound
+            self.force_scaling *= self.pygame_scale
             pygame.init()
             self._screen = pygame.display.set_mode((
                 int(self.bounds[0]*self.pygame_scale),
@@ -280,8 +281,12 @@ class Multibody(Process):
         jitter_force = [
             random.normalvariate(0, self.jitter_force),
             random.normalvariate(0, self.jitter_force)]
-        scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
-        body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+        scaled_jitter_force = [
+            force * self.force_scaling
+            for force in jitter_force]
+        body.apply_force_at_local_point(
+            scaled_jitter_force,
+            jitter_location)
 
     def apply_viscous_force(self, body):
         # dampen the velocity
@@ -368,12 +373,6 @@ class Multibody(Process):
         position = body.position
         angle = body.angle
 
-
-
-        print('angle: {}'.format(angle))
-
-
-
         # make shape, moment of inertia, and add a body
         half_length = length/2
         half_width = width/2
@@ -406,7 +405,6 @@ class Multibody(Process):
     def get_body_position(self, agent_id):
         body, shape = self.agent_bodies[agent_id]
         position = body.position
-        angle = body.angle
         rescaled_position = [
             position[0] / self.pygame_scale,
             position[1] / self.pygame_scale]
@@ -419,13 +417,9 @@ class Multibody(Process):
             self.bounds[idx] if pos>self.bounds[idx] else pos
             for idx, pos in enumerate(rescaled_position)]
 
-
-        print('get angle: {}'.format(angle))
-        # import ipdb; ipdb.set_trace()
-
         return {
             'location': rescaled_position,
-            'angle': angle,
+            'angle': body.angle,
         }
 
 
@@ -634,7 +628,7 @@ def simulate_motility(config, settings):
 def run_mother_machine():
     bounds = [30, 30]
     channel_height = 0.8 * bounds[1]
-    channel_space = 2  #0.8
+    channel_space = 0.8
 
     settings = {
         'growth_rate': 0.05,
@@ -643,17 +637,16 @@ def run_mother_machine():
         'total_time': 120}
     config = {
         'animate': True,
-        # 'debug': True,
         'mother_machine': {
             'channel_height': channel_height,
             'channel_space': channel_space},
-        'jitter_force': 0.5e0,
+        'jitter_force': 5e-2,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
         'channel_height': channel_height,
         'channel_space': channel_space,
-        'n_agents': 1}
+        'n_agents': 6}
     config.update(mother_machine_body_config(body_config))
     return simulate_growth_division(config, settings)
 
