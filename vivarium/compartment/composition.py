@@ -469,8 +469,8 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             # check if series is a list of ints or floats
-            if not all(isinstance(state, (int, float)) for state in series):
-                ax.title.set_text(str(port) + ': ' + str(state_id))
+            if not all(isinstance(state, (int, float, np.int64, np.int32)) for state in series):
+                ax.title.set_text(str(port) + ': ' + str(state_id) + ' (non numeric)')
                 ax.title.set_fontsize(16)
             else:
                 # plot line at zero if series crosses the zero line
