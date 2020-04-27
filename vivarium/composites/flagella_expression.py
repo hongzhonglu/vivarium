@@ -171,7 +171,7 @@ def plot_flagella_expression():
 
     # run simulation
     settings = {
-        'total_time': 2400,
+        'total_time': 600,  # 10 minutes should be enough time for a full flagellum to be expressed
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
