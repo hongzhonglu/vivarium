@@ -80,6 +80,7 @@ def get_flagella_expression_config(config):
                 'CRP': 10,
                 'Fnr': 10,
                 'endoRNAse': 1,
+                'flagellum': 8,
                 UNBOUND_RIBOSOME_KEY: 100,  # e. coli has ~ 20000 ribosomes
                 UNBOUND_RNAP_KEY: 100}}}
 
