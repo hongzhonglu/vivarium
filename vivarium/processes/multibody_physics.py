@@ -635,6 +635,7 @@ def run_mother_machine():
 
     settings = {
         'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
         'division_volume': 1.0,
         'channel_height': channel_height,
         'total_time': 240}
@@ -691,10 +692,10 @@ def run_motility(out_dir):
 def run_growth_division():
     bounds = [20, 20]
     settings = {
-        'growth_rate': 0.05,
-        'growth_rate_noise': 0.01,
+        'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
         'division_volume': 1,
-        'total_time': 120}
+        'total_time': 300}
 
     gd_config = {
         'animate': True,
