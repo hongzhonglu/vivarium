@@ -179,8 +179,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         for site in promoter_sites:
             thresholds = site['thresholds']
             for threshold in thresholds:
-                tf = threshold[0]
-                tf_name = tf + tf_suffix
+                tf_name = threshold + tf_suffix
 
                 tf_nodes.add(tf_name)
                 G.add_node(tf_name)
@@ -276,7 +275,6 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     node_labels.update(p_labels)
     node_labels.update(tf_labels)
     node_labels.update(cxn_labels)
-
 
     # save network for use in gephi
     gephi_nodes = {}
