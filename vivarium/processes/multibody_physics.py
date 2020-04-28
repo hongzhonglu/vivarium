@@ -117,7 +117,7 @@ class Multibody(Process):
 
     defaults = {
         'initial_agents': {},
-        'elasticity': 0.95,
+        'elasticity': 0.9,
         'damping': 0.05, # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
         'angular_damping': 0.7,  # less damping for angular velocity seems to improve behavior
         'friction': 0.9,  # TODO -- does this do anything?
@@ -202,6 +202,7 @@ class Multibody(Process):
             'state': state,
             'schema': schema,
             'emitter_keys': default_emitter_keys,
+            'time_step': 2
         }
 
     def next_update(self, timestep, states):
@@ -295,15 +296,17 @@ class Multibody(Process):
 
     def add_barriers(self, bounds):
         """ Create static barriers """
+        thickness = 0.2
+
         x_bound = bounds[0] * self.pygame_scale
         y_bound = bounds[1] * self.pygame_scale
 
         static_body = self.space.static_body
         static_lines = [
-            pymunk.Segment(static_body, (0.0, 0.0), (x_bound, 0.0), 0.0),
-            pymunk.Segment(static_body, (x_bound, 0.0), (x_bound, y_bound), 0.0),
-            pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), 0.0),
-            pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), 0.0),
+            pymunk.Segment(static_body, (0.0, 0.0), (x_bound, 0.0), thickness),
+            pymunk.Segment(static_body, (x_bound, 0.0), (x_bound, y_bound), thickness),
+            pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), thickness),
+            pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), thickness),
         ]
 
         if self.mother_machine:
@@ -316,7 +319,7 @@ class Multibody(Process):
                 pymunk.Segment(
                     static_body,
                     (channel_space * line, 0),
-                    (channel_space * line, channel_height), 0.0)
+                    (channel_space * line, channel_height), thickness)
                 for line in range(n_lines)]
             static_lines += machine_lines
 
@@ -627,28 +630,35 @@ def simulate_motility(config, settings):
 
 def run_mother_machine():
     bounds = [30, 30]
-    channel_height = 0.8 * bounds[1]
-    channel_space = 0.8
+    channel_height = 0.7 * bounds[1]
+    channel_space = 0.9
 
     settings = {
-        'growth_rate': 0.05,
+        'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
         'division_volume': 1.0,
         'channel_height': channel_height,
-        'total_time': 120}
-    config = {
+        'total_time': 240}
+    mm_config = {
         'animate': True,
         'mother_machine': {
             'channel_height': channel_height,
             'channel_space': channel_space},
-        'jitter_force': 5e-2,
+        'jitter_force': 1e-2,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
         'channel_height': channel_height,
         'channel_space': channel_space,
-        'n_agents': 6}
-    config.update(mother_machine_body_config(body_config))
-    return simulate_growth_division(config, settings)
+        'n_agents': 5}
+    mm_config.update(mother_machine_body_config(body_config))
+    mm_data = simulate_growth_division(mm_config, settings)
+
+    # make snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in mm_data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, mm_config, out_dir, 'mother_machine_snapshots')
+
 
 def run_motility(out_dir):
     # test motility
@@ -682,19 +692,26 @@ def run_motility(out_dir):
 def run_growth_division():
     bounds = [20, 20]
     settings = {
-        'growth_rate': 0.1,
-        'growth_rate_noise': 0.01,
+        'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
         'division_volume': 1,
-        'total_time': 60}
-    config = {
+        'total_time': 300}
+
+    gd_config = {
         'animate': True,
         'jitter_force': 1e-1,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 4}
-    config.update(random_body_config(body_config))
-    return simulate_growth_division(config, settings)
+        'n_agents': 1}
+    gd_config.update(random_body_config(body_config))
+    gd_data = simulate_growth_division(gd_config, settings)
+
+    # make snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in gd_data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, gd_config, out_dir, 'growth_division_snapshots')
+
 
 def simulate_growth_division(config, settings):
 
@@ -716,6 +733,7 @@ def simulate_growth_division(config, settings):
 
     time = 0
     while time < total_time:
+        print('time: {}'.format(time))
         time += timestep
 
         agents_state = agents_store.state
@@ -730,7 +748,7 @@ def simulate_growth_division(config, settings):
             mass = state['mass']
 
             # update
-            growth_rate2 = growth_rate + np.random.normal(0.0, growth_rate_noise)
+            growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
             new_mass = mass + mass * growth_rate2
             new_length = length + length * growth_rate2
             new_volume = get_volume(new_length, width)
