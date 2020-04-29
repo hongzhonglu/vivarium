@@ -232,9 +232,9 @@ def scan_flagella_expression_parameters():
     flagella_data = FlagellaChromosome()
     scan_params = {}
 
-    # # add promoter affinities
-    # for promoter in flagella_data.chromosome_config['promoters'].keys():
-    #     scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
+    # add promoter affinities
+    for promoter in flagella_data.chromosome_config['promoters'].keys():
+        scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
 
     # add transcript affinities
     for site in flagella_data.transcript_affinities.keys():
@@ -244,7 +244,7 @@ def scan_flagella_expression_parameters():
     # for threshold in flagella_data.factor_thresholds.keys():
     #     scan_params[('thresholds', threshold)] = get_parameters_logspace(1e-7, 1e-4, 4)
 
-        metrics = [
+    metrics = [
         ('proteins', monomer)
         for monomer in flagella_data.complexation_monomer_ids] + [
         ('proteins', complex)
@@ -257,6 +257,11 @@ def scan_flagella_expression_parameters():
         'options': {'time': 5}}
 
     print('number of parameters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
+
+
+    import ipdb; ipdb.set_trace()
+
+
     results = parameter_scan(scan_config)
 
     return results
