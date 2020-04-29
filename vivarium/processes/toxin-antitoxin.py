@@ -90,7 +90,7 @@ class ToxinAntitoxin(Process):
         else:
             mazF_inhib = 1
 
-        # # reduce trl rate
+        # # reduce trl rate  # TODO -- make this into a timeline
         # if step > 35000:
         #     c_trl_max = 0.1 / mazF_inhib
         # else:
@@ -158,7 +158,7 @@ class ToxinAntitoxin(Process):
             DNA += 1
             mazEF += 1
 
-        # t += tau  # TODO -- how does this change the timestep????
+        # t += tau  # TODO -- is this supports to change the timestep????
         # cell division
         # if t > division_time[-1] + 1800:
         # 	division_time.append(t[0])
@@ -188,11 +188,7 @@ def test_toxin_antitoxin(time=10):
     toxin_antitoxin = ToxinAntitoxin({})
 
     settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-12,
-    }
+        'total_time': time}
 
     return simulate_process(toxin_antitoxin, settings)
 
@@ -203,5 +199,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_toxin_antitoxin(10000) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_toxin_antitoxin(10000)
     plot_simulation_output(timeseries, {}, out_dir)
