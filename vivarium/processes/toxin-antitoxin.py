@@ -206,5 +206,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_toxin_antitoxin(100) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_toxin_antitoxin(10000) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_simulation_output(timeseries, {}, out_dir)
