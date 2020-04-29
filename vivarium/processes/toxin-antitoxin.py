@@ -83,24 +83,21 @@ class ToxinAntitoxin(Process):
         mazF = internal['mazF']
         mazEF = internal['mazEF']
 
-        # import ipdb; ipdb.set_trace()
 
-
-
-        internal_updates = 0
         # dynamic rates
         if mazF > 0:
             mazF_inhib = 1 + mazF / 30
         else:
             mazF_inhib = 1
+
         # # reduce trl rate
         # if step > 35000:
         #     c_trl_max = 0.1 / mazF_inhib
         # else:
         #     c_trl_max = 1 / mazF_inhib
 
-        c_trl_mazE = 0.101 * self.parameters['c_trl_max']  # 1.01 from model
-        c_trl_mazF = 0.039 * self.parameters['c_trl_max']  # .39 from model
+        c_trl_mazE = 0.101 * self.parameters['c_trl_max']/mazF_inhib  # 1.01 from model
+        c_trl_mazF = 0.039 * self.parameters['c_trl_max']/mazF_inhib  # .39 from model
 
 
         a = np.ndarray((10))
