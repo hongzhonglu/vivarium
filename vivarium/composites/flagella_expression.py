@@ -18,10 +18,12 @@ from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import (
     compose_gene_expression,
     plot_gene_expression_output,
-    gene_network_plot)
+    gene_network_plot
+)
 from vivarium.parameters.parameters import (
     parameter_scan,
-    get_parameters_logspace
+    get_parameters_logspace,
+    plot_scan_results
 )
 
 
@@ -232,13 +234,12 @@ def scan_flagella_expression_parameters():
     flagella_data = FlagellaChromosome()
     scan_params = {}
 
-    # add promoter affinities
-    for promoter in flagella_data.chromosome_config['promoters'].keys():
-        scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
+    # # add promoter affinities
+    # for promoter in flagella_data.chromosome_config['promoters'].keys():
+    #     scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
 
-    # add transcript affinities
-    for site in flagella_data.transcript_affinities.keys():
-        scan_params[('transcript_affinities', site)] = get_parameters_logspace(1e-3, 1e0, 4)
+    # scan minimum transcript affinity -- other affinities are a scaled factor of this value
+    scan_params[('min_tr_affinity', flagella_data.min_tr_affinity)] = get_parameters_logspace(1e-2, 1e2, 6)
 
     # # add transcription factor thresholds
     # for threshold in flagella_data.factor_thresholds.keys():
@@ -254,13 +255,9 @@ def scan_flagella_expression_parameters():
         'composite': generate_flagella_compartment,
         'scan_parameters': scan_params,
         'metrics': metrics,
-        'options': {'time': 5}}
+        'options': {'time': 480}}
 
     print('number of parameters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
-
-
-    import ipdb; ipdb.set_trace()
-
 
     results = parameter_scan(scan_config)
 
@@ -278,7 +275,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.scan:
-        scan_flagella_expression_parameters()
         results = scan_flagella_expression_parameters()
+        plot_scan_results(results, out_dir)
     else:
         plot_flagella_expression(out_dir)
