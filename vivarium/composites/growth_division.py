@@ -25,11 +25,16 @@ from vivarium.processes.convenience_kinetics import (
 
 def growth_division(config):
 
+    expression_config = {
+        'expression_rates': {
+            'LacY': 1e-2
+        }}
+
     # declare the processes
     transport = ConvenienceKinetics(get_glc_lct_config())
     growth = Growth(config)
     division = Division(config)
-    expression = MinimalExpression(config)
+    expression = MinimalExpression(config.get('minimal_expression', expression_config))
 
     # place processes in layers
     processes = [
@@ -108,7 +113,7 @@ if __name__ == '__main__':
         'exchange_port': options['exchange_port'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
-        'total_time': 100,
+        'total_time': 2520,
     }
 
     plot_settings = {

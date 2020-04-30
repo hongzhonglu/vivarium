@@ -86,7 +86,10 @@ class ShepherdControl(ActorControl):
             'name': 'growth_division_experiment',
             'description': (
                 'minimal growth_division agents are placed '
-                'in a lattice environment')}
+                'in a lattice environment'),
+            'cell_placement': [0.4, 0.4],
+            'jitter_force': 2e-2,
+        }
 
         exp_config = {
             'default_experiment_id': experiment_id,
