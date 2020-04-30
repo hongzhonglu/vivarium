@@ -27,7 +27,7 @@ def growth_division(config):
 
     expression_config = {
         'expression_rates': {
-            'LacY': 1e-2
+            'LacY': 1e-3
         }}
 
     # declare the processes
