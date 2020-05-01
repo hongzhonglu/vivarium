@@ -379,7 +379,9 @@ class FlagellaChromosome(object):
             'fliM': 34,
             'fliG': 26,
             'fliH': 12,
-            'fliI': 6 }
+            'fliI': 6,
+            'fliD': 5,
+            'flgE': 120}
         self.transcript_affinities = {}
         for (operon, product) in self.transcripts:
             self.transcript_affinities[(operon, product)] = self.min_tr_affinity * tr_affinity_scaling.get(product,1)
