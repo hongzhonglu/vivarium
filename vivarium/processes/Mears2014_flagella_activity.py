@@ -387,21 +387,21 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
 
     # set up colormaps
     # cell motile state
-    cmap1 = colors.ListedColormap(['blue', 'lightgray', 'red'])
+    cmap1 = colors.ListedColormap(['steelblue', 'lightgray', 'darkorange'])
     bounds1 = [-1, -1/3, 1/3, 1]
     norm1 = colors.BoundaryNorm(bounds1, cmap1.N)
     motile_legend_elements = [
-        Patch(facecolor='blue', edgecolor='k', label='Run'),
-        Patch(facecolor='red', edgecolor='k', label='Tumble'),
+        Patch(facecolor='steelblue', edgecolor='k', label='Run'),
+        Patch(facecolor='darkorange', edgecolor='k', label='Tumble'),
         Patch(facecolor='lightgray', edgecolor='k', label='N/A')]
 
     # rotational state
-    cmap2 = colors.ListedColormap(['lightgray', 'blue', 'red'])
+    cmap2 = colors.ListedColormap(['lightgray', 'steelblue', 'darkorange'])
     bounds2 = [0, 0.5, 1.5, 2]
     norm2 = colors.BoundaryNorm(bounds2, cmap2.N)
     rotational_legend_elements = [
-        Patch(facecolor='blue', edgecolor='k', label='CCW'),
-        Patch(facecolor='red', edgecolor='k', label='CW'),
+        Patch(facecolor='steelblue', edgecolor='k', label='CCW'),
+        Patch(facecolor='darkorange', edgecolor='k', label='CW'),
         Patch(facecolor='lightgray', edgecolor='k', label='N/A')]
 
     # plot results
