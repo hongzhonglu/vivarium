@@ -155,20 +155,26 @@ def plot_timeseries_heatmaps(timeseries, config, out_dir='out'):
         plt.savefig(fig_path, bbox_inches='tight')
 
 
-
-def plot_flagella_expression(out_dir='out'):
+def make_flagella_network(out_dir='out'):
     # load the compartment
-    flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # make expression network plot
     flagella_expression_processes = flagella_expression_compartment.processes
     operons = flagella_expression_processes[0]['transcription'].genes
     promoters = flagella_expression_processes[0]['transcription'].templates
+    complexes = flagella_expression_processes[0]['complexation'].stoichiometry
     data = {
         'operons': operons,
-        'templates': promoters}
+        'templates': promoters,
+        'complexes': complexes}
     gene_network_plot(data, out_dir)
+
+
+def plot_flagella_expression(out_dir='out'):
+    # load the compartment
+    flagella_data = FlagellaChromosome()
+    flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
     settings = {
@@ -251,9 +257,14 @@ if __name__ == '__main__':
     # run scan with python vivarium/composites/flagella_expression.py --scan
     parser = argparse.ArgumentParser(description='flagella expression')
     parser.add_argument('--scan', '-s', action='store_true', default=False,)
+    parser.add_argument('--network', '-n', action='store_true', default=False, )
     args = parser.parse_args()
 
     if args.scan:
         results = scan_flagella_expression_parameters()
+    elif args.network:
+        make_flagella_network(out_dir)
     else:
+        make_flagella_network(out_dir)
         plot_flagella_expression(out_dir)
+
