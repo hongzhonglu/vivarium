@@ -38,6 +38,8 @@ from vivarium.compartment.composition import (
     simulate_process,
     simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
+from vivarium.processes.derive_globals import (
+    volume_from_length)
 
 
 
@@ -58,16 +60,7 @@ NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
 
 
 
-def get_volume(length, width):
-    '''
-    V = (4/3)*PI*r^3 + PI*r^2*a
-    l = a + 2*r
-    '''
-    radius = width / 2
-    cylinder_length = length - width
-    volume = cylinder_length * (PI * radius ** 2) + (4 / 3) * PI * radius ** 3
 
-    return volume
 
 def random_body_position(body):
     # pick a random point along the boundary
@@ -117,7 +110,7 @@ class Multibody(Process):
 
     defaults = {
         'initial_agents': {},
-        'elasticity': 0.95,
+        'elasticity': 0.9,
         'damping': 0.05, # simulates viscous forces to reduce velocity at low Reynolds number (1 = no damping, 0 = full damping)
         'angular_damping': 0.7,  # less damping for angular velocity seems to improve behavior
         'friction': 0.9,  # TODO -- does this do anything?
@@ -150,9 +143,11 @@ class Multibody(Process):
 
         # debug screen with pygame
         self.pygame_viz = initial_parameters.get('debug', self.defaults['debug'])
-        max_bound = max(self.bounds)
-        self.pygame_scale = DEBUG_SIZE / max_bound  # TODO -- remove this
+        self.pygame_scale = 1  # pygame_scale scales the debug screen
         if self.pygame_viz:
+            max_bound = max(self.bounds)
+            self.pygame_scale = DEBUG_SIZE / max_bound
+            self.force_scaling *= self.pygame_scale
             pygame.init()
             self._screen = pygame.display.set_mode((
                 int(self.bounds[0]*self.pygame_scale),
@@ -200,6 +195,7 @@ class Multibody(Process):
             'state': state,
             'schema': schema,
             'emitter_keys': default_emitter_keys,
+            'time_step': 2
         }
 
     def next_update(self, timestep, states):
@@ -279,8 +275,12 @@ class Multibody(Process):
         jitter_force = [
             random.normalvariate(0, self.jitter_force),
             random.normalvariate(0, self.jitter_force)]
-        scaled_jitter_force = [force * self.force_scaling for force in jitter_force]
-        body.apply_force_at_local_point(scaled_jitter_force, jitter_location)
+        scaled_jitter_force = [
+            force * self.force_scaling
+            for force in jitter_force]
+        body.apply_force_at_local_point(
+            scaled_jitter_force,
+            jitter_location)
 
     def apply_viscous_force(self, body):
         # dampen the velocity
@@ -289,15 +289,17 @@ class Multibody(Process):
 
     def add_barriers(self, bounds):
         """ Create static barriers """
+        thickness = 0.2
+
         x_bound = bounds[0] * self.pygame_scale
         y_bound = bounds[1] * self.pygame_scale
 
         static_body = self.space.static_body
         static_lines = [
-            pymunk.Segment(static_body, (0.0, 0.0), (x_bound, 0.0), 0.0),
-            pymunk.Segment(static_body, (x_bound, 0.0), (x_bound, y_bound), 0.0),
-            pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), 0.0),
-            pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), 0.0),
+            pymunk.Segment(static_body, (0.0, 0.0), (x_bound, 0.0), thickness),
+            pymunk.Segment(static_body, (x_bound, 0.0), (x_bound, y_bound), thickness),
+            pymunk.Segment(static_body, (x_bound, y_bound), (0.0, y_bound), thickness),
+            pymunk.Segment(static_body, (0.0, y_bound), (0.0, 0.0), thickness),
         ]
 
         if self.mother_machine:
@@ -310,7 +312,7 @@ class Multibody(Process):
                 pymunk.Segment(
                     static_body,
                     (channel_space * line, 0),
-                    (channel_space * line, channel_height), 0.0)
+                    (channel_space * line, channel_height), thickness)
                 for line in range(n_lines)]
             static_lines += machine_lines
 
@@ -390,8 +392,8 @@ class Multibody(Process):
         new_shape.friction = shape.friction
 
         # swap bodies
-        self.space.add(new_body, new_shape)
         self.space.remove(body, shape)
+        self.space.add(new_body, new_shape)
 
         # update body
         self.agent_bodies[body_id] = (new_body, new_shape)
@@ -477,6 +479,11 @@ def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
 def random_body_config(config):
+    # cell dimensions
+    width = 1
+    length = 2
+    volume = volume_from_length(length, width)
+
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
     agents = get_n_dummy_agents(n_agents)
@@ -486,9 +493,9 @@ def random_body_config(config):
                 np.random.uniform(0, bounds[0]),
                 np.random.uniform(0, bounds[1])],
             'angle': np.random.uniform(0, 2 * PI),
-            'volume': 1,
-            'length': 1.0,
-            'width': 0.5,
+            'volume': volume,
+            'length': length,
+            'width': width,
             'mass': 1,
             'forces': [0, 0]}
         for agent_id in agents.keys()}
@@ -498,21 +505,35 @@ def random_body_config(config):
         'bounds': bounds}
 
 def mother_machine_body_config(config):
+    # cell dimensions
+    width = 1
+    length = 2
+    volume = volume_from_length(length, width)
+
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
+    channel_space = config.get('channel_space', 1)
+
+    # possible locations, shuffled for index-in
+    n_spaces = math.floor(bounds[0]/channel_space)
+    assert n_agents < n_spaces, 'more agents than mother machine spaces'
+
+    possible_locations = [
+        [x*channel_space - channel_space/2, 0.01]
+        for x in range(1, n_spaces)]
+    random.shuffle(possible_locations)
+
     agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
-            'location': [
-                np.random.uniform(0, bounds[0]),
-                0.01],
+            'location': possible_locations[index],
             'angle': PI/2,
-            'volume': 1,
-            'length': 1.0,
-            'width': 0.5,
+            'volume': volume,
+            'length': length,
+            'width': width,
             'mass': 1,
             'forces': [0, 0]}
-        for agent_idx, agent_id in enumerate(agents.keys())}
+        for index, agent_id in enumerate(agents.keys())}
 
     return {
         'agents': agent_config,
@@ -612,29 +633,39 @@ def simulate_motility(config, settings):
 
 def run_mother_machine():
     bounds = [30, 30]
-    channel_height = 0.8 * bounds[1]
+    channel_height = 0.7 * bounds[1]
+    channel_space = 1.5
+
     settings = {
-        'growth_rate': 0.05,
-        'division_volume': 1.0,
+        'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
+        'division_volume': 2.6,
         'channel_height': channel_height,
-        'total_time': 120}
-    config = {
+        'total_time': 240}
+    mm_config = {
         'animate': True,
-        # 'debug': True,
         'mother_machine': {
             'channel_height': channel_height,
-            'channel_space': 1},
-        'jitter_force': 0.5e0,
+            'channel_space': channel_space},
+        'jitter_force': 2e-2,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 8}
-    config.update(mother_machine_body_config(body_config))
-    return simulate_growth_division(config, settings)
+        'channel_height': channel_height,
+        'channel_space': channel_space,
+        'n_agents': 5}
+    mm_config.update(mother_machine_body_config(body_config))
+    mm_data = simulate_growth_division(mm_config, settings)
+
+    # make snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in mm_data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, mm_config, out_dir, 'mother_machine_snapshots')
+
 
 def run_motility(out_dir):
     # test motility
-    bounds = [20, 20]
+    bounds = [100, 100]
     motility_sim_settings = {
         'timestep': 0.05,
         'total_time': 5}
@@ -664,19 +695,26 @@ def run_motility(out_dir):
 def run_growth_division():
     bounds = [20, 20]
     settings = {
-        'growth_rate': 0.1,
-        'growth_rate_noise': 0.01,
-        'division_volume': 1,
-        'total_time': 60}
-    config = {
+        'growth_rate': 0.02,
+        'growth_rate_noise': 0.02,
+        'division_volume': 2.6,
+        'total_time': 300}
+
+    gd_config = {
         'animate': True,
         'jitter_force': 1e-1,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
-        'n_agents': 4}
-    config.update(random_body_config(body_config))
-    return simulate_growth_division(config, settings)
+        'n_agents': 1}
+    gd_config.update(random_body_config(body_config))
+    gd_data = simulate_growth_division(gd_config, settings)
+
+    # make snapshot
+    agents = {time: time_data['agents']['agents'] for time, time_data in gd_data.items()}
+    fields = {}
+    plot_snapshots(agents, fields, gd_config, out_dir, 'growth_division_snapshots')
+
 
 def simulate_growth_division(config, settings):
 
@@ -698,6 +736,7 @@ def simulate_growth_division(config, settings):
 
     time = 0
     while time < total_time:
+        print('time: {}'.format(time))
         time += timestep
 
         agents_state = agents_store.state
@@ -712,10 +751,10 @@ def simulate_growth_division(config, settings):
             mass = state['mass']
 
             # update
-            growth_rate2 = growth_rate + np.random.normal(0.0, growth_rate_noise)
+            growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
             new_mass = mass + mass * growth_rate2
             new_length = length + length * growth_rate2
-            new_volume = get_volume(new_length, width)
+            new_volume = volume_from_length(new_length, width)
 
             if channel_height and location[1] > channel_height:
                 remove_agents.append(agent_id)
