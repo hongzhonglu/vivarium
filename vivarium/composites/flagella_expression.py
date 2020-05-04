@@ -7,6 +7,7 @@ import numpy as np
 from vivarium.compartment.composition import (
     load_compartment,
     simulate_compartment,
+    plot_compartment_topology,
     plot_simulation_output)
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
@@ -178,6 +179,12 @@ def run_flagella_expression(out_dir='out'):
     # load the compartment
     flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
+
+    settings = {'show_ports': True}
+    plot_compartment_topology(
+        flagella_expression_compartment,
+        settings,
+        out_dir)
 
     # run simulation
     settings = {

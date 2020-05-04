@@ -72,7 +72,10 @@ def compose_gene_expression(config):
             'global': 'global'}}
 
     # add derivers
-    deriver_config = {'mass': {'dark_mass': 1339}}  # fg
+    deriver_config = {
+        'mass': {
+            'dark_mass': 1339,  # fg
+            'ports': {'global': 'global'}}}
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
     all_processes = processes + derivers['deriver_processes']

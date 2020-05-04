@@ -198,11 +198,11 @@ class Translation(Process):
 
         # deriver_settings
         deriver_setting = [{
-            # 'type': 'mass',
-            # 'source_port': 'proteins',
-            # 'derived_port': 'global',
-            # 'keys': mols_with_mass},
-            # {
+            'type': 'mass',
+            'source_port': 'proteins',
+            'derived_port': 'global',
+            'keys': mols_with_mass},
+            {
             'type': 'counts_to_mmol',
             'source_port': 'proteins',
             'derived_port': 'concentrations',

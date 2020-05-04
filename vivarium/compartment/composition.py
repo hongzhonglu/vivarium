@@ -40,7 +40,7 @@ deriver_library = {
 
 
 
-def get_derivers(process_list, topology, config={}):
+def get_derivers(process_list, topology, deriver_config={}):
     '''
     get the derivers for a list of processes
 
@@ -60,7 +60,17 @@ def get_derivers(process_list, topology, config={}):
     deriver_topology = process_derivers['deriver_topology']
 
     # update deriver_configs
-    deriver_configs = deep_merge(deriver_configs, config)
+    deriver_configs = deep_merge(deriver_configs, deriver_config)
+
+    # update topology based on deriver_config
+    for process_id, config in deriver_config.items():
+        if process_id not in deriver_topology:
+            try:
+                ports = config['ports']
+                deriver_topology[process_id] = ports
+            except:
+                print('{} deriver requires topology in dervier_config'.format(process_id))
+                raise
 
     # configure the deriver processes
     deriver_processes = {}
