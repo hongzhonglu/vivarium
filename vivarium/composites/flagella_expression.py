@@ -4,7 +4,10 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.composition import load_compartment, simulate_compartment
+from vivarium.compartment.composition import (
+    load_compartment,
+    simulate_compartment,
+    plot_simulation_output)
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
@@ -171,14 +174,14 @@ def make_flagella_network(out_dir='out'):
     gene_network_plot(data, out_dir)
 
 
-def plot_flagella_expression(out_dir='out'):
+def run_flagella_expression(out_dir='out'):
     # load the compartment
     flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
     # run simulation
     settings = {
-        'total_time': 2400,
+        'total_time': 960,  # 2400
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
@@ -206,6 +209,17 @@ def plot_flagella_expression(out_dir='out'):
     plot_timeseries_heatmaps(
         timeseries,
         plot_config2,
+        out_dir)
+
+    # make a basic sim output
+    plot_settings = {
+        'max_rows': 30,
+        'remove_zeros': False,
+        'skip_ports': ['chromosome']}
+
+    plot_simulation_output(
+        timeseries,
+        plot_settings,
         out_dir)
 
 def exponential_range(steps, base, factor):
@@ -266,5 +280,5 @@ if __name__ == '__main__':
         make_flagella_network(out_dir)
     else:
         make_flagella_network(out_dir)
-        plot_flagella_expression(out_dir)
+        run_flagella_expression(out_dir)
 

@@ -404,7 +404,6 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     time_vec = timeseries['time']
 
     # remove selected states
-    # TODO -- plot removed_states as text
     removed_states = []
     if remove_flat:
         # find series with all the same value
@@ -457,8 +456,9 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     col_idx = 0
     for port in ports:
         top_timeseries = {}
+
+        # set up overlay
         if port in bottom_ports:
-            # get overlay
             top_port = overlay[port]
             top_timeseries = timeseries[top_port]
         elif port in top_ports + skip_ports:
@@ -470,7 +470,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
 
             # check if series is a list of ints or floats
             # TODO -- plot non-numeric states as well (in particular dicts)
-            if not all(isinstance(state, (int, float)) for state in series):
+            if not all(isinstance(state, (int, float, np.int64)) for state in series):
                 break
 
             # plot line at zero if series crosses the zero line

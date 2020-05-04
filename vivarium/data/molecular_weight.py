@@ -1,7 +1,7 @@
 # Note: proteins are referred to by their gene names with lower case letter
-# molecular_weight_kD is kD from nucleotide sequence, taken from ecocyc
+# molecular_weight is kD from nucleotide sequence, taken from ecocyc
 
-molecular_weight_kD = {
+molecular_weight = {
     'flhD': 13.316,
     'flhC': 21.566,
     'fliL': 17.221,
