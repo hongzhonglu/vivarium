@@ -38,6 +38,8 @@ from vivarium.compartment.composition import (
     simulate_process,
     simulate_compartment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
+from vivarium.processes.derive_globals import (
+    volume_from_length)
 
 
 
@@ -58,36 +60,7 @@ NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
 
 
 
-def length_from_volume(volume, width):
-    '''
-    get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
-    a=length of cylinder without rounded caps, l=total length:
 
-    V = (4/3)*PI*r^3 + PI*r^2*a
-    l = a + 2*r
-    '''
-    radius = width / 2
-    cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
-    total_length = cylinder_length + 2 * radius
-    return total_length
-
-def volume_from_length(length, width):
-    '''
-    inverse of length_from_volume
-    '''
-    radius = width / 2
-    cylinder_length = length - width
-    volume = cylinder_length * (PI * radius**2) + (4 / 3) * PI * radius**3
-    return volume
-
-def surface_area_from_length(length, width):
-    '''
-    SA = 3*PI*r^2 + 2*PI*r*a
-    '''
-    radius = width / 2
-    cylinder_length = length - width
-    surface_area = 3 * PI * radius**2 + 2 * PI * radius * cylinder_length
-    return surface_area
 
 def random_body_position(body):
     # pick a random point along the boundary
