@@ -58,16 +58,36 @@ NON_AGENT_KEYS = ['fields', 'time', 'global', COMPARTMENT_STATE]
 
 
 
-def get_volume(length, width):
+def length_from_volume(volume, width):
     '''
+    get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
+    a=length of cylinder without rounded caps, l=total length:
+
     V = (4/3)*PI*r^3 + PI*r^2*a
     l = a + 2*r
     '''
     radius = width / 2
-    cylinder_length = length - width
-    volume = cylinder_length * (PI * radius ** 2) + (4 / 3) * PI * radius ** 3
+    cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
+    total_length = cylinder_length + 2 * radius
+    return total_length
 
+def volume_from_length(length, width):
+    '''
+    inverse of length_from_volume
+    '''
+    radius = width / 2
+    cylinder_length = length - width
+    volume = cylinder_length * (PI * radius**2) + (4 / 3) * PI * radius**3
     return volume
+
+def surface_area_from_length(length, width):
+    '''
+    SA = 3*PI*r^2 + 2*PI*r*a
+    '''
+    radius = width / 2
+    cylinder_length = length - width
+    surface_area = 3 * PI * radius**2 + 2 * PI * radius * cylinder_length
+    return surface_area
 
 def random_body_position(body):
     # pick a random point along the boundary
@@ -486,6 +506,11 @@ def get_n_dummy_agents(n_agents):
     return {agent_id: None for agent_id in range(n_agents)}
 
 def random_body_config(config):
+    # cell dimensions
+    width = 1
+    length = 2
+    volume = volume_from_length(length, width)
+
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
     agents = get_n_dummy_agents(n_agents)
@@ -495,9 +520,9 @@ def random_body_config(config):
                 np.random.uniform(0, bounds[0]),
                 np.random.uniform(0, bounds[1])],
             'angle': np.random.uniform(0, 2 * PI),
-            'volume': 1,
-            'length': 1.0,
-            'width': 0.5,
+            'volume': volume,
+            'length': length,
+            'width': width,
             'mass': 1,
             'forces': [0, 0]}
         for agent_id in agents.keys()}
@@ -507,6 +532,11 @@ def random_body_config(config):
         'bounds': bounds}
 
 def mother_machine_body_config(config):
+    # cell dimensions
+    width = 1
+    length = 2
+    volume = volume_from_length(length, width)
+
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
     channel_space = config.get('channel_space', 1)
@@ -525,9 +555,9 @@ def mother_machine_body_config(config):
         agent_id: {
             'location': possible_locations[index],
             'angle': PI/2,
-            'volume': 1,
-            'length': 1.0,
-            'width': 0.5,
+            'volume': volume,
+            'length': length,
+            'width': width,
             'mass': 1,
             'forces': [0, 0]}
         for index, agent_id in enumerate(agents.keys())}
@@ -631,12 +661,12 @@ def simulate_motility(config, settings):
 def run_mother_machine():
     bounds = [30, 30]
     channel_height = 0.7 * bounds[1]
-    channel_space = 0.9
+    channel_space = 1.5
 
     settings = {
         'growth_rate': 0.02,
         'growth_rate_noise': 0.02,
-        'division_volume': 1.0,
+        'division_volume': 2.6,
         'channel_height': channel_height,
         'total_time': 240}
     mm_config = {
@@ -644,7 +674,7 @@ def run_mother_machine():
         'mother_machine': {
             'channel_height': channel_height,
             'channel_space': channel_space},
-        'jitter_force': 1e-2,
+        'jitter_force': 2e-2,
         'bounds': bounds}
     body_config = {
         'bounds': bounds,
@@ -662,7 +692,7 @@ def run_mother_machine():
 
 def run_motility(out_dir):
     # test motility
-    bounds = [20, 20]
+    bounds = [100, 100]
     motility_sim_settings = {
         'timestep': 0.05,
         'total_time': 5}
@@ -694,7 +724,7 @@ def run_growth_division():
     settings = {
         'growth_rate': 0.02,
         'growth_rate_noise': 0.02,
-        'division_volume': 1,
+        'division_volume': 2.6,
         'total_time': 300}
 
     gd_config = {
@@ -751,7 +781,7 @@ def simulate_growth_division(config, settings):
             growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
             new_mass = mass + mass * growth_rate2
             new_length = length + length * growth_rate2
-            new_volume = get_volume(new_length, width)
+            new_volume = volume_from_length(new_length, width)
 
             if channel_height and location[1] > channel_height:
                 remove_agents.append(agent_id)
