@@ -66,7 +66,8 @@ def compose_gene_expression(config):
 
         'complexation': {
             'monomers': 'proteins',
-            'complexes': 'proteins'},
+            'complexes': 'proteins',
+            'global': 'global'},
 
         'division': {
             'global': 'global'}}

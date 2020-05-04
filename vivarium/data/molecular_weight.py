@@ -2,6 +2,8 @@
 # molecular_weight is kD from nucleotide sequence, taken from ecocyc
 
 molecular_weight = {
+
+    # protein monomers
     'flhD': 13.316,
     'flhC': 21.566,
     'fliL': 17.221,
@@ -51,4 +53,11 @@ molecular_weight = {
     'motB': 34.186,
     'cheA': 71.382,
     'cheW': 18.084,
+
+    # complexes
+    'flhDC': 96.396,  # from stoichiometry
+    'flagellar export apparatus': 808.657,  # from stoichiometry
+    'flagellar motor switch': 2257.897,   # from stoichiometry
+    'flagellar motor': 2575.900,  # from stoichiometry
+    'flagellum': 8815.743,  # from stoichiometry
 }
