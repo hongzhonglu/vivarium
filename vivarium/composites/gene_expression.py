@@ -100,8 +100,19 @@ def compose_gene_expression(config):
 
 # analysis
 def gene_network_plot(data, out_dir, filename='gene_network'):
+    '''
+    Make a gene network plot from configuration data
+
+    - data (dict):
+        {
+        'operons': operons, the "genes" in a chromosome config with {operon: [genes list]}
+        'templates': promoters, the "promoters" in a chromosome config with {promoter: {sites: [], thresholds: []}}
+        'complexes': complexes, stoichiometry from a complexation process.
+        }
+
+    '''
     node_size = 400
-    node_distance = 15
+    node_distance = 30
     edge_weight = 1
     iterations = 1000
 
@@ -212,8 +223,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
                 G.add_edge(promoter_name, operon_name)
 
 
-    # add gene product --> complex
-
+    ## add gene product --> complex
     # first get the sets of complexes and reactants.
     complex_set = set()
     monomer_set = set()
@@ -259,6 +269,24 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
             edge = (reactant_name, complex_name)
             edges.append(edge)
             G.add_edge(reactant_name, complex_name)
+
+    # add edges between proteins/complexes and transcription factors that share the same name
+    tf_names = [node.replace(tf_suffix, '') for node in tf_nodes]
+    for node in gene_nodes:
+        gene_name = node.replace(gene_suffix, '')
+        if gene_name in tf_names:
+            tf_node = gene_name + tf_suffix
+            edge = (node, tf_node)
+            edges.append(edge)
+            G.add_edge(node, tf_node)
+
+    for node in complex_nodes:
+        complex_name = node.replace(complex_suffix, '')
+        if complex_name in tf_names:
+            tf_node = complex_name + tf_suffix
+            edge = (node, tf_node)
+            edges.append(edge)
+            G.add_edge(node, tf_node)
 
     # separate out the disconnected graphs
     subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
@@ -321,7 +349,11 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
         # get positions
         dist = node_distance / (len(subgraph)**0.5)
-        pos = nx.spring_layout(subgraph, k=dist, iterations=iterations)
+        # pos = nx.spring_layout(subgraph, k=dist, iterations=iterations)
+        pos = nx.spring_layout(subgraph,
+                               k=dist,
+                               scale=20,
+                               iterations=iterations)
 
         color_map = []
         for node in subgraph:
