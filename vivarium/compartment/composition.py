@@ -69,7 +69,7 @@ def get_derivers(process_list, topology, deriver_config={}):
                 ports = config['ports']
                 deriver_topology[process_id] = ports
             except:
-                print('{} deriver requires topology in dervier_config'.format(process_id))
+                print('{} deriver requires topology in deriver_config'.format(process_id))
                 raise
 
     # configure the deriver processes
