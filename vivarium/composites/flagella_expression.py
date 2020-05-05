@@ -7,6 +7,7 @@ import numpy as np
 from vivarium.compartment.composition import (
     load_compartment,
     simulate_compartment,
+    plot_compartment_topology,
     plot_simulation_output
 )
 from vivarium.data.nucleotides import nucleotides
@@ -182,14 +183,20 @@ def make_flagella_network(out_dir='out'):
     gene_network_plot(data, out_dir)
 
 
-def plot_flagella_expression(out_dir='out'):
+def run_flagella_expression(out_dir='out'):
     # load the compartment
     flagella_data = FlagellaChromosome()
     flagella_expression_compartment = load_compartment(generate_flagella_compartment)
 
+    settings = {'show_ports': True}
+    plot_compartment_topology(
+        flagella_expression_compartment,
+        settings,
+        out_dir)
+
     # run simulation
     settings = {
-        'total_time': 600,  # 10 minutes should be enough time for a full flagellum to be expressed
+        'total_time': 960,  # 2400
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
@@ -229,7 +236,6 @@ def plot_flagella_expression(out_dir='out'):
         timeseries,
         plot_settings,
         out_dir)
-
 
 def exponential_range(steps, base, factor):
     return [
@@ -288,5 +294,5 @@ if __name__ == '__main__':
         make_flagella_network(out_dir)
     else:
         make_flagella_network(out_dir)
-        plot_flagella_expression(out_dir)
+        run_flagella_expression(out_dir)
 

@@ -5,6 +5,7 @@ from arrow import StochasticSystem
 
 from vivarium.compartment.process import Process
 from vivarium.data.amino_acids import amino_acids
+from vivarium.data.molecular_weight import molecular_weight
 from vivarium.utils.datum import Datum
 from vivarium.utils.polymerize import Elongation, Polymerase, Template, build_stoichiometry, all_products, generate_template
 from vivarium.utils.dict_utils import deep_merge
@@ -146,7 +147,8 @@ class Translation(Process):
             'molecules': self.molecule_ids,
             'transcripts': list(self.operons.keys()),
             'proteins': concentration_keys + [UNBOUND_RIBOSOME_KEY],
-            'concentrations': concentration_keys}
+            'concentrations': concentration_keys,
+            'global': []}
 
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
@@ -183,16 +185,29 @@ class Translation(Process):
             'transcripts': operons,
             'proteins': self.protein_ids + [UNBOUND_RIBOSOME_KEY]}
 
+        # schema
+        mols_with_mass = [
+            mol_id for mol_id in self.ports['proteins']
+            if mol_id in molecular_weight]
+        schema = {
+            'ribosomes': {
+                'ribosomes': {'updater': 'set'}},
+            'proteins': {mol_id: {
+                    'mass': molecular_weight.get(mol_id)}
+                for mol_id in mols_with_mass}}
+
+        # deriver_settings
         deriver_setting = [{
+            'type': 'mass',
+            'source_port': 'proteins',
+            'derived_port': 'global',
+            'keys': mols_with_mass},
+            {
             'type': 'counts_to_mmol',
             'source_port': 'proteins',
             'derived_port': 'concentrations',
-            'keys': self.protein_ids + self.concentration_keys}]
-
-        # schema
-        schema = {
-            'ribosomes': {
-                'ribosomes': {'updater': 'set'}}}
+            'keys': self.protein_ids + self.concentration_keys
+            }]
 
         return {
             'state': default_state,

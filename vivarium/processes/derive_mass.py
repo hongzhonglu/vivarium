@@ -18,14 +18,14 @@ class DeriveMass(Process):
 
     def __init__(self, initial_parameters={}):
 
-        self.source_ports = initial_parameters['source_ports']
-        target_ports = initial_parameters['target_ports']
+        self.source_ports = initial_parameters.get('source_ports', {})
+        target_ports = initial_parameters.get('target_ports', {'global': []})
         if target_ports:
             assert len(target_ports) == 1, 'DeriveMass too many target ports'
             assert list(target_ports.keys())[0] == 'global', 'DeriveMass requires target port named global'
 
         self.dark_mass = initial_parameters.get(
-            'dark_mass', self.defaults['dark_mass'])
+            'dark_mass', self.defaults['dark_mass']) * units.fg
 
         if self.dark_mass > 0:
             self.source_ports['global'] = ['dark_mass']
@@ -46,7 +46,7 @@ class DeriveMass(Process):
 
     def default_settings(self):
         default_state = {
-            'global': {'dark_mass': (self.dark_mass * AVOGADRO).magnitude}
+            'global': {'dark_mass': (self.dark_mass.to('g') * AVOGADRO).magnitude}
         }
 
         # emitter keys

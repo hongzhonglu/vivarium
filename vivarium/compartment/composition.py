@@ -40,7 +40,7 @@ deriver_library = {
 
 
 
-def get_derivers(process_list, topology, config={}):
+def get_derivers(process_list, topology, deriver_config={}):
     '''
     get the derivers for a list of processes
 
@@ -60,7 +60,17 @@ def get_derivers(process_list, topology, config={}):
     deriver_topology = process_derivers['deriver_topology']
 
     # update deriver_configs
-    deriver_configs = deep_merge(deriver_configs, config)
+    deriver_configs = deep_merge(deriver_configs, deriver_config)
+
+    # update topology based on deriver_config
+    for process_id, config in deriver_config.items():
+        if process_id not in deriver_topology:
+            try:
+                ports = config['ports']
+                deriver_topology[process_id] = ports
+            except:
+                print('{} deriver requires topology in deriver_config'.format(process_id))
+                raise
 
     # configure the deriver processes
     deriver_processes = {}
@@ -404,7 +414,6 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     time_vec = timeseries['time']
 
     # remove selected states
-    # TODO -- plot removed_states as text
     removed_states = []
     if remove_flat:
         # find series with all the same value
@@ -457,8 +466,9 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     col_idx = 0
     for port in ports:
         top_timeseries = {}
+
+        # set up overlay
         if port in bottom_ports:
-            # get overlay
             top_port = overlay[port]
             top_timeseries = timeseries[top_port]
         elif port in top_ports + skip_ports:
