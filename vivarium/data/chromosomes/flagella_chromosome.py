@@ -53,6 +53,7 @@ class FlagellaChromosome(object):
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgM': ['flgM', 'flgN'],
                 'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
@@ -61,8 +62,7 @@ class FlagellaChromosome(object):
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
                 'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
-                'motA': ['motA', 'motB', 'cheA', 'cheW'],
-                'flgM': ['flgM', 'flgN']},
+                'motA': ['motA', 'motB', 'cheA', 'cheW']},
             'promoters': {
                 'flhDp': {
                     'id': 'flhDp',
@@ -371,12 +371,23 @@ class FlagellaChromosome(object):
                 [key[1]])
             for key, sequence in self.protein_sequences.items()}
 
-        self.transcript_affinities = {
-            operon: 0.01
-            for operon in self.transcripts}
-
+        # transcript affinities are the affinities transcripts to bind a ribosome and translate to protein
+        # transcript affinities are scaled relative to the requirements to build a single full flagellum.
+        self.min_tr_affinity = 1e-1
+        tr_affinity_scaling = {
+            'fliL': 2,
+            'fliM': 34,
+            'fliG': 26,
+            'fliH': 12,
+            'fliI': 6,
+            'fliD': 5,
+            'flgE': 120}
+        self.transcript_affinities = {}
+        for (operon, product) in self.transcripts:
+            self.transcript_affinities[(operon, product)] = self.min_tr_affinity * tr_affinity_scaling.get(product,1)
         self.transcript_affinities.update(
             parameters.get('transcript_affinities', {}))
+
 
         self.transcription_factors = [
             'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
