@@ -113,6 +113,8 @@ class State(object):
         self.default = config.get('default')
         self.value = self.default
         self.properties = config.get('properties', {})
+        self.units = None
+
         self.children = {
             key: State(child)
             for key, child in config.get('children', {}).items()}
@@ -138,7 +140,7 @@ class State(object):
             return self
 
     def get_in(self, path):
-        return self.get_in(path).get_value()
+        return self.get_path(path).get_value()
 
     def apply_update(self, update):
         if self.children:
@@ -517,13 +519,14 @@ def flatten_process_layers(process_layers):
 class Experiment():
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, derivers, states, configuration):
+    def __init__(self, processes, derivers, configuration):
         '''
         Given a set of processes and states, and a topology describing their
         connections, perform those connections.
         '''
 
         self.processes = processes
+        self.state = initialize_state(processes)
         self.states = states
         self.derivers = derivers
         self.configuration = configuration
@@ -812,9 +815,20 @@ def test_recursive_store():
                 'updater': 'accumulate'},
             'patches': {
                 'children': {
-                    'a': {
+                    (0, 1): {
                         'children': {
-                            'concentration': {
+                            'enzymeX': {
+                                'default': 0.0,
+                                'updater': 'set'},
+                            'enzymeY': {
+                                'default': 0.0,
+                                'updater': 'set'}}},
+                    (0, 2): {
+                        'children': {
+                            'enzymeX': {
+                                'default': 0.0,
+                                'updater': 'set'},
+                            'enzymeY': {
                                 'default': 0.0,
                                 'updater': 'set'}}}}},
             'simulations': {
