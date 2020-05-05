@@ -1,6 +1,7 @@
 import copy
 import csv
 import os
+import io
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -533,7 +534,7 @@ def load_timeseries(path_to_csv):
 
     The timeseries is returned in flattened form.
     '''
-    with open(path_to_csv, 'r', newline='') as f:
+    with io.open(path_to_csv, 'r', newline='') as f:
         reader = csv.DictReader(f)
         timeseries = {}
         for row in reader:
@@ -584,7 +585,7 @@ def _prepare_timeseries_for_comparison(
     if 'time' not in timeseries1 or 'time' not in timeseries2:
         raise AssertionError('Both timeseries must have key "time"')
     if keys is None:
-        keys = timeseries1.keys() & timeseries2.keys()
+        keys = set(timeseries1.keys()) & set(timeseries2.keys())
     else:
         if 'time' not in keys:
             keys.append('time')
