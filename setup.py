@@ -11,7 +11,7 @@ with open("requirements.txt", 'r') as requirements:
 
 setup(
     name='wholecell-vivarium',
-    version='0.0.42',
+    version='0.0.47',
     packages=[
         'vivarium',
         'vivarium.actor',
@@ -19,9 +19,14 @@ setup(
         'vivarium.compartment',
         'vivarium.composites',
         'vivarium.environment',
+        'vivarium.parameters',
         'vivarium.processes',
+        'vivarium.reference_data',
+        'vivarium.states',
         'vivarium.data',
+        'vivarium.data.chromosomes',
         'vivarium.data.flat',
+        'vivarium.data.flat.media',
         'vivarium.data.json_files',
         'vivarium.utils'],
     author='Eran Agmon, Ryan Spangler',
@@ -38,7 +43,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     package_data={
-        'vivarium.data.flat': ['*.tsv'],
+        'vivarium.data.flat': ['*.tsv', '*.fa'],
+        'vivarium.data.flat.media': ['*.tsv'],
+        'vivarium.reference_data': ['*.csv'],
         'vivarium.data.json_files': ['*.json']},
     include_package_data=True,
     install_requires=install_requires)

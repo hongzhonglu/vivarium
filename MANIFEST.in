@@ -1,2 +1,7 @@
 include requirements.txt
 include README.md
+include vivarium/data/flat/*.fa
+include vivarium/data/flat/*.tsv
+include vivarium/data/flat/media/*.tsv
+include vivarium/data/json_files/*.json
+include vivarium/reference_data/*.csv

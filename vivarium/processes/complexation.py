@@ -10,12 +10,6 @@ from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 
 chromosome = FlagellaChromosome()
 
-default_complexation_parameters = {
-    'monomer_ids': chromosome.complexation_monomer_ids,
-    'complex_ids': chromosome.complexation_complex_ids,
-    'stoichiometry': chromosome.complexation_stoichiometry,
-    'rates': chromosome.complexation_rates}
-
 def build_complexation_stoichiometry(
         stoichiometry,
         rates,
@@ -41,8 +35,14 @@ def build_complexation_stoichiometry(
     
 
 class Complexation(Process):
+    defaults = {
+        'monomer_ids': chromosome.complexation_monomer_ids,
+        'complex_ids': chromosome.complexation_complex_ids,
+        'stoichiometry': chromosome.complexation_stoichiometry,
+        'rates': chromosome.complexation_rates}
+
     def __init__(self, initial_parameters={}):
-        self.default_parameters = copy.deepcopy(default_complexation_parameters)
+        self.default_parameters = copy.deepcopy(self.defaults)
         self.derive_defaults(initial_parameters, 'stoichiometry', 'reaction_ids', keys_list)
 
         self.parameters = self.default_parameters
