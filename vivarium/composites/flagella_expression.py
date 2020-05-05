@@ -4,7 +4,11 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.composition import load_compartment, simulate_compartment
+from vivarium.compartment.composition import (
+    load_compartment,
+    simulate_compartment,
+    plot_simulation_output
+)
 from vivarium.data.nucleotides import nucleotides
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
@@ -14,8 +18,15 @@ from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
 from vivarium.composites.gene_expression import (
     compose_gene_expression,
     plot_gene_expression_output,
-    gene_network_plot)
-from vivarium.parameters.parameters import parameter_scan
+    gene_network_plot
+)
+from vivarium.parameters.parameters import (
+    parameter_scan,
+    get_parameters_logspace,
+    plot_scan_results
+)
+
+
 
 def get_flagella_expression_config(config):
     flagella_data = FlagellaChromosome(config)
@@ -24,9 +35,9 @@ def get_flagella_expression_config(config):
 
     molecules = {}
     for nucleotide in nucleotides.values():
-        molecules[nucleotide] = 500000
+        molecules[nucleotide] = 5000000
     for amino_acid in amino_acids.values():
-        molecules[amino_acid] = 100000
+        molecules[amino_acid] = 1000000
 
     config = {
 
@@ -46,7 +57,6 @@ def get_flagella_expression_config(config):
             'templates': flagella_data.transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
             'transcript_affinities': flagella_data.transcript_affinities,
-
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
 
@@ -77,8 +87,9 @@ def get_flagella_expression_config(config):
                 'CRP': 10,
                 'Fnr': 10,
                 'endoRNAse': 1,
-                UNBOUND_RIBOSOME_KEY: 10,
-                UNBOUND_RNAP_KEY: 10}}}
+                'flagellum': 8,
+                UNBOUND_RIBOSOME_KEY: 200,  # e. coli has ~ 20000 ribosomes
+                UNBOUND_RNAP_KEY: 200}}}
 
     return config
 
@@ -178,7 +189,7 @@ def plot_flagella_expression(out_dir='out'):
 
     # run simulation
     settings = {
-        'total_time': 2400,
+        'total_time': 600,  # 10 minutes should be enough time for a full flagellum to be expressed
         'verbose': True}
     timeseries = simulate_compartment(flagella_expression_compartment, settings)
 
@@ -208,6 +219,18 @@ def plot_flagella_expression(out_dir='out'):
         plot_config2,
         out_dir)
 
+    # make a basic sim output
+    plot_settings = {
+        'max_rows': 30,
+        'remove_zeros': False,
+        'skip_ports': ['chromosome']}
+
+    plot_simulation_output(
+        timeseries,
+        plot_settings,
+        out_dir)
+
+
 def exponential_range(steps, base, factor):
     return [
         (base ** x) * factor
@@ -217,23 +240,18 @@ def scan_flagella_expression_parameters():
     flagella_data = FlagellaChromosome()
     scan_params = {}
 
-    steps = 3
-    affinities_range = exponential_range(steps, 3, 1e-3)
-    thresholds_range = exponential_range(steps, 2.5, 1e-7)
+    # # add promoter affinities
+    # for promoter in flagella_data.chromosome_config['promoters'].keys():
+    #     scan_params[('promoter_affinities', promoter)] = get_parameters_logspace(1e-3, 1e0, 4)
 
-    # add promoter affinities
-    for promoter in flagella_data.chromosome_config['promoters'].keys():
-        scan_params[('promoter_affinities', promoter)] = affinities_range
+    # scan minimum transcript affinity -- other affinities are a scaled factor of this value
+    scan_params[('min_tr_affinity', flagella_data.min_tr_affinity)] = get_parameters_logspace(1e-2, 1e2, 6)
 
-    # add transcript affinities
-    for site in flagella_data.transcript_affinities.keys():
-        scan_params[('transcript_affinities', site)] = affinities_range
+    # # add transcription factor thresholds
+    # for threshold in flagella_data.factor_thresholds.keys():
+    #     scan_params[('thresholds', threshold)] = get_parameters_logspace(1e-7, 1e-4, 4)
 
-    # add transcription factor thresholds
-    for threshold in flagella_data.factor_thresholds.keys():
-        scan_params[('thresholds', threshold)] = thresholds_range
-
-        metrics = [
+    metrics = [
         ('proteins', monomer)
         for monomer in flagella_data.complexation_monomer_ids] + [
         ('proteins', complex)
@@ -243,7 +261,10 @@ def scan_flagella_expression_parameters():
         'composite': generate_flagella_compartment,
         'scan_parameters': scan_params,
         'metrics': metrics,
-        'options': {'time': 5}}
+        'options': {'time': 480}}
+
+    print('number of parameters: {}'.format(len(scan_params)))  # TODO -- get this down to 10
+
     results = parameter_scan(scan_config)
 
     return results
@@ -262,6 +283,7 @@ if __name__ == '__main__':
 
     if args.scan:
         results = scan_flagella_expression_parameters()
+        plot_scan_results(results, out_dir)
     elif args.network:
         make_flagella_network(out_dir)
     else:
