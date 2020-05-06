@@ -59,8 +59,6 @@ def get_emitter_keys(process, topology):
 
         default_settings = process_object.default_settings()
         process_keys = default_settings.get('emitter_keys', {})
-        if not process_keys:
-            print('no emitter keys in process {}'.format(process_id))
         for port, keys in process_keys.items():
             compartment_name = process_ports[port]
             if compartment_name in emitter_keys.keys():
@@ -80,6 +78,21 @@ def configure_emitter(config, processes, topology):
     emitter_config['simulation_id'] = config.get('simulation_id')
     return get_emitter(emitter_config)
 
+def timeseries_from_data(data):
+    time_vec = list(data.keys())
+    initial_state = data[time_vec[0]]
+    timeseries = {port: {state: []
+                         for state, initial in states.items()}
+                  for port, states in initial_state.items()}
+    timeseries['time'] = time_vec
+
+    for time, all_states in data.items():
+        for port, states in all_states.items():
+            for state_id, state in states.items():
+                timeseries[port][state_id].append(state)
+    return timeseries
+
+
 
 class Emitter(object):
     '''
@@ -91,6 +104,9 @@ class Emitter(object):
     def emit(self, data):
         print(data)
 
+    def get_timeseries(self):
+        raise Exception('emitter does not get timeseries')
+        return {}
 
 class NullEmitter(Emitter):
     '''
@@ -119,18 +135,7 @@ class TimeSeriesEmitter(Emitter):
         return self.saved_data
 
     def get_timeseries(self):
-        time_vec = list(self.saved_data.keys())
-        initial_state = self.saved_data[time_vec[0]]
-        timeseries = {port: {state: []
-                             for state, initial in states.items()}
-                      for port, states in initial_state.items()}
-        timeseries['time'] = time_vec
-
-        for time, all_states in self.saved_data.items():
-            for port, states in all_states.items():
-                for state_id, state in states.items():
-                    timeseries[port][state_id].append(state)
-        return timeseries
+        return timeseries_from_data(self.saved_data)
 
 class KafkaEmitter(Emitter):
     '''

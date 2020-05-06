@@ -79,7 +79,7 @@ class BindingSite(Datum):
     defaults = {
         'position': 0,
         'length': 0,
-        'thresholds': []} # list of pairs, (factor, threshold)
+        'thresholds': {}} # (factor, threshold)
 
     def __init__(self, config):
         super(BindingSite, self).__init__(config, self.defaults)
@@ -90,7 +90,7 @@ class BindingSite(Datum):
         '''
 
         state = None
-        for factor, threshold in self.thresholds:
+        for factor, threshold in self.thresholds.items():
             if levels[factor] >= threshold:
                 state = factor
                 break

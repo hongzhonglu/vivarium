@@ -8,27 +8,27 @@
 #   pyenv local lens_env
 #
 ## Install NumPy first
-#   pip install numpy==1.14.6
+#   pip install numpy>=1.14.6
 #
 ## Install the packages listed in this file:
 #   pip install -r requirements.txt
 #   pyenv rehash
 
-Arpeggio==1.9.1
-cffi==1.13.2
-cobra==0.17.1
-confluent-kafka==0.11.5
-matplotlib==2.2.2
-networkx==2.4
-numpy==1.15.3
-parsimonious==0.8.1
-Pint==0.9
-pygame==1.9.6
-pymongo==3.6.1
-pymunk==5.6.0
-pytest==4.6.5
-pytest-benchmark==3.2.2
-scipy==1.4.1
-scs==2.0.2
-stochastic-arrow==0.4.0
-swiglpk==1.4.4
+Arpeggio>=1.9.1
+cffi>=1.13.2
+cobra>=0.17.1
+confluent-kafka>=0.11.5
+matplotlib>=2.2.2
+networkx>=2.2
+numpy>=1.14.6
+parsimonious>=0.8.1
+Pint>=0.9
+pygame>=1.9.6
+pymongo>=3.6.1
+pymunk>=5.6.0
+pytest>=4.6.5
+pytest-benchmark>=3.2.2
+scipy>=1.2.3
+scs>=2.0.2
+stochastic-arrow>=0.4.1
+swiglpk>=1.4.4

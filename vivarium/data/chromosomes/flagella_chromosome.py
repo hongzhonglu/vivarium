@@ -3,8 +3,8 @@ import os
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
+from vivarium.states.chromosome import Chromosome
 
-knowledge_base = KnowledgeBase()
 
 ECOLI_GENOME_FILE_NAME = 'Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
 ECOLI_GENOME_PATH = os.path.abspath(
@@ -14,17 +14,55 @@ ECOLI_GENOME_PATH = os.path.abspath(
     )
 )
 
+
 class FlagellaChromosome(object):
-    def __init__(self):
-        ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
-        self.config = {
-            'sequence': ecoli_sequence,
+    ecoli_sequence = None
+    knowledge_base = None
+
+    def __init__(self, parameters={}):
+        if self.knowledge_base is None:
+            self.knowledge_base = KnowledgeBase()
+        if self.ecoli_sequence is None:
+            self.ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
+
+        self.factor_thresholds = {
+            ('flhDp', 'CRP'): 1e-05,
+            ('fliLp1', 'flhDC'): 1e-06,
+            ('fliLp1', 'fliA'): 1.3e-05,
+            ('fliEp1', 'flhDC'): 4e-06,
+            ('fliEp1', 'fliA'): 1.1e-05,
+            ('fliFp1', 'flhDC'): 7e-06,
+            ('fliFp1', 'fliA'): 1e-05,
+            ('flgBp', 'flhDC'): 1e-05,
+            ('flgBp', 'fliA'): 8e-06,
+            ('flgAp', 'flhDC'): 1.3e-05,
+            ('flgAp', 'fliA'): 6e-06,
+            ('flhBp', 'flhDC'): 1.5e-05,
+            ('flhBp', 'fliA'): 5e-06,
+            ('fliAp1', 'flhDC'): 1.7e-05,
+            ('fliAp1', 'fliA'): 4e-06,
+            ('flgEp', 'flhDC'): 1.9e-05,
+            ('flgEp', 'fliA'): 3e-06,
+            ('fliDp', 'flhDC'): 1.9e-05,
+            ('fliDp', 'fliA'): 3e-06,
+            ('flgKp', 'flhDC'): 2.1e-05,
+            ('flgKp', 'fliA'): 1e-06,
+            ('fliCp', 'fliA'): 5e-06,
+            ('tarp', 'fliA'): 7e-06,
+            ('motAp', 'fliA'): 9e-06,
+            ('flgMp', 'fliA'): 1.1e-06}
+
+        self.factor_thresholds.update(parameters.get('thresholds', {}))
+
+        self.chromosome_config = {
+            'sequence': self.ecoli_sequence,
             'genes': {
                 'flhDC': ['flhD', 'flhC'],
                 'fliL': ['fliL', 'fliM', 'fliN', 'fliO', 'fliP', 'fliQ', 'fliR'],
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgM': ['flgM', 'flgN'],
                 'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
@@ -33,17 +71,13 @@ class FlagellaChromosome(object):
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
                 'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
-                'motA': ['motA', 'motB', 'cheA', 'cheW'],
-                'flgM': ['flgM', 'flgN']},
+                'motA': ['motA', 'motB', 'cheA', 'cheW']},
             'promoters': {
                 'flhDp': {
                     'id': 'flhDp',
                     'position': 1978197,
                     'direction': -1,
-                    'sites': [
-                        {
-                            'thresholds': [
-                                ('CRP', 1e-05)]}],
+                    'sites': [{'thresholds': {'CRP': 1e-05}}],
                     'terminators': [
                         {
                             'position': 1977266,
@@ -54,8 +88,8 @@ class FlagellaChromosome(object):
                     'position': 2019618,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1e-06)]},
-                        {'thresholds': [('fliA', 1.3e-05)]}],
+                        {'thresholds': {'flhDC': 4e-06}},
+                        {'thresholds': {'fliA': 1.3e-05}}],
                     'terminators': [
                         {
                             'position': 2023678,
@@ -66,8 +100,8 @@ class FlagellaChromosome(object):
                     'position': 2013014,
                     'direction': -1,
                     'sites': [
-                        {'thresholds': [('flhDC', 4e-06)]},
-                        {'thresholds': [('fliA', 1.1e-05)]}],
+                        {'thresholds': {'flhDC': 5e-06}},
+                        {'thresholds': {'fliA': 1.1e-05}}],
                     'terminators': [
                         {
                             'position': 2012700,
@@ -78,8 +112,8 @@ class FlagellaChromosome(object):
                     'position': 2013229,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': [('flhDC', 7e-06)]},
-                        {'thresholds': [('fliA', 1e-05)]}],
+                        {'thresholds': {'flhDC': 7e-06}},
+                        {'thresholds': {'fliA': 1e-05}}],
                     'terminators': [
                         {
                             'position': 2019513,
@@ -90,8 +124,8 @@ class FlagellaChromosome(object):
                     'position': 1130863,
                     'direction': -1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1e-05)]},
-                        {'thresholds': [('fliA', 8e-06)]}],
+                        {'thresholds': {'flhDC': 1e-05}},
+                        {'thresholds': {'fliA': 8e-06}}],
                     'terminators': [
                         {
                             'position': 1129414,
@@ -102,32 +136,20 @@ class FlagellaChromosome(object):
                     'position': 1131018,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1.3e-05)]},
-                        {'thresholds': [('fliA', 6e-06)]}],
+                        {'thresholds': {'flhDC': 1.3e-05}},
+                        {'thresholds': {'fliA': 6e-06}}],
                     'terminators': [
                         {
                             'position': 1138312,
                             'strength': 1.0,
                             'products': ['flgB']}]},
-                'flgEp': {
-                    'id': 'flgEp',
-                    'position': 1132574,
-                    'direction': 1,
-                    'sites': [
-                        {'thresholds': [('flhDC', 1.9e-05)]},
-                        {'thresholds': [('fliA', 3e-06)]}],
-                    'terminators': [
-                        {
-                            'position': 1133782,
-                            'strength': 1.0,
-                            'products': ['flgE']}]},
                 'flhBp': {
                     'id': 'flhBp',
                     'position': 1966191,
                     'direction': -1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1.5e-05)]},
-                        {'thresholds': [('fliA', 5e-06)]}],
+                        {'thresholds': {'flhDC': 1.5e-05}},
+                        {'thresholds': {'fliA': 5e-06}}],
                     'terminators': [
                         {
                             'position': 1962580,
@@ -138,20 +160,32 @@ class FlagellaChromosome(object):
                     'position': 2001789,
                     'direction': -1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1.7e-05)]},
-                        {'thresholds': [('fliA', 4e-06)]}],
+                        {'thresholds': {'flhDC': 1.7e-05}},
+                        {'thresholds': {'fliA': 4e-06}}],
                     'terminators': [
                         {
                             'position': 1999585,
                             'strength': 1.0,
                             'products': ['fliA']}]},
+                'flgEp': {
+                    'id': 'flgEp',
+                    'position': 1132574,
+                    'direction': 1,
+                    'sites': [
+                        {'thresholds': {'flhDC': 1.9e-05}},
+                        {'thresholds': {'fliA': 3e-06}}],
+                    'terminators': [
+                        {
+                            'position': 1133782,
+                            'strength': 1.0,
+                            'products': ['flgE']}]},
                 'fliDp': {
                     'id': 'fliDp',
                     'position': 2003872,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': [('flhDC', 1.9e-05)]},
-                        {'thresholds': [('fliA', 3e-06)]}],
+                        {'thresholds': {'flhDC': 1.9e-05}},
+                        {'thresholds': {'fliA': 3e-06}}],
                     'terminators': [
                         {
                             'position': 2006078,
@@ -162,8 +196,8 @@ class FlagellaChromosome(object):
                     'position': 1138378,
                     'direction': 1,
                     'sites': [
-                        {'thresholds': [('flhDC', 2.1e-05)]},
-                        {'thresholds': [('fliA', 1e-06)]}],
+                        {'thresholds': {'flhDC': 2.1e-05}},
+                        {'thresholds': {'fliA': 1e-06}}],
                     'terminators': [
                         {
                             'position': 1140986,
@@ -174,13 +208,8 @@ class FlagellaChromosome(object):
                     'position': 2002110,
                     'direction': 1,
                     'sites': [
-                        {
-                            'thresholds': [
-                                ('fliA', 5e-06)]}],
-                        # {
-                        #     'thresholds': [
-                        #         ('GadE', 0.55),
-                        #         ('H-NS', 0.6)]}],
+                        {'thresholds': {'fliA': 5e-06}}],
+                        # {'thresholds': {'GadE': 0.55, 'H-NS': 0.6}}],
                     'terminators': [
                         {
                             'position': 2003606,
@@ -190,13 +219,8 @@ class FlagellaChromosome(object):
                     'id': 'tarp',
                     'position': 1972691,
                     'direction': -1,
-                    'sites': [
-                        {
-                            'thresholds': [
-                                ('fliA', 7e-06)]}],
-                        # {
-                        #     'thresholds': [
-                        #         ('Fnr', 1e-5)]}],
+                    'sites': [{'thresholds': {'fliA': 7e-06}}],
+                        # {'thresholds': {'Fnr': 1e-5}}
                     'terminators': [
                         {
                             'position': 1971030,
@@ -206,13 +230,8 @@ class FlagellaChromosome(object):
                     'id': 'motAp',
                     'position': 1977139,
                     'direction': -1,
-                    'sites': [
-                        {
-                            'thresholds': [
-                                ('fliA', 9e-06)]}],
-                        # {
-                        #     'thresholds': [
-                        #         ('CpxR', 1e-5)]}],
+                    'sites': [{'thresholds': {'fliA': 9e-06}}],
+                        # {'thresholds': {'CpxR': 1e-5}}],
                     'terminators': [
                         {
                             'position': 1976252,
@@ -222,13 +241,8 @@ class FlagellaChromosome(object):
                     'id': 'flgMp',
                     'position': 1130128,
                     'direction': -1,
-                    'sites': [
-                        {
-                            'thresholds': [
-                                ('fliA', 1.1e-05)]}],
-                        # {
-                        #     'thresholds': [
-                        #         ('CsgD', 0.1)]}],
+                    'sites': [{'thresholds': {'fliA': 1.1e-05}}],
+                        # {'thresholds': {'CsgD': 0.1}}
                     'terminators': [
                         {
                             'position': 1129414,
@@ -241,6 +255,13 @@ class FlagellaChromosome(object):
                     'lag': 0,
                     'children': []}},
             'rnaps': []}
+
+        # build chromosome and apply thresholds
+        self.chromosome = Chromosome(self.chromosome_config)
+        self.chromosome.apply_thresholds(self.factor_thresholds)
+        self.chromosome_config['promoters'] = {
+            key: promoter.to_dict()
+            for key, promoter in self.chromosome.promoters.items()}
 
         self.promoters = [
             'flhDp',
@@ -294,7 +315,7 @@ class FlagellaChromosome(object):
                 'fliA': 0.3},
             'flgEp': {
                 'flhDC': 1.0,
-                'fliA': 10.0},
+                'fliA': 4.0},
             'flhBp': {
                 'flhDC': 0.1,
                 'fliA': 0.35},
@@ -330,38 +351,50 @@ class FlagellaChromosome(object):
 
         flhDC_affinities = binary_sum_gates(flhDC_factors)
         self.promoter_affinities.update(flhDC_affinities)
-        print('flhDC_affinities')
-        print(flhDC_affinities)
 
-        for promoter in self.flhDC_activated:
-            self.promoter_affinities[(promoter, 'flhDC')] = 1.0
+        # for promoter in self.flhDC_activated:
+        #     self.promoter_affinities[(promoter, 'flhDC')] = 1.0
 
         for promoter in self.fliA_activated:
             self.promoter_affinities[(promoter, 'fliA')] = 1.0
 
+        self.promoter_affinities.update(
+            parameters.get('promoter_affinities', {}))
+
         self.transcripts = [
-            product
-            for products in self.config['genes'].values()
+            (operon, product)
+            for operon, products in self.chromosome_config['genes'].items()
             for product in products]
 
         self.protein_sequences = {
-            symbol: knowledge_base.proteins[knowledge_base.genes[symbol]['id']]
-            for symbol in self.transcripts}
-
-        self.operon_sequences = {
-            operon: knowledge_base.concatenate_sequences(units)
-            for operon, units in self.config['genes'].items()}
+            (operon, product): self.knowledge_base.proteins[
+                self.knowledge_base.genes[product]['id']]['seq']
+            for operon, product in self.transcripts}
 
         self.transcript_templates = {
-            operon: generate_template(
-                operon,
+            key: generate_template(
+                key,
                 len(sequence),
-                self.config['genes'][operon])
-            for operon, sequence in self.operon_sequences.items()}
+                [key[1]])
+            for key, sequence in self.protein_sequences.items()}
 
-        self.transcript_affinities = {
-            operon: 0.01
-            for operon in self.config['genes'].keys()}
+        # transcript affinities are the affinities transcripts to bind a ribosome and translate to protein
+        # transcript affinities are scaled relative to the requirements to build a single full flagellum.
+        self.min_tr_affinity = 1e-1
+        tr_affinity_scaling = {
+            'fliL': 2,
+            'fliM': 34,
+            'fliG': 26,
+            'fliH': 12,
+            'fliI': 6,
+            'fliD': 5,
+            'flgE': 120}
+        self.transcript_affinities = {}
+        for (operon, product) in self.transcripts:
+            self.transcript_affinities[(operon, product)] = self.min_tr_affinity * tr_affinity_scaling.get(product,1)
+        self.transcript_affinities.update(
+            parameters.get('transcript_affinities', {}))
+
 
         self.transcription_factors = [
             'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']
@@ -429,4 +462,3 @@ class FlagellaChromosome(object):
             'flagellar motor reaction': reaction_default,
             'flagellum reaction': reaction_default}
 
-flagella_chromosome = FlagellaChromosome()

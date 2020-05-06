@@ -11,24 +11,24 @@ from vivarium.compartment.composition import (
 )
 
 # composite
-from vivarium.composites.ode_expression import compose_ode_expression
+from vivarium.composites.txp_mtb_ge import compose_txp_mtb_ge
 
 # process configurations
-from vivarium.processes.metabolism import get_e_coli_core_config
+from vivarium.processes.metabolism import get_iAF1260b_config
 from vivarium.processes.convenience_kinetics import get_glc_lct_config
 from vivarium.processes.ode_expression import get_lacy_config
 
 
 # processes configurations
 def get_metabolism_config():
-    config = get_e_coli_core_config()
+    config = get_iAF1260b_config()
 
     # set flux bond tolerance for reactions in ode_expression's lacy_config
     metabolism_config = {
         'moma': False,
         'tolerance': {
             'EX_glc__D_e': [1.05, 1.0],
-            'EX_lac__D_e': [1.05, 1.0]}}
+            'EX_lcts_e': [1.05, 1.0]}}
 
     config.update(metabolism_config)
 
@@ -63,7 +63,7 @@ def compose_glc_lct_shifter(config):
 
     config.update(shifter_config)
 
-    return compose_ode_expression(config)
+    return compose_txp_mtb_ge(config)
 
 
 
@@ -71,13 +71,13 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
     time = timeseries['time']
     environment = timeseries['environment']
-    cell = timeseries['cell']
-    cell_counts = timeseries['cell_counts']
+    cell = timeseries['cytoplasm']
+    cell_counts = timeseries['cytoplasm_counts']
     reactions = timeseries['reactions']
     globals = timeseries['global']
 
     # environment
-    lactose = environment['lac__D_e']
+    lactose = environment['lcts_e']
     glucose = environment['glc__D_e']
 
     # internal
@@ -88,7 +88,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
     # reactions
     glc_exchange = reactions['EX_glc__D_e']
-    lac_exchange = reactions['EX_lac__D_e']
+    lac_exchange = reactions['EX_lcts_e']
 
     # global
     mass = globals['mass']
@@ -153,13 +153,10 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    # timeline = [
-    #     (100, {})]
-
     timeline = [
         (0, {'environment': {
             'glc__D_e': 5.0,
-            'lac__D_e': 5.0}
+            'lcts_e': 5.0}
         }),
         (3000, {})]
 
@@ -167,8 +164,7 @@ if __name__ == '__main__':
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
         'environment_volume': 2e-13,  # L
-        'timeline': timeline,
-    }
+        'timeline': timeline}
 
     plot_settings = {
         'max_rows': 20,
@@ -176,18 +172,20 @@ if __name__ == '__main__':
         'overlay': {'reactions': 'flux'},
         'show_state': [
             ('environment', 'glc__D_e'),
-            ('environment', 'lac__D_e'),
+            ('environment', 'lcts_e'),
             ('reactions', 'GLCpts'),
             ('reactions', 'EX_glc__D_e'),
-            ('reactions', 'EX_lac__D_e'),
-            ('cell', 'g6p_c'),
-            ('cell', 'PTSG'),
-            ('cell', 'lac__D_c'),
-            ('cell', 'lacy_RNA'),
-            ('cell', 'LacY')],
-        'skip_ports': ['prior_state', 'null']}
+            ('reactions', 'EX_lcts_e'),
+            ('cytoplasm', 'g6p_c'),
+            ('cytoplasm', 'PTSG'),
+            ('cytoplasm', 'lcts_p'),
+            ('cytoplasm', 'lacy_RNA'),
+            ('cytoplasm', 'LacY')],
+        'skip_ports': ['prior_state', 'null', 'reactions']}
 
-    # saved_state = simulate_compartment(compartment, settings)
     timeseries = simulate_with_environment(compartment, settings)
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
     plot_diauxic_shift(timeseries, settings, out_dir)
     plot_simulation_output(timeseries, plot_settings, out_dir)

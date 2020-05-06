@@ -90,7 +90,7 @@ def compose_chemotaxis_master(config):
         'translation': translation,
         'degradation': degradation,
         'complexation': complexation,
-        # 'metabolism': metabolism
+        'metabolism': metabolism
         },
 
         {
@@ -112,13 +112,13 @@ def compose_chemotaxis_master(config):
             'fluxes': 'flux_bounds',
             'global': 'global'},
 
-        # 'metabolism': {
-        #     'internal': 'internal',
-        #     'external': 'environment',
-        #     'reactions': 'reactions',
-        #     'exchange': 'exchange',
-        #     'flux_bounds': 'flux_bounds',
-        #     'global': 'global'},
+        'metabolism': {
+            'internal': 'internal',
+            'external': 'environment',
+            'reactions': 'reactions',
+            'exchange': 'exchange',
+            'flux_bounds': 'flux_bounds',
+            'global': 'global'},
 
         'transcription': {
             'chromosome': 'chromosome',
@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
     timeseries = simulate_with_environment(compartment, settings)
 
-    # get growth
+    # print growth
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
 

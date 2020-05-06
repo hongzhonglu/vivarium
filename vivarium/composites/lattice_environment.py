@@ -11,49 +11,30 @@ from vivarium.compartment.composition import (
 # processes
 from vivarium.processes.multibody_physics import (
     Multibody,
-    get_n_dummy_agents,
     random_body_config,
     plot_snapshots,
+    DEFAULT_BOUNDS
 )
 from vivarium.processes.diffusion_field import (
     DiffusionField,
     exchange_agent_config,
-    plot_field_output,
 )
 
 
-def compose_lattice_environment(config):
-    """"""
-    bounds = config.get('bounds', [10, 10])
-    size = config.get('size', [10, 10])
-    molecules = config.get('molecules', ['glc'])
 
-    # get the agents
-    agents_config = config.get('agents', {})
-    agent_ids = list(agents_config.keys())
+def get_lattice_environment(config):
+    """
+    Lattice environment
 
-    ## Declare the processes.
-    # multibody physics
-    multibody_config = random_body_config(agents_config, bounds)
-    multibody = Multibody(multibody_config)
+    A two-dimensional lattice environmental model
 
-    # diffusion field
-    agents = {
-        agent_id: {
-        'location': boundary['location'],
-        'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
-            for agent_id, boundary in multibody_config['agents'].items()}
+    """
 
-    exchange_config = {
-        'molecules': molecules,
-        'n_bins': bounds,
-        'size': size,
-        'agents': agents}
-    diffusion_config = exchange_agent_config(exchange_config)
-    diffusion = DiffusionField(diffusion_config)
+    # declare the processes.
+    multibody = Multibody(config.get('multibody', {}))
+    diffusion = DiffusionField(config.get('diffusion_field', {}))
 
-    # Place processes in layers
+    # place processes in layers
     processes = [
         {'multibody': multibody,
         'diffusion': diffusion}]
@@ -61,17 +42,63 @@ def compose_lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'agents',
+            'agents': 'boundary',
         },
         'diffusion': {
-            'agents': 'agents',
+            'agents': 'boundary',
             'fields': 'fields'}}
+
+    return {
+        'processes': processes,
+        'topology': topology}
+
+
+
+def compose_lattice_environment(config):
+    """"""
+    bounds = config.get('bounds', DEFAULT_BOUNDS)
+    size = config.get('size', DEFAULT_BOUNDS)
+    molecules = config.get('molecules', ['glc'])
+
+    # configure the agents
+    agents_config = config.get('agents', {})
+    agent_ids = list(agents_config.keys())
+    n_agents = len(agent_ids)
+    multibody_config = {
+        'n_agents': n_agents,
+        'bounds': bounds}
+    multibody_config.update(random_body_config(multibody_config))
+
+    # config for the diffusion proces
+    agents = {
+        agent_id: {
+        'location': boundary['location'],
+        'exchange': {
+            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
+            for agent_id, boundary in multibody_config['agents'].items()}
+    exchange_config = {
+        'molecules': molecules,
+        'n_bins': bounds,
+        'size': size,
+        'agents': agents
+    }
+    diffusion_config = exchange_agent_config(exchange_config)
+
+    # environment gets both process configs
+    environment_config = {
+        'multibody': multibody_config,
+        'diffusion_field': diffusion_config
+    }
+
+    # get the environment compartment
+    environment_compartment = get_lattice_environment(environment_config)
+    processes = environment_compartment['processes']
+    topology = environment_compartment['topology']
 
     # add derivers
     deriver_processes = []
 
     # initialize the states
-    # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
     states = initialize_state(
         processes,
         topology,
@@ -91,35 +118,28 @@ def compose_lattice_environment(config):
 
 
 # toy functions/ defaults
-def get_lattice_config():
-    return {
+def get_lattice_config(config={'n_agents':2}):
+    body_config = random_body_config(config)
+    body_config.update({
         'molecules': ['glc'],
-        'bounds': [10, 10],
-        'size': [10, 10],
-        'agents': get_n_dummy_agents(6)}  # no boundary store
+        'bounds': DEFAULT_BOUNDS,
+        'size': DEFAULT_BOUNDS})  # no boundary store
+
+    return body_config
 
 def test_lattice_environment(config=get_lattice_config(), time=10):
-    lattice_environment = load_compartment(compose_lattice_environment, config)
+    initial_agents_state = config['agents']
+    compartment = load_compartment(compose_lattice_environment, config)
+
+    # initialize agent boundary state
+    compartment.send_updates({'boundary': [{'agents': initial_agents_state}]})
+
     settings = {
         'return_raw_data': True,
         'total_time': time}
-    return simulate_compartment(lattice_environment, settings)
+    return simulate_compartment(compartment, settings)
 
 
-# TODO -- this is copied from TimeSeriesEmitter -- make a shared function
-def get_timeseries(data):
-    time_vec = list(data.keys())
-    initial_state = data[time_vec[0]]
-    timeseries = {port: {state: []
-                         for state, initial in states.items()}
-                  for port, states in initial_state.items()}
-    timeseries['time'] = time_vec
-
-    for time, all_states in data.items():
-        for port, states in all_states.items():
-            for state_id, state in states.items():
-                timeseries[port][state_id].append(state)
-    return timeseries
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'lattice_environment_composite')
@@ -128,8 +148,8 @@ if __name__ == '__main__':
 
     config = get_lattice_config()
     data = test_lattice_environment(config, 10)
-    timeseries = get_timeseries(data)
 
-    plot_field_output(timeseries, config, out_dir, 'lattice_field')
-    plot_snapshots(data, config, out_dir, 'lattice_bodies')
-    
+    # make snapshot plot
+    agents = {time: time_data['boundary']['agents'] for time, time_data in data.items()}
+    fields = {time: time_data['fields'] for time, time_data in data.items()}
+    plot_snapshots(agents, fields, config, out_dir, 'snapshots')

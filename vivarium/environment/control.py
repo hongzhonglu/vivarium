@@ -5,7 +5,7 @@ import uuid
 
 from vivarium.actor.control import ActorControl, AgentCommand
 
-
+DEFAULT_BOOT = 'vivarium.environment.boot'
 
 class ShepherdControl(ActorControl):
     """Send messages to agents in the system to control execution."""
@@ -24,6 +24,7 @@ class ShepherdControl(ActorControl):
         lattice_config = exp_config.get('lattice_config')
         environment_type = exp_config.get('environment_type')
         actor_config = exp_config.get('actor_config')
+
         actor_config['boot_config'].update(lattice_config)
         agents = exp_config['agents']
 
@@ -39,14 +40,15 @@ class ShepherdControl(ActorControl):
         self.add_agent(experiment_id, environment_type, actor_config)
         time.sleep(10) # wait for the environment to boot
 
+        actor_config['outer_id'] = experiment_id
+        actor_config['boot'] = actor_config.get('boot', DEFAULT_BOOT)
+        actor_config['working_dir'] = args['working_dir']
+
         # boot agents
         index = 0
         for agent_type, number in agents.items():
             for agent in range(number):
-                self.add_cell(agent_type or args['type'], dict(actor_config, **{
-                    'boot': 'vivarium.environment.boot',
-                    'outer_id': experiment_id,
-                    'working_dir': args['working_dir'],
+                self.add_cell(agent_type, dict(actor_config, **{
                     'seed': index}))
                 index += 1
 
@@ -77,7 +79,7 @@ class ShepherdControl(ActorControl):
 
         # define experimental environment and agents
         experiment_id = 'growth_division'
-        environment_type = 'lattice'
+        environment_type = 'ecoli_core_glc'
         agents = {
             'growth_division': 1}
 

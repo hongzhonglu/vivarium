@@ -1,6 +1,7 @@
 import copy
 import csv
 import os
+import io
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,6 +25,7 @@ from vivarium.utils.units import units
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_mass import DeriveMass
 
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
@@ -31,45 +33,79 @@ TEST_OUT_DIR = os.path.join('out', 'tests')
 
 
 deriver_library = {
+    'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs}
+    'counts_to_mmol': DeriveConcs,
+}
 
 
 
-def get_derivers(process_list, topology):
+def get_derivers(process_list, topology, deriver_config={}):
     '''
     get the derivers for a list of processes
 
     requires:
-        - process_list -- (list) with configured processes
-        - topology -- (dict) with topology of the processes connected to compartment ports
+        - process_list: (list) with configured processes
+        - topology: (dict) with topology of the processes connected to compartment ports
+        - config: (dict) with deriver configurations, which are used to make deriver processes
 
     returns: (dict) with:
         {'deriver_processes': processes,
         'deriver_topology': topology}
     '''
 
+    # get deriver configuration from processes
+    process_derivers = get_deriver_config_from_proceses(process_list, topology)
+    deriver_configs = process_derivers['deriver_configs']
+    deriver_topology = process_derivers['deriver_topology']
 
-    # get deriver configuration
-    deriver_config = {}
+    # update deriver_configs
+    deriver_configs = deep_merge(deriver_configs, deriver_config)
+
+    # update topology based on deriver_config
+    for process_id, config in deriver_config.items():
+        if process_id not in deriver_topology:
+            try:
+                ports = config['ports']
+                deriver_topology[process_id] = ports
+            except:
+                print('{} deriver requires topology in deriver_config'.format(process_id))
+                raise
+
+    # configure the deriver processes
+    deriver_processes = {}
+    for deriver_type, deriver_config in deriver_configs.items():
+        deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
+
+    # TODO -- put derivers in order
+    processes = [deriver_processes]
+
+    return {
+        'deriver_processes': processes,
+        'deriver_topology': deriver_topology}
+
+def get_deriver_config_from_proceses(process_list, topology):
+    ''' get the deriver configuration from processes' deriver_settings'''
+
+    deriver_configs = {}
     full_deriver_topology = {}
-    deriver_topology = {}
+
     for level in process_list:
         for process_id, process in level.items():
             process_settings = process.default_settings()
-            setting = process_settings.get('deriver_setting', [])
+            deriver_setting = process_settings.get('deriver_setting', [])
             try:
                 port_map = topology[process_id]
             except:
                 print('{} topology port mismatch'.format(process_id))
                 raise
 
-            for set in setting:
-                type = set['type']
-                keys = set['keys']
-                source_port = set['source_port']
-                target_port = set['derived_port']
+            for setting in deriver_setting:
+                deriver_type = setting['type']
+                keys = setting['keys']
+                source_port = setting['source_port']
+                target_port = setting['derived_port']
                 try:
                     source_compartment_port = port_map[source_port]
                     target_compartment_port = port_map[target_port]
@@ -77,8 +113,9 @@ def get_derivers(process_list, topology):
                     print('source/target port mismatch for process "{}"'.format(process_id))
                     raise
 
+                # make deriver_topology, add to full_deriver_topology
                 deriver_topology = {
-                    type: {
+                    deriver_type: {
                         source_port: source_compartment_port,
                         target_port: target_compartment_port,
                         'global': 'global'}}
@@ -86,38 +123,18 @@ def get_derivers(process_list, topology):
 
                 # TODO -- what if multiple different source/targets?
                 # TODO -- merge overwrites them. need list extend
+                ports_config = {
+                    'source_ports': {source_port: keys},
+                    'target_ports': {target_port: keys}}
+
                 # ports for configuration
-                ports = {
-                    source_port: keys,
-                    target_port: keys}
-                config = {type: {'ports': ports}}
-
-                deep_merge(deriver_config, config)
-
-    # configure the derivers
-    deriver_processes = {}
-    for type, config in deriver_config.items():
-        deriver_processes[type] = deriver_library[type](config)
-
-    # add global deriver
-    # TODO -- configure global deriver to get mass
-    global_deriver = {
-        'global_deriver': DeriveGlobals({})}
-
-    global_deriver_topology = {
-        'global_deriver': {
-            'global': 'global'}}
-
-    deep_merge(deriver_topology, global_deriver_topology)
-
-    # put the global deriver and additional derivers in two layers
-    processes = [
-        global_deriver,
-        deriver_processes]
+                deriver_config = {deriver_type: ports_config}
+                deep_merge(deriver_configs, deriver_config)
 
     return {
-        'deriver_processes': processes,
-        'deriver_topology': deriver_topology}
+        'deriver_configs': deriver_configs,
+        'deriver_topology': full_deriver_topology}
+
 
 def get_schema(process_list, topology):
     schema = {}
@@ -147,6 +164,7 @@ def process_in_compartment(process, settings={}):
     process_settings = process.default_settings()
     compartment_state_port = settings.get('compartment_state_port')
     emitter = settings.get('emitter', 'timeseries')
+    deriver_config = settings.get('deriver_config', {})
 
     processes = [{'process': process}]
     topology = {
@@ -161,7 +179,7 @@ def process_in_compartment(process, settings={}):
         topology['process'][compartment_state_port] = COMPARTMENT_STATE
 
     # add derivers
-    derivers = get_derivers(processes, topology)
+    derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
     all_processes = processes + derivers['deriver_processes']
     topology.update(derivers['deriver_topology'])
@@ -397,7 +415,6 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     time_vec = timeseries['time']
 
     # remove selected states
-    # TODO -- plot removed_states as text
     removed_states = []
     if remove_flat:
         # find series with all the same value
@@ -450,8 +467,9 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     col_idx = 0
     for port in ports:
         top_timeseries = {}
+
+        # set up overlay
         if port in bottom_ports:
-            # get overlay
             top_port = overlay[port]
             top_timeseries = timeseries[top_port]
         elif port in top_ports + skip_ports:
@@ -462,27 +480,27 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             # check if series is a list of ints or floats
-            # TODO -- plot non-numeric states as well (in particular dicts)
-            if not all(isinstance(state, (int, float)) for state in series):
-                break
-
-            # plot line at zero if series crosses the zero line
-            if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
-                zero_line = [0 for t in time_vec]
-                ax.plot(time_vec, zero_line, 'k--')
-
-            if (port, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo', linewidth=2)
+            if not all(isinstance(state, (int, float, np.int64, np.int32)) for state in series):
+                ax.title.set_text(str(port) + ': ' + str(state_id) + ' (non numeric)')
+                ax.title.set_fontsize(16)
             else:
-                ax.plot(time_vec, series)
+                # plot line at zero if series crosses the zero line
+                if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                    zero_line = [0 for t in time_vec]
+                    ax.plot(time_vec, zero_line, 'k--')
 
-            # overlay
-            if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
-                ax.legend()
+                if (port, state_id) in show_state:
+                    ax.plot(time_vec, series, 'indigo', linewidth=2)
+                else:
+                    ax.plot(time_vec, series)
 
-            ax.title.set_text(str(port) + ': ' + str(state_id))
-            ax.title.set_fontsize(16)
+                # overlay
+                if state_id in top_timeseries.keys():
+                    ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
+                    ax.legend()
+
+                ax.title.set_text(str(port) + ': ' + str(state_id))
+                ax.title.set_fontsize(16)
 
             if row_idx == columns[col_idx]-1:
                 # if last row of column
@@ -516,7 +534,7 @@ def load_timeseries(path_to_csv):
 
     The timeseries is returned in flattened form.
     '''
-    with open(path_to_csv, 'r', newline='') as f:
+    with io.open(path_to_csv, 'r', newline='') as f:
         reader = csv.DictReader(f)
         timeseries = {}
         for row in reader:
@@ -567,7 +585,7 @@ def _prepare_timeseries_for_comparison(
     if 'time' not in timeseries1 or 'time' not in timeseries2:
         raise AssertionError('Both timeseries must have key "time"')
     if keys is None:
-        keys = timeseries1.keys() & timeseries2.keys()
+        keys = set(timeseries1.keys()) & set(timeseries2.keys())
     else:
         if 'time' not in keys:
             keys.append('time')
@@ -766,9 +784,7 @@ def load_compartment(composite, boot_config={}):
     derivers = composite_config.get('derivers', [])
     states = composite_config['states']
     options = composite_config['options']
-    options.update({
-        'emitter': boot_config.get('emitter', 'timeseries'),
-        'time_step': boot_config.get('time_step', 1.0)})
+    options['emitter'] = boot_config.get('emitter', 'timeseries')
 
     return Compartment(processes, derivers, states, options)
 
