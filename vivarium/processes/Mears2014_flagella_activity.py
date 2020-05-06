@@ -4,6 +4,7 @@ import os
 import random
 import math
 import uuid
+import argparse
 
 import numpy as np
 from numpy import linspace
@@ -352,12 +353,13 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     flagella_activity = output['flagella_activity']['flagella']
     time_vec = output['time']
 
-    # get flagella ids
-    flagella_ids = set()
+    # get flagella ids by order appearance
+    flagella_ids = []
     for state in flagella_activity:
         flg_ids = list(state.keys())
-        flagella_ids.update(flg_ids)
-    flagella_ids = list(flagella_ids)
+        for flg_id in flg_ids:
+            if flg_id not in flagella_ids:
+                flagella_ids.append(flg_id)
 
     # make flagella activity grid
     activity_grid = np.zeros((len(flagella_ids), len(time_vec)))
@@ -385,21 +387,21 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
 
     # set up colormaps
     # cell motile state
-    cmap1 = colors.ListedColormap(['blue', 'lightgray', 'red'])
+    cmap1 = colors.ListedColormap(['steelblue', 'lightgray', 'darkorange'])
     bounds1 = [-1, -1/3, 1/3, 1]
     norm1 = colors.BoundaryNorm(bounds1, cmap1.N)
     motile_legend_elements = [
-        Patch(facecolor='blue', edgecolor='k', label='Run'),
-        Patch(facecolor='red', edgecolor='k', label='Tumble'),
+        Patch(facecolor='steelblue', edgecolor='k', label='Run'),
+        Patch(facecolor='darkorange', edgecolor='k', label='Tumble'),
         Patch(facecolor='lightgray', edgecolor='k', label='N/A')]
 
     # rotational state
-    cmap2 = colors.ListedColormap(['lightgray', 'blue', 'red'])
+    cmap2 = colors.ListedColormap(['lightgray', 'steelblue', 'darkorange'])
     bounds2 = [0, 0.5, 1.5, 2]
     norm2 = colors.BoundaryNorm(bounds2, cmap2.N)
     rotational_legend_elements = [
-        Patch(facecolor='blue', edgecolor='k', label='CCW'),
-        Patch(facecolor='red', edgecolor='k', label='CW'),
+        Patch(facecolor='steelblue', edgecolor='k', label='CCW'),
+        Patch(facecolor='darkorange', edgecolor='k', label='CW'),
         Patch(facecolor='lightgray', edgecolor='k', label='N/A')]
 
     # plot results
@@ -481,7 +483,7 @@ def plot_activity(output, out_dir='out', filename='motor_control'):
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
-def plot_motor_PMF(output, out_dir='out'):
+def plot_motor_PMF(output, out_dir='out', figname='motor_PMF'):
     motile_state = output['motile_state']
     motile_force = output['motile_force']
     motile_torque = output['motile_torque']
@@ -501,39 +503,47 @@ def plot_motor_PMF(output, out_dir='out'):
     ax1.set_ylabel('force')
 
     # save figure
-    fig_path = os.path.join(out_dir, 'motor_PMF')
+    fig_path = os.path.join(out_dir, figname)
     plt.subplots_adjust(wspace=0.7, hspace=0.3)
     plt.savefig(fig_path + '.png', bbox_inches='tight')
 
+def run_variable_flagella(out_dir):
+    # variable flagella
+    init_params = {'flagella': 5}
+    timeline = [
+        (0, {}),
+        (60, {
+            'flagella_counts': {
+                'flagella': 6}}),
+        (200, {
+            'flagella_counts': {
+                'flagella': 7}}),
+        (240, {})]
+    output3 = test_activity(init_params, timeline)
+    plot_activity(output3, out_dir, 'variable_flagella')
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'Mears2014_flagella_activity')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    zero_flagella = {'flagella': 0}
-    timeline = [(10, {})]
-    output1 = test_activity(zero_flagella, timeline)
-    plot_activity(output1, out_dir, 'motor_control_zero_flagella')
+    parser = argparse.ArgumentParser(description='flagella expression')
+    parser.add_argument('--variable', '-v', action='store_true', default=False,)
+    args = parser.parse_args()
 
-    five_flagella = {'flagella': 5}
-    timeline = [(10, {})]
-    output2 = test_activity(five_flagella, timeline)
-    plot_activity(output2, out_dir, 'motor_control')
+    if args.variable:
+        run_variable_flagella(out_dir)
+    else:
+        zero_flagella = {'flagella': 0}
+        timeline = [(10, {})]
+        output1 = test_activity(zero_flagella, timeline)
+        plot_activity(output1, out_dir, 'motor_control_zero_flagella')
 
-    # variable flagella
-    init_params = {'flagella': 5}
-    timeline = [
-        (0, {}),
-        (2, {
-            'flagella_counts': {
-                'flagella': 6}}),
-        (4, {
-            'flagella_counts': {
-                'flagella': 4}}),
-        (10, {})]
-    output3 = test_activity(init_params, timeline)
-    plot_activity(output3, out_dir, 'motor_control_variable')
+        five_flagella = {'flagella': 5}
+        timeline = [(10, {})]
+        output2 = test_activity(five_flagella, timeline)
+        plot_activity(output2, out_dir, 'motor_control')
 
-    output3 = test_motor_PMF()
-    plot_motor_PMF(output3, out_dir)
+        run_variable_flagella(out_dir)
+
+

@@ -1,6 +1,7 @@
 import copy
 import csv
 import os
+import io
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,7 +41,7 @@ deriver_library = {
 
 
 
-def get_derivers(process_list, topology, config={}):
+def get_derivers(process_list, topology, deriver_config={}):
     '''
     get the derivers for a list of processes
 
@@ -60,7 +61,17 @@ def get_derivers(process_list, topology, config={}):
     deriver_topology = process_derivers['deriver_topology']
 
     # update deriver_configs
-    deriver_configs = deep_merge(deriver_configs, config)
+    deriver_configs = deep_merge(deriver_configs, deriver_config)
+
+    # update topology based on deriver_config
+    for process_id, config in deriver_config.items():
+        if process_id not in deriver_topology:
+            try:
+                ports = config['ports']
+                deriver_topology[process_id] = ports
+            except:
+                print('{} deriver requires topology in deriver_config'.format(process_id))
+                raise
 
     # configure the deriver processes
     deriver_processes = {}
@@ -404,7 +415,6 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     time_vec = timeseries['time']
 
     # remove selected states
-    # TODO -- plot removed_states as text
     removed_states = []
     if remove_flat:
         # find series with all the same value
@@ -457,8 +467,9 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     col_idx = 0
     for port in ports:
         top_timeseries = {}
+
+        # set up overlay
         if port in bottom_ports:
-            # get overlay
             top_port = overlay[port]
             top_timeseries = timeseries[top_port]
         elif port in top_ports + skip_ports:
@@ -469,27 +480,27 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
             ax = fig.add_subplot(grid[row_idx, col_idx])  # grid is (row, column)
 
             # check if series is a list of ints or floats
-            # TODO -- plot non-numeric states as well (in particular dicts)
-            if not all(isinstance(state, (int, float)) for state in series):
-                break
-
-            # plot line at zero if series crosses the zero line
-            if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
-                zero_line = [0 for t in time_vec]
-                ax.plot(time_vec, zero_line, 'k--')
-
-            if (port, state_id) in show_state:
-                ax.plot(time_vec, series, 'indigo', linewidth=2)
+            if not all(isinstance(state, (int, float, np.int64, np.int32)) for state in series):
+                ax.title.set_text(str(port) + ': ' + str(state_id) + ' (non numeric)')
+                ax.title.set_fontsize(16)
             else:
-                ax.plot(time_vec, series)
+                # plot line at zero if series crosses the zero line
+                if any(x == 0.0 for x in series) or (any(x < 0.0 for x in series) and any(x > 0.0 for x in series)):
+                    zero_line = [0 for t in time_vec]
+                    ax.plot(time_vec, zero_line, 'k--')
 
-            # overlay
-            if state_id in top_timeseries.keys():
-                ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
-                ax.legend()
+                if (port, state_id) in show_state:
+                    ax.plot(time_vec, series, 'indigo', linewidth=2)
+                else:
+                    ax.plot(time_vec, series)
 
-            ax.title.set_text(str(port) + ': ' + str(state_id))
-            ax.title.set_fontsize(16)
+                # overlay
+                if state_id in top_timeseries.keys():
+                    ax.plot(time_vec, top_timeseries[state_id], 'm', label=top_port)
+                    ax.legend()
+
+                ax.title.set_text(str(port) + ': ' + str(state_id))
+                ax.title.set_fontsize(16)
 
             if row_idx == columns[col_idx]-1:
                 # if last row of column
@@ -523,7 +534,7 @@ def load_timeseries(path_to_csv):
 
     The timeseries is returned in flattened form.
     '''
-    with open(path_to_csv, 'r', newline='') as f:
+    with io.open(path_to_csv, 'r', newline='') as f:
         reader = csv.DictReader(f)
         timeseries = {}
         for row in reader:
@@ -574,7 +585,7 @@ def _prepare_timeseries_for_comparison(
     if 'time' not in timeseries1 or 'time' not in timeseries2:
         raise AssertionError('Both timeseries must have key "time"')
     if keys is None:
-        keys = timeseries1.keys() & timeseries2.keys()
+        keys = set(timeseries1.keys()) & set(timeseries2.keys())
     else:
         if 'time' not in keys:
             keys.append('time')

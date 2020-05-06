@@ -286,15 +286,15 @@ def plot_output(output, out_dir='out', filename='response'):
     # plot results
     cols = 1
     rows = 3
-    plt.figure(figsize=(cols * 4, rows * 1.5))
+    plt.figure(figsize=(cols * 4, rows * 1.7))
 
     ax1 = plt.subplot(rows, cols, 1)
     ax2 = plt.subplot(rows, cols, 2)
     ax3 = plt.subplot(rows, cols, 3)
 
-    ax1.plot(time_vec, ligand_vec, 'b')
-    ax2.plot(time_vec, receptor_activity_vec, 'b')
-    ax3.plot(time_vec, n_methyl_vec, 'b')
+    ax1.plot(time_vec, ligand_vec, 'steelblue')
+    ax2.plot(time_vec, receptor_activity_vec, 'steelblue')
+    ax3.plot(time_vec, n_methyl_vec, 'steelblue')
 
     ax1.set_xticklabels([])
     ax1.spines['right'].set_visible(False)

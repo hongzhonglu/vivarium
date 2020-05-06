@@ -353,9 +353,9 @@ def initialize_antibiotic(boot_config):
         'emit_fields': ['antibiotic'],
         'run_for': 1.0,  # timestep, in sec
         'rotation_jitter': 0.005,
-        'edge_length_x': 10.0,  # µm
-        'edge_length_y': 10.0,  # µm
-        'depth': 1.0,  # µm
+        'edge_length_x': 10.0,  # um
+        'edge_length_y': 10.0,  # um
+        'depth': 1.0,  # um
         # Patches discretize space for diffusion
         'patches_per_edge_x': 1,
     }

@@ -124,6 +124,10 @@ def collapse_network(nodes, edges, remove_nodes_list):
 def save_network(nodes, edges, plotOutDir='out/network'):
 	'''
 	Save nodes and edges
+
+	Requires:
+		- nodes (dict) with {node_id: {'label' (str), 'type' (str), size (float)}}
+		- edges (list) with [[node_id1, node_id2] ...]
 	'''
 
 	out_dir = os.path.join(plotOutDir)
