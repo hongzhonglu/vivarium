@@ -155,18 +155,18 @@ class Transcription(Process):
             },
             "genes": {
                 "oA": [
-                    "A"
+                    "eA"
                 ],
                 "oAZ": [
-                    "A",
-                    "Z"
+                    "eA",
+                    "eZ"
                 ],
                 "oB": [
-                    "B"
+                    "eB"
                 ],
                 "oBY": [
-                    "B",
-                    "Y"
+                    "eB",
+                    "eY"
                 ]
             },
             "promoter_order": [
@@ -182,12 +182,9 @@ class Transcription(Process):
                         {
                             "length": 3,
                             "position": 0,
-                            "thresholds": [
-                                [
-                                    "tfA",
-                                    0.3
-                                ]
-                            ]
+                            "thresholds": {
+                                "tfA": 0.3
+                            }
                         }
                     ],
                     "terminators": [
@@ -215,12 +212,9 @@ class Transcription(Process):
                         {
                             "length": 3,
                             "position": 0,
-                            "thresholds": [
-                                [
-                                    "tfB",
-                                    0.5
-                                ]
-                            ]
+                            "thresholds": {
+                                "tfB": 0.5
+                            }
                         }
                     ],
                     "terminators": [

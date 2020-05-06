@@ -231,16 +231,16 @@ class Translation(Process):
         >>> from vivarium.utils.polymerize import generate_template
         >>> configurations = {
         ...     'sequences': {
-        ...         'oA': 'AWDPT',
-        ...         'oAZ': 'YVEGELENGGMFISC',
+        ...         ('oA', 'eA'): 'AWDPT',
+        ...         ('oAZ', 'eZ'): 'YVEGELENGGMFISC',
         ...     },
         ...     'templates': {
-        ...         'oA': generate_template('oA', 5, ['eA']),
-        ...         'oAZ': generate_template('oAZ', 15, ['eA', 'eZ']),
+        ...         ('oA', 'eA'): generate_template(('oA', 'eA'), 5, ['eA']),
+        ...         ('oAZ', 'eZ'): generate_template(('oAZ', 'eZ'), 15, ['eA', 'eZ']),
         ...     },
         ...     'transcript_affinities': {
-        ...         'oA': 1.0,
-        ...         'oAZ': 1.0,
+        ...         ('oA', 'eA'): 1.0,
+        ...         ('oAZ', 'eZ'): 1.0,
         ...     },
         ...     'elongation_rate': 10.0,
         ...     'polymerase_occlusion': 10,
@@ -302,7 +302,10 @@ class Translation(Process):
                         "id": 1,
                         "position": 9,
                         "state": "occluding",
-                        "template": "oAZ",
+                        "template": [
+                            "oAZ",
+                            "eZ"
+                        ],
                         "template_index": 0,
                         "terminator": 0
                     },
@@ -310,16 +313,16 @@ class Translation(Process):
                         "id": 2,
                         "position": 9,
                         "state": "occluding",
-                        "template": "oAZ",
+                        "template": [
+                            "oAZ",
+                            "eZ"
+                        ],
                         "template_index": 0,
                         "terminator": 0
                     }
                 ]
             }
         }
-
-
-
         '''
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
