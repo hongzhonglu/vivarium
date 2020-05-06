@@ -577,15 +577,6 @@ class Translation(Process):
 
 
 def test_translation():
-    parameters = {
-        'transcript_affinities': {
-                'oA': 1.0,
-                'oAZ': 1.0,
-                'oB': 1.0,
-                'oBY': 1.0},
-        'elongation_rate': 10.0,
-        'advancement_rate': 10.0}
-
     parameters = {}
     translation = Translation(parameters)
 
