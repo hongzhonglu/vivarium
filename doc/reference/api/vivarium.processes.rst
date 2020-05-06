@@ -19,6 +19,7 @@ Submodules
    vivarium.processes.derive_concentrations
    vivarium.processes.derive_counts
    vivarium.processes.derive_globals
+   vivarium.processes.derive_mass
    vivarium.processes.diffusion_field
    vivarium.processes.diffusion_network
    vivarium.processes.division
@@ -29,6 +30,7 @@ Submodules
    vivarium.processes.multibody_physics
    vivarium.processes.ode_expression
    vivarium.processes.template_process
+   vivarium.processes.toxin-antitoxin
    vivarium.processes.transcription
    vivarium.processes.translation
    vivarium.processes.transport_lookup

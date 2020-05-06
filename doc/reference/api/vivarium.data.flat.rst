@@ -1,6 +1,13 @@
 vivarium.data.flat package
 ==========================
 
+Subpackages
+-----------
+
+.. toctree::
+
+   vivarium.data.flat.media
+
 Module contents
 ---------------
 

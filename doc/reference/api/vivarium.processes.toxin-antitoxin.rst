@@ -1,7 +1,7 @@
-vivarium.composites.ode\_expression module
+vivarium.processes.toxin\-antitoxin module
 ==========================================
 
-.. automodule:: vivarium.composites.ode_expression
+.. automodule:: vivarium.processes.toxin-antitoxin
    :members:
    :undoc-members:
    :show-inheritance:

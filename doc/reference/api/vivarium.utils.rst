@@ -15,6 +15,7 @@ Submodules
    vivarium.utils.kinetic_rate_laws
    vivarium.utils.make_network
    vivarium.utils.multicell_physics
+   vivarium.utils.path
    vivarium.utils.polymerize
    vivarium.utils.pretty
    vivarium.utils.rate_law_utilities

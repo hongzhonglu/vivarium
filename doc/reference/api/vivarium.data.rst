@@ -17,6 +17,7 @@ Submodules
 
    vivarium.data.amino_acids
    vivarium.data.knowledge_base
+   vivarium.data.molecular_weight
    vivarium.data.nucleotides
    vivarium.data.proteins
    vivarium.data.spreadsheets

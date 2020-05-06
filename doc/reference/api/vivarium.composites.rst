@@ -6,8 +6,8 @@ Submodules
 
 .. toctree::
 
-   vivarium.composites.PMF_chemotaxis
    vivarium.composites.antibiotics
+   vivarium.composites.chemotaxis_minimal
    vivarium.composites.flagella_expression
    vivarium.composites.gene_expression
    vivarium.composites.gfp_expression
@@ -15,9 +15,7 @@ Submodules
    vivarium.composites.growth_division
    vivarium.composites.lattice_environment
    vivarium.composites.master
-   vivarium.composites.ode_expression
-   vivarium.composites.simple_chemotaxis
-   vivarium.composites.variable_flagella
+   vivarium.composites.txp_mtb_ge
 
 Module contents
 ---------------
