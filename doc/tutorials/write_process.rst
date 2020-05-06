@@ -207,6 +207,7 @@ each port based on a provided model state and timestep.
     a view of the overall state, so it must not be changed.
 
 .. code-block:: python
+
         def next_update(self, timestep, states):
             # Get concentrations from state
             cytoplasm = states['cytoplasm']
