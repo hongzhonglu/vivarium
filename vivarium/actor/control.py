@@ -44,6 +44,12 @@ DEFAULT_DESTINATIONS = {
     'visualization_receive': ['kafka_config', 'topics', 'visualization_receive']}
 
 def distribute_arguments(destinations, arguments, config):
+    '''
+    Given a `destinations` dictionary of command args (keys)
+    to paths in the config map (values), distribute any args in the arguments dictionary
+    into the config dictionary.
+    '''
+
     config = copy.deepcopy(config)
     for key, destination in destinations.items():
         value = arguments.get(key)
