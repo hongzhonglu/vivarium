@@ -1,5 +1,7 @@
+from vivarium.utils.path import open_relative
+
 def read_sequence(path):
-    with open(path, 'r') as fasta:
+    with open_relative(path, 'r') as fasta:
         header = False
         sequence = ''
         for line in fasta:

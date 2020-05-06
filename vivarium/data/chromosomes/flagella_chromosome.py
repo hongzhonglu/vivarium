@@ -342,8 +342,6 @@ class FlagellaChromosome(object):
 
         flhDC_affinities = binary_sum_gates(flhDC_factors)
         self.promoter_affinities.update(flhDC_affinities)
-        print('flhDC_affinities')
-        print(flhDC_affinities)
 
         # for promoter in self.flhDC_activated:
         #     self.promoter_affinities[(promoter, 'flhDC')] = 1.0
