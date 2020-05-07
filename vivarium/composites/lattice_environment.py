@@ -35,16 +35,16 @@ def get_lattice_environment(config):
     diffusion = DiffusionField(config.get('diffusion_field', {}))
 
     # place processes in layers
-    processes = [{
+    processes = {
         'multibody': multibody,
-        'diffusion': diffusion}]
+        'diffusion': diffusion}
 
     # topology
     topology = {
         'multibody': {
-            'agents': BOUNDARY_STATE},
+            'agents': 'cells'},
         'diffusion': {
-            'agents': BOUNDARY_STATE,
+            'agents': 'cells',
             'fields': 'fields'}}
 
     return {

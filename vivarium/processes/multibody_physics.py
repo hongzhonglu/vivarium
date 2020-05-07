@@ -475,30 +475,29 @@ class Multibody(Process):
 
 
 # configs
-def get_n_dummy_agents(n_agents):
-    return {agent_id: None for agent_id in range(n_agents)}
-
-def random_body_config(config):
+def random_agent_config():
     # cell dimensions
     width = 1
     length = 2
     volume = volume_from_length(length, width)
 
+    return {
+        'location': [
+            np.random.uniform(0, bounds[0]),
+            np.random.uniform(0, bounds[1])],
+        'angle': np.random.uniform(0, 2 * PI),
+        'volume': volume,
+        'length': length,
+        'width': width,
+        'mass': 1,
+        'forces': [0, 0]}
+
+def random_body_config(config):
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
-    agents = get_n_dummy_agents(n_agents)
     agent_config = {
-        agent_id: {
-            'location': [
-                np.random.uniform(0, bounds[0]),
-                np.random.uniform(0, bounds[1])],
-            'angle': np.random.uniform(0, 2 * PI),
-            'volume': volume,
-            'length': length,
-            'width': width,
-            'mass': 1,
-            'forces': [0, 0]}
-        for agent_id in agents.keys()}
+        agent_id: random_agent_config()
+        for agent_id in range(n_agents)}
 
     return {
         'agents': agent_config,
@@ -523,7 +522,6 @@ def mother_machine_body_config(config):
         for x in range(1, n_spaces)]
     random.shuffle(possible_locations)
 
-    agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
             'location': possible_locations[index],
@@ -533,7 +531,7 @@ def mother_machine_body_config(config):
             'width': width,
             'mass': 1,
             'forces': [0, 0]}
-        for index, agent_id in enumerate(agents.keys())}
+        for index, agent_id in range(n_agents)}
 
     return {
         'agents': agent_config,

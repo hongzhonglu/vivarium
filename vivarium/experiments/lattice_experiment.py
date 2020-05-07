@@ -77,11 +77,18 @@ def lattice_experiment(config):
     # configure the experiment
     n_agents = config.get('n_agents')
 
+    agent_processes = 
+
     # get the environment
     environment = get_lattice_environment(config.get('environment', {}))
-    environment_processes = flatten_process_layers(environment['processes'])
+    environment_processes = environment['processes']
     environment_topology = environment['topology']
     inner_key = 'agents'  # TODO -- get this from config of each env process
+
+    environment_processes['agents'] = agent_processes
+
+    processes = {
+        'environment': environment_processes}
 
     # get agent processes and topologies
     agents_config = {

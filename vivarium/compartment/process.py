@@ -759,12 +759,19 @@ def test_recursive_store():
     multibody = Multibody(config.get('multibody', {}))
     diffusion = DiffusionField(config.get('diffusion_field', {}))
 
+    def agent_config(count):
+        return random_body_config({
+            'n_agents': count,
+            'bounds': [10, 10]})
+
+    def agent_processes(config):
+        
+
     processes = {
         'environment': {
             'multibody': multibody,
             'diffusion': diffusion,
-            'agents': {
-                '0': {}}}}
+            'agents': agent_config}}
 
     topology = {
         'environment': {

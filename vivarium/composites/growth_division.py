@@ -27,34 +27,38 @@ from vivarium.processes.convenience_kinetics import (
 def growth_division(config):
 
     # declare the processes
-    transport = ConvenienceKinetics(get_glc_lct_config())
-    growth = Growth(config)
-    division = Division(config)
-    expression = MinimalExpression(config)
+    transport = ConvenienceKinetics(config.get('transport', get_glc_lct_config()))
+    growth = Growth(config.get('growth', {}))
+    division = Division(config.get('division', {}))
+    expression = MinimalExpression(config.get('expression', {}))
 
     # place processes in layers
-    processes = [
-        {'transport': transport,
-         'growth': growth,
-         'expression': expression},
-        {'division': division}]
+    processes = {
+        'transport': transport,
+        'growth': growth,
+        'expression': expression,
+        'division': division}
+
+    external_key = '../' + config.get('external_key', 'external')
+    cells_key = '../' + config.get('cells_key', 'cells')
 
     # make the topology.
     # for each process, map process ports to store ids
     topology = {
         'transport': {
             'internal': 'cell',
-            'external': BOUNDARY_STATE,
-            'exchange': BOUNDARY_STATE,
-            'fluxes': 'null',
+            'external': external_key,
+            'exchange': external_key,
+            'fluxes': None, # instead of 'null'
             'global': 'global'},
         'growth': {
             'global': 'global'},
         'division': {
-            'global': 'global'},
+            'global': 'global',
+            'cells': cells_key},
         'expression': {
             'internal': 'cell',
-            'external': BOUNDARY_STATE,
+            'external': external_key,
             'concentrations': 'cell_concentrations'}}
 
     return {
