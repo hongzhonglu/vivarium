@@ -35,15 +35,14 @@ def get_lattice_environment(config):
     diffusion = DiffusionField(config.get('diffusion_field', {}))
 
     # place processes in layers
-    processes = [
-        {'multibody': multibody,
+    processes = [{
+        'multibody': multibody,
         'diffusion': diffusion}]
 
     # topology
     topology = {
         'multibody': {
-            'agents': BOUNDARY_STATE,
-        },
+            'agents': BOUNDARY_STATE},
         'diffusion': {
             'agents': BOUNDARY_STATE,
             'fields': 'fields'}}
@@ -67,6 +66,7 @@ def compose_lattice_environment(config):
     multibody_config = {
         'n_agents': n_agents,
         'bounds': bounds}
+
     multibody_config.update(random_body_config(multibody_config))
 
     # config for the diffusion proces
@@ -76,19 +76,19 @@ def compose_lattice_environment(config):
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
             for agent_id, boundary in multibody_config['agents'].items()}
+
     exchange_config = {
         'molecules': molecules,
         'n_bins': bounds,
         'size': size,
-        'agents': agents
-    }
+        'agents': agents}
+
     diffusion_config = exchange_agent_config(exchange_config)
 
     # environment gets both process configs
     environment_config = {
         'multibody': multibody_config,
-        'diffusion_field': diffusion_config
-    }
+        'diffusion_field': diffusion_config}
 
     # get the environment compartment
     environment_compartment = get_lattice_environment(environment_config)

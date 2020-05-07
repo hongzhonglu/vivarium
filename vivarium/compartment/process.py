@@ -103,6 +103,97 @@ KEY_TYPE = 'U31'
 
 def keys_list(d):
     return list(d.keys())
+# class Store(object):
+#     ''' Represents a set of named values. '''
+
+#     def __init__(self, initial_state={}, schema={}):
+#         ''' Keys and state initialize empty, with a maximum key length of 31. '''
+
+#         self.state = copy.deepcopy(initial_state)
+#         self.schema = schema
+
+#         # get updaters from schema
+#         updaters = {}
+#         for state, state_schema in schema.items():
+#             updater = state_schema.get('updater')
+#             if updater:
+#                 updaters.update({state: updater})
+#         self.updaters = updaters
+
+#     def schema_properties(self, keys, schema_type):
+#         return {key: self.schema[key].get(schema_type) for key in keys}
+
+#     def keys(self):
+#         return self.state.keys()
+
+#     def duplicate(self, initial_state={}):
+#         return Store(
+#             initial_state = initial_state or self.to_dict(),
+#             schema = self.dict(self.schema))
+
+#     def declare_state(self, keys):
+#         ''' Initialize values for the given keys to zero. '''
+
+#         for key in keys:
+#             if not key in self.state:
+#                 self.state[key] = 0
+
+#     def assign_values(self, values):
+#         ''' Assign a dict of keys and values to the state. '''
+#         self.state.update(values)
+
+#     def apply_update(self, update):
+#         ''' Apply a dict of keys and values to the state using its updaters. '''
+
+#         for key, value in update.items():
+#             # updater can be a function or a key into the updater library
+#             updater = self.updaters.get(key, 'accumulate')
+#             if not callable(updater):
+#                 updater = updater_library[updater]
+
+#             try:
+#                 self.new_state[key] = updater(
+#                     self.new_state[key],
+#                     value)
+
+#             except TypeError as e:
+#                 log.error(
+#                     'bad update - {}: {}, {}'.format(
+#                         key, value, self.new_state[key]))
+#                 raise e
+
+#     def apply_updates(self, updates):
+#         ''' Apply a list of updates to the state '''
+
+#         for update in updates:
+#             self.apply_update(update)
+
+#     def prepare(self):
+#         ''' Prepares for state updates by creating new copy of existing state '''
+
+#         self.new_state = self.state
+#         # self.new_state = copy.deepcopy(self.state)
+
+#     def proceed(self):
+#         ''' Once all updates are complete, swaps out state for newly calculated state '''
+
+#         self.state = self.new_state
+
+#     def state_for(self, keys):
+#         ''' Get the current state of these keys as a dict of values. '''
+
+#         return {
+#             key: self.state[key]
+#             for key in keys}
+
+#     def to_dict(self):
+#         ''' Get the current state of all keys '''
+
+#         # return copy.deepcopy(self.state)
+#         return {
+#             key: value
+#             for key, value in self.state.items()}
+
 
 class State(object):
     def __init__(self, config):
@@ -170,151 +261,6 @@ class State(object):
         return {
             key: state.children[key].get_value()
             for key in keys}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Store(object):
-    ''' Represents a set of named values. '''
-
-    def __init__(self, initial_state={}, schema={}):
-        ''' Keys and state initialize empty, with a maximum key length of 31. '''
-
-        self.state = copy.deepcopy(initial_state)
-        self.schema = schema
-
-        # get updaters from schema
-        updaters = {}
-        for state, state_schema in schema.items():
-            updater = state_schema.get('updater')
-            if updater:
-                updaters.update({state: updater})
-        self.updaters = updaters
-
-    def schema_properties(self, keys, schema_type):
-        return {key: self.schema[key].get(schema_type) for key in keys}
-
-    def keys(self):
-        return self.state.keys()
-
-    def duplicate(self, initial_state={}):
-        return Store(
-            initial_state = initial_state or self.to_dict(),
-            schema = self.dict(self.schema))
-
-    def declare_state(self, keys):
-        ''' Initialize values for the given keys to zero. '''
-
-        for key in keys:
-            if not key in self.state:
-                self.state[key] = 0
-
-    def assign_values(self, values):
-        ''' Assign a dict of keys and values to the state. '''
-        self.state.update(values)
-
-    def apply_update(self, update):
-        ''' Apply a dict of keys and values to the state using its updaters. '''
-
-        for key, value in update.items():
-            # updater can be a function or a key into the updater library
-            updater = self.updaters.get(key, 'accumulate')
-            if not callable(updater):
-                updater = updater_library[updater]
-
-            try:
-                self.new_state[key] = updater(
-                    self.new_state[key],
-                    value)
-
-            except TypeError as e:
-                log.error(
-                    'bad update - {}: {}, {}'.format(
-                        key, value, self.new_state[key]))
-                raise e
-
-    def apply_updates(self, updates):
-        ''' Apply a list of updates to the state '''
-
-        for update in updates:
-            self.apply_update(update)
-
-    def prepare(self):
-        ''' Prepares for state updates by creating new copy of existing state '''
-
-        self.new_state = self.state
-        # self.new_state = copy.deepcopy(self.state)
-
-    def proceed(self):
-        ''' Once all updates are complete, swaps out state for newly calculated state '''
-
-        self.state = self.new_state
-
-    def state_for(self, keys):
-        ''' Get the current state of these keys as a dict of values. '''
-
-        return {
-            key: self.state[key]
-            for key in keys}
-
-    def to_dict(self):
-        ''' Get the current state of all keys '''
-
-        # return copy.deepcopy(self.state)
-        return {
-            key: value
-            for key, value in self.state.items()}
 
 
 class Process(object):
@@ -519,7 +465,7 @@ def flatten_process_layers(process_layers):
 class Experiment():
     ''' Track a set of processes and states and the connections between them. '''
 
-    def __init__(self, processes, derivers, configuration):
+    def __init__(self, configuration):
         '''
         Given a set of processes and states, and a topology describing their
         connections, perform those connections.
@@ -808,7 +754,27 @@ def test_timescales():
     compartment.update(10.0)
 
 def test_recursive_store():
-    store_config = {
+    config = {}
+
+    multibody = Multibody(config.get('multibody', {}))
+    diffusion = DiffusionField(config.get('diffusion_field', {}))
+
+    processes = {
+        'environment': {
+            'multibody': multibody,
+            'diffusion': diffusion,
+            'agents': {
+                '0': {}}}}
+
+    topology = {
+        'environment': {
+            'multibody': {
+                'agents': '/environment/agents'}
+            'diffusion': {
+                'agents': '/environment/agents',
+                'fields': '/environment/fields'}}}
+
+    environment_config = {
         'children': {
             'temperature': {
                 'default': 0.0,
