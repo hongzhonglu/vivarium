@@ -475,7 +475,7 @@ class Multibody(Process):
 
 
 # configs
-def random_agent_config():
+def random_agent_config(bounds):
     # cell dimensions
     width = 1
     length = 2
@@ -496,7 +496,7 @@ def random_body_config(config):
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
     agent_config = {
-        agent_id: random_agent_config()
+        agent_id: random_agent_config(bounds)
         for agent_id in range(n_agents)}
 
     return {

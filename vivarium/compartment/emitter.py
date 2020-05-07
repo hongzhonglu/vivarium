@@ -51,10 +51,10 @@ def get_emitter(config):
         'object': emitter,
         'keys': config.get('keys',{})}
 
-def get_emitter_keys(process, topology):
+def get_emitter_keys(processes, topology):
     emitter_keys = {}
 
-    for process_id, process_object in merge_dicts(process).items():
+    for process_id, process_object in processes.items():
         process_ports = topology[process_id]
 
         default_settings = process_object.default_settings()

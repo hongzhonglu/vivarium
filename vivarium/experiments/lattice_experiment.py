@@ -19,102 +19,109 @@ from vivarium.processes.diffusion_field import plot_field_output
 
 # compartments
 from vivarium.composites.lattice_environment import (
-    get_lattice_environment,
+    make_lattice_environment,
 )
 from vivarium.composites.growth_division import growth_division
 
 
 
 
+# # TODO -- this can be made into a general function
+# def make_agents(settings):
+#     n_agents = settings.get('n_agents', {})
+#     compartment = settings.get('compartment', {})
+#     config = settings.get('config', {})
+
+#     processes = []
+#     topologies = {}
+#     agent_ids = []
+
+#     for agent in range(n_agents):
+#         agent_id = str(uuid.uuid1())
+#         agent_ids.extend(agent_id)
+
+#         # make the agent
+#         agent_config = config.copy()
+#         agent_config.update({'agent_id': agent_id})
+#         agent = compartment(agent_config)  # TODO -- pass in compartment
+
+#         # processes -- each process id is associated with its agent id with a tuple
+#         a_processes = agent['processes']
+#         a_processes = {
+#             (agent_id, process_id): process
+#             for process_id, process in a_processes.items()}
+
+#         # topology
+#         a_topology = {}
+#         for process_id, topology in agent['topology'].items():
+#             ports = {}
+#             for port_id, store_id in topology.items():
+#                 if store_id == BOUNDARY_STATE:
+#                     ports[port_id] = store_id
+#                 else:
+#                     ports[port_id] = (agent_id, store_id)
+
+#             a_topology[(agent_id, process_id)] = ports
+
+#         # save processes and topology
+#         processes.append(a_processes)
+#         topologies[agent_id] = a_topology
+
+#     return {
+#         'agent_ids': agent_ids,
+#         'processes': processes,
+#         'topologies': topologies}
+
+
 # TODO -- this can be made into a general function
-def make_agents(settings):
-    n_agents = settings.get('n_agents', {})
-    compartment = settings.get('compartment', {})
-    config = settings.get('config', {})
+def make_agents(count, compartment, config):
+    processes = {}
+    topology = {}
 
-    processes = []
-    topologies = {}
-    agent_ids = []
-    for agent in range(n_agents):
-
-        agent_id = str(uuid.uuid1())
-        agent_ids.extend(agent_id)
+    for agent in range(count):
+        # agent_id = str(uuid.uuid1())
+        agent_id = str(agent)
 
         # make the agent
-        config.update({'agent_id': agent_id})
-        agent = compartment(config)  # TODO -- pass in compartment
-
-        # processes -- each process id is associated with its agent id with a tuple
-        a_processes = flatten_process_layers(agent['processes'])
-        a_processes = {
-            (agent_id, process_id): process
-            for process_id, process in a_processes.items()}
-
-        # topology
-        a_topology = {}
-        for process_id, topology in agent['topology'].items():
-            ports = {}
-            for port_id, store_id in topology.items():
-                if store_id == BOUNDARY_STATE:
-                    ports[port_id] = store_id
-                else:
-                    ports[port_id] = (agent_id, store_id)
-
-            a_topology[(agent_id, process_id)] = ports
+        agent_config = config.copy()
+        agent_config.update({'agent_id': agent_id})
+        agent = compartment(dict(
+            agent_config,
+            agent_id=agent_id))  # TODO -- pass in compartment
 
         # save processes and topology
-        processes.append(a_processes)
-        topologies[agent_id] = a_topology
+        processes[agent_id] = {
+            'cell': agent['processes']}
+        topology[agent_id] = {
+            'cell': agent['topology']}
 
     return {
-        'agent_ids': agent_ids,
         'processes': processes,
-        'topologies': topologies}
+        'topology': topology}
 
 
 # TODO -- this can move to a separate experiments directory
 def lattice_experiment(config):
     # configure the experiment
-    n_agents = config.get('n_agents')
-
-    agent_processes = 
+    count = config.get('count')
 
     # get the environment
-    environment = get_lattice_environment(config.get('environment', {}))
+    environment = make_lattice_environment(config.get('environment', {}))
     environment_processes = environment['processes']
     environment_topology = environment['topology']
     inner_key = 'agents'  # TODO -- get this from config of each env process
 
-    environment_processes['agents'] = agent_processes
-
     processes = {
         'environment': environment_processes}
+    topology = {
+        'environment': environment_topology}
 
-    # get agent processes and topologies
-    agents_config = {
-        'n_agents': 2,
-        'compartment': growth_division,
-        'config': {}
-    }
-    agents = make_agents(agents_config)
-    agent_processes = agents['processes']
-    agent_topologies = agents['topologies']
-    agent_ids = agents['agent_ids']
+    agents = make_agents(count, growth_division, {
+        'cells_key': ['..', 'agents']})
+    environment_processes['agents'] = agents['processes']
+    environment_topology['agents'] = agents['topology']
 
-    ## make processes and topology for experiment
-    processes = []
-    topology = {}
-
-    # add environment
-    processes.append(environment_processes)
-    topology.update(environment_topology)
-
-    # add agents
-    processes.extend(agent_processes)
-
-    # combine agent and environment topologies
-    for agent_id, agent_topology in agent_topologies.items():
-        topology.update(agent_topology)
+    import ipdb; ipdb.set_trace()
 
     ## add derivers
     derivers = get_derivers(processes, topology)
@@ -129,12 +136,7 @@ def lattice_experiment(config):
         topology,
         config.get('initial_state', {}))
 
-
-
     print('state: '.format(stores[BOUNDARY_STATE].state))
-    import ipdb; ipdb.set_trace()
-
-
 
     options = {
         'name': config.get('name', 'lattice_environment'),
@@ -161,7 +163,7 @@ def get_lattice_config():
     agent_config = {}
 
     return {
-        'n_agents': 5,
+        'count': 3,
         'environment': environment_config,
         'agents': agent_config
     }
