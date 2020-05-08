@@ -1,10 +1,19 @@
+import os
+
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
 from vivarium.states.chromosome import Chromosome
 
 
-ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
+ECOLI_GENOME_FILE_NAME = 'Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
+ECOLI_GENOME_PATH = os.path.abspath(
+    os.path.join(
+        __file__,
+        "../../flat/{}".format(ECOLI_GENOME_FILE_NAME)
+    )
+)
+
 
 class FlagellaChromosome(object):
     ecoli_sequence = None
@@ -324,7 +333,7 @@ class FlagellaChromosome(object):
             affinities = {}
             first, second = list(promoter_factors[
                 list(promoter_factors.keys())[0]].keys())
-            
+
             # this hard coding of simple addition is alarming and probably points
             # towards providing a function of promoter state for affinity rather
             # than a simple lookup of the affinity for each promoter state tuple.
