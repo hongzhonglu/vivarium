@@ -10,41 +10,7 @@ import vivarium.compartment.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 
-def get_in(d, path):
-    if path:
-        head = path[0]
-        if head in d:
-            return get_in(d[head], path[1:])
-    else:
-        return d
-
-
-def assoc_in(d, path, value):
-    if path:
-        head = path[0]
-        if len(path) == 1:
-            d[head] = value
-        else:
-            if head not in d:
-                d[head] = {}
-            assoc_in(d[head], path[1:], value)
-    else:
-        value
-
-
-def update_in(d, path, f):
-    if path:
-        head = path[0]
-        if len(path) == 1:
-            d[head] = f(d.get(head, None))
-        else:
-            if not head in d:
-                d[head] = {}
-            update_in(d[head], path[1:], f)
-            
-
 COMPARTMENT_STATE = '__compartment_state__'
-BOUNDARY_STATE = '__boundary_state__'
 
 DEFAULT_TIMESTEP = 1.0
 
@@ -63,17 +29,18 @@ def npize(d):
 
     return keys, values
 
+
 ## updater functions
 # these function take in a variable key, the entire store's dict,
 # the variable's current value, the variable's current update,
 # and returns a new value, and other updates
-def update_accumulate(current_value, new_value):
-    return current_value + new_value
+def update_accumulate(key, state_dict, current_value, new_value):
+    return current_value + new_value, {}
 
-def update_set(current_value, new_value):
-    return new_value
+def update_set(key, state_dict, current_value, new_value):
+    return new_value, {}
 
-def update_merge(current_value, new_value):
+def update_merge(key, state_dict, current_value, new_value):
     # merge dicts, with new_value replacing any shared keys with current_value
     update = current_value.copy()
     for k, v in current_value.items():
@@ -82,7 +49,7 @@ def update_merge(current_value, new_value):
             update[k] = deep_merge(dict(v), new)
         else:
             update[k] = new
-    return update
+    return update, {}
 
 updater_library = {
     'accumulate': update_accumulate,
@@ -186,15 +153,18 @@ class Store(object):
                 updater = updater_library[updater]
 
             try:
-                self.new_state[key] = updater(
+                self.new_state[key], other_updates = updater(
+                    key,
+                    self.state,
                     self.new_state[key],
                     value)
-
             except TypeError as e:
                 log.error(
                     'bad update - {}: {}, {}'.format(
                         key, value, self.new_state[key]))
                 raise e
+
+            self.new_state.update(other_updates)
 
     def apply_updates(self, updates):
         ''' Apply a list of updates to the state '''
@@ -229,109 +199,16 @@ class Store(object):
             for key, value in self.state.items()}
 
 
-class State(object):
-    def __init__(self, config, parent=None):
-        self.config = config
-        self.parent = parent
-        self.updater = config.get('updater')
-        if isinstance(self.updater, str):
-            self.updater = updater_library[self.updater]
-        self.default = config.get('default')
-        self.value = self.default
-        self.properties = config.get('properties', {})
-        self.units = None
-
-        self.children = {
-            key: State(child, self)
-            for key, child in config.get('children', {}).items()}
-
-    def get_value(self):
-        if self.children:
-            return {
-                key: child.get_value()
-                for key, child in self.children.items()}
-        else:
-            return self.value
-
-    def get_path(self, path):
-        if len(path) > 0:
-            step = path[0]
-            if step == '..':
-                child = self.parent
-            else:
-                child = self.children.get(step)
-
-            if child:
-                return child.get_in(path[1:])
-            else:
-                # TODO: more handling for bad paths?
-                return None
-        else:
-            return self
-
-    def get_in(self, path):
-        return self.get_path(path).get_value()
-
-    def apply_update(self, update):
-        if self.children:
-            for key, value in update.items():
-                child = self.children[key]
-                child.apply_update(value)
-        else:
-            self.value = self.updater(self.value, update)
-
-    def get_template(self, template):
-        '''
-        Pass in a template dict with None for each value you want to
-        retrieve from the tree!
-        '''
-
-        state = {}
-        for key, value in template.items():
-            child = self.children[key]
-            if value is None:
-                state[key] = child.get_value()
-            else:
-                state[key] = child.get_template(value)
-        return state
-
-    def state_for(self, path, keys):
-        state = self.get_path(path)
-        return {
-            key: state.children[key].get_value()
-            for key in keys}
-
-    def depth(self, path=()):
-        base = [(path, self)]
-        for key, child in self.children.items():
-            down = tuple(path + (key,))
-            base += child.depth(down)
-        return base
-
-    def processes(self, path=()):
-        return {
-            path: state
-            for path, state in self.depth()
-            if state.value and isinstance(state.value, Process)}
-
-
 class Process(object):
-    def __init__(
-            self,
-            ports,
-            parameters=None):
+    def __init__(self, ports, parameters=None):
         ''' Declare what ports this process expects. '''
 
         self.ports = ports
         self.parameters = parameters or {}
-        self.local_time = self.parameters.get('time', 0)
         self.states = None
 
         default_timestep = self.default_settings().get('time_step', 1.0)
         self.time_step = self.parameters.get('time_step', default_timestep)
-
-        # set agent_id
-        self.agent_id = parameters.get('agent_id')
 
     def local_timestep(self):
         '''
@@ -343,6 +220,7 @@ class Process(object):
 
     def default_settings(self):
         return {}
+
 
     def schema_properties(self, states, schema_type):
         '''
@@ -390,11 +268,6 @@ class Process(object):
         self.default_parameters[derived_key] = f(present)
         return self.default_parameters[derived_key]
 
-    def find_states(self, tree, topology):
-        return {
-            port: tree.state_for(topology[port], keys)
-            for port, keys in self.ports}
-
     def next_update(self, timestep, states):
         '''
         Find the next update given the current states this process cares about.
@@ -406,23 +279,20 @@ class Process(object):
             for port, values in self.ports.items()}
 
 
-def connect_topology(processes, derivers, states, topology):
-    '''
-    Given a set of processes and states, and a description of the connections
-    between them, link the ports in each process to the state they refer to.
-    '''
-
-    all_processes = processes.copy()
-    all_processes.update(derivers)
-    for name, process in all_processes.items():
-        connections = topology[name]
-        ports = {
-            port: states[key]
-            for port, key in connections.items()}
-        try:
-            process.assign_ports(ports)
-        except:
-            print('{} mismatched ports'.format(name))
+def connect_topology(process, derivers, states, topology):
+    ''' Given a set of processes and states, and a description of the connections
+        between them, link the ports in each process to the state they refer to.'''
+    process_layers = process + derivers
+    for processes in process_layers:
+        for name, process in processes.items():
+            connections = topology[name]
+            ports = {
+                port: states[key]
+                for port, key in connections.items()}
+            try:
+                process.assign_ports(ports)
+            except:
+                print('{} mismatched ports'.format(name))
 
 def get_minimum_timestep(process_layers):
     # get the minimum time_step from all processes
@@ -436,8 +306,9 @@ def get_minimum_timestep(process_layers):
 
     return minimum_step
 
-def get_maximum_timestep(processes):
+def get_maximum_timestep(process_layers):
     # get the minimum time_step from all processes
+    processes = merge_dicts(process_layers)
     maximum_step = 0.0
 
     for process_id, process_object in processes.items():
@@ -447,29 +318,31 @@ def get_maximum_timestep(processes):
 
     return maximum_step
 
-def get_schema(processes, topology):
+def get_schema(process_list, topology):
     schema = {}
-    for process_id, process in processes.items():
-        process_settings = process.default_settings()
-        process_schema = process_settings.get('schema', {})
-        try:
-            port_map = topology[process_id]
-        except:
-            print('{} topology port mismatch'.format(process_id))
-            raise
+    for level in process_list:
+        for process_id, process in level.items():
+            process_settings = process.default_settings()
+            process_schema = process_settings.get('schema', {})
+            try:
+                port_map = topology[process_id]
+            except:
+                print('{} topology port mismatch'.format(process_id))
+                raise
 
-        # go through each port, and get the schema
-        for process_port, settings in process_schema.items():
-            compartment_port = port_map[process_port]
-            compartment_schema = {
-                compartment_port: settings}
+            # go through each port, and get the schema
+            for process_port, settings in process_schema.items():
+                compartment_port = port_map[process_port]
+                compartment_schema = {
+                    compartment_port: settings}
 
-            ## TODO -- check for mismatch
-            deep_merge_check(schema, compartment_schema)
+                ## TODO -- check for mismatch
+                deep_merge_check(schema, compartment_schema)
     return schema
 
-def initialize_state(processes, topology, initial_state):
-    schema = get_schema(processes, topology)
+def initialize_state(process_layers, topology, initial_state):
+    schema = get_schema(process_layers, topology)
+    processes = merge_dicts(process_layers)
 
     # make a dict with the compartment's default states {ports: states}
     compartment_states = {}
@@ -481,7 +354,7 @@ def initialize_state(processes, topology, initial_state):
 
         for process_port, states in process_ports.items():
             try:
-                store_id = topology[process_id][process_port]
+                compartment_port = topology[process_id][process_port]
             except:
                 raise topologyError(
                     'no "{}" port assigned to "{}" process in topology'.format(process_port, process_id))
@@ -491,18 +364,18 @@ def initialize_state(processes, topology, initial_state):
 
             # update the states
             # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
-            c_states = deep_merge(default_states, compartment_states.get(store_id, {}))
-            compartment_states[store_id] = c_states
+            c_states = deep_merge(default_states, compartment_states.get(compartment_port, {}))
+            compartment_states[compartment_port] = c_states
 
     # initialize state for each compartment port
     initialized_state = {}
-    for store_id, states in compartment_states.items():
-        state_schema = schema.get(store_id, {})
+    for compartment_port, states in compartment_states.items():
+        state_schema = schema.get(compartment_port, {})
 
         make_state = Store(
-            initial_state=deep_merge(states, dict(initial_state.get(store_id, {}))),
+            initial_state=deep_merge(states, dict(initial_state.get(compartment_port, {}))),
             schema=state_schema)
-        initialized_state[store_id] = make_state
+        initialized_state[compartment_port] = make_state
 
     return initialized_state
 
@@ -512,266 +385,146 @@ def flatten_process_layers(process_layers):
         processes.update(layer)
     return processes
 
-# class Compartment():
-#     ''' Track a set of processes and states and the connections between them. '''
+class Compartment(Store):
+    ''' Track a set of processes and states and the connections between them. '''
 
-#     # def __init__(self, configuration):
-#     def __init__(self, processes, derivers, states, configuration):
-#         '''
-#         Given a set of processes and states, and a topology describing their
-#         connections, perform those connections.
-#         '''
+    def __init__(self, processes, derivers, states, configuration):
+        ''' Given a set of processes and states, and a topology describing their
+            connections, perform those connections. '''
 
-#         self.processes = processes
-#         # self.state = initialize_state(processes)
-#         self.states = states
-#         self.derivers = derivers
-#         self.configuration = configuration
+        self.processes = processes
+        self.states = states
+        self.derivers = derivers
+        self.configuration = configuration
 
-#         self.topology = configuration['topology']
-#         self.initial_time = configuration.get('initial_time', 0.0)
-#         self.local_time = 0.0
-#         self.time_step = configuration.get('time_step', get_maximum_timestep(processes))
+        self.topology = configuration['topology']
+        self.initial_time = configuration.get('initial_time', 0.0)
+        self.local_time = 0.0
+        self.time_step = configuration.get('time_step', get_maximum_timestep(processes))
 
-#         # configure compartment state
-#         self.states[COMPARTMENT_STATE] = self
-#         self.state = {
-#             'processes': self.processes,
-#             'derivers': self.derivers}
-#         self.updaters = {'processes': 'set'}
+        # configure compartment state
+        self.states[COMPARTMENT_STATE] = self
+        self.state = {
+            'processes': self.processes,
+            'derivers': self.derivers}
+        self.updaters = {'processes': 'set'}
 
-#         # divide condition
-#         self.divide_condition = configuration.get('divide_condition', default_divide_condition)
+        # divide condition
+        self.divide_condition = configuration.get('divide_condition', default_divide_condition)
 
-#         # emitter
-#         emitter_config = configuration.get('emitter')
-#         if emitter_config is None:
-#             emitter = emit.get_emitter({})
-#             self.emitter_keys = emitter.get('keys')
-#             self.emitter = emitter.get('object')
-#         elif isinstance(emitter_config, str):
-#             all_processes = self.processes.copy()
-#             all_processes.update(self.derivers)
-#             emitter = emit.configure_emitter(
-#                 {'emitter': {'type': emitter_config}},
-#                 all_processes,
-#                 self.topology)
-#             self.emitter_keys = emitter.get('keys')
-#             self.emitter = emitter.get('object')
-#         else:
-#             self.emitter_keys = configuration['emitter'].get('keys')
-#             self.emitter = configuration['emitter'].get('object')
+        # emitter
+        emitter_config = configuration.get('emitter')
+        if emitter_config is None:
+            emitter = emit.get_emitter({})
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
+        elif isinstance(emitter_config, str):
+            emitter = emit.configure_emitter(
+                {'emitter': {'type': emitter_config}},
+                self.processes + self.derivers,
+                self.topology)
+            self.emitter_keys = emitter.get('keys')
+            self.emitter = emitter.get('object')
+        else:
+            self.emitter_keys = configuration['emitter'].get('keys')
+            self.emitter = configuration['emitter'].get('object')
 
-#         connect_topology(processes, derivers, self.states, self.topology)
+        connect_topology(processes, derivers, self.states, self.topology)
 
-#         # log experiment configuration
-#         data = {
-#             'type': 'compartment',
-#             'name': configuration.get('name', 'compartment'),
-#             'topology': self.topology}
+        # log experiment configuration
+        data = {
+            'type': 'compartment',
+            'name': configuration.get('name', 'compartment'),
+            'topology': self.topology}
 
-#         emit_config = {
-#             'table': 'configuration',
-#             'data': data}
-#         self.emitter.emit(emit_config)
+        emit_config = {
+            'table': 'configuration',
+            'data': data}
+        self.emitter.emit(emit_config)
 
-#     def divide_state(self):
-#         daughter_states = [{}, {}]
-#         for port_id, state in self.states.items():
-#             if port_id == COMPARTMENT_STATE:
-#                 # TODO -- copy compartment_state to each daughter???
-#                 break
-#             else:
-#                 schema = state.schema
+    def divide_state(self):
+        daughter_states = [{}, {}]
+        for port_id, state in self.states.items():
+            if port_id == COMPARTMENT_STATE:
+                # TODO -- copy compartment_state to each daughter???
+                break
+            else:
+                schema = state.schema
 
-#             for state_id, value in state.to_dict().items():
-#                 state_schema = schema.get(state_id, {})
-#                 divide_type = state_schema.get('divide', 'split')  # default divider is 'split'
-#                 divider = divider_library[divide_type]
+            for state_id, value in state.to_dict().items():
+                state_schema = schema.get(state_id, {})
+                divide_type = state_schema.get('divide', 'split')  # default divider is 'split'
+                divider = divider_library[divide_type]
 
-#                 # divide the state
-#                 divided_state = divider(value)
+                # divide the state
+                divided_state = divider(value)
 
-#                 for index in range(2):
-#                     new_state = {
-#                         port_id: {
-#                             state_id: divided_state[index]}}
-#                     deep_merge(daughter_states[index], new_state)
+                for index in range(2):
+                    new_state = {
+                        port_id: {
+                            state_id: divided_state[index]}}
+                    deep_merge(daughter_states[index], new_state)
 
-#         print('divided {}'.format(daughter_states))
-#         return daughter_states
+        print('divided {}'.format(daughter_states))
+        return daughter_states
 
-#     def prepare(self):
-#         ''' Avoid creating a copy of the process objects. '''
-#         self.new_state = self.state
+    def prepare(self):
+        ''' Avoid creating a copy of the process objects. '''
+        self.new_state = self.state
 
-#     def to_dict(self):
-#         ''' overriding from State '''
-#         return self.current_state()
+    def to_dict(self):
+        ''' overriding from State '''
+        return self.current_state()
 
-#     def collect_updates(self, updates, process_name, new_update):
-#         for port, update_store in new_update.items():
-#             key = self.topology[process_name][port]
-#             if not updates.get(key):
-#                 updates[key] = []
-#             updates[key].append(update_store)
-#         return updates
-
-#     def run_derivers(self):
-#         derivers = flatten_process_layers(self.state['derivers'])
-
-#         updates = {}
-#         for name, process in derivers.items():
-#             new_update = process.update_for(0)  # timestep shouldn't influence derivers
-#             updates = self.collect_updates(updates, name, new_update)
-
-#         for key, update in updates.items():
-#             self.states[key].apply_updates(update)
-
-#     def send_updates(self, updates):
-#         ''' Prepare the states, apply the updates, run derivers, and proceed'''
-
-#         for key in self.states.keys():
-#             self.states[key].prepare()
-
-#         for key, update in updates.items():
-#             self.states[key].apply_updates(update)
-
-#         # run derivers after every update
-#         # TODO -- only run derivers if any of their states have been updated
-#         self.run_derivers()
-
-#         for key in self.states.keys():
-#             self.states[key].proceed()
-
-#     def update(self, timestep):
-#         ''' Run each process for the given time step and update the related states. '''
-
-#         time = 0
-
-#         # flatten all process layers into a single process dict
-#         processes = flatten_process_layers(self.state['processes'])
-
-#         # keep track of which processes have simulated until when
-#         front = {
-#             process_name: {
-#                 'time': 0,
-#                 'update': {}}
-#             for process_name in processes.keys()}
-
-#         while time < timestep:
-#             step = INFINITY
-
-#             if VERBOSE:
-#                 for state_id in self.states:
-#                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
-
-#             for process_name, process in processes.items():
-#                 process_time = front[process_name]['time']
-
-#                 if process_time <= time:
-#                     future = min(process_time + process.local_timestep(), timestep)
-#                     interval = future - process_time
-#                     update = process.update_for(interval)
-
-#                     if interval < step:
-#                         step = interval
-#                     front[process_name]['time'] = future
-#                     front[process_name]['update'] = update
-
-#             if step == INFINITY:
-#                 # no processes ran, jump to next process
-#                 next_event = timestep
-#                 for process_name in front.keys():
-#                     if front[process_name]['time'] < next_event:
-#                         next_event = front[process_name]['time']
-#                 time = next_event
-#             else:
-#                 # at least one process ran, apply updates and continue
-#                 future = time + step
-
-#                 updates = {}
-#                 for path, advance in front.items():
-#                     if advance['time'] <= future:
-#                         updates = self.collect_updates(updates, path, advance['update'])
-#                         advance['update'] = {}
-
-#                 self.send_updates(updates)
-
-#                 time = future
-
-#         for process_name, advance in front.items():
-#             assert advance['time'] == time == timestep
-#             assert len(advance['update']) == 0
-
-#         self.local_time += timestep
-
-#         # run emitters
-#         self.emit_data()
-
-#     def current_state(self):
-#         ''' Construct the total current state from the existing substates. '''
-
-#         return {
-#             key: state.to_dict()
-#             for key, state in self.states.items()
-#             if key != COMPARTMENT_STATE}
-
-#     def current_parameters(self):
-#         return {
-#             name: process.parameters
-#             for name, process in merge_dicts(self.state['processes']).items()}
-
-#     def time(self):
-#         return self.initial_time + self.local_time
-
-#     def emit_data(self):
-#         data = {}
-#         for port_key, emit_keys in self.emitter_keys.items():
-#             data[port_key] = self.states[port_key].state_for(emit_keys)
-
-#         data.update({
-#             'type': 'compartment',
-#             'time': self.time()})
-
-#         emit_config = {
-#             'table': 'history',
-#             'data': data}
-
-#         self.emitter.emit(emit_config)
-
-
-def append_update(existing_updates, new_update):
-    if existing_updates is None:
-        existing_updates = []
-    existing_updates.append(new_update)
-
-class Experiment(object):
-    def __init__(self, config):
-        self.processes = config['processes']
-        self.topology = config['topology']
-        self.state = generate_state(self.processes, self.topology)
-
-    def collect_updates(self, updates, path, new_update):
-        for port, update in new_update.items():
-            get_in(self.topology, path)
-            state_path = self.topology[port]
-            update_in(updates, state_path, lambda x: append_update(x, update))
+    def collect_updates(self, updates, process_name, new_update):
+        for port, update_store in new_update.items():
+            key = self.topology[process_name][port]
+            if not updates.get(key):
+                updates[key] = []
+            updates[key].append(update_store)
         return updates
+
+    def run_derivers(self):
+
+        derivers = flatten_process_layers(self.state['derivers'])
+
+        updates = {}
+        for name, process in derivers.items():
+            new_update = process.update_for(0)  # timestep shouldn't influence derivers
+            updates = self.collect_updates(updates, name, new_update)
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
+    def send_updates(self, updates):
+        ''' Prepare the states, apply the updates, run derivers, and proceed'''
+
+        for key in self.states.keys():
+            self.states[key].prepare()
+
+        for key, update in updates.items():
+            self.states[key].apply_updates(update)
+
+        # run derivers after every update
+        # TODO -- only run derivers if any of their states have been updated
+        self.run_derivers()
+
+        for key in self.states.keys():
+            self.states[key].proceed()
 
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
 
         time = 0
 
-        def empty_front():
-            return {
-                'time': 0,
-                'update': {}}
+        # flatten all process layers into a single process dict
+        processes = flatten_process_layers(self.state['processes'])
 
         # keep track of which processes have simulated until when
         front = {
-            process_name: empty_front()
+            process_name: {
+                'time': 0,
+                'update': {}}
             for process_name in processes.keys()}
 
         while time < timestep:
@@ -781,44 +534,34 @@ class Experiment(object):
                 for state_id in self.states:
                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            processes = {
-                path: state
-                for path, state in states.depth()
-                if state.value and isinstance(state.value, Process)}
-
-            for path, state in processes:
-                if not path in front:
-                    front[path] = empty_front()
-                process_time = front[path]['time']
+            for process_name, process in processes.items():
+                process_time = front[process_name]['time']
 
                 if process_time <= time:
                     future = min(process_time + process.local_timestep(), timestep)
                     interval = future - process_time
-                    process = state.value
-                    process_topology = get_in(self.topology, path)
-                    ports = process.find_states(state.parent, process_topology)
-                    update = process.update_for(interval, ports)
+                    update = process.update_for(interval)
 
                     if interval < step:
                         step = interval
-                    front[path]['time'] = future
-                    front[path]['update'] = update
+                    front[process_name]['time'] = future
+                    front[process_name]['update'] = update
 
             if step == INFINITY:
                 # no processes ran, jump to next process
                 next_event = timestep
                 for process_name in front.keys():
-                    if front[path]['time'] < next_event:
-                        next_event = front[path]['time']
+                    if front[process_name]['time'] < next_event:
+                        next_event = front[process_name]['time']
                 time = next_event
             else:
                 # at least one process ran, apply updates and continue
                 future = time + step
 
                 updates = {}
-                for path, advance in front.items():
+                for process_name, advance in front.items():
                     if advance['time'] <= future:
-                        updates = self.collect_updates(updates, path, advance['update'])
+                        updates = self.collect_updates(updates, process_name, advance['update'])
                         advance['update'] = {}
 
                 self.send_updates(updates)
@@ -831,9 +574,39 @@ class Experiment(object):
 
         self.local_time += timestep
 
-        # # run emitters
-        # self.emit_data()
+        # run emitters
+        self.emit_data()
 
+    def current_state(self):
+        ''' Construct the total current state from the existing substates. '''
+
+        return {
+            key: state.to_dict()
+            for key, state in self.states.items()
+            if key != COMPARTMENT_STATE}
+
+    def current_parameters(self):
+        return {
+            name: process.parameters
+            for name, process in merge_dicts(self.state['processes']).items()}
+
+    def time(self):
+        return self.initial_time + self.local_time
+
+    def emit_data(self):
+        data = {}
+        for port_key, emit_keys in self.emitter_keys.items():
+            data[port_key] = self.states[port_key].state_for(emit_keys)
+
+        data.update({
+            'type': 'compartment',
+            'time': self.time()})
+
+        emit_config = {
+            'table': 'history',
+            'data': data}
+
+        self.emitter.emit(emit_config)
 
 
 def test_timescales():
@@ -901,136 +674,5 @@ def test_timescales():
 
     compartment.update(10.0)
 
-def test_recursive_store():
-    config = {}
-
-    multibody = Multibody(config.get('multibody', {}))
-    diffusion = DiffusionField(config.get('diffusion_field', {}))
-
-    def agent_configs(count):
-        return random_body_config({
-            'n_agents': count,
-            'bounds': [10, 10]})
-
-    def agent_processes(config):
-        pass
-
-    processes = {
-        'environment': {
-            'multibody': multibody,
-            'diffusion': diffusion,
-            'agents': {
-                agent_id: agent_processes(config)
-                for agent_id, config in agent_configs(count).items()}}}
-
-    topology = {
-        'environment': {
-            'multibody': {
-                'agents': '/environment/agents'},
-            'diffusion': {
-                'agents': '/environment/agents',
-                'fields': '/environment/fields'}}}
-
-    environment_config = {
-        'children': {
-            'temperature': {
-                'default': 0.0,
-                'updater': 'accumulate'},
-            'patches': {
-                'children': {
-                    (0, 1): {
-                        'children': {
-                            'enzymeX': {
-                                'default': 0.0,
-                                'updater': 'set'},
-                            'enzymeY': {
-                                'default': 0.0,
-                                'updater': 'set'}}},
-                    (0, 2): {
-                        'children': {
-                            'enzymeX': {
-                                'default': 0.0,
-                                'updater': 'set'},
-                            'enzymeY': {
-                                'default': 0.0,
-                                'updater': 'set'}}}}},
-            'simulations': {
-                'children': {
-                    '1': {
-                        'children': {
-                            'location': {
-                                'default': (0, 0),
-                                'updater': 'set'},
-                            'boundary': {
-                                'children': {
-                                    'external': {
-                                        'default': 0.0,
-                                        'updater': 'set'},
-                                    'internal': {
-                                        'default': 0.0,
-                                        'updater': 'set'}}},
-                            'transcripts': {
-                                'children': {
-                                    'flhDC': {
-                                        'default': 0,
-                                        'updater': 'accumulate'},
-                                    'fliA': {
-                                        'default': 0,
-                                        'updater': 'accumulate'}}},
-                            'proteins': {
-                                'children': {
-                                    'ribosome': {
-                                        'default': 0,
-                                        'updater': 'set'},
-                                    'flagella': {
-                                        'default': 0,
-                                        'updater': 'accumulate'}}}}},
-                    '2': {
-                        'children': {
-                            'location': {
-                                'default': (0, 0),
-                                'updater': 'set'},
-                            'boundary': {
-                                'children': {
-                                    'external': {
-                                        'default': 0.0,
-                                        'updater': 'set'},
-                                    'internal': {
-                                        'default': 0.0,
-                                        'updater': 'set'}}},
-                            'transcripts': {
-                                'children': {
-                                    'flhDC': {
-                                        'default': 0,
-                                        'updater': 'accumulate'},
-                                    'fliA': {
-                                        'default': 0,
-                                        'updater': 'accumulate'}}},
-                            'proteins': {
-                                'children': {
-                                    'ribosome': {
-                                        'default': 0,
-                                        'updater': 'set'},
-                                    'flagella': {
-                                        'default': 0,
-                                        'updater': 'accumulate'}}}}}}}}}
-
-    state = State(store_config)
-    import ipdb; ipdb.set_trace()
-    state.apply_updates({})
-    state.state_for({})
-
-def test_in():
-    blank = {}
-    path = ['where', 'are', 'we']
-    assoc_in(blank, path, 5)
-    print(blank)
-    print(get_in(blank, path))
-    update_in(blank, path, lambda x: x + 6)
-    print(blank)
-
-
 if __name__ == '__main__':
-    # test_timescales()
-    # test_recursive_store()
-    test_in()
+    test_timescales()
