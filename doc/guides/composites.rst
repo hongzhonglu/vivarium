@@ -4,7 +4,7 @@ Composites
 
 To model a cell faithfully, we need to simulate processes running
 concurrently and interacting with each other. For example, we might want
-to model the synthesis of ATP by a metabolism process concurrently wih
+to model the synthesis of ATP by a metabolism process concurrently with
 the consumption of ATP by a transport process such as a sodium pump. In
 Vivarium, we model this by creating a :term:`composite`.
 
@@ -138,7 +138,7 @@ process doesn't need :term:`masking`.
 Topologies
 ----------
 
-But how do we specify which store goes with which port? To continue the
+How do we specify which store goes with which port? To continue the
 function analogy from above, we need something analogous to this:
 
 .. code-block:: python

@@ -37,7 +37,7 @@ following abbreviations:
 * GLC: D-Glucose
 * ATP: Adenosine triphosphate
 * G6P: |agr|-D-Glucose-6-phosphate
-* ADP: Adenonsine diphosphate
+* ADP: Adenosine diphosphate
 * v: Rate of the forward reaction
 * HK: Hexokinase
 
@@ -79,10 +79,10 @@ model's current state and a :term:`timestep` :math:`t`.
 
 For the current example, each update will include the following:
 
-* A decrease in GLC: :math:`-vt`
-* A decrease in ATP: :math:`-vt`
-* An increase in G6P: :math:`vt`
-* An increase in ADP: :math:`vt`
+* A decrease in GLC: :math:`-v t`
+* A decrease in ATP: :math:`-v t`
+* An increase in G6P: :math:`v t`
+* An increase in ADP: :math:`v t`
 
 .. note:: In this example and most of the time in Vivarium, we work in
     terms of concentrations. We also normally use units of mM, but you
@@ -103,9 +103,9 @@ be linked to the same store, a port cannot be split between stores. This
 means that you should put in separate ports any :term:`variables` that a
 user might want in separate stores.
 
-For example, ATP and ADP are turned over very quickly in the cell, so a
-user might want to isolate those variables from others that get updated
-more slowly. We will therefore create two ports:
+For example, ATP and ADP are turned over rapidly in the cell, so a user
+might want to isolate those variables from others that get updated more
+slowly. We will therefore create two ports:
 
 * ``nucleoside_phosphates``: This port will store the ``ATP`` and
   ``ADP`` variables.
@@ -304,7 +304,7 @@ Therefore, we expect the change in concentration of G6P to be:
 
     \begin{equation}
         \begin{aligned}
-            \Delta_{[GLC]} & = vt \\
+            \Delta_{[GLC]} & = v t \\
             & = (0.14)(3) \\
             & = 0.42 \\
         \end{aligned}

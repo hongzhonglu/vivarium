@@ -19,7 +19,7 @@ Create a ``vivarium_work`` folder anywhere you like. But for installing
 some third-party software, everything we do will occur inside this
 folder.
 
-.. _pythonpath:
+.. _pypath:
 
 Setting PYTHONPATH
 ------------------
@@ -63,7 +63,8 @@ Make sure you see a version at least 3.6.
 
 *Install*
 
-Download the latest installer from https://www.python.org/downloads/
+Download the latest installer from the `Python download page
+<https://www.python.org/downloads/>`_
 
 Open JDK 8
 ----------
@@ -129,7 +130,7 @@ it, even if you use Kafka already.
    .. code-block:: bash
 
         #!/bin/bash
-        
+
         ./kafka_2.11-2.0.0/bin/zookeeper-server-start.sh \
             ./kafka_2.11-2.0.0/config/zookeeper.properties
 
@@ -169,7 +170,7 @@ it, even if you use Kafka already.
    .. WARNING:: Make sure you shut down Kafka before Zookeeper!  If you
        shut down Zookeeper first, Kafka will refuse to quit. You can
        then force it to stop with ``kill -9``.
- 
+
 MongoDB
 -------
 
@@ -304,7 +305,7 @@ The Vivarium code is available on `GitHub
 download the code
 
 .. code-block:: console
-    
+
     $ cd vivarium_work
     $ git clone https://github.com/CovertLab/vivarium.git
 
@@ -323,22 +324,22 @@ install the Python packages Vivarium uses.
 
    .. code-block:: console
 
-        $ python3 -m venv venv
-        ...
-        $ source venv/bin/activate
+      $ python3 -m venv venv
+      ...
+      $ source venv/bin/activate
 
 #. Install Numpy. One of our dependencies, ``stochastic-arrow`` requires
    that Numpy be installed first. Check the ``requirements.txt`` file
    for a line like this:
 
    .. code-block::
-   
+
         numpy==1.15.3
 
    Now install the version of Numpy specified in ``requirements.txt``
 
    .. code-block:: console
-   
+
         $ pip install numpy==1.15.3
 
 #. Install packages
@@ -396,7 +397,7 @@ process like this:
 
 .. tip:: If you get errors from Python about being unable to find
     ``vivarium``, make sure you've set your PYTHONPATH correctly. See
-    :ref:`pythonpath` for details.
+    :ref:`pypath` for details.
 
 Don't worry about the output--it's for developers. You will see a new
 folder at ``vivarium_work/vivarium/vivarium/out/tests``. This is where
@@ -496,7 +497,7 @@ in a separate terminal window:
 #. Start Zookeeper:
 
    .. code-block:: console
-   
+
         $ vivarium_work/zookeeper.sh
         ...
         ... INFO binding to port 0.0.0.0/0.0.0.0:2181 ...
@@ -504,7 +505,7 @@ in a separate terminal window:
 #. Start Kafka:
 
    .. code-block:: console
-   
+
         $ vivarium_work/kafka.sh
         ...
         ... INFO [KafkaServer id=0] started (kafka.server.KafkaServer)
@@ -517,7 +518,7 @@ in a separate terminal window:
 #. Start MongoDB:
 
    .. code-block:: console
-   
+
         $ vivarium_work/mongo.sh
 
    There shouldn't be any output.
@@ -540,7 +541,7 @@ Now we can create our agents. We create an agent like this:
 
 .. tip:: If you get errors from Python about being unable to find
     ``vivarium``, make sure you've set your PYTHONPATH to include
-    vivarium.  See :ref:`pythonpath` for details.
+    vivarium.  See :ref:`pypath` for details.
 
 where ``<type>`` is the agent type, ``<id>`` is the identifier for this
 agent, and ``<outId>`` is an optional argument that stipulates that the
@@ -561,7 +562,7 @@ To see the other agent types, check out the help text like this:
 
 Here's an example of running a simulation of a simple environment with
 three cells that consume glucose and lactose. We will initialize the
-environment with glucose and lactose, and as the cells depelete the
+environment with glucose and lactose, and as the cells deplete the
 glucose we should see the cells shift to consuming lactose.
 
 .. todo:: Instructions for debugging in this mode
@@ -576,7 +577,7 @@ glucose we should see the cells shift to consuming lactose.
    homogeneous. We start this agent like this:
 
    .. code-block:: console
-   
+
         $ python -m vivarium.environment.boot --type ecoli_core_glc --id env
         environment started
 
@@ -590,7 +591,7 @@ glucose we should see the cells shift to consuming lactose.
    create these agents like this:
 
    .. code-block:: console
-   
+
       $ python -m vivarium.environment.boot --type shifter --id c1 --outer-id env
       $ python -m vivarium.environment.boot --type shifter --id c2 --outer-id env
       $ python -m vivarium.environment.boot --type shifter --id c3 --outer-id env
@@ -608,7 +609,7 @@ glucose we should see the cells shift to consuming lactose.
    And a message from the environment back to the cell:
 
    .. code-block:: console
-   
+
         <-- cell-receive ENVIRONMENT_SYNCHRONIZE [glc_lct env]:
         {'event': 'ENVIRONMENT_SYNCHRONIZE', 'inner_id': 'c1',
         'outer_id': 'env', 'state': { ... }}
@@ -616,7 +617,7 @@ glucose we should see the cells shift to consuming lactose.
 #. Now we can start the simulation!
 
    .. code-block:: console
-   
+
         $ python -m vivarium.environment.control run --id env
 
    Simulation stop on their own once the environment agent hits the end
@@ -624,7 +625,7 @@ glucose we should see the cells shift to consuming lactose.
    the simulation like this as well:
 
    .. code-block:: console
-   
+
         $ python -m vivarium.environment.control pause --id env
         $ python -m vivarium.environment.control run --id env
         $ python -m vivarium.environment.control shutdown
@@ -651,9 +652,9 @@ In ``snap_out.png`` you should see something like this:
        purple. Each row is for one of carbon dioxide, oxygen, glucose,
        and lactose. Each column is for a time during the experiment from
        0 to 2.5 hours. Each of the three cells is depicted in each plot
-       as a rectangle. We see local depletions of oxygen, glucose, and
-       lactose around each cell and local increses in carbon
-       dioide around each cell, over time.
+       as a rectangle. We see local depletion of oxygen, glucose, and
+       lactose around each cell and local increases in carbon
+       dioxide around each cell, over time.
 
 Notice that the cells are consuming glucose and lactose as we expected!
 Now take a look at ``c1/compartment.png``. Here is part of the plot you
@@ -697,7 +698,7 @@ model cells dividing!
 #. For our environment, let's make a ``lattice`` agent:
 
    .. code-block:: console
-   
+
         $ python -m vivarium.environment.boot --type ecoli_core_glc --id env2
         environment started
 
@@ -707,19 +708,19 @@ model cells dividing!
 
    .. tip:: If you get errors from Python about being unable to find
         ``vivarium``, make sure you've set your PYTHONPATH to include
-        vivarium.  See :ref:`pythonpath` for details.
+        vivarium.  See :ref:`pypath` for details.
 
 #. Next, let's create a cell agent of type ``growth_division``, which
    can grow and divide.
 
    .. code-block:: console
-   
+
       $ python -m vivarium.environment.boot --type growth_division --id c --outer-id env2
 
 #. Now we can start the simulation!
 
    .. code-block:: console
-   
+
         $ python -m vivarium.environment.control run --id env2
 
    This simulation is quite long, so feel free to cancel it with CTRL-C
@@ -756,7 +757,7 @@ a simulation of growing and dividing cells like above more easily:
 #. Now start up Shepherd:
 
    .. code-block:: console
-   
+
         $ lein run
 
 #. Load the experiment:
@@ -771,7 +772,7 @@ a simulation of growing and dividing cells like above more easily:
 
    .. tip:: If you get errors from Python about being unable to find
         ``vivarium``, make sure you've set your PYTHONPATH to include
-        vivarium.  See :ref:`pythonpath` for details.
+        vivarium.  See :ref:`pypath` for details.
 
 #. Run the simulation:
 
@@ -782,7 +783,7 @@ a simulation of growing and dividing cells like above more easily:
 #. When it finishes, run the analysis:
 
    .. code-block:: console
-   
+
         $ python vivarium/analysis/run_analysis -e exp
 
    This is a long experiment, so you might want to end the simulation

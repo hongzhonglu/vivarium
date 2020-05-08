@@ -53,7 +53,7 @@ We write four kinds of documentation for Vivarium:
       .. note::
           From the compiled HTML reference documentation, you can click
           on ``[source]`` to see the source code, including the
-          docstrings. This can be very helpful for looking up
+          docstrings. This can be helpful for looking up
           reStructuredText syntax.
 
       .. WARNING:: For each class, include at most one of the class and
