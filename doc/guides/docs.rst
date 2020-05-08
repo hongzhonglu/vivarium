@@ -49,7 +49,7 @@ We write four kinds of documentation for Vivarium:
       :py:mod:`vivarium.processes.death`. For an example of
       documentation that explains how to use a process, look at
       :py:mod:`vivarium.processes.metabolism`.
-      
+
       .. note::
           From the compiled HTML reference documentation, you can click
           on ``[source]`` to see the source code, including the
@@ -107,7 +107,7 @@ documentation:
       .. note::
 
          ``.. note::``
-    
+
     * We give users helpful tips using the tip admonition. These help
       highlight tips that some users might not use but that will help
       users who are debugging problems.
@@ -122,6 +122,13 @@ documentation:
       .. DANGER::
 
          ``.. DANGER::``
+
+* We use `Vale <https://errata-ai.gitbook.io/vale/>`_ to lint our
+  documentation. You can run the linter by executing ``doc/test.sh``.
+  This linter checks some Vivarium-specific naming and capitalization
+  conventions. It also runs the ``proselint`` and ``write-good``
+  linters, which check for generally good style.
+
 
 .. _building-docs:
 
