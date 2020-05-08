@@ -13,6 +13,7 @@ pom.xml.asc
 .hg/
 /wholecell_vivarium.egg-info
 /vivarium_interface.egg-info
+/docs/_build
 
 *.out
 out/
