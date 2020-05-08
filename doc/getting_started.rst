@@ -202,10 +202,10 @@ If you are on Linux, see the MongoDB documentation's `instructions
 You can get a MongoDB server up and running locally any number of ways.
 Here is one:
 
-#. Create a folder ``vivarium_work/mongodb``. This is where the database
-   will be stored. We store the database here instead of at the default
-   location in ``/usr/local/var/mongodb`` to avoid permissions issues if
-   you are not running as an administrator.
+#. Create a folder ``vivarium_work/mongodb``. This is where MongoDB will
+   store the database We store the database here instead of at the
+   default location in ``/usr/local/var/mongodb`` to avoid permissions
+   issues if you are not running as an administrator.
 #. Make a copy of the ``mongod`` configuration file so we can make
    changes:
 
@@ -247,13 +247,13 @@ GNU Linear Programming Kit (GLPK)
 .. todo:: What is GLPK used for?
 
 One of the Python packages we will install later, ``swiglpk``, requires
-that GLPK already be installed on your system.
+that you already have GLPK installed on your system.
 
 *Check Installation*
 
-We don't have a way to check whether ``glpk`` is installed. If you think
-you already have it, you can proceed with the installation and watch for
-an error about missing ``glpk``.
+We don't have a way to check whether you have ``glpk`` installed. If you
+think you already have it, you can proceed with the installation and
+watch for an error about missing ``glpk``.
 
 .. todo:: Check GLPK installation
 
@@ -384,11 +384,10 @@ Running Processes and Composites in Isolation
 =============================================
 
 You can run any process or composite by itself. While this is too simple
-for modeling whole cells or colonies, it is helpful to simulate
-processes in isolation to study their dynamics and tune them to
-different conditions. To run a process or composite, you can execute the
-Python file that defines it. For example, we can run the degradation
-process like this:
+for modeling whole cells or colonies, simulating processes in isolation
+lets you study their dynamics and tune them to different conditions. To
+run a process or composite, you can execute the Python file that defines
+it. For example, we can run the degradation process like this:
 
 .. code-block:: console
 
@@ -396,8 +395,8 @@ process like this:
     ...
 
 .. tip:: If you get errors from Python about being unable to find
-    ``vivarium``, make sure you've set your PYTHONPATH correctly. See
-    :ref:`pypath` for details.
+   ``vivarium``, make sure you've added the repository root to your
+   PYTHONPATH. See :ref:`pypath` for details.
 
 Don't worry about the output--it's for developers. You will see a new
 folder at ``vivarium_work/vivarium/vivarium/out/tests``. This is where
@@ -540,12 +539,12 @@ Now we can create our agents. We create an agent like this:
     $ python -m vivarium.environment.boot --type <type> --id <id> [--outer-id <outId>]
 
 .. tip:: If you get errors from Python about being unable to find
-    ``vivarium``, make sure you've set your PYTHONPATH to include
-    vivarium.  See :ref:`pypath` for details.
+   ``vivarium``, make sure you've added the repository root to your
+   PYTHONPATH. See :ref:`pypath` for details.
 
 where ``<type>`` is the agent type, ``<id>`` is the identifier for this
-agent, and ``<outId>`` is an optional argument that stipulates that the
-agent should be placed inside the agent with identifier ``<outId>``.
+agent, and ``<outId>`` is an optional argument that instructs Vivarium
+to place the new agent inside the agent with identifier ``<outId>``.
 This outer agent will almost always be an environment. You can also
 provide an optional ``--config '{...}'`` argument you can use to
 configure the agent.
@@ -620,9 +619,9 @@ glucose we should see the cells shift to consuming lactose.
 
         $ python -m vivarium.environment.control run --id env
 
-   Simulation stop on their own once the environment agent hits the end
-   of its programmed timeline. However, you can pause, run, and shutdown
-   the simulation like this as well:
+   Simulations stop on their own once the environment agent hits the end
+   of its programmed timeline. You can also pause, run, and shutdown the
+   simulation like this:
 
    .. code-block:: console
 
@@ -631,7 +630,7 @@ glucose we should see the cells shift to consuming lactose.
         $ python -m vivarium.environment.control shutdown
 
    In this example, one of the cells tries to divide, halting the
-   simulation early. We'll see later how to simulate division.
+   simulation. We'll see later how to simulate division.
 
 #. Once the simulation completes, run the analysis script to plot the
    data:
@@ -651,10 +650,10 @@ In ``snap_out.png`` you should see something like this:
        concentrations of some metabolite as a color from white to
        purple. Each row is for one of carbon dioxide, oxygen, glucose,
        and lactose. Each column is for a time during the experiment from
-       0 to 2.5 hours. Each of the three cells is depicted in each plot
-       as a rectangle. We see local depletion of oxygen, glucose, and
-       lactose around each cell and local increases in carbon
-       dioxide around each cell, over time.
+       0 to 2.5 hours. Each of the three cells is a rectangle in each
+       plot.  We see local depletion of oxygen, glucose, and lactose
+       around each cell and local increases in carbon dioxide around
+       each cell, over time.
 
 Notice that the cells are consuming glucose and lactose as we expected!
 Now take a look at ``c1/compartment.png``. Here is part of the plot you
@@ -663,14 +662,14 @@ should see:
 .. image:: ./_static/shifter_compartment_crop.png
     :width: 100%
     :alt: A five by two grid of plots, each showing a variable
-        value versus time. Three plots are boxed in red, showing the
-        following. We see glucose quickly being consumed. Once glucose
-        is consumed, LacY expression steps up and lactose in the
-        environment is depleted.
+        value versus time. A red box surrounds three plots showing the
+        following. We see glucose levels drop precipitously. Once
+        glucose runs out, LacY expression steps up and lactose levels
+        begin dropping.
 
-Here notice that the glucose around the cell is quickly consumed, after
-which LacY expression increases. Then, the cell consumes the surrounding
-glucose, as we expected.
+Here notice that the glucose levels near the cells drop precipitously,
+after which LacY expression increases. Then, the cell consumes the
+surrounding glucose, as we expected.
 
 Using Shepherd
 ==============
@@ -707,8 +706,8 @@ model cells dividing!
        cells to!
 
    .. tip:: If you get errors from Python about being unable to find
-        ``vivarium``, make sure you've set your PYTHONPATH to include
-        vivarium.  See :ref:`pypath` for details.
+      ``vivarium``, make sure you've added the repository root to your
+      PYTHONPATH. See :ref:`pypath` for details.
 
 #. Next, let's create a cell agent of type ``growth_division``, which
    can grow and divide.
@@ -735,22 +734,22 @@ model cells dividing!
    .. note:: You can run the analysis script while the simulation is
        still running too.
 
-First, notice how many folders are in the analysis output. Each folder
-is a cell, so since the cells divided, we have a lot of them! If you
-take a look at ``snap_out.png``, you should see rows of plots like this:
+First, notice the folders in the analysis output. Each folder is a cell,
+so since the cells divided, we have a lot of them! If you take a look at
+``snap_out.png``, you should see rows of plots like this:
 
 .. image:: ./_static/growth_division_snap_out_crop.png
     :width: 100%
     :alt: A row of 6 plots showing the simulated colony over time.
-        Glucose concentrations are shown depleting around the cells, and
-        the colony is growing as the cells multiply.
+        Glucose concentrations decrease around the cells, and
+        the colony grows as the cells multiply.
 
 Running Experiments
 -------------------
 
 With Shepherd, you can also run experiments that pre-define the
 environment and cell types. For example, let's see how we could have run
-a simulation of growing and dividing cells like above more easily:
+a simulation of growing and dividing cells like above with less work:
 
 #. First, start Zookeeper, Kafka, and MongoDB as we discussed above in
    :ref:`getting-started-how-to-run-agents`.
@@ -772,7 +771,7 @@ a simulation of growing and dividing cells like above more easily:
 
    .. tip:: If you get errors from Python about being unable to find
         ``vivarium``, make sure you've set your PYTHONPATH to include
-        vivarium.  See :ref:`pypath` for details.
+        vivarium. See :ref:`pypath` for details.
 
 #. Run the simulation:
 
@@ -787,7 +786,7 @@ a simulation of growing and dividing cells like above more easily:
         $ python vivarium/analysis/run_analysis -e exp
 
    This is a long experiment, so you might want to end the simulation
-   early too.
+   before it finishes.
 
 In ``snap_out.png``, we see a similar outcome to before. The plots are
 different this time because there is some stochasticity in the model.
@@ -795,5 +794,5 @@ different this time because there is some stochasticity in the model.
 .. image:: ./_static/growth_division_experiment_snap_out_crop.png
     :width: 100%
     :alt: A row of 6 plots showing the simulated colony over time.
-        Glucose concentrations are shown depleting around the cells, and
-        the colony is growing as the cells multiply.
+        Glucose concentrations decrease around the cells, and the colony
+        grows as the cells multiply.
