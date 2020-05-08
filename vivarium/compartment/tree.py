@@ -112,6 +112,7 @@ class State(object):
             self.units = self.config.get('_units')
             self.children = {}
         else:
+            self.value = None
             self.children = {
                 key: State(child, self)
                 for key, child in self.config.items()}
@@ -192,8 +193,9 @@ class State(object):
 
             if step == '..':
                 if not self.parent:
+                    import ipdb; ipdb.set_trace()
                     self.parent = State({})
-                self.parent.children[child_key] = self
+                    self.parent.children[child_key] = self
                 self.parent.establish_path(remaining, config, child_key)
             else:
                 if not step in self.children:
@@ -206,6 +208,7 @@ class State(object):
         for key, subprocess in processes.items():
             subtopology = topology[key]
             if isinstance(subprocess, Process):
+                self.children[key] = State({'_value': subprocess}, self)
                 for port, targets in subprocess.ports_schema().items():
                     path = subtopology[port]
                     if path:
@@ -229,7 +232,7 @@ class State(object):
                     substate)
 
 
-def initialize_state(processes, topology, initial_state):
+def generate_state(processes, topology, initial_state):
     state = State({})
     state.generate_paths(processes, topology, initial_state)
     return state
@@ -245,7 +248,11 @@ class Experiment(object):
     def __init__(self, config):
         self.processes = config['processes']
         self.topology = config['topology']
-        self.state = generate_state(self.processes, self.topology)
+        self.initial_state = config['initial_state']
+        self.state = generate_state(
+            self.processes,
+            self.topology,
+            self.initial_state)
 
     def collect_updates(self, updates, path, new_update):
         for port, update in new_update.items():
@@ -267,7 +274,7 @@ class Experiment(object):
         # keep track of which processes have simulated until when
         front = {
             process_name: empty_front()
-            for process_name in processes.keys()}
+            for process_name in self.processes.keys()}
 
         while time < timestep:
             step = INFINITY
@@ -278,21 +285,21 @@ class Experiment(object):
 
             processes = {
                 path: state
-                for path, state in states.depth()
+                for path, state in self.state.depth()
                 if state.value and isinstance(state.value, Process)}
 
-            for path, state in processes:
+            for path, state in processes.items():
                 if not path in front:
                     front[path] = empty_front()
                 process_time = front[path]['time']
 
                 if process_time <= time:
+                    process = state.value
                     future = min(process_time + process.local_timestep(), timestep)
                     interval = future - process_time
-                    process = state.value
                     process_topology = get_in(self.topology, path)
                     ports = process.find_states(state.parent, process_topology)
-                    update = process.update_for(interval, ports)
+                    update = process.next_update(interval, ports)
 
                     if interval < step:
                         step = interval

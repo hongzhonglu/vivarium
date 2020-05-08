@@ -293,7 +293,7 @@ class Process(object):
     def find_states(self, tree, topology):
         return {
             port: tree.state_for(topology[port], keys)
-            for port, keys in self.ports}
+            for port, keys in self.ports.items()}
 
     def next_update(self, timestep, states):
         '''

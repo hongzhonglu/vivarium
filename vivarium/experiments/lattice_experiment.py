@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import uuid
 
-from vivarium.compartment.tree import initialize_state
+from vivarium.compartment.tree import generate_state, Experiment
 from vivarium.compartment.composition import (
     simulate_compartment,
     load_compartment,
@@ -92,8 +92,8 @@ def make_agents(count, compartment, config):
             'cell': agent['topology']}
 
     return {
-        'processes': processes,
-        'topology': topology}
+        'processes': {'agents': processes},
+        'topology': {'agents': topology}}
 
 
 # TODO -- this can move to a separate experiments directory
@@ -117,10 +117,17 @@ def lattice_experiment(config):
     environment_processes['agents'] = agents['processes']
     environment_topology['agents'] = agents['topology']
 
-    state = initialize_state(
+    state = generate_state(
         environment_processes,
         environment_topology,
         config.get('initial_state', {}))
+
+    experiment = Experiment({
+        'processes': environment_processes,
+        'topology': environment_topology,
+        'initial_state': config.get('initial_state', {})})
+
+    experiment.update(10.0)
 
     import ipdb; ipdb.set_trace()
 
