@@ -17,9 +17,9 @@ from vivarium.utils.dict_utils import deep_merge
 # colors for phylogeny initial agents
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
-DEFAULT_SV = [100.0/100.0, 70.0/100.0]
-FLOURESCENT_SV = [100.0/100.0, 100.0/100.0]  # SV for flourescent colors
-BASELINE_TAG_COLOR = [220/360, 100.0/100.0, 30.0/100.0]  # HSV
+DEFAULT_SV = [1.0, 7.0]
+FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
+BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # [220/360, 100.0/100.0, 30.0/100.0]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
 
@@ -251,7 +251,7 @@ class Snapshots(Analysis):
             for tag_id in list(tag_range.keys()):
                 ax = init_axes(
                     fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
-                ax.set_facecolor('palegoldenrod')  # set background color
+                ax.set_facecolor('black')  # ('palegoldenrod')  # set background color
 
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
