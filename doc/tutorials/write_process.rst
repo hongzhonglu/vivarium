@@ -160,11 +160,17 @@ process.
             ports = {
                 'nucleoside_phosphates': ['ATP', 'ADP'],
                 'cytoplasm': ['GLC', 'G6P', 'HK'],
+                'global': ['mass'],
             }
             parameters = GlucosePhosphorylation.default_parameters
             parameters.update(initial_parameters)
             super(GlucosePhosphorylation, self).__init__(
                 ports, parameters)
+
+The ``global`` port is special: it stores information that needs to be
+shared across many processes but that is more like "metadata" than
+molecule concentrations. For this example, we'll store the mass of the
+``cytoplasm`` port's contents.
 
 Even though we're just getting started on our process, let's try it out!
 At the bottom of the ``glucose_phosphorylation.py`` file, instantiate
@@ -329,6 +335,10 @@ following information:
   the existing value or replace it?
 * Emitter keys: this identifies which of the variables in the state
   should be recorded when we run simulations.
+* Deriver settings: this configures :term:`derivers`, which perform
+  calculations for us that would be tedious to re-compute in many
+  processes. For example, calculating the mass of the cell's enzyme and
+  sugar contents, as we see in this example.
 
 For this example, our updates are expressed as deltas that should be
 added to the old value of the variable. This is the default, so the
@@ -354,9 +364,16 @@ for demonstration.
                 'GLC': {
                     # accumulate means to add the updates
                     'updater': 'accumulate',
+                    'mass': 1.0,
                 },
                 # accumulate is the default, so we don't need to specify
                 # updaters for the rest of the variables
+                'G6P': {
+                    'mass': 1.0,
+                },
+                'HK': {
+                    'mass': 1.0,
+                }
             },
         }
         emitter_keys = {
@@ -364,10 +381,21 @@ for demonstration.
             'cytoplasm': ['GLC', 'G6P'],
             'nucleoside_phosphates': ['ATP', 'ADP'],
         }
+
+        deriver_setting = [
+            {
+                'type': 'mass',
+                'source_port': 'cytoplasm',
+                'derived_port': 'global',
+                'keys': ['GLC', 'G6P', 'HK']
+            },
+        ]
+
         return {
             'state': default_state,
             'emitter_keys': emitter_keys,
             'schema': schema,
+            'deriver_setting': deriver_setting,
         }
 
 Now, we can run a simulation using Vivarium's

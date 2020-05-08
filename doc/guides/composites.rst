@@ -3,10 +3,10 @@ Composites
 ==========
 
 To model a cell faithfully, we need to simulate processes running
-concurrently and interacting with each other. For example, we might
-want to model the production of ATP by metabolism concurrently with ATP
-consumption by a sodium pump. In Vivarium, we model this by creating a
-:term:`composite`.
+concurrently and interacting with each other. For example, we might want
+to model the synthesis of ATP by a metabolism process concurrently wih
+the consumption of ATP by a transport process such as a sodium pump. In
+Vivarium, we model this by creating a :term:`composite`.
 
 --------------------
 Processes and Stores
@@ -66,7 +66,7 @@ We don't want process creators to worry about what kind of composite
 their process will be used in. Conversely, if you are creating a
 composite, you should be able to use any processes you like, even if
 they weren't written with your use case in mind. Vivarium achieves this
-modulrity with :term:`ports`.
+modularity with :term:`ports`.
 
 Each process has a list of named ports, one for each store it is
 expecting. The process can perform all of its computations in terms of
@@ -246,6 +246,11 @@ layers, so two processes in the same layer will operate on the same
 state of the model even though one's update is actually computed first.
 Processes in the second layer, though, see the model state after the
 updates from the first layer have been applied.
+
+.. WARNING:: We will soon be removing layers from Vivarium and instead
+   run each process at its own timestep.
+
+.. todo:: Update with layers removed.
 
 Second, let's discuss derivers. Derivers let us compute information from
 the model state that is useful for many processes to access. For

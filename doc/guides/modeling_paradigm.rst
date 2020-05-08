@@ -19,8 +19,11 @@ dynamics to emerge from our modeling of the individual cells.
 Unlike in agent-based modeling, Vivarium's models of individual cells
 can have all the complexity of a :term:`whole-cell model`.  Whole-cell
 modeling simulates phenotypes at the scale of the cell by modeling the
-cell's molecular mechanisms. In Vivarium, we model each of these
-molecular mechanisms by a :term:`process`.
+cell's molecular mechanisms. Whole-cell models are also a hybrid
+modeling framework that integrates different mathematical
+representations of mechanism. In Vivarium, we model each of these
+molecular mechanisms by a :term:`process`. We can then wire processes
+together to form :term:`composites`.
 
 Since we are modeling phenomena that occur at spatial and temporal
 scales all the way from chemical reactions to cell population dynamics,
@@ -28,7 +31,6 @@ we need to run our simulations at different scales as well. To do so, we
 draw from :term:`multiscale models`, which contain sub-models that
 operate at different spatial and temporal scales. We describe temporal
 scales by :term:`timesteps`, which define how finely we discretize time.
-Compartments each have their own timestep, as do the interactions
-between compartments.
+Each process and each connection between them have a timestep.
 
 .. todo:: How does the bit about compartment timesteps change now?

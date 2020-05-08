@@ -7,7 +7,7 @@ from vivarium.compartment.composition import (
 
 class GlucosePhosphorylation(Process):
 
-    default_parameters = {
+    defaults = {
         'k_cat': 2e-3,
         'K_ATP': 5e-2,
         'K_GLC': 4e-2,
@@ -17,8 +17,9 @@ class GlucosePhosphorylation(Process):
         ports = {
             'nucleoside_phosphates': ['ATP', 'ADP'],
             'cytoplasm': ['GLC', 'G6P', 'HK'],
+            'global': ['mass']
         }
-        parameters = GlucosePhosphorylation.default_parameters
+        parameters = GlucosePhosphorylation.defaults
         parameters.update(initial_parameters)
         super(GlucosePhosphorylation, self).__init__(
             ports, parameters)
@@ -78,9 +79,16 @@ class GlucosePhosphorylation(Process):
                 'GLC': {
                     # accumulate means to add the updates
                     'updater': 'accumulate',
+                    'mass': 1.0,
                 },
                 # accumulate is the default, so we don't need to specify
                 # updaters for the rest of the variables
+                'G6P': {
+                    'mass': 1.0,
+                },
+                'HK': {
+                    'mass': 1.0,
+                }
             },
         }
         emitter_keys = {
@@ -88,10 +96,21 @@ class GlucosePhosphorylation(Process):
             'cytoplasm': ['GLC', 'G6P'],
             'nucleoside_phosphates': ['ATP', 'ADP'],
         }
+
+        deriver_setting = [
+            {
+                'type': 'mass',
+                'source_port': 'cytoplasm',
+                'derived_port': 'global',
+                'keys': ['GLC', 'G6P', 'HK']
+            },
+        ]
+
         return {
             'state': default_state,
             'emitter_keys': emitter_keys,
             'schema': schema,
+            'deriver_setting': deriver_setting,
         }
 
 
@@ -103,7 +122,7 @@ if __name__ == '__main__':
 
     settings = {
         'total_time': 10,
-        'timestep': 0.1,
+        #'timestep': 0.1,
     }
     timeseries = simulate_process(my_process, settings)
     plot_simulation_output(timeseries, {}, './')

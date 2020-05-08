@@ -198,14 +198,15 @@ If you are on Linux, see the MongoDB documentation's `instructions
 
 *Setup*
 
-You can get a MongoDB server up and running locally anu number of ways.
+You can get a MongoDB server up and running locally any number of ways.
 Here is one:
 
 #. Create a folder ``vivarium_work/mongodb``. This is where the database
    will be stored. We store the database here instead of at the default
    location in ``/usr/local/var/mongodb`` to avoid permissions issues if
    you are not running as an administrator.
-#. Make a copy of the mongod configuration file so we can make changes:
+#. Make a copy of the ``mongod`` configuration file so we can make
+   changes:
 
    .. code-block:: console
 
@@ -374,18 +375,19 @@ expression model.
 
 .. todo:: Link to topical guide on processes and composites
 
-In Vivarium, we store processes in ``vivarium/vivarium/processes`` and
-composites in ``vivarium/vivarium/composites``.
+In Vivarium, we store individual processes in
+``vivarium/vivarium/processes`` and composites of processes in
+``vivarium/vivarium/composites``.
 
 Running Processes and Composites in Isolation
 =============================================
 
 You can run any process or composite by itself. While this is too simple
-for modeling whole cells or colonies, it may help illustrate what the
-process or composite does. Isolating processes or composites like this
-is also a helpful debugging tool. To run a process or composite, you can
-execute the Python file that defines it. For example, we can run the
-degradation process like this:
+for modeling whole cells or colonies, it is helpful to simulate
+processes in isolation to study their dynamics and tune them to
+different conditions. To run a process or composite, you can execute the
+Python file that defines it. For example, we can run the degradation
+process like this:
 
 .. code-block:: console
 
@@ -456,8 +458,9 @@ Terminology: Agents
 
 Vivarium is heavily influenced by agent-based modeling, in which the
 model consists of individual agents interacting with each other. In
-Vivarium, each cell is an agent. The environment is also an agent. These
-agents interact with each other by passing messages through Kafka.
+Vivarium, cells are agents that move around and grow within a shared
+environment. These agents interact with each other and their environment
+by passing messages through Kafka.
 
 .. todo:: Link to more comprehensive topical guide
 

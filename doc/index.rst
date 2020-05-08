@@ -2,8 +2,7 @@
 Welcome to Vivarium's documentation!
 ====================================
 
-Vivarium is a framework that provides for multi-scale simulation of
-whole-cell models.
+Vivarium is a platform for multiscale simulations of cells and colonies.
 
 .. image:: ./_static/colony_growth.png
     :width: 100%
@@ -33,9 +32,9 @@ Introduction
 
 A vivarium, literally a "place of life," is a controlled environment in
 which organisms can be studied. You might have encountered examples of
-vivaria like an aquarium or a terarium. The Vivarium project provides a
+vivaria like an aquarium or a terrarium. The Vivarium project provides a
 framework for creating a computational vivarium which can simulate
-colonies of cells in a shared, dynamic environment.
+colonies of cells in shared, dynamic environments.
 
 .. todo:: Use cases
 

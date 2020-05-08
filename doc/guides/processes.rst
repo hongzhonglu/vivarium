@@ -3,7 +3,16 @@ Processes
 =========
 
 You should interpret words and phrases that appear fully capitalized in
-this document as described in :rfc:`2119`.
+this document as described in :rfc:`2119`. Here is a brief summary of
+the RFC:
+
+* "MUST" indicates absolute requirements. Vivarium may not work
+  correctly if you don't follow these.
+* "SHOULD" indicates strong suggestions. You might have a valid reason
+  for deviating from them, but be careful that you understand the
+  ramifications.
+* "MAY" indicates truly optional features that you can include or
+  exclude as you wish.
 
 Models in Vivarium are built by combining :term:`processes`, each of
 which models a mechanism in the cell. These processes can be combined in
@@ -14,11 +23,30 @@ defined in a class that inherit from
 processes.  During instantiation, the process class may accept
 configuration options.
 
+.. note:: Processes are the foundational building blocks of models in
+   Vivarium, and they should be as simple to define and compose as
+   possible.
+
 ---------------
 Process Classes
 ---------------
 
 Each process class MUST implement the API that we describe below.
+
+Class Variables
+===============
+
+Each process class SHOULD define default configurations in a
+``defaults`` class variable. These defaults SHOULD then be read by the
+constructor. For example:
+
+.. code-block:: python
+    
+    class MyProcess:
+        defaults = {
+            'growth_rate': 0.0006,
+        }  
+
 
 Constructor
 ===========
@@ -69,7 +97,7 @@ Let's examine an example constructor from a growth process class.
         ports = {
             'global': ['mass', 'volume']}
 
-        parameters = {'growth_rate': 0.0006}
+        parameters = {'growth_rate': self.defaults['growth_rate']}
         parameters.update(initial_parameters)
         super(Growth, self).__init__(ports, parameters)
 
@@ -88,9 +116,10 @@ Default Settings
 
 The process class MUST implement a ``default_settings`` method that can
 be called with no arguments. This method MUST return a dictionary with
-three keys: ``state`` for the default state, ``emitter_keys`` for the
-emitter keys, and ``schema`` for the schema. We describe each of these
-in turn:
+the ``state`` key for the default state. The dictionary MAY also contain
+the following keys: ``emitter_keys`` for the emitter keys, ``schema``
+for the schema, and ``deriver_setting`` for the deriver settings. We
+describe each of these in turn:
 
 .. _constructor-default-state:
 
@@ -150,6 +179,30 @@ MAY include the ``updater`` key with a value equal to the name of the
 desired updater. Variables MAY be omitted, in which case they will take
 on the default updater of ``accumulate``.
 
+Each value in the schema MAY also specify a mass using the ``mass`` key.
+If you are using the mass :term:`deriver`, each variable accessed by the
+deriver MUST specify a mass.
+
+Deriver Setting
+---------------
+
+:term:`Derivers` calculate metrics or perform conversions for us over
+the course of the simulation, but they do not encode mechanism. For
+example, we use them to calculate a cell's mass or convert between
+counts and concentrations. We configure derivers with a list of
+dictionaries, one dictionary for each deriver. For example:
+
+.. code-block:: python
+
+    deriver_setting = [
+        {   # Configuration for one deriver
+            'type': ...
+        },
+        {   # Configuration for another deriver
+            'type': ...
+        },
+    ]
+
 Example Default Settings
 ------------------------
 
@@ -176,6 +229,8 @@ growth process:
                 'mass': {
                     'updater': 'set'}}}
 
+        # We can omit the deriver_setting key so long as we aren't using
+        # derivers
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,

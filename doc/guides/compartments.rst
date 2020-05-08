@@ -3,11 +3,10 @@ Compartments
 ============
 
 As you consider how to model a colony of cells, you might naturally
-divide the model into the models of the individual cells and modeling
-their interactions with each other and the environment. Further, you
-might perform a similar division between the mitochondria and the
-cytoplasm that surrounds it. In Vivarium, these divisions create
-:term:`compartments`.
+divide the model into sub-models of the individual cells and a separate
+sub-model of their environment. Further, you might perform a similar
+division between the mitochondria and the cytoplasm that surrounds it.
+In Vivarium, these divisions create :term:`compartments`.
 
 .. note:: In theory you could break a model into arbitrary compartments,
     but we think it makes the most sense to have compartments represent
