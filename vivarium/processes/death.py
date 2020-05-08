@@ -1,4 +1,39 @@
-'''Simulate cell death'''
+'''
+===============================
+Model of Conditional Cell Death
+===============================
+
+Fully-capitalized words and phrases have the meanings specified in
+:rfc:`2119`.
+
+This module holds machinery for modeling cell death that is conditioned
+on the state of the cell. This machinery consists of *death detector
+classes* and *death process classes*.
+
+----------------------
+Death Detector Classes
+----------------------
+
+Death detector classes encode a model (which may be configured upon
+instantiation) for when a cell should die. These classes can be
+instantiated to give death detectors, which are used by the death
+processes we describe below.
+
+Death detector classes MUST subclass :py:class:`DetectorInterface` and
+implement :py:meth:`DetectorInterface.check_can_survive` as specified in
+its documentation.
+
+---------------------
+Death Process Classes
+---------------------
+
+During a simulation, death is executed by a death :term:`process`, whose
+model is declared in a death :term:`process class`. Each of these
+process classes SHOULD use a death detector, as detailed above, to
+determine when the cell should die. The mechanism by which the cell's
+death is modeled depends on the form of death being modeled. For an
+example, see :py:class:`DeathFreezeState`.
+'''
 
 from __future__ import absolute_import, division, print_function
 
@@ -20,9 +55,12 @@ TOY_INJECTION_RATE = 2.0
 
 
 class DetectorInterface(object):
-    '''Interface that should be subclassed by all death detectors
+    '''Interface that MUST be subclassed by all death detectors
 
-    Each subclass should check for a condition that might kill the cell.
+    Each subclass SHOULD check for a condition that might kill the cell.
+
+    For an example of a death detector class, see
+    :py:class:`AntibioticDetector`.
     '''
 
     def __init__(self):
@@ -31,12 +69,16 @@ class DetectorInterface(object):
     def check_can_survive(self, states):
         '''Check whether the current state is survivable by the cell
 
+        Each subclass MUST implement this method. The implementation
+        SHOULD check whether the cell can survive given its current
+        state.
+
         Arguments:
-            states: The states of each port in the cell, as a
+            states (dict): The states of each port in the cell, as a
                 dictionary.
 
         Returns:
-            True if the cell can survive, False if it cannot.
+            bool: True if the cell can survive, False if it cannot.
         '''
         raise NotImplementedError(
             'Detector should implement check_can_survive')
@@ -47,6 +89,17 @@ class AntibioticDetector(DetectorInterface):
     def __init__(
         self, antibiotic_threshold=0.9, antibiotic_key='antibiotic'
     ):
+        '''Death detector for antibiotics
+
+        Checks whether the cell can survive the current internal
+        antibiotic concentrations.
+
+        Arguments:
+            antibiotic_threshold (float): The maximum internal
+                antibiotic concentration the cell can survive.
+            antibiotic_key (string): The name of the variable storing
+                the cell's internal antibiotic concentration.
+        '''
         super(AntibioticDetector, self).__init__()
         self.threshold = antibiotic_threshold
         self.key = antibiotic_key
@@ -54,12 +107,22 @@ class AntibioticDetector(DetectorInterface):
             'internal', set()).add('antibiotic')
 
     def check_can_survive(self, states):
+        '''Checks if the current antibiotic concentration is survivable
+
+        The internal antibiotic concentration MUST be stored in a
+        variable of a port named ``internal``.
+
+        Returns:
+            bool: False if the antibiotic concentration is strictly
+                greater than the the threshold. True otherwise.
+        '''
         concentration = states['internal'][self.key]
         if concentration > self.threshold:
             return False
         return True
 
 
+#: Map from detector class names to detector classes
 DETECTOR_CLASSES = {
     'antibiotic': AntibioticDetector,
 }
@@ -68,6 +131,33 @@ DETECTOR_CLASSES = {
 class DeathFreezeState(Process):
 
     def __init__(self, initial_parameters=None):
+        '''Model Death by Removing Processes
+
+        This process class models death by, with a few exceptions,
+        frezing the internal state of the cell. We implement this by
+        removing from this process's :term:`compartment` all processes,
+        except those specified with the ``enduring_processes``
+        configuration.
+
+        Configuration:
+
+        * **``detectors``**: A list of the names of the detector classes
+          to include. Death will be triggered if any one of these
+          triggers death. Names are specified in
+          :py:const:`DETECTOR_CLASSES`.
+        * **``enduring_processes``: A list of the names of the processes
+          that will not be removed when the cell dies. The names are
+          specified in the compartment's :term:`topology`.
+
+        :term:`Ports`:
+
+        * **``internal``**: The internal state of the cell.
+        * **``compartment``**: The compartment within which this process
+          is embedded. In the topology, the store name should be
+          :py:const:`vivarium.compartment.process.COMPARTMENT_STATE`.
+        * **``global``**: Should be linked to the ``global``
+          :term:`store`.
+        '''
         if initial_parameters is None:
             initial_parameters = {}
         self.detectors = [
@@ -109,6 +199,12 @@ class DeathFreezeState(Process):
         return default_settings
 
     def next_update(self, timestep, states):
+        '''If any detector triggers death, kill the cell
+
+        When we kill the cell, we convey this by setting the ``dead``
+        variable in the ``global`` port to ``1`` instead of its default
+        ``0``.
+        '''
         for detector in self.detectors:
             if not detector.check_can_survive(states):
                 cur_processes = states['compartment']['processes'][0]

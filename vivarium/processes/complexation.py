@@ -32,7 +32,7 @@ def build_complexation_stoichiometry(
             matrix[reaction_index][reverse_index[molecule_id]] = level
 
     return matrix, rates_array
-    
+
 
 class Complexation(Process):
     defaults = {
