@@ -4,7 +4,6 @@ import os
 
 from vivarium.compartment.process import (
     initialize_state,
-    BOUNDARY_STATE,
 )
 from vivarium.compartment.composition import (
     simulate_compartment,

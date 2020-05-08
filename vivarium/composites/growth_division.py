@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from vivarium.compartment.process import (
-    initialize_state,
-    BOUNDARY_STATE)
+    initialize_state)
+
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
@@ -49,7 +49,8 @@ def growth_division(config):
             'internal': ['cell'],
             'external': external_key,
             'exchange': external_key,
-            'fluxes': None, # instead of 'null'
+            'fluxes': ['flux'], # just for testing
+            # 'fluxes': None, # instead of 'null'
             'global': ['global']},
         'growth': {
             'global': ['global']},
@@ -86,8 +87,8 @@ def compose_growth_division(config):
 
     options = {
         'name': 'growth_division_composite',
-        'environment_port': BOUNDARY_STATE,
-        'exchange_port': BOUNDARY_STATE,
+        # 'environment_port': BOUNDARY_STATE,
+        # 'exchange_port': BOUNDARY_STATE,
         'topology': topology,
         'initial_time': config.get('initial_time', 0.0),
         'divide_condition': divide_condition}

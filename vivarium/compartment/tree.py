@@ -6,6 +6,8 @@ import random
 import numpy as np
 import logging as log
 
+from vivarium.compartment.process import Process
+
 def get_in(d, path):
     if path:
         head = path[0]
@@ -84,22 +86,31 @@ updater_library = {
 
 
 
-DEFAULT = '_default'
-
 class State(object):
-    def __init__(self, config, parent=None):
-        self.config = config
-        self.parent = parent
+    schema_keys = set([
+        '_default',
+        '_updater',
+        '_value',
+        '_properties',
+        '_units'])
 
-        if DEFAULT in self.config:
-            self.default = self.config.get(DEFAULT)
-            self.updater = self.config.get('updater', 'delta')
+    def __init__(self, config, parent=None):
+        self.config = {}
+        self.parent = parent
+        self.apply_config(config)
+
+    def apply_config(self, config):
+        self.config.update(config)
+
+        if self.schema_keys & self.config.keys():
+            self.default = self.config.get('_default')
+            self.updater = self.config.get('_updater', 'accumulate')
             if isinstance(self.updater, str):
                 self.updater = updater_library[self.updater]
-            self.value = self.default
-            self.properties = self.config.get('properties', {})
-            self.units = None
-            self.children = None
+            self.value = self.config.get('_value', self.default)
+            self.properties = self.config.get('_properties', {})
+            self.units = self.config.get('_units')
+            self.children = {}
         else:
             self.children = {
                 key: State(child, self)
@@ -122,7 +133,7 @@ class State(object):
                 child = self.children.get(step)
 
             if child:
-                return child.get_in(path[1:])
+                return child.get_path(path[1:])
             else:
                 # TODO: more handling for bad paths?
                 return None
@@ -174,213 +185,54 @@ class State(object):
             for path, state in self.depth()
             if state.value and isinstance(state.value, Process)}
 
+    def establish_path(self, path, config, child_key='child'):
+        if len(path) > 0:
+            step = path[0]
+            remaining = path[1:]
+
+            if step == '..':
+                if not self.parent:
+                    self.parent = State({})
+                self.parent.children[child_key] = self
+                self.parent.establish_path(remaining, config, child_key)
+            else:
+                if not step in self.children:
+                    self.children[step] = State({}, self)
+                self.children[step].establish_path(remaining, config, child_key)
+        else:
+            self.apply_config(config)
+
     def generate_paths(self, processes, topology, initial_state):
-        for key, level in processes:
-            
-
-
-class Process(object):
-    def __init__(
-            self,
-            ports,
-            parameters=None):
-        ''' Declare what ports this process expects. '''
-
-        self.ports = ports
-        self.parameters = parameters or {}
-        self.local_time = self.parameters.get('time', 0)
-        self.states = None
-
-        default_timestep = self.default_settings().get('time_step', 1.0)
-        self.time_step = self.parameters.get('time_step', default_timestep)
-
-        # set agent_id
-        self.agent_id = parameters.get('agent_id')
-
-    def local_timestep(self):
-        '''
-        Returns the favored timestep for this process.
-        Meant to be overridden in subclasses, unless 1.0 is a happy value. 
-        '''
-
-        return self.time_step
-
-    def default_settings(self):
-        return {}
-
-    def schema_properties(self, states, schema_type):
-        '''
-        Requires:
-            - states (dict)
-            - schema_type (str)
-
-        Returns a dictionary with {store_id: {key: schema_value}}
-        for all store_ids and list of keys in states,
-        with schema_value specified by schema_type
-        '''
-
-        schema = {}
-        for store_id, keys in states.items():
-            schema[store_id] = self.states[store_id].schema_properties(keys, schema_type)
-
-        return schema
-
-    def assign_ports(self, states):
-        '''
-        Provide States for some or all of the ports this Process expects.
-
-        Roles and States must have the same keys. '''
-
-        self.states = states
-        for port, state in self.states.items():
-            state.declare_state(self.ports[port])
-
-    def update_for(self, timestep):
-        ''' Called each timestep to find the next state for this process. '''
-
-        states = {
-            port: self.states[port].state_for(values)
-            for port, values in self.ports.items()}
-
-        return self.next_update(timestep, states)
-
-    def parameters_for(self, parameters, key):
-        ''' Return key in parameters or from self.default_parameters if not present. '''
-
-        return parameters.get(key, self.default_parameters[key])
-
-    def derive_defaults(self, parameters, original_key, derived_key, f):
-        present = self.parameters_for(parameters, original_key)
-        self.default_parameters[derived_key] = f(present)
-        return self.default_parameters[derived_key]
-
-    def find_states(self, tree, topology):
-        return {
-            port: tree.state_for(topology[port], keys)
-            for port, keys in self.ports}
-
-    def next_update(self, timestep, states):
-        '''
-        Find the next update given the current states this process cares about.
-
-        This is the main function a new process would override.'''
-
-        return {
-            port: {}
-            for port, values in self.ports.items()}
-
-
-def connect_topology(processes, derivers, states, topology):
-    '''
-    Given a set of processes and states, and a description of the connections
-    between them, link the ports in each process to the state they refer to.
-    '''
-
-    all_processes = processes.copy()
-    all_processes.update(derivers)
-    for name, process in all_processes.items():
-        connections = topology[name]
-        ports = {
-            port: states[key]
-            for port, key in connections.items()}
-        try:
-            process.assign_ports(ports)
-        except:
-            print('{} mismatched ports'.format(name))
-
-def get_minimum_timestep(process_layers):
-    # get the minimum time_step from all processes
-    processes = merge_dicts(process_layers)
-    minimum_step = 10
-
-    for process_id, process_object in processes.items():
-        settings = process_object.default_settings()
-        time_step = settings.get('time_step', DEFAULT_TIMESTEP)
-        minimum_step = min(time_step, minimum_step)
-
-    return minimum_step
-
-def get_maximum_timestep(processes):
-    # get the minimum time_step from all processes
-    maximum_step = 0.0
-
-    for process_id, process_object in processes.items():
-        settings = process_object.default_settings()
-        time_step = settings.get('time_step', DEFAULT_TIMESTEP)
-        maximum_step = max(time_step, maximum_step)
-
-    return maximum_step
-
-def get_schema(processes, topology):
-    schema = {}
-    for process_id, process in processes.items():
-        process_settings = process.default_settings()
-        process_schema = process_settings.get('schema', {})
-        try:
-            port_map = topology[process_id]
-        except:
-            print('{} topology port mismatch'.format(process_id))
-            raise
-
-        # go through each port, and get the schema
-        for process_port, settings in process_schema.items():
-            compartment_port = port_map[process_port]
-            compartment_schema = {
-                compartment_port: settings}
-
-            ## TODO -- check for mismatch
-            deep_merge_check(schema, compartment_schema)
-    return schema
+        for key, subprocess in processes.items():
+            subtopology = topology[key]
+            if isinstance(subprocess, Process):
+                for port, targets in subprocess.ports_schema().items():
+                    path = subtopology[port]
+                    if path:
+                        initial = initial_state.get(port, {})
+                        for target, schema in targets.items():
+                            if target in initial:
+                                schema = dict(
+                                    schema,
+                                    _value=initial[target])
+                            subpath = path + [target]
+                            # if subpath[0] == '..':
+                            #     import ipdb; ipdb.set_trace()
+                            self.establish_path(subpath, schema)
+            else:
+                if not key in self.children:
+                    self.children[key] = State({}, self)
+                substate = initial_state.get(key, {})
+                self.children[key].generate_paths(
+                    subprocess,
+                    subtopology,
+                    substate)
 
 
 def initialize_state(processes, topology, initial_state):
     state = State({})
-
-    for key in processes.items():
-        pass
-
-    
-
-
-
-
-def initialize_state(processes, topology, initial_state):
-    schema = get_schema(processes, topology)
-
-    # make a dict with the compartment's default states {ports: states}
-    compartment_states = {}
-    for process_id, ports_map in topology.items():
-        process_ports = processes[process_id].ports
-
-        settings = processes[process_id].default_settings()
-        default_process_states = settings['state']
-
-        for process_port, states in process_ports.items():
-            try:
-                store_id = topology[process_id][process_port]
-            except:
-                raise topologyError(
-                    'no "{}" port assigned to "{}" process in topology'.format(process_port, process_id))
-
-            # initialize the default states
-            default_states = default_process_states.get(process_port, {})
-
-            # update the states
-            # TODO -- make this a deep_merge_check, requires better handling of initial state conflicts
-            c_states = deep_merge(default_states, compartment_states.get(store_id, {}))
-            compartment_states[store_id] = c_states
-
-    # initialize state for each compartment port
-    initialized_state = {}
-    for store_id, states in compartment_states.items():
-        state_schema = schema.get(store_id, {})
-
-        make_state = Store(
-            initial_state=deep_merge(states, dict(initial_state.get(store_id, {}))),
-            schema=state_schema)
-        initialized_state[store_id] = make_state
-
-    return initialized_state
+    state.generate_paths(processes, topology, initial_state)
+    return state
 
 
 def append_update(existing_updates, new_update):
@@ -480,74 +332,74 @@ def test_recursive_store():
     environment_config = {
         'environment': {
             'temperature': {
-                DEFAULT: 0.0,
-                'updater': 'accumulate'},
+                '_default': 0.0,
+                '_updater': 'accumulate'},
             'fields': {
                 (0, 1): {
                     'enzymeX': {
-                        DEFAULT: 0.0,
-                        'updater': 'set'},
+                        '_default': 0.0,
+                        '_updater': 'set'},
                     'enzymeY': {
-                        DEFAULT: 0.0,
-                        'updater': 'set'}},
+                        '_default': 0.0,
+                        '_updater': 'set'}},
                 (0, 2): {
                     'enzymeX': {
-                        DEFAULT: 0.0,
-                        'updater': 'set'},
+                        '_default': 0.0,
+                        '_updater': 'set'},
                     'enzymeY': {
-                        DEFAULT: 0.0,
-                        'updater': 'set'}}},
+                        '_default': 0.0,
+                        '_updater': 'set'}}},
             'agents': {
                 '1': {
                     'location': {
-                        DEFAULT: (0, 0),
-                        'updater': 'set'},
+                        '_default': (0, 0),
+                        '_updater': 'set'},
                     'boundary': {
                         'external': {
-                            DEFAULT: 0.0,
-                            'updater': 'set'},
+                            '_default': 0.0,
+                            '_updater': 'set'},
                         'internal': {
-                            DEFAULT: 0.0,
-                            'updater': 'set'}},
+                            '_default': 0.0,
+                            '_updater': 'set'}},
                     'transcripts': {
                         'flhDC': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'},
+                            '_default': 0,
+                            '_updater': 'accumulate'},
                         'fliA': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'}},
+                            '_default': 0,
+                            '_updater': 'accumulate'}},
                     'proteins': {
                         'ribosome': {
-                            DEFAULT: 0,
-                            'updater': 'set'},
+                            '_default': 0,
+                            '_updater': 'set'},
                         'flagella': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'}}},
+                            '_default': 0,
+                            '_updater': 'accumulate'}}},
                 '2': {
                     'location': {
-                        DEFAULT: (0, 0),
-                        'updater': 'set'},
+                        '_default': (0, 0),
+                        '_updater': 'set'},
                     'boundary': {
                         'external': {
-                            DEFAULT: 0.0,
-                            'updater': 'set'},
+                            '_default': 0.0,
+                            '_updater': 'set'},
                         'internal': {
-                            DEFAULT: 0.0,
-                            'updater': 'set'}},
+                            '_default': 0.0,
+                            '_updater': 'set'}},
                     'transcripts': {
                         'flhDC': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'},
+                            '_default': 0,
+                            '_updater': 'accumulate'},
                         'fliA': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'}},
+                            '_default': 0,
+                            '_updater': 'accumulate'}},
                     'proteins': {
                         'ribosome': {
-                            DEFAULT: 0,
-                            'updater': 'set'},
+                            '_default': 0,
+                            '_updater': 'set'},
                         'flagella': {
-                            DEFAULT: 0,
-                            'updater': 'accumulate'}}}}}}
+                            '_default': 0,
+                            '_updater': 'accumulate'}}}}}}
 
     state = State(environment_config)
 

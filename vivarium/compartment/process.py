@@ -29,6 +29,10 @@ def npize(d):
 
     return keys, values
 
+def underscore_keys(d):
+    return {
+        '_' + key: value
+        for key, value in d.items()}
 
 ## updater functions
 # these function take in a variable key, the entire store's dict,
@@ -249,6 +253,24 @@ class Process(object):
         for port, state in self.states.items():
             state.declare_state(self.ports[port])
 
+    def ports_schema(self):
+        defaults = self.default_settings()
+        schema = defaults.get('schema', {})
+        state = defaults.get('state', {})
+        
+        for port, targets in self.ports.items():
+            port_state = state.get(port, {})
+            if not port in schema:
+                schema[port] = {}
+            for target in targets:
+                if not target in schema[port]:
+                    schema[port][target] = {}
+                if not 'default' in schema[port][target]:
+                    schema[port][target]['default'] = port_state.get(target)
+                schema[port][target] = underscore_keys(schema[port][target])
+
+        return schema
+
     def update_for(self, timestep):
         ''' Called each timestep to find the next state for this process. '''
 
@@ -267,6 +289,11 @@ class Process(object):
         present = self.parameters_for(parameters, original_key)
         self.default_parameters[derived_key] = f(present)
         return self.default_parameters[derived_key]
+
+    def find_states(self, tree, topology):
+        return {
+            port: tree.state_for(topology[port], keys)
+            for port, keys in self.ports}
 
     def next_update(self, timestep, states):
         '''

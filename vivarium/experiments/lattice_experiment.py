@@ -3,11 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import uuid
 
-from vivarium.compartment.process import (
-    initialize_state,
-    flatten_process_layers,
-    BOUNDARY_STATE
-)
+from vivarium.compartment.tree import initialize_state
 from vivarium.compartment.composition import (
     simulate_compartment,
     load_compartment,
@@ -120,6 +116,11 @@ def lattice_experiment(config):
         'cells_key': ['..', 'agents']})
     environment_processes['agents'] = agents['processes']
     environment_topology['agents'] = agents['topology']
+
+    state = initialize_state(
+        environment_processes,
+        environment_topology,
+        config.get('initial_state', {}))
 
     import ipdb; ipdb.set_trace()
 
