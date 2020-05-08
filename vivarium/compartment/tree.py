@@ -174,6 +174,11 @@ class State(object):
             for path, state in self.depth()
             if state.value and isinstance(state.value, Process)}
 
+    def generate_paths(self, processes, topology, initial_state):
+        for key, level in processes:
+            
+
+
 class Process(object):
     def __init__(
             self,
@@ -326,6 +331,18 @@ def get_schema(processes, topology):
             ## TODO -- check for mismatch
             deep_merge_check(schema, compartment_schema)
     return schema
+
+
+def initialize_state(processes, topology, initial_state):
+    state = State({})
+
+    for key in processes.items():
+        pass
+
+    
+
+
+
 
 def initialize_state(processes, topology, initial_state):
     schema = get_schema(processes, topology)
