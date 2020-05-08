@@ -29,8 +29,28 @@ from vivarium.parameters.parameters import (
 
 
 
+def add_dummy_protein(chromosome_data, config):
+    chromosome_data = chromosome_data.copy()
+    import ipdb;
+    ipdb.set_trace()
+
+    return chromosome_data
+
 def get_flagella_expression_config(config):
     flagella_data = FlagellaChromosome(config)
+
+
+    # add dummy proteins TODO -- pass this in with config.
+    config.update({
+        'dummy_protein': {
+            'sequence_length': 1000,
+            'promoter_affinities': 1e-1,
+            'transcript_affinities': 1e-1}})
+
+    # add the dummy proteins to chromosome data
+    if config.get('dummy_protein'):
+        chromosome_data = add_dummy_protein(flagella_data, config['dummy_protein'])
+
     chromosome_config = flagella_data.chromosome_config
     sequences = flagella_data.chromosome.product_sequences()
 
