@@ -29,30 +29,110 @@ from vivarium.parameters.parameters import (
 
 
 
-def add_dummy_protein(chromosome_data, config):
-    chromosome_data = chromosome_data.copy()
-    import ipdb;
-    ipdb.set_trace()
+def add_dummy_protein(chromosome_data, dummy_config):
 
-    return chromosome_data
+    # get dummy config
+    dummy_sequence_length = dummy_config.get('sequence_length')
+    dummy_promoter_affinities = dummy_config.get('promoter_affinities')
+    dummy_transcript_affinities = dummy_config.get('transcript_affinities')
+
+    # get chromosome data
+    chromosome_data = chromosome_data.copy()
+    chromosome_config = chromosome_data.get('chromosome_config')
+    sequences = chromosome_data.get('sequences')
+    transcription_factors = chromosome_data.get('transcription_factors')
+    promoter_affinities = chromosome_data.get('promoter_affinities')
+    protein_sequences = chromosome_data.get('protein_sequences')
+    transcript_templates = chromosome_data.get('transcript_templates')
+    transcript_affinities = chromosome_data.get('transcript_affinities')
+
+
+    # add dummy data to chromosome
+    dummy_regions = [[0, len(chromosome_config['sequence'])]]
+
+    # remove used regions
+    for promoter_id, promoter_data in chromosome_config['promoters'].items():
+        promoter_position = promoter_data['position']
+        terminators = promoter_data['terminators']
+        terminator_position = max([terminator['position'] for terminator in terminators])
+        direction = promoter_data['direction']
+
+        operon_region = []
+        if direction == 1:
+            operon_region = [promoter_position, terminator_position]
+        elif direction == -1:
+            operon_region = [terminator_position, promoter_position]
+
+        new_regions = None
+        remove_region = None
+        for region in dummy_regions:
+            if (operon_region[0] >= region[0]) and (operon_region[1] <= region[1]):
+                new_regions = [[region[0], operon_region[0]], [operon_region[1], region[1]]]
+                remove_region = region
+
+        if remove_region:
+            dummy_regions.remove(remove_region)
+            dummy_regions.extend(new_regions)
+
+    # remove regions of length 0
+    dummy_regions = [region for region in dummy_regions if not (region[0] == region[1])]
+
+    # add dummy operons to promoters
+    chromosome_config['promoters']['dummy'] = {
+        'id': 'dummy',
+        'sites': [],
+        'terminators': [],
+        'direction': None,
+        'position': None,
+    }
+    for region in dummy_regions:
+        region_length = region[1] - region[0]
+        n_regions = np.ceil(region_length/dummy_sequence_length)
+
+        import ipdb;
+        ipdb.set_trace()
+
+
+
+    return {
+        'chromosome_config': chromosome_config,
+        'sequences': sequences,
+        'transcription_factors': transcription_factors,
+        'promoter_affinities': promoter_affinities,
+        'protein_sequences': protein_sequences,
+        'transcript_templates': transcript_templates,
+        'transcript_affinities': transcript_affinities}
 
 def get_flagella_expression_config(config):
     flagella_data = FlagellaChromosome(config)
-
+    chromosome_config = flagella_data.chromosome_config
+    sequences = flagella_data.chromosome.product_sequences()
+    transcription_factors = flagella_data.transcription_factors
+    promoter_affinities = flagella_data.promoter_affinities
+    protein_sequences = flagella_data.protein_sequences
+    transcript_templates = flagella_data.transcript_templates
+    transcript_affinities = flagella_data.transcript_affinities
 
     # add dummy proteins TODO -- pass this in with config.
     config.update({
         'dummy_protein': {
-            'sequence_length': 1000,
+            'sequence_length': 1e5,
             'promoter_affinities': 1e-1,
             'transcript_affinities': 1e-1}})
 
     # add the dummy proteins to chromosome data
     if config.get('dummy_protein'):
-        chromosome_data = add_dummy_protein(flagella_data, config['dummy_protein'])
+        chromosome_data = {
+            'chromosome_config': chromosome_config,
+            'sequences': sequences,
+            'transcription_factors': transcription_factors,
+            'promoter_affinities': promoter_affinities,
+            'protein_sequences': protein_sequences,
+            'transcript_templates': transcript_templates,
+            'transcript_affinities': transcript_affinities,
+        }
 
-    chromosome_config = flagella_data.chromosome_config
-    sequences = flagella_data.chromosome.product_sequences()
+        dummy_chromosome_data = add_dummy_protein(chromosome_data, config['dummy_protein'])
 
     molecules = {}
     for nucleotide in nucleotides.values():
@@ -67,17 +147,17 @@ def get_flagella_expression_config(config):
             'sequence': chromosome_config['sequence'],
             'templates': chromosome_config['promoters'],
             'genes': chromosome_config['genes'],
-            'transcription_factors': flagella_data.transcription_factors,
-            'promoter_affinities': flagella_data.promoter_affinities,
+            'transcription_factors': transcription_factors,
+            'promoter_affinities': promoter_affinities,
             'polymerase_occlusion': 30,
             'elongation_rate': 50},
 
         'translation': {
 
-            'sequences': flagella_data.protein_sequences,
-            'templates': flagella_data.transcript_templates,
+            'sequences': protein_sequences,
+            'templates': transcript_templates,
             'concentration_keys': ['CRP', 'flhDC', 'fliA'],
-            'transcript_affinities': flagella_data.transcript_affinities,
+            'transcript_affinities': transcript_affinities,
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
 
