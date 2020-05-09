@@ -78,11 +78,8 @@ def get_derivers(process_list, topology, deriver_config={}):
     for deriver_type, deriver_config in deriver_configs.items():
         deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
 
-    # TODO -- put derivers in order
-    processes = [deriver_processes]
-
     return {
-        'deriver_processes': processes,
+        'deriver_processes': deriver_processes,
         'deriver_topology': deriver_topology}
 
 def get_deriver_config_from_proceses(process_list, topology):
@@ -90,6 +87,8 @@ def get_deriver_config_from_proceses(process_list, topology):
 
     deriver_configs = {}
     full_deriver_topology = {}
+
+    import ipdb; ipdb.set_trace()
 
     for level in process_list:
         for process_id, process in level.items():

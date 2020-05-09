@@ -61,8 +61,13 @@ class ConvenienceKinetics(Process):
         'kinetic_parameters': {},
         'ports': {
             'internal': [],
-            'external': []}
-    }
+            'external': []},
+        'global_deriver_config': {
+            'type': 'globals',
+            'source_port': ['global'],
+            'derived_port': ['global'],
+            'global_port': ['global'],
+            'keys': []}}
 
     def __init__(self, initial_parameters={}):
         '''Michaelis-Menten-style enzyme kinetics model
@@ -246,6 +251,12 @@ class ConvenienceKinetics(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
+
+
+        self.global_deriver_config = initial_parameters.get(
+            'global_deriver_config',
+            self.defaults['global_deriver_config'])
+
         super(ConvenienceKinetics, self).__init__(ports, parameters)
 
     def default_settings(self):
@@ -267,11 +278,7 @@ class ConvenienceKinetics(Process):
                 for flux_id in self.kinetic_rate_laws.reaction_ids}}
 
         # derivers
-        deriver_setting = [{
-            'type': 'globals',
-            'source_port': 'global',
-            'derived_port': 'global',
-            'keys': []}]
+        deriver_setting = [self.global_deriver_config]
 
         default_settings = {
             'process_id': 'convenience_kinetics',

@@ -267,6 +267,8 @@ class Process(object):
                     schema[port][target] = {}
                 if not 'default' in schema[port][target]:
                     schema[port][target]['default'] = port_state.get(target)
+                # TODO: underscore_keys should not be necessary, start
+                #   with special keys for schema properties
                 schema[port][target] = underscore_keys(schema[port][target])
 
         return schema

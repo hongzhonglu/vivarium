@@ -5,6 +5,8 @@ import os
 from vivarium.compartment.process import (
     initialize_state)
 
+from vivarium.compartment.tree import process_derivers
+
 from vivarium.compartment.composition import (
     get_derivers,
     simulate_with_environment,
@@ -26,8 +28,16 @@ from vivarium.processes.convenience_kinetics import (
 
 def growth_division(config):
 
+    transport_config = config.get('transport', get_glc_lct_config())
+    transport_config['global_deriver_config'] = {
+        'type': 'globals',
+        'source_port': 'global',
+        'derived_port': 'global',
+        'global_port': ['../global'],
+        'keys': []}
+
     # declare the processes
-    transport = ConvenienceKinetics(config.get('transport', get_glc_lct_config()))
+    transport = ConvenienceKinetics(transport_config)
     growth = Growth(config.get('growth', {}))
     division = Division(config.get('division', {}))
     expression = MinimalExpression(config.get('expression', {}))
@@ -39,6 +49,7 @@ def growth_division(config):
         'expression': expression,
         'division': division}
 
+    global_key = ['..', 'global']
     external_key = ['..'] + config.get('external_key', ['external'])
     cells_key = ['..', '..', '..'] + config.get('cells_key', ['cells'])
 
@@ -51,16 +62,21 @@ def growth_division(config):
             'exchange': external_key,
             'fluxes': ['flux'], # just for testing
             # 'fluxes': None, # instead of 'null'
-            'global': ['global']},
+            'global': global_key},
         'growth': {
-            'global': ['global']},
+            'global': global_key},
         'division': {
-            'global': ['global'],
+            'global': global_key,
             'cells': cells_key},
         'expression': {
             'internal': ['cell'],
             'external': external_key,
             'concentrations': ['cell_concentrations']}}
+
+    # add derivers
+    derivers = process_derivers(processes, topology)
+    processes.update(derivers['processes'])
+    topology.update(derivers['topology'])  # add derivers to the topology
 
     return {
         'processes': processes,

@@ -127,9 +127,9 @@ def lattice_experiment(config):
         'topology': environment_topology,
         'initial_state': config.get('initial_state', {})})
 
-    experiment.update(10.0)
-
     import ipdb; ipdb.set_trace()
+
+    experiment.update(10.0)
 
     ## add derivers
     derivers = get_derivers(processes, topology)
