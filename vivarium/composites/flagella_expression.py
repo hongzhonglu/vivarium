@@ -173,9 +173,9 @@ def make_flagella_network(out_dir='out'):
 
     # make expression network plot
     flagella_expression_processes = flagella_expression_compartment.processes
-    operons = flagella_expression_processes[0]['transcription'].genes
-    promoters = flagella_expression_processes[0]['transcription'].templates
-    complexes = flagella_expression_processes[0]['complexation'].stoichiometry
+    operons = flagella_expression_processes['transcription'].genes
+    promoters = flagella_expression_processes['transcription'].templates
+    complexes = flagella_expression_processes['complexation'].stoichiometry
     data = {
         'operons': operons,
         'templates': promoters,

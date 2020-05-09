@@ -34,12 +34,12 @@ def compose_gene_expression(config):
     division = Division(config)
 
     # place processes in layers
-    processes = [
-        {'transcription': transcription,
-         'translation': translation,
-         'degradation': degradation,
-         'complexation': complexation},
-        {'division': division}]
+    processes = {
+        'transcription': transcription,
+        'translation': translation,
+        'degradation': degradation,
+        'complexation': complexation,
+        'division': division}
 
     # make the topology
     topology = {
@@ -79,7 +79,8 @@ def compose_gene_expression(config):
             'ports': {'global': 'global'}}}
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = processes.copy()
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
 

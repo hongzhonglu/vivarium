@@ -167,7 +167,7 @@ class DeathFreezeState(Process):
         ]
         # List of names of processes that will remain after death
         self.enduring_processes = initial_parameters.get(
-            'enduring_processes', [])
+            'enduring_processes', {})
         ports = {
             'internal': set(),
             'compartment': ['processes'],
@@ -207,15 +207,13 @@ class DeathFreezeState(Process):
         '''
         for detector in self.detectors:
             if not detector.check_can_survive(states):
-                cur_processes = states['compartment']['processes'][0]
+                cur_processes = states['compartment']['processes']
                 return {
                     'compartment': {
-                        'processes': [
-                            {
-                                process_name: cur_processes[process_name]
-                                for process_name in self.enduring_processes
-                            }
-                        ]
+                        'processes': {
+                            process_name: cur_processes[process_name]
+                            for process_name in self.enduring_processes
+                        }
                     },
                     'global': {
                         'dead': 1,
@@ -271,13 +269,11 @@ def compose_toy_death(config):
         'antibiotic_name': 'enduring_antibiotic'
     }
     enduring_process = ToyAntibioticInjector(enduring_parameters)
-    processes = [
-        {
-            'death': death_process,
-            'injector': injector_process,
-            'enduring_injector': enduring_process,
-        },
-    ]
+    processes = {
+        'death': death_process,
+        'injector': injector_process,
+        'enduring_injector': enduring_process,
+    }
     topology = {
         'death': {
             'internal': 'cell',
