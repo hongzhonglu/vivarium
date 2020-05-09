@@ -82,53 +82,50 @@ def get_derivers(process_list, topology, deriver_config={}):
         'deriver_processes': deriver_processes,
         'deriver_topology': deriver_topology}
 
-def get_deriver_config_from_proceses(process_list, topology):
+def get_deriver_config_from_proceses(processes, topology):
     ''' get the deriver configuration from processes' deriver_settings'''
 
     deriver_configs = {}
     full_deriver_topology = {}
 
-    import ipdb; ipdb.set_trace()
+    for process_id, process in processes.items():
+        process_settings = process.default_settings()
+        deriver_setting = process_settings.get('deriver_setting', [])
+        try:
+            port_map = topology[process_id]
+        except:
+            print('{} topology port mismatch'.format(process_id))
+            raise
 
-    for level in process_list:
-        for process_id, process in level.items():
-            process_settings = process.default_settings()
-            deriver_setting = process_settings.get('deriver_setting', [])
+        for setting in deriver_setting:
+            deriver_type = setting['type']
+            keys = setting['keys']
+            source_port = setting['source_port']
+            target_port = setting['derived_port']
             try:
-                port_map = topology[process_id]
+                source_compartment_port = port_map[source_port]
+                target_compartment_port = port_map[target_port]
             except:
-                print('{} topology port mismatch'.format(process_id))
+                print('source/target port mismatch for process "{}"'.format(process_id))
                 raise
 
-            for setting in deriver_setting:
-                deriver_type = setting['type']
-                keys = setting['keys']
-                source_port = setting['source_port']
-                target_port = setting['derived_port']
-                try:
-                    source_compartment_port = port_map[source_port]
-                    target_compartment_port = port_map[target_port]
-                except:
-                    print('source/target port mismatch for process "{}"'.format(process_id))
-                    raise
+            # make deriver_topology, add to full_deriver_topology
+            deriver_topology = {
+                deriver_type: {
+                    source_port: source_compartment_port,
+                    target_port: target_compartment_port,
+                    'global': 'global'}}
+            deep_merge(full_deriver_topology, deriver_topology)
 
-                # make deriver_topology, add to full_deriver_topology
-                deriver_topology = {
-                    deriver_type: {
-                        source_port: source_compartment_port,
-                        target_port: target_compartment_port,
-                        'global': 'global'}}
-                deep_merge(full_deriver_topology, deriver_topology)
+            # TODO -- what if multiple different source/targets?
+            # TODO -- merge overwrites them. need list extend
+            ports_config = {
+                'source_ports': {source_port: keys},
+                'target_ports': {target_port: keys}}
 
-                # TODO -- what if multiple different source/targets?
-                # TODO -- merge overwrites them. need list extend
-                ports_config = {
-                    'source_ports': {source_port: keys},
-                    'target_ports': {target_port: keys}}
-
-                # ports for configuration
-                deriver_config = {deriver_type: ports_config}
-                deep_merge(deriver_configs, deriver_config)
+            # ports for configuration
+            deriver_config = {deriver_type: ports_config}
+            deep_merge(deriver_configs, deriver_config)
 
     return {
         'deriver_configs': deriver_configs,
@@ -165,7 +162,7 @@ def process_in_compartment(process, settings={}):
     emitter = settings.get('emitter', 'timeseries')
     deriver_config = settings.get('deriver_config', {})
 
-    processes = [{'process': process}]
+    processes = {'process': process}
     topology = {
         'process': {
             port: port for port in process.ports
@@ -180,7 +177,8 @@ def process_in_compartment(process, settings={}):
     # add derivers
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = processes.copy()
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])
 
     # make the state

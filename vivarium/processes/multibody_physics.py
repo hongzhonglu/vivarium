@@ -164,7 +164,7 @@ class Multibody(Process):
         self.agent_bodies = {}
         self.initial_agents = initial_parameters.get('agents', self.defaults['initial_agents'])
         for agent_id, specs in self.initial_agents.items():
-            self.add_body_from_center(agent_id, specs)
+            self.add_body_from_center(agent_id, specs['global'])
 
         # interactive plot for visualization
         self.animate = initial_parameters.get('animate', self.defaults['animate'])
@@ -198,6 +198,14 @@ class Multibody(Process):
             'time_step': 2
         }
 
+    def ports_schema(self):
+        return {
+            'agents': {
+                '*': {
+                    'global': {
+                        'location': {
+                            '_default': (0, 0)}}}}}
+
     def next_update(self, timestep, states):
         agents = states['agents']['agents']
 
@@ -218,16 +226,16 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agent_bodies:
-                self.update_body(agent_id, specs)
+                self.update_body(agent_id, specs['global'])
             else:
-                self.add_body_from_center(agent_id, specs)
+                self.add_body_from_center(agent_id, specs['global'])
 
         # run simulation
         self.run(timestep)
 
         # get new agent position
         agent_position = {
-            agent_id: self.get_body_position(agent_id)
+            agent_id: {'global': self.get_body_position(agent_id)}
             for agent_id in self.agent_bodies.keys()}
 
         return {'agents': {'agents': agent_position}}
@@ -424,6 +432,7 @@ class Multibody(Process):
         plt.cla()
         for agent_id, data in agents.items():
             # location, orientation, length
+            data = data['global']
             x_center = data['location'][0]
             y_center = data['location'][1]
             angle = data['angle'] / PI * 180 + 90  # rotate 90 degrees to match field
@@ -481,7 +490,7 @@ def random_agent_config(bounds):
     length = 2
     volume = volume_from_length(length, width)
 
-    return {
+    return {'global': {
         'location': [
             np.random.uniform(0, bounds[0]),
             np.random.uniform(0, bounds[1])],
@@ -490,7 +499,7 @@ def random_agent_config(bounds):
         'length': length,
         'width': width,
         'mass': 1,
-        'forces': [0, 0]}
+        'forces': [0, 0]}}
 
 def random_body_config(config):
     n_agents = config['n_agents']
@@ -742,6 +751,7 @@ def simulate_growth_division(config, settings):
         remove_agents = []
         add_agents = {}
         for agent_id, state in agents_state['agents'].items():
+            state = state['global']
             location = state['location']
             angle = state['angle']
             length = state['length']
