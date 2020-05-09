@@ -13,17 +13,16 @@ from vivarium.analysis.analysis import Analysis, get_compartment
 from vivarium.utils.dict_utils import deep_merge
 
 
-DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 
 # colors for phylogeny initial agents
-PHYLOGENY_HUES = [hue/360 for hue in np.linspace(0,360,30)]
-DEFAULT_SV = [100.0/100.0, 70.0/100.0]
-
-# colors for flourescent tags
-BASELINE_TAG_COLOR = [220/360, 100.0/100.0, 30.0/100.0]  # HSV
-FLOURESCENT_COLOR = [120/360, 100.0/100.0, 100.0/100.0]  # HSV
+DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
+HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
+DEFAULT_SV = [1.0, 7.0]
+FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
+BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # [220/360, 100.0/100.0, 30.0/100.0]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
+
 
 class Snapshots(Analysis):
     def __init__(self):
@@ -117,8 +116,8 @@ class Snapshots(Analysis):
         n_fields = max(len(field_ids),1)
 
         ## get tag ids and range
-        # TODO -- make into a function in vivarium.analysis.analysis
         tag_range = {}
+        tag_colors = {}
         for c_id, c_data in compartments.items():
             # if this compartment has tags, get their ids and range
             if c_data:
@@ -141,7 +140,12 @@ class Snapshots(Analysis):
                                 min(tag_range[tag_id][0], conc),
                                 max(tag_range[tag_id][1], conc)]
                         else:
+                            # add new tag
                             tag_range[tag_id] = [conc, conc]
+
+                            hue = random.choice(HUES_LIST)  # select random initial hue
+                            tag_color = [hue] + FLOURESCENT_SV
+                            tag_colors[tag_id] = tag_color
 
         # get fields' range
         field_range = {}
@@ -172,7 +176,7 @@ class Snapshots(Analysis):
         # agent colors based on phylogeny
         agent_colors = {agent_id: [] for agent_id in phylogeny.keys()}
         for agent_id in initial_agents:
-            hue = random.choice(PHYLOGENY_HUES)  # select random initial hue
+            hue = random.choice(HUES_LIST)  # select random initial hue
             initial_color = [hue] + DEFAULT_SV
             agent_colors.update(color_phylogeny(agent_id, phylogeny, initial_color))
 
@@ -247,7 +251,7 @@ class Snapshots(Analysis):
             for tag_id in list(tag_range.keys()):
                 ax = init_axes(
                     fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time)
-                ax.set_facecolor('palegoldenrod')  # set background color
+                ax.set_facecolor('black')  # ('palegoldenrod')  # set background color
 
                 # update agent colors based on tag_level
                 agent_tag_colors = {}
@@ -266,7 +270,8 @@ class Snapshots(Analysis):
                         if min_tag != max_tag:
                             intensity = max((level - min_tag), 0)
                             intensity = min(intensity / (max_tag - min_tag), 1)
-                            agent_color = flourescent_color(BASELINE_TAG_COLOR, intensity)
+                            tag_color = tag_colors[tag_id]
+                            agent_color = get_flourescent_color(BASELINE_TAG_COLOR, tag_color, intensity)
 
                     agent_tag_colors[agent_id] = agent_color
 
@@ -345,10 +350,10 @@ def mutate_color(baseline_hsv):
     new_hsv[0] = new_h % 1
     return new_hsv
 
-def flourescent_color(baseline_hsv, intensity):
-    # move color towards bright green (FLOURESCENT_COLOR) when intensity = 1
+def get_flourescent_color(baseline_hsv, tag_color, intensity):
+    # move color towards bright flouresence color when intensity = 1
     new_hsv = baseline_hsv[:]
-    distance = [a - b for a, b in zip(FLOURESCENT_COLOR, new_hsv)]
+    distance = [a - b for a, b in zip(tag_color, new_hsv)]
     new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
     return new_hsv
 
