@@ -183,9 +183,9 @@ class Snapshots(Analysis):
         ## make the figure
         # fields and tag data are plotted in separate rows
         n_rows = len(tag_range) + n_fields
-        n_cols = N_SNAPSHOTS + 2  # one column for text, one for the colorbar
-        fig = plt.figure(figsize=(12*n_cols, 12*n_rows))
-        grid = plt.GridSpec(n_rows, n_cols, wspace=0.2, hspace=0.2)
+        n_cols = N_SNAPSHOTS + 3  # two columns for text, one for the colorbar
+        fig = plt.figure(figsize=(6*n_cols, 6*n_rows))
+        grid = plt.GridSpec(n_rows, n_cols, wspace=0.1, hspace=0.1)
         plt.rcParams.update({'font.size': 36})
 
         # text in first column
@@ -202,7 +202,7 @@ class Snapshots(Analysis):
             row_idx+=1
 
         # plot snapshot data in each subsequent column
-        for col_idx, time in enumerate(snapshot_times, 1):
+        for col_idx, time in enumerate(snapshot_times, 2):
             row_idx = 0
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
@@ -316,14 +316,14 @@ def plot_agents(ax, agent_data, cell_radius, agent_colors):
         rgb = hsv_to_rgb(agent_color)
 
         # Create a rectangle
-        rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=2, edgecolor='w', facecolor=rgb)
+        rect = patches.Rectangle((x, y), width, length, angle=theta, linewidth=1, edgecolor='w', facecolor=rgb)
 
         ax.add_patch(rect)
 
 def init_axes(fig, edge_length_x, edge_length_y, grid, row_idx, col_idx, time):
     ax = fig.add_subplot(grid[row_idx, col_idx])
     if row_idx == 0:
-        plot_title = 'time: {:.4f} hr'.format(float(time) / 60. / 60.)
+        plot_title = '{:.2f} hr'.format(float(time) / 60. / 60.)
         plt.title(plot_title, y=1.08)
     ax.set(xlim=[0, edge_length_x], ylim=[0, edge_length_y], aspect=1)
     ax.set_yticklabels([])
