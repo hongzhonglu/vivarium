@@ -102,6 +102,7 @@ class State(object):
         self.parent = parent
         self.children = {}
         self.subschema = {}
+        self.properties = {}
 
         self.apply_config(config)
 
@@ -114,9 +115,13 @@ class State(object):
             if isinstance(self.updater, str):
                 self.updater = updater_library[self.updater]
             self.value = self.config.get('_value', self.default)
-            self.properties = self.config.get('_properties', {})
+            self.properties = deep_merge(
+                self.properties,
+                self.config.get('_properties', {}))
             self.units = self.config.get('_units')
-            self.subschema = self.config.get('_subschema', {})
+            self.subschema = deep_merge(
+                self.subschema,
+                self.config.get('_subschema', {}))
         else:
             self.value = None
             for key, child in self.config.items():
@@ -177,9 +182,12 @@ class State(object):
 
     def state_for(self, path, keys):
         state = self.get_path(path)
-        return {
-            key: state.children[key].get_value()
-            for key in keys}
+        if keys and keys[0] == '*':
+            return state.get_value()
+        else:
+            return {
+                key: state.children[key].get_value()
+                for key in keys}
 
     def depth(self, path=()):
         base = [(path, self)]

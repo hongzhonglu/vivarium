@@ -295,6 +295,8 @@ class ConvenienceKinetics(Process):
         # get mmol_to_counts for converting flux to exchange counts
         mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
 
+        import ipdb; ipdb.set_trace()
+
         # kinetic rate law requires a flat dict with ('port', 'state') keys.
         flattened_states = tuplify_port_dicts(states)
 

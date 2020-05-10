@@ -127,7 +127,7 @@ def lattice_experiment(config):
         'topology': environment_topology,
         'initial_state': config.get('initial_state', {})})
 
-    # import ipdb; ipdb.set_trace()
+    import ipdb; ipdb.set_trace()
 
     experiment.update(10.0)
 

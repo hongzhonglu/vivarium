@@ -175,18 +175,48 @@ class Multibody(Process):
             self.animate_frame(self.initial_agents)
 
         # all initial agents get a key under a single port
-        ports = {'agents': ['*']}
+        ports = {
+            'agents': ['*']}
 
         parameters = {}
         parameters.update(initial_parameters)
+
+        self.initial_agents_schema = {
+            agent_id: {
+                'global': {
+                    key: {
+                        '_default': value,
+                        '_value': value}
+                    for key, value in agent.items()}}
+            for agent_id, agent in self.initial_agents.items()}
+
+        self.glob_schema = {
+            '*': {
+                'global': {
+                    'location': {
+                        '_default': [0.0, 0.0],
+                        '_updater': 'set'},
+                    'width': {
+                        '_default': 0.0},
+                    'angle': {
+                        '_default': 0.0},
+                    'mass': {
+                        '_default': 1.0},
+                    'motile_force': {
+                        '_default': [0.0, 0.0],
+                        '_updater': 'set'}}}}
+
+        self.schema = {
+            'agents': self.initial_agents_schema}
+        self.schema['agents'].update(self.glob_schema)
 
         super(Multibody, self).__init__(ports, parameters)
 
     def default_settings(self):
 
-        state = {'agents': {'agents': self.initial_agents}}
+        state = {'agents': self.initial_agents}
 
-        schema = {'agents': {'agents': {'updater': 'merge'}}}
+        schema = {'agents': {'updater': 'merge'}}
 
         default_emitter_keys = {
             port_id: keys for port_id, keys in self.ports.items()}
@@ -199,23 +229,10 @@ class Multibody(Process):
         }
 
     def ports_schema(self):
-        return {
-            'agents': {
-                '*': {
-                    'global': {
-                        'location': {
-                            '_default': [0, 0],
-                            '_updater': 'set'},
-                        'width': {
-                            '_default': 0},
-                        'mass': {
-                            '_default': 0},
-                        'motile_force': {
-                            '_default': [0, 0],
-                            '_updater': 'set'}}}}}
+        return self.schema
 
     def next_update(self, timestep, states):
-        agents = states['agents']['agents']
+        agents = states['agents']
 
         # animate before update
         if self.animate:
@@ -243,10 +260,11 @@ class Multibody(Process):
 
         # get new agent position
         agent_position = {
-            agent_id: {'global': self.get_body_position(agent_id)}
+            agent_id: {
+                'global': self.get_body_position(agent_id)}
             for agent_id in self.agent_bodies.keys()}
 
-        return {'agents': {'agents': agent_position}}
+        return {'agents': agent_position}
 
     def run(self, timestep):
         assert self.physics_dt < timestep

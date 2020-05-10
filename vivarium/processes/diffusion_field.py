@@ -223,6 +223,7 @@ class DiffusionField(Process):
     def ports_schema(self):
         defaults = self.default_settings()
         state = defaults['state']
+
         return {
              'fields': {
                  field: {
@@ -233,7 +234,8 @@ class DiffusionField(Process):
                  '*': {
                      'global': {
                          'location': {
-                             '_default': [0, 0]}},
+                             '_default': [0, 0],
+                             '_updater': 'set'}},
                      'local_environment': {
                          molecule: {
                              '_default': 0.0}
