@@ -198,7 +198,7 @@ class DiffusionField(Process):
         # make ports
         ports = {
              'fields': self.molecule_ids,
-             'agents': ['agents']}
+             'agents': ['*']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -220,9 +220,28 @@ class DiffusionField(Process):
             'emitter_keys': default_emitter_keys,
         }
 
+    def ports_schema(self):
+        defaults = self.default_settings()
+        state = defaults['state']
+        return {
+             'fields': {
+                 field: {
+                     '_default': field_state,
+                     '_updater': 'set'}
+                 for field, field_state in state['fields']},
+             'agents': {
+                 '*': {
+                     'global': {
+                         'location': {
+                             '_default': [0, 0]}},
+                     'local_environment': {
+                         molecule: {
+                             '_default': 0.0}
+                         for molecule in self.molecule_ids}}}}
+
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
-        agents = states['agents']['agents']
+        agents = states['agents']
 
         # uptake/secretion from agents
         delta_exchanges = self.apply_exchanges(agents)
@@ -240,7 +259,7 @@ class DiffusionField(Process):
 
         return {
             'fields': delta_fields,
-            'agents': {'agents': agent_update}}
+            'agents': agent_update}
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)

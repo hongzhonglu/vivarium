@@ -175,7 +175,7 @@ class Multibody(Process):
             self.animate_frame(self.initial_agents)
 
         # all initial agents get a key under a single port
-        ports = {'agents': ['agents']}
+        ports = {'agents': ['*']}
 
         parameters = {}
         parameters.update(initial_parameters)
