@@ -32,9 +32,9 @@ def compose_simple_chemotaxis(config):
     motor = MotorActivity(config)
 
     # place processes in layers
-    processes = [
-        {'receptor': receptor},
-        {'motor': motor}]
+    processes = {
+        'receptor': receptor,
+        'motor': motor}
 
     # make the topology.
     # for each process, map process ports to store ids
@@ -49,7 +49,9 @@ def compose_simple_chemotaxis(config):
     # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])
 
     # initialize the states
@@ -99,7 +101,7 @@ def get_exponential_random_timeline(config):
     return timeline
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'simple_chemotaxis_composite')
+    out_dir = os.path.join('out', 'tests', 'chemotaxis_minimal')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
