@@ -92,8 +92,8 @@ def make_agents(count, compartment, config):
             'cell': agent['topology']}
 
     return {
-        'processes': {'agents': processes},
-        'topology': {'agents': topology}}
+        'processes': processes,
+        'topology': topology}
 
 
 # TODO -- this can move to a separate experiments directory

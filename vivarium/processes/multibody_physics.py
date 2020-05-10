@@ -204,7 +204,15 @@ class Multibody(Process):
                 '*': {
                     'global': {
                         'location': {
-                            '_default': (0, 0)}}}}}
+                            '_default': [0, 0],
+                            '_updater': 'set'},
+                        'width': {
+                            '_default': 0},
+                        'mass': {
+                            '_default': 0},
+                        'motile_force': {
+                            '_default': [0, 0],
+                            '_updater': 'set'}}}}}
 
     def next_update(self, timestep, states):
         agents = states['agents']['agents']

@@ -94,11 +94,15 @@ class State(object):
         '_updater',
         '_value',
         '_properties',
-        '_units'])
+        '_units',
+        '_subschema'])
 
     def __init__(self, config, parent=None):
         self.config = {}
         self.parent = parent
+        self.children = {}
+        self.subschema = {}
+
         self.apply_config(config)
 
     def apply_config(self, config):
@@ -112,12 +116,14 @@ class State(object):
             self.value = self.config.get('_value', self.default)
             self.properties = self.config.get('_properties', {})
             self.units = self.config.get('_units')
-            self.children = {}
+            self.subschema = self.config.get('_subschema', {})
         else:
             self.value = None
-            self.children = {
-                key: State(child, self)
-                for key, child in self.config.items()}
+            for key, child in self.config.items():
+                if not key in self.children:
+                    self.children[key] = State(child, self)
+                else:
+                    self.children[key].apply_config(child)
 
     def get_value(self):
         if self.children:
@@ -195,35 +201,53 @@ class State(object):
 
             if step == '..':
                 if not self.parent:
-                    import ipdb; ipdb.set_trace()
                     self.parent = State({})
                     self.parent.children[child_key] = self
-                self.parent.establish_path(remaining, config, child_key)
+                return self.parent.establish_path(remaining, config, child_key)
             else:
                 if not step in self.children:
                     self.children[step] = State({}, self)
-                self.children[step].establish_path(remaining, config, child_key)
+                return self.children[step].establish_path(remaining, config, child_key)
         else:
             self.apply_config(config)
+            return self
+
+    def apply_subschema(self, subschema=None):
+        if subschema is None:
+            subschema = self.subschema
+        for child_key, child in self.children.items():
+            child.apply_config(subschema)
+
+    def apply_subschemas(self):
+        if self.subschema:
+            self.apply_subschema()
+        for child in self.children.values():
+            child.apply_subschemas()
 
     def generate_paths(self, processes, topology, initial_state):
         for key, subprocess in processes.items():
             subtopology = topology[key]
             if isinstance(subprocess, Process):
-                self.children[key] = State({'_value': subprocess}, self)
+                process_state = State({'_value': subprocess}, self)
+                self.children[key] = process_state
                 for port, targets in subprocess.ports_schema().items():
                     path = subtopology[port]
                     if path:
                         initial = initial_state.get(port, {})
                         for target, schema in targets.items():
-                            if target in initial:
-                                schema = dict(
-                                    schema,
-                                    _value=initial[target])
-                            subpath = path + [target]
-                            # if subpath[0] == '..':
-                            #     import ipdb; ipdb.set_trace()
-                            self.establish_path(subpath, schema)
+                            if target == '*':
+                                glob = self.establish_path(path, {
+                                    '_subschema': schema})
+                                glob.apply_subschema()
+                            else:
+                                if target in initial:
+                                    schema = dict(
+                                        schema,
+                                        _value=initial[target])
+                                subpath = path + [target]
+                                # if subpath[0] == '..':
+                                #     import ipdb; ipdb.set_trace()
+                                self.establish_path(subpath, schema)
             else:
                 if not key in self.children:
                     self.children[key] = State({}, self)
@@ -333,8 +357,8 @@ def process_derivers(processes, topology, deriver_config={}):
 
 def generate_state(processes, topology, initial_state):
     state = State({})
-
     state.generate_paths(processes, topology, initial_state)
+    state.apply_subschemas()
     return state
 
 
@@ -511,8 +535,6 @@ def test_recursive_store():
                             '_updater': 'accumulate'}}}}}}
 
     state = State(environment_config)
-
-    import ipdb; ipdb.set_trace()
 
     state.apply_updates({})
     state.state_for({})
