@@ -164,7 +164,7 @@ class Multibody(Process):
         self.agent_bodies = {}
         self.initial_agents = initial_parameters.get('agents', self.defaults['initial_agents'])
         for agent_id, specs in self.initial_agents.items():
-            self.add_body_from_center(agent_id, specs)
+            self.add_body_from_center(agent_id, specs['global'])
 
         # interactive plot for visualization
         self.animate = initial_parameters.get('animate', self.defaults['animate'])
@@ -198,6 +198,14 @@ class Multibody(Process):
             'time_step': 2
         }
 
+    def ports_schema(self):
+        return {
+            'agents': {
+                '*': {
+                    'global': {
+                        'location': {
+                            '_default': (0, 0)}}}}}
+
     def next_update(self, timestep, states):
         agents = states['agents']['agents']
 
@@ -218,16 +226,16 @@ class Multibody(Process):
         # update agents, add new agents
         for agent_id, specs in agents.items():
             if agent_id in self.agent_bodies:
-                self.update_body(agent_id, specs)
+                self.update_body(agent_id, specs['global'])
             else:
-                self.add_body_from_center(agent_id, specs)
+                self.add_body_from_center(agent_id, specs['global'])
 
         # run simulation
         self.run(timestep)
 
         # get new agent position
         agent_position = {
-            agent_id: self.get_body_position(agent_id)
+            agent_id: {'global': self.get_body_position(agent_id)}
             for agent_id in self.agent_bodies.keys()}
 
         return {'agents': {'agents': agent_position}}
@@ -424,6 +432,7 @@ class Multibody(Process):
         plt.cla()
         for agent_id, data in agents.items():
             # location, orientation, length
+            data = data['global']
             x_center = data['location'][0]
             y_center = data['location'][1]
             angle = data['angle'] / PI * 180 + 90  # rotate 90 degrees to match field
@@ -475,30 +484,29 @@ class Multibody(Process):
 
 
 # configs
-def get_n_dummy_agents(n_agents):
-    return {agent_id: None for agent_id in range(n_agents)}
-
-def random_body_config(config):
+def random_agent_config(bounds):
     # cell dimensions
     width = 1
     length = 2
     volume = volume_from_length(length, width)
 
+    return {'global': {
+        'location': [
+            np.random.uniform(0, bounds[0]),
+            np.random.uniform(0, bounds[1])],
+        'angle': np.random.uniform(0, 2 * PI),
+        'volume': volume,
+        'length': length,
+        'width': width,
+        'mass': 1,
+        'forces': [0, 0]}}
+
+def random_body_config(config):
     n_agents = config['n_agents']
     bounds = config.get('bounds', DEFAULT_BOUNDS)
-    agents = get_n_dummy_agents(n_agents)
     agent_config = {
-        agent_id: {
-            'location': [
-                np.random.uniform(0, bounds[0]),
-                np.random.uniform(0, bounds[1])],
-            'angle': np.random.uniform(0, 2 * PI),
-            'volume': volume,
-            'length': length,
-            'width': width,
-            'mass': 1,
-            'forces': [0, 0]}
-        for agent_id in agents.keys()}
+        agent_id: random_agent_config(bounds)
+        for agent_id in range(n_agents)}
 
     return {
         'agents': agent_config,
@@ -523,7 +531,6 @@ def mother_machine_body_config(config):
         for x in range(1, n_spaces)]
     random.shuffle(possible_locations)
 
-    agents = get_n_dummy_agents(n_agents)
     agent_config = {
         agent_id: {
             'location': possible_locations[index],
@@ -533,7 +540,7 @@ def mother_machine_body_config(config):
             'width': width,
             'mass': 1,
             'forces': [0, 0]}
-        for index, agent_id in enumerate(agents.keys())}
+        for index, agent_id in range(n_agents)}
 
     return {
         'agents': agent_config,
@@ -744,6 +751,7 @@ def simulate_growth_division(config, settings):
         remove_agents = []
         add_agents = {}
         for agent_id, state in agents_state['agents'].items():
+            state = state['global']
             location = state['location']
             angle = state['angle']
             length = state['length']

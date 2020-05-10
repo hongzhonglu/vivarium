@@ -29,6 +29,10 @@ def npize(d):
 
     return keys, values
 
+def underscore_keys(d):
+    return {
+        '_' + key: value
+        for key, value in d.items()}
 
 ## updater functions
 # these function take in a variable key, the entire store's dict,
@@ -249,6 +253,26 @@ class Process(object):
         for port, state in self.states.items():
             state.declare_state(self.ports[port])
 
+    def ports_schema(self):
+        defaults = self.default_settings()
+        schema = defaults.get('schema', {})
+        state = defaults.get('state', {})
+        
+        for port, targets in self.ports.items():
+            port_state = state.get(port, {})
+            if not port in schema:
+                schema[port] = {}
+            for target in targets:
+                if not target in schema[port]:
+                    schema[port][target] = {}
+                if not 'default' in schema[port][target]:
+                    schema[port][target]['default'] = port_state.get(target)
+                # TODO: underscore_keys should not be necessary, start
+                #   with special keys for schema properties
+                schema[port][target] = underscore_keys(schema[port][target])
+
+        return schema
+
     def update_for(self, timestep):
         ''' Called each timestep to find the next state for this process. '''
 
@@ -268,6 +292,11 @@ class Process(object):
         self.default_parameters[derived_key] = f(present)
         return self.default_parameters[derived_key]
 
+    def find_states(self, tree, topology):
+        return {
+            port: tree.state_for(topology[port], keys)
+            for port, keys in self.ports.items()}
+
     def next_update(self, timestep, states):
         '''
         Find the next update given the current states this process cares about.
@@ -279,11 +308,11 @@ class Process(object):
             for port, values in self.ports.items()}
 
 
-def connect_topology(process, derivers, states, topology):
+def connect_topology(processes, derivers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the ports in each process to the state they refer to.'''
-    processes = merge_dicts([process, derivers])
-    for name, process in processes.items():
+    all_processes = merge_dicts([processes, derivers])
+    for name, process in all_processes.items():
         connections = topology[name]
         ports = {
             port: states[key]
@@ -390,6 +419,9 @@ class Compartment(Store):
         self.processes = processes
         self.states = states
         self.derivers = derivers
+        self.all_processes = {}
+        self.all_processes.update(self.processes)
+        self.all_processes.update(self.derivers)
         self.configuration = configuration
 
         self.topology = configuration['topology']
@@ -416,7 +448,7 @@ class Compartment(Store):
         elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
                 {'emitter': {'type': emitter_config}},
-                merge_dicts([self.processes, self.derivers]),
+                self.all_processes,
                 self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
@@ -508,6 +540,9 @@ class Compartment(Store):
         ''' Run each process for the given time step and update the related states. '''
 
         time = 0
+
+        # flatten all process layers into a single process dict
+        processes = self.state['processes']
 
         # keep track of which processes have simulated until when
         front = {

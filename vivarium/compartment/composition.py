@@ -177,8 +177,7 @@ def process_in_compartment(process, settings={}):
     # add derivers
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = {}
-    all_processes.update(processes)
+    all_processes = processes.copy()
     all_processes.update(deriver_processes)
     topology.update(derivers['deriver_topology'])
 

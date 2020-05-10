@@ -2,10 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
+from vivarium.compartment.process import (
+    initialize_state,
+)
 from vivarium.compartment.composition import (
     simulate_compartment,
-    load_compartment
+    load_compartment,
 )
 
 # processes
@@ -22,12 +24,9 @@ from vivarium.processes.diffusion_field import (
 
 
 
-def get_lattice_environment(config):
+def make_lattice_environment(config):
     """
-    Lattice environment
-
-    A two-dimensional lattice environmental model
-
+    Lattice environment:  A two-dimensional lattice environmental model
     """
 
     # declare the processes.
@@ -42,11 +41,10 @@ def get_lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': 'boundary',
-        },
+            'agents': ['agents']},
         'diffusion': {
-            'agents': 'boundary',
-            'fields': 'fields'}}
+            'agents': ['agents'],
+            'fields': ['fields']}}
 
     return {
         'processes': processes,
@@ -67,6 +65,7 @@ def compose_lattice_environment(config):
     multibody_config = {
         'n_agents': n_agents,
         'bounds': bounds}
+
     multibody_config.update(random_body_config(multibody_config))
 
     # config for the diffusion proces
@@ -76,22 +75,22 @@ def compose_lattice_environment(config):
         'exchange': {
             mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
             for agent_id, boundary in multibody_config['agents'].items()}
+
     exchange_config = {
         'molecules': molecules,
         'n_bins': bounds,
         'size': size,
-        'agents': agents
-    }
+        'agents': agents}
+
     diffusion_config = exchange_agent_config(exchange_config)
 
     # environment gets both process configs
     environment_config = {
         'multibody': multibody_config,
-        'diffusion_field': diffusion_config
-    }
+        'diffusion_field': diffusion_config}
 
     # get the environment compartment
-    environment_compartment = get_lattice_environment(environment_config)
+    environment_compartment = make_lattice_environment(environment_config)
     processes = environment_compartment['processes']
     topology = environment_compartment['topology']
 

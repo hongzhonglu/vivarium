@@ -69,7 +69,10 @@ class Complexation(Process):
             'complexes': self.complex_ids,
             'global': []}
 
-        super(Complexation, self).__init__(ports)
+        parameters = {}
+        parameters.update(initial_parameters)
+
+        super(Complexation, self).__init__(ports, parameters)
 
     def default_settings(self):
         default_state = {
