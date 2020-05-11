@@ -334,13 +334,13 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
                            with_labels=True,
                            node_color=process_rgb,
                            node_size=node_size,
-                           node_shape='o')
+                           node_shape='s')
     nx.draw_networkx_nodes(G, pos,
                            nodelist=store_nodes,
                            with_labels=True,
                            node_color=store_rgb,
                            node_size=node_size,
-                           node_shape='s')
+                           node_shape='o')
 
     # edges
     colors = list(range(1,len(edges)+1))
