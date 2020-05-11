@@ -96,16 +96,16 @@ def schema_for(port, keys, initial_state, default=0.0, updater='accumulate'):
             '_updater': updater}
         for key in keys}
 
-class State(object):
+class Compartment(object):
     schema_keys = set([
         '_default',
         '_updater',
+        '_divider',
         '_value',
         '_properties',
         '_units'])
 
     def __init__(self, config, parent=None):
-        self.config = {}
         self.parent = parent
         self.children = {}
         self.subschema = {}
@@ -118,8 +118,6 @@ class State(object):
         self.apply_config(config)
 
     def apply_config(self, config):
-        self.config = deep_merge(self.config, config)
-
         if '_subschema' in config:
             self.subschema = deep_merge(
                 self.subschema,
@@ -129,22 +127,22 @@ class State(object):
                 for key, value in config.items()
                 if key != '_subschema'}
 
-        if self.schema_keys & self.config.keys():
-            self.default = self.config.get('_default')
-            self.updater = self.config.get('_updater', 'accumulate')
+        if self.schema_keys & config.keys():
+            self.default = config.get('_default')
+            self.updater = config.get('_updater', 'accumulate')
             if isinstance(self.updater, str):
                 self.updater = updater_library[self.updater]
-            self.value = self.config.get('_value', self.default)
+            self.value = config.get('_value', self.default)
             self.properties = deep_merge(
                 self.properties,
-                self.config.get('_properties', {}))
-            self.units = self.config.get('_units')
+                config.get('_properties', {}))
+            self.units = config.get('_units')
         else:
             self.value = None
 
             for key, child in config.items():
                 if not key in self.children:
-                    self.children[key] = State(child, self)
+                    self.children[key] = Compartment(child, self)
                 else:
                     self.children[key].apply_config(child)
 
@@ -152,14 +150,14 @@ class State(object):
         config = {}
         if self.properties:
             config['_properties'] = self.properties
+        if self.subschema:
+            config['_subschema'] = self.subschema
 
         if self.children:
             child_config = {
                 key: child.get_config()
                 for key, child in self.children.items()}
             config.update(child_config)
-            if self.subschema:
-                config['_subschema'] = self.subschema
         else:
             config.update({
                 '_default': self.default,
@@ -257,12 +255,12 @@ class State(object):
 
             if step == '..':
                 if not self.parent:
-                    self.parent = State({})
+                    self.parent = Compartment({})
                     self.parent.children[child_key] = self
                 return self.parent.establish_path(remaining, config, child_key)
             else:
                 if not step in self.children:
-                    self.children[step] = State({}, self)
+                    self.children[step] = Compartment({}, self)
                 return self.children[step].establish_path(remaining, config, child_key)
         else:
             self.apply_config(config)
@@ -284,7 +282,7 @@ class State(object):
         for key, subprocess in processes.items():
             subtopology = topology[key]
             if isinstance(subprocess, Process):
-                process_state = State({
+                process_state = Compartment({
                     '_value': subprocess,
                     '_updater': 'set'}, self)
                 self.children[key] = process_state
@@ -306,7 +304,7 @@ class State(object):
                                 self.establish_path(subpath, schema)
             else:
                 if not key in self.children:
-                    self.children[key] = State({}, self)
+                    self.children[key] = Compartment({}, self)
                 substate = initial_state.get(key, {})
                 self.children[key].generate_paths(
                     subprocess,
@@ -411,7 +409,7 @@ def process_derivers(processes, topology, deriver_config={}):
 
 
 def generate_state(processes, topology, initial_state):
-    state = State({})
+    state = Compartment({})
     state.generate_paths(processes, topology, initial_state)
     state.apply_subschemas()
     return state
@@ -625,9 +623,9 @@ def test_recursive_store():
                             '_default': 0,
                             '_updater': 'accumulate'}}}}}}
 
-    state = State(environment_config)
+    state = Compartment(environment_config)
 
-    state.apply_updates({})
+    state.apply_update({})
     state.state_for({})
 
 def test_in():
