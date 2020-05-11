@@ -60,8 +60,8 @@ def growth_division(config):
             'internal': ['cell'],
             'external': external_key,
             'exchange': external_key,
-            'fluxes': ['flux'], # just for testing
-            # 'fluxes': None, # instead of 'null'
+            # 'fluxes': ['flux'], # just for testing
+            'fluxes': None, # instead of 'null'
             'global': global_key},
         'growth': {
             'global': global_key},

@@ -88,6 +88,14 @@ updater_library = {
 
 
 
+def schema_for(port, keys, initial_state, default=0.0, updater='accumulate'):
+    return {
+        key: {
+            '_default': initial_state.get(
+                port, {}).get(key, default),
+            '_updater': updater}
+        for key in keys}
+
 class State(object):
     schema_keys = set([
         '_default',
@@ -139,7 +147,7 @@ class State(object):
             return self.value
 
     def get_path(self, path):
-        if len(path) > 0:
+        if path:
             step = path[0]
             if step == '..':
                 child = self.parent
@@ -180,13 +188,20 @@ class State(object):
                 state[key] = child.get_template(value)
         return state
 
+    def child_value(self, key):
+        if key in self.children:
+            return self.children[key].get_value()
+
     def state_for(self, path, keys):
         state = self.get_path(path)
-        if keys and keys[0] == '*':
+        if state is None:
+            print('nil path: {} -- {}'.format(path, keys))
+            return {}
+        elif keys and keys[0] == '*':
             return state.get_value()
         else:
             return {
-                key: state.children[key].get_value()
+                key: state.child_value(key)
                 for key in keys}
 
     def depth(self, path=()):
@@ -374,8 +389,10 @@ def append_update(existing_updates, new_update):
     if existing_updates is None:
         existing_updates = []
     existing_updates.append(new_update)
+    return existing_updates
 
-
+def normalize_path():
+    pass
 
 
 class Experiment(object):
@@ -390,8 +407,8 @@ class Experiment(object):
 
     def collect_updates(self, updates, path, new_update):
         for port, update in new_update.items():
-            get_in(self.topology, path)
-            state_path = self.topology[port]
+            topology = get_in(self.topology, path)
+            state_path = list(path[:-1]) + topology[port]
             update_in(updates, state_path, lambda x: append_update(x, update))
         return updates
 
@@ -406,9 +423,10 @@ class Experiment(object):
                 'update': {}}
 
         # keep track of which processes have simulated until when
-        front = {
-            process_name: empty_front()
-            for process_name in self.processes.keys()}
+        front = {}
+        # front = {
+        #     process_name: empty_front()
+        #     for process_name in self.processes.keys()}
 
         while time < timestep:
             step = INFINITY
@@ -420,7 +438,7 @@ class Experiment(object):
             processes = {
                 path: state
                 for path, state in self.state.depth()
-                if state.value and isinstance(state.value, Process)}
+                if state.value is not None and isinstance(state.value, Process)}
 
             for path, state in processes.items():
                 if not path in front:
@@ -450,6 +468,8 @@ class Experiment(object):
             else:
                 # at least one process ran, apply updates and continue
                 future = time + step
+
+                import ipdb; ipdb.set_trace()
 
                 updates = {}
                 for path, advance in front.items():

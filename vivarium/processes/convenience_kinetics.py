@@ -31,6 +31,7 @@ import os
 from scipy import constants
 
 from vivarium.compartment.process import Process
+from vivarium.compartment.tree import schema_for
 from vivarium.compartment.composition import (
     simulate_process_with_environment,
     plot_simulation_output,
@@ -251,13 +252,23 @@ class ConvenienceKinetics(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-
-
         self.global_deriver_config = initial_parameters.get(
             'global_deriver_config',
             self.defaults['global_deriver_config'])
 
         super(ConvenienceKinetics, self).__init__(ports, parameters)
+
+    def ports_schema(self):
+        set_ports = ['fluxes']
+
+        return {
+            port: schema_for(
+                port,
+                keys,
+                self.initial_state.get(port, {}),
+                default=0.0,
+                updater='set' if port in set_ports else 'accumulate')
+            for port, keys in self.ports.items()}
 
     def default_settings(self):
 
@@ -294,8 +305,6 @@ class ConvenienceKinetics(Process):
 
         # get mmol_to_counts for converting flux to exchange counts
         mmol_to_counts = states['global']['mmol_to_counts'] * units.L / units.mmol
-
-        import ipdb; ipdb.set_trace()
 
         # kinetic rate law requires a flat dict with ('port', 'state') keys.
         flattened_states = tuplify_port_dicts(states)

@@ -227,9 +227,9 @@ class DiffusionField(Process):
         return {
              'fields': {
                  field: {
-                     '_default': field_state,
+                     '_default': state['fields'].get(field, self.empty_field()),
                      '_updater': 'set'}
-                 for field, field_state in state['fields']},
+                 for field in self.molecule_ids},
              'agents': {
                  '*': {
                      'global': {
@@ -283,7 +283,7 @@ class DiffusionField(Process):
     def get_local_environments(self, agents, fields):
         local_environments = {}
         for agent_id, specs in agents.items():
-            local_environments[agent_id] = self.get_single_local_environments(specs, fields)
+            local_environments[agent_id] = self.get_single_local_environments(specs['global'], fields)
         return local_environments
 
     def apply_single_exchange(self, delta_fields, specs):
@@ -294,15 +294,18 @@ class DiffusionField(Process):
             concentration = self.count_to_concentration(count)
             delta_fields[mol_id][bin_site[0], bin_site[1]] += concentration
 
+    def empty_field(self):
+        return np.zeros((self.n_bins[0], self.n_bins[1]), dtype=np.float64)
+
     def apply_exchanges(self, agents):
         # initialize delta_fields with zero array
         delta_fields = {
-            mol_id: np.zeros((self.n_bins[0], self.n_bins[1]), dtype=np.float64)
+            mol_id: self.empty_field()
             for mol_id in self.molecule_ids}
 
         # apply exchanges to delta_fields
         for agent_id, specs in agents.items():
-            self.apply_single_exchange(delta_fields, specs)
+            self.apply_single_exchange(delta_fields, specs['global'])
 
         return delta_fields
 
