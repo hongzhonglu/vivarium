@@ -153,12 +153,13 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
+    end_time = 100  # 3000
     timeline = [
         (0, {'environment': {
             'glc__D_e': 5.0,
             'lcts_e': 5.0}
         }),
-        (3000, {})]
+        (end_time, {})]
 
     settings = {
         'environment_port': options['environment_port'],
