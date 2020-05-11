@@ -282,21 +282,19 @@ class Process(object):
 def connect_topology(process, derivers, states, topology):
     ''' Given a set of processes and states, and a description of the connections
         between them, link the ports in each process to the state they refer to.'''
-    process_layers = process + derivers
-    for processes in process_layers:
-        for name, process in processes.items():
-            connections = topology[name]
-            ports = {
-                port: states[key]
-                for port, key in connections.items()}
-            try:
-                process.assign_ports(ports)
-            except:
-                print('{} mismatched ports'.format(name))
+    processes = merge_dicts([process, derivers])
+    for name, process in processes.items():
+        connections = topology[name]
+        ports = {
+            port: states[key]
+            for port, key in connections.items()}
+        try:
+            process.assign_ports(ports)
+        except:
+            print('{} mismatched ports'.format(name))
 
-def get_minimum_timestep(process_layers):
+def get_minimum_timestep(processes):
     # get the minimum time_step from all processes
-    processes = merge_dicts(process_layers)
     minimum_step = 10
 
     for process_id, process_object in processes.items():
@@ -306,9 +304,8 @@ def get_minimum_timestep(process_layers):
 
     return minimum_step
 
-def get_maximum_timestep(process_layers):
+def get_maximum_timestep(processes):
     # get the minimum time_step from all processes
-    processes = merge_dicts(process_layers)
     maximum_step = 0.0
 
     for process_id, process_object in processes.items():
@@ -318,31 +315,29 @@ def get_maximum_timestep(process_layers):
 
     return maximum_step
 
-def get_schema(process_list, topology):
+def get_schema(processes, topology):
     schema = {}
-    for level in process_list:
-        for process_id, process in level.items():
-            process_settings = process.default_settings()
-            process_schema = process_settings.get('schema', {})
-            try:
-                port_map = topology[process_id]
-            except:
-                print('{} topology port mismatch'.format(process_id))
-                raise
+    for process_id, process in processes.items():
+        process_settings = process.default_settings()
+        process_schema = process_settings.get('schema', {})
+        try:
+            port_map = topology[process_id]
+        except:
+            print('{} topology port mismatch'.format(process_id))
+            raise
 
-            # go through each port, and get the schema
-            for process_port, settings in process_schema.items():
-                compartment_port = port_map[process_port]
-                compartment_schema = {
-                    compartment_port: settings}
+        # go through each port, and get the schema
+        for process_port, settings in process_schema.items():
+            compartment_port = port_map[process_port]
+            compartment_schema = {
+                compartment_port: settings}
 
-                ## TODO -- check for mismatch
-                deep_merge_check(schema, compartment_schema)
+            ## TODO -- check for mismatch
+            deep_merge_check(schema, compartment_schema)
     return schema
 
-def initialize_state(process_layers, topology, initial_state):
-    schema = get_schema(process_layers, topology)
-    processes = merge_dicts(process_layers)
+def initialize_state(processes, topology, initial_state):
+    schema = get_schema(processes, topology)
 
     # make a dict with the compartment's default states {ports: states}
     compartment_states = {}
@@ -421,7 +416,7 @@ class Compartment(Store):
         elif isinstance(emitter_config, str):
             emitter = emit.configure_emitter(
                 {'emitter': {'type': emitter_config}},
-                self.processes + self.derivers,
+                merge_dicts([self.processes, self.derivers]),
                 self.topology)
             self.emitter_keys = emitter.get('keys')
             self.emitter = emitter.get('object')
@@ -485,11 +480,8 @@ class Compartment(Store):
         return updates
 
     def run_derivers(self):
-
-        derivers = flatten_process_layers(self.state['derivers'])
-
         updates = {}
-        for name, process in derivers.items():
+        for name, process in self.state['derivers'].items():
             new_update = process.update_for(0)  # timestep shouldn't influence derivers
             updates = self.collect_updates(updates, name, new_update)
 
@@ -517,15 +509,12 @@ class Compartment(Store):
 
         time = 0
 
-        # flatten all process layers into a single process dict
-        processes = flatten_process_layers(self.state['processes'])
-
         # keep track of which processes have simulated until when
         front = {
             process_name: {
                 'time': 0,
                 'update': {}}
-            for process_name in processes.keys()}
+            for process_name in self.state['processes'].keys()}
 
         while time < timestep:
             step = INFINITY
@@ -534,7 +523,7 @@ class Compartment(Store):
                 for state_id in self.states:
                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            for process_name, process in processes.items():
+            for process_name, process in self.state['processes'].items():
                 process_time = front[process_name]['time']
 
                 if process_time <= time:
@@ -642,11 +631,11 @@ def test_timescales():
             return {
                 'state': {'motion': motion}}
 
-    processes = [{
+    processes = {
         'slow': Slow(),
-        'fast': Fast()}]
+        'fast': Fast()}
 
-    derivers = []
+    derivers = {}
 
     states = {
         'state': Store({
