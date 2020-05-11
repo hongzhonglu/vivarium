@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from vivarium.processes.derive_globals import AVOGADRO
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import Deriver
 from vivarium.utils.units import units
 
 
@@ -17,7 +17,7 @@ def get_default_state():
             'mmol_to_counts': mmol_to_counts.magnitude}}
 
 
-class DeriveCounts(Process):
+class DeriveCounts(Deriver):
     """
     Process for deriving counts from concentrations
     """

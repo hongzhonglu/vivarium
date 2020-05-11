@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import Deriver
 from vivarium.utils.units import units
 
 from vivarium.processes.derive_globals import AVOGADRO
 
-class DeriveMass(Process):
+class DeriveMass(Deriver):
     """
     Derives and sets total mass from individual molecular counts
     that have a mass schema in their stores .

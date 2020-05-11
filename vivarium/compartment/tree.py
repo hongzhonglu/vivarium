@@ -102,8 +102,7 @@ class State(object):
         '_updater',
         '_value',
         '_properties',
-        '_units',
-        '_subschema'])
+        '_units'])
 
     def __init__(self, config, parent=None):
         self.config = {}
@@ -111,11 +110,24 @@ class State(object):
         self.children = {}
         self.subschema = {}
         self.properties = {}
+        self.default = None
+        self.updater = None
+        self.value = None
+        self.units = None
 
         self.apply_config(config)
 
     def apply_config(self, config):
-        self.config.update(config)
+        self.config = deep_merge(self.config, config)
+
+        if '_subschema' in config:
+            self.subschema = deep_merge(
+                self.subschema,
+                config.get('_subschema', {}))
+            config = {
+                key: value
+                for key, value in config.items()
+                if key != '_subschema'}
 
         if self.schema_keys & self.config.keys():
             self.default = self.config.get('_default')
@@ -127,16 +139,37 @@ class State(object):
                 self.properties,
                 self.config.get('_properties', {}))
             self.units = self.config.get('_units')
-            self.subschema = deep_merge(
-                self.subschema,
-                self.config.get('_subschema', {}))
         else:
             self.value = None
-            for key, child in self.config.items():
+
+            for key, child in config.items():
                 if not key in self.children:
                     self.children[key] = State(child, self)
                 else:
                     self.children[key].apply_config(child)
+
+    def get_config(self):
+        config = {}
+        if self.properties:
+            config['_properties'] = self.properties
+
+        if self.children:
+            child_config = {
+                key: child.get_config()
+                for key, child in self.children.items()}
+            config.update(child_config)
+            if self.subschema:
+                config['_subschema'] = self.subschema
+        else:
+            config.update({
+                '_default': self.default,
+                '_value': self.value})
+            if self.updater:
+                config['_updater'] = self.updater
+            if self.units:
+                config['_units'] = self.units
+
+        return config
 
     def get_value(self):
         if self.children:
@@ -165,14 +198,6 @@ class State(object):
     def get_in(self, path):
         return self.get_path(path).get_value()
 
-    def apply_update(self, update):
-        if self.children:
-            for key, value in update.items():
-                child = self.children[key]
-                child.apply_update(value)
-        else:
-            self.value = self.updater(self.value, update)
-
     def get_template(self, template):
         '''
         Pass in a template dict with None for each value you want to
@@ -188,6 +213,15 @@ class State(object):
                 state[key] = child.get_template(value)
         return state
 
+    def apply_update(self, update):
+        if self.children:
+            for key, value in update.items():
+                if key in self.children:
+                    child = self.children[key]
+                    child.apply_update(value)
+        else:
+            self.value = self.updater(self.value, update)
+
     def child_value(self, key):
         if key in self.children:
             return self.children[key].get_value()
@@ -195,7 +229,6 @@ class State(object):
     def state_for(self, path, keys):
         state = self.get_path(path)
         if state is None:
-            print('nil path: {} -- {}'.format(path, keys))
             return {}
         elif keys and keys[0] == '*':
             return state.get_value()
@@ -251,7 +284,9 @@ class State(object):
         for key, subprocess in processes.items():
             subtopology = topology[key]
             if isinstance(subprocess, Process):
-                process_state = State({'_value': subprocess}, self)
+                process_state = State({
+                    '_value': subprocess,
+                    '_updater': 'set'}, self)
                 self.children[key] = process_state
                 for port, targets in subprocess.ports_schema().items():
                     path = subtopology[port]
@@ -268,8 +303,6 @@ class State(object):
                                         schema,
                                         _value=initial[target])
                                 subpath = path + [target]
-                                # if subpath[0] == '..':
-                                #     import ipdb; ipdb.set_trace()
                                 self.establish_path(subpath, schema)
             else:
                 if not key in self.children:
@@ -377,7 +410,6 @@ def process_derivers(processes, topology, deriver_config={}):
         'topology': deriver_topology}
 
 
-
 def generate_state(processes, topology, initial_state):
     state = State({})
     state.generate_paths(processes, topology, initial_state)
@@ -385,14 +417,14 @@ def generate_state(processes, topology, initial_state):
     return state
 
 
-def append_update(existing_updates, new_update):
-    if existing_updates is None:
-        existing_updates = []
-    existing_updates.append(new_update)
-    return existing_updates
-
-def normalize_path():
-    pass
+def normalize_path(path):
+    progress = []
+    for step in path:
+        if step == '..' and len(progress) > 0:
+            progress = progress[:-1]
+        else:
+            progress.append(step)
+    return progress
 
 
 class Experiment(object):
@@ -405,12 +437,37 @@ class Experiment(object):
             self.topology,
             self.initial_state)
 
-    def collect_updates(self, updates, path, new_update):
+        self.local_time = 0.0
+
+    def absolute_update(self, path, new_update):
+        absolute = {}
         for port, update in new_update.items():
-            topology = get_in(self.topology, path)
-            state_path = list(path[:-1]) + topology[port]
-            update_in(updates, state_path, lambda x: append_update(x, update))
-        return updates
+            topology = get_in(self.topology, path + (port,))
+            if topology is not None:
+                state_path = list(path[:-1]) + topology
+                normal_path = normalize_path(state_path)
+                assoc_in(absolute, normal_path, update)
+        return absolute
+
+    def process_update(self, path, state, interval):
+        process = state.value
+        process_topology = get_in(self.topology, path)
+        ports = process.find_states(state.parent, process_topology)
+        update = process.next_update(interval, ports)
+        absolute = self.absolute_update(path, update)
+        return absolute
+
+    def run_derivers(self, derivers):
+        for path, deriver in derivers.items():
+            # timestep shouldn't influence derivers
+            update = self.process_update(path, deriver, 0)
+            self.state.apply_update(update)
+
+    def send_updates(self, updates, derivers):
+        for update in updates:
+            self.state.apply_update(update)
+
+        self.run_derivers(derivers)
 
     def update(self, timestep):
         ''' Run each process for the given time step and update the related states. '''
@@ -424,9 +481,6 @@ class Experiment(object):
 
         # keep track of which processes have simulated until when
         front = {}
-        # front = {
-        #     process_name: empty_front()
-        #     for process_name in self.processes.keys()}
 
         while time < timestep:
             step = INFINITY
@@ -435,10 +489,20 @@ class Experiment(object):
                 for state_id in self.states:
                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            processes = {
+            all_processes = {
                 path: state
                 for path, state in self.state.depth()
                 if state.value is not None and isinstance(state.value, Process)}
+
+            processes = {
+                path: state
+                for path, state in all_processes.items()
+                if not state.value.is_deriver()}
+
+            derivers = {
+                path: state
+                for path, state in all_processes.items()
+                if state.value.is_deriver()}
 
             for path, state in processes.items():
                 if not path in front:
@@ -449,9 +513,7 @@ class Experiment(object):
                     process = state.value
                     future = min(process_time + process.local_timestep(), timestep)
                     interval = future - process_time
-                    process_topology = get_in(self.topology, path)
-                    ports = process.find_states(state.parent, process_topology)
-                    update = process.next_update(interval, ports)
+                    update = self.process_update(path, state, interval)
 
                     if interval < step:
                         step = interval
@@ -469,15 +531,15 @@ class Experiment(object):
                 # at least one process ran, apply updates and continue
                 future = time + step
 
-                import ipdb; ipdb.set_trace()
-
-                updates = {}
+                updates = []
                 for path, advance in front.items():
                     if advance['time'] <= future:
-                        updates = self.collect_updates(updates, path, advance['update'])
+                        new_update = advance['update']
+                        new_update['_path'] = path
+                        updates.append(new_update)
                         advance['update'] = {}
 
-                self.send_updates(updates)
+                self.send_updates(updates, derivers)
 
                 time = future
 
@@ -489,6 +551,7 @@ class Experiment(object):
 
         # # run emitters
         # self.emit_data()
+
 def test_recursive_store():
     environment_config = {
         'environment': {

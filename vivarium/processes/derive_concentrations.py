@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 from vivarium.processes.derive_globals import AVOGADRO
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import Deriver
 from vivarium.utils.units import units
 
 
 
-class DeriveConcs(Process):
+class DeriveConcs(Deriver):
     """
     Process for deriving concentrations from counts
     """

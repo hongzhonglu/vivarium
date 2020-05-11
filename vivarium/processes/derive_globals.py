@@ -6,7 +6,7 @@ import math
 from scipy import constants
 import numpy as np
 
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import Deriver
 from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
 
@@ -49,7 +49,7 @@ def surface_area_from_length(length, width):
 
 
 
-class DeriveGlobals(Process):
+class DeriveGlobals(Deriver):
     """
     Process for deriving volume, mmol_to_counts, and shape from the cell mass
     """

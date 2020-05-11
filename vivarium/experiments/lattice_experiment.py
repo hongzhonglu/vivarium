@@ -127,33 +127,47 @@ def lattice_experiment(config):
         'topology': environment_topology,
         'initial_state': config.get('initial_state', {})})
 
+    print('processes ------------------------')
+    print(experiment.processes)
+
+    print('topology ------------------------')
+    print(experiment.topology)
+
+    print('before ------------------------')
+    print(experiment.state.get_value())
+
     experiment.update(10.0)
 
-    ## add derivers
-    derivers = get_derivers(processes, topology)
-    deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
-    topology.update(derivers['deriver_topology'])  # add derivers to the topology
+    print('after ----------------------------------')
+    print(experiment.state.get_value())
 
-    # initialize the states
-    # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
-    stores = initialize_state(
-        all_processes,
-        topology,
-        config.get('initial_state', {}))
+    import ipdb; ipdb.set_trace()
 
-    print('state: '.format(stores[BOUNDARY_STATE].state))
+    # ## add derivers
+    # derivers = get_derivers(processes, topology)
+    # deriver_processes = derivers['deriver_processes']
+    # all_processes = processes + derivers['deriver_processes']
+    # topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
-    options = {
-        'name': config.get('name', 'lattice_environment'),
-        'topology': topology,
-        'initial_time': config.get('initial_time', 0.0)}
+    # # initialize the states
+    # # TODO -- pull out each agent_boundary, make a special initialize_state that can connect these up
+    # stores = initialize_state(
+    #     all_processes,
+    #     topology,
+    #     config.get('initial_state', {}))
 
-    return {
-        'processes': processes,
-        'derivers': deriver_processes,
-        'states': stores,
-        'options': options}
+    # print('state: '.format(stores[BOUNDARY_STATE].state))
+
+    # options = {
+    #     'name': config.get('name', 'lattice_environment'),
+    #     'topology': topology,
+    #     'initial_time': config.get('initial_time', 0.0)}
+
+    # return {
+    #     'processes': processes,
+    #     'derivers': deriver_processes,
+    #     'states': stores,
+    #     'options': options}
 
 
 
@@ -189,6 +203,8 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     config = get_lattice_config()
+    lattice_experiment(config)
+
     data = test_lattice_experiment(config, 10)
 
     # timeseries = get_timeseries(data)

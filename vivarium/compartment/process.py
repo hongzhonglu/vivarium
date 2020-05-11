@@ -225,6 +225,8 @@ class Process(object):
     def default_settings(self):
         return {}
 
+    def is_deriver(self):
+        return False
 
     def schema_properties(self, states, schema_type):
         '''
@@ -306,6 +308,10 @@ class Process(object):
         return {
             port: {}
             for port, values in self.ports.items()}
+
+class Deriver(Process):
+    def is_deriver(self):
+        return True
 
 
 def connect_topology(processes, derivers, states, topology):
