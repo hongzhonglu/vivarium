@@ -19,7 +19,7 @@ DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
 DEFAULT_SV = [1.0, 7.0]
 FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
-BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # [220/360, 100.0/100.0, 30.0/100.0]  # HSV
+BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # HSV
 
 N_SNAPSHOTS = 6  # number of snapshots
 
@@ -354,7 +354,16 @@ def get_flourescent_color(baseline_hsv, tag_color, intensity):
     # move color towards bright flouresence color when intensity = 1
     new_hsv = baseline_hsv[:]
     distance = [a - b for a, b in zip(tag_color, new_hsv)]
-    new_hsv = [a + intensity*b for a, b in zip(new_hsv, distance)]
+
+    # if hue distance > 180 degrees, go around in the other direction
+    if distance[0] > 0.5:
+        distance[0] = 1 - distance[0]
+    elif distance[0] < -0.5:
+        distance[0] = 1 + distance[0]
+
+    new_hsv = [a + intensity * b for a, b in zip(new_hsv, distance)]
+    new_hsv[0] = new_hsv[0] % 1
+
     return new_hsv
 
 def volume_to_length(volume, cell_radius):
