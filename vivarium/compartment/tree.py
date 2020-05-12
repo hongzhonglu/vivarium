@@ -129,7 +129,7 @@ class Compartment(object):
 
         if self.schema_keys & config.keys():
             self.default = config.get('_default')
-            self.updater = config.get('_updater', 'accumulate')
+            self.updater = config.get('_updater', self.updater or 'accumulate')
             if isinstance(self.updater, str):
                 self.updater = updater_library[self.updater]
             self.value = config.get('_value', self.default)
@@ -137,6 +137,7 @@ class Compartment(object):
                 self.properties,
                 config.get('_properties', {}))
             self.units = config.get('_units')
+
         else:
             self.value = None
 
@@ -470,11 +471,6 @@ class Experiment(object):
     def send_updates(self, updates, derivers):
         for update in updates:
             self.state.apply_update(update)
-
-
-            # import ipdb; ipdb.set_trace()
-
-
         self.run_derivers(derivers)
 
     def update(self, timestep):
