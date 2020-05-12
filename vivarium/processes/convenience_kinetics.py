@@ -65,9 +65,9 @@ class ConvenienceKinetics(Process):
             'external': []},
         'global_deriver_config': {
             'type': 'globals',
-            'source_port': ['global'],
-            'derived_port': ['global'],
-            'global_port': ['global'],
+            'source_port': 'global',
+            'derived_port': 'global',
+            'global_port': 'global',
             'keys': []}}
 
     def __init__(self, initial_parameters={}):

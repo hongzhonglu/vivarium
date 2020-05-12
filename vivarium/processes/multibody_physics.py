@@ -559,14 +559,15 @@ def mother_machine_body_config(config):
 
     agent_config = {
         agent_id: {
-            'location': possible_locations[index],
-            'angle': PI/2,
-            'volume': volume,
-            'length': length,
-            'width': width,
-            'mass': 1,
-            'forces': [0, 0]}
-        for index, agent_id in range(n_agents)}
+            'global': {
+                'location': possible_locations[index],
+                'angle': PI/2,
+                'volume': volume,
+                'length': length,
+                'width': width,
+                'mass': 1,
+                'forces': [0, 0]}}
+        for index, agent_id in enumerate(range(n_agents))}
 
     return {
         'agents': agent_config,
@@ -1111,3 +1112,5 @@ if __name__ == '__main__':
         run_motility(out_dir)
     elif args.growth:
         data = run_growth_division()
+    else:
+        run_motility(out_dir)
