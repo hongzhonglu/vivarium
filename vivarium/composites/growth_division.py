@@ -49,15 +49,15 @@ def growth_division(config):
         'expression': expression,
         'division': division}
 
-    global_key = ['..', 'global']
-    external_key = ['..'] + config.get('external_key', ['external'])
-    cells_key = ['..', '..', '..'] + config.get('cells_key', ['cells'])
+    global_key = ('..', 'global')
+    external_key = ('..',) + config.get('external_key', ('external',))
+    cells_key = ('..', '..', '..') + config.get('cells_key', ('cells',))
 
     # make the topology.
     # for each process, map process ports to store ids
     topology = {
         'transport': {
-            'internal': ['cell'],
+            'internal': ('cell',),
             'external': external_key,
             'exchange': external_key,
             # 'fluxes': ['flux'], # just for testing
@@ -69,9 +69,9 @@ def growth_division(config):
             'global': global_key,
             'cells': cells_key},
         'expression': {
-            'internal': ['cell'],
+            'internal': ('cell',),
             'external': external_key,
-            'concentrations': ['cell_concentrations']}}
+            'concentrations': ('cell_concentrations',)}}
 
     # add derivers
     derivers = process_derivers(processes, topology)
