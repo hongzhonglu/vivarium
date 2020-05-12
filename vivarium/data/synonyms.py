@@ -35,6 +35,7 @@ synonyms = {
     'Tryptophan': ['trp__L_c'],
     'Tyrosine': ['tyr__L_c'],
     'Valine': ['val__L_c'],
+    'Glucose': ['glc__D_e', 'GLC']
 }
 
 index = invert_index(synonyms)

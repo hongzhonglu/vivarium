@@ -17,7 +17,7 @@ class LacChromosome(object):
             self.ecoli_sequence = read_sequence(ECOLI_GENOME_PATH)
 
         self.factor_thresholds = {
-            ('flhDp', 'CRP'): 1e-05,
+            ('lacZp1', 'Glucose'): 1e-05,
         }
 
         self.factor_thresholds.update(parameters.get('thresholds', {}))
@@ -32,7 +32,7 @@ class LacChromosome(object):
                     'id': 'lacZp1',
                     'position': 366343,
                     'direction': -1,
-                    'sites': [{'thresholds': {'CRP': 1e-05}}],
+                    'sites': [{'thresholds': {'Glucose': 1e-05}}],
                     'terminators': [
                         {
                             'position': 361209,
@@ -54,9 +54,9 @@ class LacChromosome(object):
             key: promoter.to_dict()
             for key, promoter in self.chromosome.promoters.items()}
 
-        self.promoters = self.config['promoters'].keys()
+        self.promoters = self.chromosome_config['promoters'].keys()
         self.promoter_affinities = {
-            ('lacZp1', 'CRP'): 0.01}
+            ('lacZp1', 'Glucose'): 0.01}
         self.promoter_affinities.update(
             parameters.get('promoter_affinities', {}))
 
@@ -84,7 +84,7 @@ class LacChromosome(object):
         self.transcript_affinities.update(
             parameters.get('transcript_affinities', {}))
 
-        self.transcription_factors = ['CRP']
+        self.transcription_factors = ['Glucose']
         self.complexation_monomer_ids = []
         self.complexation_complex_ids = []
         self.complexation_stoichiometry = {}
