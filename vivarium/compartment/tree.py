@@ -211,6 +211,13 @@ class Store(object):
                 state[key] = child.get_template(value)
         return state
 
+    def delete_in(self, path):
+        if not path:
+            self.children = {}
+        else:
+            target = self.get_in(path[:-1])
+            del target.children[path[-1]]
+
     def apply_update(self, update):
         if self.children:
             for key, value in update.items():
