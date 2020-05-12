@@ -69,7 +69,6 @@ from vivarium.composites.growth_division import growth_division
 #         'topologies': topologies}
 
 
-# TODO -- this can be made into a general function
 def make_agents(count, compartment, config):
     processes = {}
     topology = {}
@@ -83,7 +82,7 @@ def make_agents(count, compartment, config):
         agent_config.update({'agent_id': agent_id})
         agent = compartment(dict(
             agent_config,
-            agent_id=agent_id))  # TODO -- pass in compartment
+            agent_id=agent_id))
 
         # save processes and topology
         processes[agent_id] = {
@@ -96,35 +95,23 @@ def make_agents(count, compartment, config):
         'topology': topology}
 
 
-# TODO -- this can move to a separate experiments directory
 def lattice_experiment(config):
     # configure the experiment
     count = config.get('count')
 
     # get the environment
     environment = make_lattice_environment(config.get('environment', {}))
-    environment_processes = environment['processes']
-    environment_topology = environment['topology']
-    inner_key = 'agents'  # TODO -- get this from config of each env process
-
-    processes = {
-        'environment': environment_processes}
-    topology = {
-        'environment': environment_topology}
+    processes = environment['processes']
+    topology = environment['topology']
 
     agents = make_agents(count, growth_division, {
         'cells_key': ['..', 'agents']})
-    environment_processes['agents'] = agents['processes']
-    environment_topology['agents'] = agents['topology']
-
-    state = generate_state(
-        environment_processes,
-        environment_topology,
-        config.get('initial_state', {}))
+    processes['agents'] = agents['processes']
+    topology['agents'] = agents['topology']
 
     experiment = Experiment({
-        'processes': environment_processes,
-        'topology': environment_topology,
+        'processes': processes,
+        'topology': topology,
         'initial_state': config.get('initial_state', {})})
 
     print('processes ------------------------')
