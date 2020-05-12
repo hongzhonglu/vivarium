@@ -154,7 +154,7 @@ def process_in_experiment(process, settings={}):
     processes = {'process': process}
     topology = {
         'process': {
-            port: [port] for port in process.ports}}
+            port: (port,) for port in process.ports}}
 
     # add derivers
     derivers = process_derivers(processes, topology, deriver_config)

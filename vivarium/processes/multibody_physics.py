@@ -198,14 +198,17 @@ class Multibody(Process):
                         '_default': [0.5, 0.5],
                         '_updater': 'set'},
                     'length': {
-                        '_default': 2.0},
+                        '_default': 2.0,
+                        '_updater': 'set'},
                     'width': {
-                        '_default': 1.0},
+                        '_default': 1.0,
+                        '_updater': 'set'},
                     'angle': {
                         '_default': 0.0,
                         '_updater': 'set'},
                     'mass': {
-                        '_default': 1.0},
+                        '_default': 1.0,
+                        '_updater': 'set'},
                     'motile_force': {
                         '_default': [0.0, 0.0],
                         '_updater': 'set'}}}}
@@ -675,7 +678,7 @@ def run_mother_machine():
     channel_space = 1.5
 
     settings = {
-        'growth_rate': 0.02,
+        'growth_rate': 0.01,
         'growth_rate_noise': 0.02,
         'division_volume': 2.6,
         'channel_height': channel_height,
@@ -839,7 +842,6 @@ def simulate_growth_division(config, settings):
 
             # add to store
             agents_store.establish_path(add_agents)
-
 
         # update experiment
         experiment.send_updates([{'agents': agent_updates}])
