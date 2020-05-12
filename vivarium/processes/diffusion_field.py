@@ -234,7 +234,7 @@ class DiffusionField(Process):
                  '*': {
                      'global': {
                          'location': {
-                             '_default': [0, 0],
+                             '_default': [0.5, 0.5],
                              '_updater': 'set'}},
                      'local_environment': {
                          molecule: {

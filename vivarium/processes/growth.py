@@ -42,7 +42,14 @@ class Growth(Process):
     """
 
     defaults = {
-        'growth_rate': 0.0006}
+        'growth_rate': 0.0006,
+        'global_deriver_config': {
+            'type': 'globals',
+            'source_port': 'global',
+            'derived_port': 'global',
+            'global_port': 'global',
+            'keys': []}
+    }
 
     def __init__(self, initial_parameters={}):
         ports = {
@@ -71,9 +78,13 @@ class Growth(Process):
                 'mass': {
                     'updater': 'set'}}}
 
+        # derivers
+        deriver_setting = [self.defaults['global_deriver_config']]
+
         default_settings = {
             'state': default_state,
             'emitter_keys': default_emitter_keys,
+            'deriver_setting': deriver_setting,
             'schema': schema}
 
         return default_settings

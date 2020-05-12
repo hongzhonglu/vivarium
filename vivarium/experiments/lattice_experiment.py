@@ -19,6 +19,8 @@ from vivarium.composites.lattice_environment import (
 )
 from vivarium.composites.growth_division import growth_division
 
+from vivarium.composites.growth import growth_compartment
+
 
 
 def make_agents(count, compartment, config):
@@ -56,7 +58,7 @@ def lattice_experiment(config):
     processes = environment['processes']
     topology = environment['topology']
 
-    agents = make_agents(count, growth_division, {
+    agents = make_agents(count, growth_compartment, {
         'cells_key': ['..', 'agents']})
     processes['agents'] = agents['processes']
     topology['agents'] = agents['topology']

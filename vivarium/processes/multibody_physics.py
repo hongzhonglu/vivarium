@@ -194,7 +194,7 @@ class Multibody(Process):
             '*': {
                 'global': {
                     'location': {
-                        '_default': [0.0, 0.0],
+                        '_default': [0.5, 0.5],
                         '_updater': 'set'},
                     'width': {
                         '_default': 0.0},
