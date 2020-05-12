@@ -107,7 +107,7 @@ def compose_txp_mtb_ge(config):
     config['metabolism'] = config.get('metabolism', default_metabolism_config())
     config['metabolism']['initial_mass'] = initial_mass
     config['transport'] = config.get('transport', get_glc_lct_config())
-    config['expression'] = config.get('transport', get_lacy_config())
+    config['expression'] = config.get('expression', get_lacy_config())
     config['division'] = config.get('division', {'division_volume': 2.4})
 
     # get compartment
