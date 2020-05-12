@@ -34,12 +34,12 @@ def compose_gene_expression(config):
     division = Division(config)
 
     # place processes in layers
-    processes = [
-        {'transcription': transcription,
-         'translation': translation,
-         'degradation': degradation,
-         'complexation': complexation},
-        {'division': division}]
+    processes = {
+        'transcription': transcription,
+        'translation': translation,
+        'degradation': degradation,
+        'complexation': complexation,
+        'division': division}
 
     # make the topology
     topology = {
@@ -55,7 +55,8 @@ def compose_gene_expression(config):
             'molecules': 'molecules',
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'concentrations': 'concentrations'},
+            'concentrations': 'concentrations',
+            'global': 'global'},
 
         'degradation': {
             'transcripts': 'transcripts',
@@ -65,15 +66,21 @@ def compose_gene_expression(config):
 
         'complexation': {
             'monomers': 'proteins',
-            'complexes': 'proteins'},
+            'complexes': 'proteins',
+            'global': 'global'},
 
         'division': {
             'global': 'global'}}
 
     # add derivers
-    derivers = get_derivers(processes, topology)
+    deriver_config = {
+        'mass': {
+            'dark_mass': 1339,  # fg
+            'ports': {'global': 'global'}}}
+    derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = processes.copy()
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
 
@@ -100,25 +107,41 @@ def compose_gene_expression(config):
 
 # analysis
 def gene_network_plot(data, out_dir, filename='gene_network'):
+    '''
+    Make a gene network plot from configuration data
+
+    - data (dict):
+        {
+        'operons': operons, the "genes" in a chromosome config with {operon: [genes list]}
+        'templates': promoters, the "promoters" in a chromosome config with {promoter: {sites: [], thresholds: []}}
+        'complexes': complexes, stoichiometry from a complexation process.
+        }
+
+    '''
     node_size = 400
-    node_distance = 10
+    node_distance = 30
     edge_weight = 1
+    iterations = 1000
 
     operon_suffix = '_o'
     tf_suffix = '_tf'
     promoter_suffix = '_p'
     gene_suffix = '_g'
+    complex_suffix = '_cxn'
 
     # plotting parameters
     color_legend = {
         'operon': [x/255 for x in [199,164,53]],
         'gene': [x / 255 for x in [181,99,206]],
         'promoter': [x / 255 for x in [110,196,86]],
-        'transcription_factor': [x / 255 for x in [222,85,80]]}
+        'transcription_factor': [x / 255 for x in [222,85,80]],
+        'complex': [x / 255 for x in [153, 204, 255]],
+    }
 
     # get data
     operons = data.get('operons', {})
     templates = data.get('templates', {})
+    complexes = data.get('complexes', {})
 
     # make graph from templates
     G = nx.Graph()
@@ -128,6 +151,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     gene_nodes = set()
     promoter_nodes = set()
     tf_nodes = set()
+    complex_nodes = set()
 
     edges = []
 
@@ -173,8 +197,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
         for site in promoter_sites:
             thresholds = site['thresholds']
             for threshold in thresholds:
-                tf = threshold[0]
-                tf_name = tf + tf_suffix
+                tf_name = threshold + tf_suffix
 
                 tf_nodes.add(tf_name)
                 G.add_node(tf_name)
@@ -206,6 +229,73 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
                 edges.append(edge)
                 G.add_edge(promoter_name, operon_name)
 
+
+    ## add gene product --> complex
+    # first get the sets of complexes and reactants.
+    complex_set = set()
+    monomer_set = set()
+    for complex, stoichiometry in complexes.items():
+        complex_list = [mol_id for mol_id, coeff in stoichiometry.items() if coeff>0]
+        reactant_list = [mol_id for mol_id, coeff in stoichiometry.items() if coeff<0]
+
+        complex_set.update(complex_list)
+        monomer_set.update(reactant_list)
+
+    # complexes are removed from reactants
+    for complex in complex_set:
+        if complex in monomer_set:
+            monomer_set.remove(complex)
+
+    # add nodes and edges
+    for complex, stoichiometry in complexes.items():
+        complexes = [mol_id for mol_id, coeff in stoichiometry.items() if coeff>0]
+        reactants = {mol_id: coeff for mol_id, coeff in stoichiometry.items() if coeff<0}
+        
+        assert len(complexes) == 1, 'too many complexes'
+        complex = complexes[0]
+        complex_name = complex + complex_suffix
+
+        complex_nodes.add(complex_name)
+        G.add_node(complex_name)
+
+        # set node attributes
+        complex_attrs = {complex_name: {'type': 'complex'}}
+        nx.set_node_attributes(G, complex_attrs)
+
+        # make edge
+        for reactant, coeff in reactants.items():
+            
+            # is this reactant a monomer or a complex?
+            if reactant in monomer_set:
+                # TODO -- check that it is actually included in the genes?
+                reactant_name = reactant + gene_suffix
+            elif reactant in complex_set:
+                reactant_name = reactant + complex_suffix
+
+            # connect reactant --> complex
+            edge = (reactant_name, complex_name)
+            edges.append(edge)
+            G.add_edge(reactant_name, complex_name)
+
+    # add edges between proteins/complexes and transcription factors that share the same name
+    tf_names = [node.replace(tf_suffix, '') for node in tf_nodes]
+    for node in gene_nodes:
+        gene_name = node.replace(gene_suffix, '')
+        if gene_name in tf_names:
+            tf_node = gene_name + tf_suffix
+            edge = (node, tf_node)
+            edges.append(edge)
+            G.add_edge(node, tf_node)
+
+    for node in complex_nodes:
+        complex_name = node.replace(complex_suffix, '')
+        if complex_name in tf_names:
+            tf_node = complex_name + tf_suffix
+            edge = (node, tf_node)
+            edges.append(edge)
+            G.add_edge(node, tf_node)
+
+    # separate out the disconnected graphs
     subgraphs = sorted(nx.connected_components(G), key = len, reverse=True)
 
     # make node labels by removing suffix
@@ -214,11 +304,12 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
     g_labels = {node: node.replace(gene_suffix, '') for node in gene_nodes}
     p_labels = {node: node.replace(promoter_suffix, '') for node in promoter_nodes}
     tf_labels = {node: node.replace(tf_suffix, '') for node in tf_nodes}
+    cxn_labels = {node: node.replace(complex_suffix, '') for node in complex_nodes}
     node_labels.update(o_labels)
     node_labels.update(g_labels)
     node_labels.update(p_labels)
     node_labels.update(tf_labels)
-
+    node_labels.update(cxn_labels)
 
     # save network for use in gephi
     gephi_nodes = {}
@@ -243,6 +334,11 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
             'label': tf_labels[node_id],
             'type': 'transcription factor',
             'size': 1}
+    for node_id in complex_nodes:
+        gephi_nodes[node_id] = {
+            'label': cxn_labels[node_id],
+            'type': 'complex',
+            'size': 1}
     save_network(gephi_nodes, gephi_edges, out_dir)
 
 
@@ -260,7 +356,11 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
         # get positions
         dist = node_distance / (len(subgraph)**0.5)
-        pos = nx.spring_layout(subgraph, k=dist, iterations=500)
+        # pos = nx.spring_layout(subgraph, k=dist, iterations=iterations)
+        pos = nx.spring_layout(subgraph,
+                               k=dist,
+                               scale=20,
+                               iterations=iterations)
 
         color_map = []
         for node in subgraph:

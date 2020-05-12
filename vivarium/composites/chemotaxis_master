@@ -10,7 +10,7 @@ from vivarium.compartment.composition import (
     plot_simulation_output,
     plot_compartment_topology)
 from vivarium.composites.gene_expression import plot_gene_expression_output
-from vivarium.composites.flagella_expression import get_flg_expression_config
+from vivarium.composites.flagella_expression import get_flagella_expression_config
 
 # processes
 from vivarium.processes.division import (
@@ -55,7 +55,7 @@ def compose_chemotaxis_master(config):
     metabolism = Metabolism(metabolism_config)
 
     # flagella expression
-    flg_expression_config = get_flg_expression_config()
+    flg_expression_config = get_flagella_expression_config({})
     transcription = Transcription(flg_expression_config['transcription'])
     translation = Translation(flg_expression_config['translation'])
     degradation = RnaDegradation(flg_expression_config['degradation'])
@@ -75,32 +75,18 @@ def compose_chemotaxis_master(config):
     division = Division(division_config)
 
     # Place processes in layers
-    processes = [
-        {
-        'PMF': PMF
-        },
-
-        {
+    processes = {
+        'PMF': PMF,
         'receptor': receptor,
         'transport': transport,
-        },
-
-        {
         'transcription': transcription,
         'translation': translation,
         'degradation': degradation,
         'complexation': complexation,
-        'metabolism': metabolism
-        },
-
-        {
-        'flagella': flagella
-        },
-
-        {
-        'division': division
-        }
-    ]
+        'metabolism': metabolism,
+        'flagella': flagella,
+        'division': division,
+    }
 
     # Make the topology
     # for each process, map process ports to store ids
@@ -132,7 +118,8 @@ def compose_chemotaxis_master(config):
             'molecules': 'internal',
             'transcripts': 'transcripts',
             'proteins': 'proteins',
-            'concentrations': 'concentrations'},
+            'concentrations': 'concentrations',
+            'global': 'global'},
 
         'degradation': {
             'transcripts': 'transcripts',
@@ -142,7 +129,8 @@ def compose_chemotaxis_master(config):
 
         'complexation': {
             'monomers': 'proteins',
-            'complexes': 'proteins'},
+            'complexes': 'proteins',
+            'global': 'global'},
 
         'receptor': {
             'external': 'environment',
@@ -167,7 +155,8 @@ def compose_chemotaxis_master(config):
     # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = processes.copy()
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])
 
     # initialize the states

@@ -1,3 +1,9 @@
+'''
+========================
+Stochastic Transcription
+========================
+'''
+
 import copy
 import numpy as np
 import logging as log
@@ -16,10 +22,12 @@ def choose_element(elements):
         choice = np.random.choice(len(elements), 1)
         return list(elements)[int(choice)]
 
+#: Variable name for unbound RNA polymerase
 UNBOUND_RNAP_KEY = 'RNA Polymerase'
 
 monomer_ids = list(nucleotides.values())
 
+#: The default configuration parameters for :py:class:`Transcription`
 default_transcription_parameters = {
     'promoter_affinities': {
         ('pA', None): 1.0,
@@ -38,13 +46,291 @@ default_transcription_parameters = {
 
 class Transcription(Process):
     def __init__(self, initial_parameters={}):
-        '''
-        The main parameters here are:
-        * promoter_affinities - a dict where keys are tuples representing promoter
-            states with respect to their transcription factor binding sites, and the
-            values are the affinity RNAP have for that promoter state.
-        * promoter_order - a list representing a canonical ordering of the promoters.
-        * elongation_rate - elongation rate of polymerizing mRNA.
+        '''A stochastic transcription model
+
+        .. WARNING:: Vivarium's knowledge base uses the gene name to
+            name the protein. This means that for a gene acrA that
+            codes for protein AcrA, you must refer to the gene,
+            transcript, and protein each as acrA.
+
+        :term:`Ports`:
+
+        * **chromosome**: The linked :term:`store` should hold a
+          representation of the chromosome in the form returned by
+          :py:meth:`vivarium.states.chromosome.Chromosome.to_dict`.
+        * **molecules**: Expects variables with the names in the
+          *molecule_ids* configuration. These are the monomers consumed
+          by transcription.
+        * **factors**: Expects variables for each transcription factor's
+          concentration.
+        * **transcripts**: The linked store should store the
+          concentrations of the transcripts.
+        * **proteins**: The linked store should hold the concentrations
+          of the transcription factors and the RNA polymerase.
+
+        Arguments:
+            initial_parameters: The following configuration options may
+                be provided:
+
+                * **promoter_affinities** (:py:class:`dict`): Maps from
+                  binding state tuples to the binding affinity of RNA
+                  polymerase and the promoter when the promoter is at
+                  that binding state. The binding state of a promoter is
+                  which (if any) transcription factors are bound to the
+                  promoter. Such a binding state can be represented by a
+                  binding state tuple, which is a :py:class:`tuple`
+                  whose first element is the name of the promoter. All
+                  bound transcription factors are listed as subsequent
+                  elements. If no transcription factors are bound, the
+                  sole subsequent element is ``None``.
+
+                  .. todo:: What is the significance of the order in the
+                      binding state tuple?
+
+                  .. todo:: What are the units of the affinities?
+
+                * **transcription_factors** (:py:class:`list`): A list
+                  of all modeled transcription factors.
+                * **sequence**: The DNA sequence that includes all the
+                  genes whose transcription is being modeled.
+                * **templates** (:py:class:`dict`): Maps from the name
+                  of an operon to that operon's :term:`template
+                  specification`.
+                * **genes** (:py:class:`dict`): Maps from operon name to
+                  a list of the names of the genes in that operon.
+                * **elongation_rate** (:py:class:`float`): The
+                  elongation rate of the RNA polymerase.
+                * **polymerase_occlusion** (:py:class:`int`): The number
+                  of base pairs behind the polymerase where another
+                  polymerase is occluded and so cannot bind.
+                * **symbol_to_monomer** (:py:class:`dict`): Maps from
+                  the symbols used to represent monomers in the RNA
+                  sequence to the name of the free monomer. This should
+                  generally be
+                  :py:data:`vivarium.data.nucleotides.nucleotides`.
+                * **monomer_ids** (:py:class:`list`): A list of the
+                  names of the free monomers consumed by transcription.
+                  This can generally be computed as:
+
+                  >>> from vivarium.data.nucleotides import nucleotides
+                  >>> monomer_ids = nucleotides.values()
+                  >>> print(list(monomer_ids))
+                  ['rATP', 'rGTP', 'rUTP', 'rCTP']
+
+                  Note that we only included the ``list()``
+                  transformation to make the output prettier. The
+                  ``dict_values`` object returned by the ``.values()``
+                  call is sufficiently list-like for use here.
+                * **molecule_ids** (:py:class:`list`): A list of all the
+                  molecules needed by the :term:`process`. This will
+                  generally be the same as *monomer_ids*.
+
+        Example configuring the process (uses
+        :py:func:`vivarium.utils.pretty.format_dict`):
+
+        >>> import random
+        >>>
+        >>> import numpy as np
+        >>>
+        >>> from vivarium.states.chromosome import (
+        ...     toy_chromosome_config,
+        ...     Chromosome,
+        ... )
+        >>> from vivarium.data.nucleotides import nucleotides
+        >>> # format_dict lets us print dictionaries prettily
+        >>> from vivarium.utils.pretty import format_dict
+        >>>
+        >>> random.seed(0)  # Needed because process is stochastic
+        >>> np.random.seed(0)
+        >>> # We will use the toy chromosome from toy_chromosome_config
+        >>> print(format_dict(toy_chromosome_config))
+        {
+            "domains": {
+                "0": {
+                    "children": [],
+                    "id": 0,
+                    "lag": 0,
+                    "lead": 0
+                }
+            },
+            "genes": {
+                "oA": [
+                    "eA"
+                ],
+                "oAZ": [
+                    "eA",
+                    "eZ"
+                ],
+                "oB": [
+                    "eB"
+                ],
+                "oBY": [
+                    "eB",
+                    "eY"
+                ]
+            },
+            "promoter_order": [
+                "pA",
+                "pB"
+            ],
+            "promoters": {
+                "pA": {
+                    "direction": 1,
+                    "id": "pA",
+                    "position": 3,
+                    "sites": [
+                        {
+                            "length": 3,
+                            "position": 0,
+                            "thresholds": {
+                                "tfA": 0.3
+                            }
+                        }
+                    ],
+                    "terminators": [
+                        {
+                            "position": 6,
+                            "products": [
+                                "oA"
+                            ],
+                            "strength": 0.5
+                        },
+                        {
+                            "position": 12,
+                            "products": [
+                                "oAZ"
+                            ],
+                            "strength": 1.0
+                        }
+                    ]
+                },
+                "pB": {
+                    "direction": -1,
+                    "id": "pB",
+                    "position": -3,
+                    "sites": [
+                        {
+                            "length": 3,
+                            "position": 0,
+                            "thresholds": {
+                                "tfB": 0.5
+                            }
+                        }
+                    ],
+                    "terminators": [
+                        {
+                            "position": -9,
+                            "products": [
+                                "oB"
+                            ],
+                            "strength": 0.5
+                        },
+                        {
+                            "position": -12,
+                            "products": [
+                                "oBY"
+                            ],
+                            "strength": 1.0
+                        }
+                    ]
+                }
+            },
+            "rnaps": [],
+            "sequence": "ATACGGCACGTGACCGTCAACTTA"
+        }
+        >>> monomer_ids = list(nucleotides.values())
+        >>> configuration = {
+        ...     'promoter_affinities': {
+        ...         ('pA', None): 1.0,
+        ...         ('pA', 'tfA'): 10.0,
+        ...         ('pB', None): 1.0,
+        ...         ('pB', 'tfB'): 10.0},
+        ...     'transcription_factors': ['tfA', 'tfB'],
+        ...     'sequence': toy_chromosome_config['sequence'],
+        ...     'templates': toy_chromosome_config['promoters'],
+        ...     'genes': toy_chromosome_config['genes'],
+        ...     'elongation_rate': 10.0,
+        ...     'polymerase_occlusion': 5,
+        ...     'symbol_to_monomer': nucleotides,
+        ...     'monomer_ids': monomer_ids,
+        ...     'molecule_ids': monomer_ids,
+        ... }
+        >>> # At this point we haven't used the toy chromosome yet
+        >>> # because it will be specified in the chromosome port.
+        >>> # Notice that the parameters are specific to the chromosome.
+        >>> transcription_process = Transcription(configuration)
+        >>> # Now we need to initialize the simulation stores
+        >>> state = {
+        ...     'chromosome': Chromosome(
+        ...         toy_chromosome_config).to_dict(),
+        ...     'molecules': {
+        ...         nucleotide: 10
+        ...         for nucleotide in monomer_ids
+        ...     },
+        ...     'proteins': {UNBOUND_RNAP_KEY: 10},
+        ...     'factors': {'tfA': 0.2, 'tfB': 0.7},
+        ... }
+        >>> update = transcription_process.next_update(1.0, state)
+        >>> print(format_dict(update))
+        {
+            "chromosome": {
+                "domains": {
+                    "0": {
+                        "children": [],
+                        "id": 0,
+                        "lag": 0,
+                        "lead": 0
+                    }
+                },
+                "rnap_id": 4,
+                "rnaps": [
+                    {
+                        "domain": 0,
+                        "id": 2,
+                        "position": 7,
+                        "state": "polymerizing",
+                        "template": "pA",
+                        "template_index": 0,
+                        "terminator": 1
+                    },
+                    {
+                        "domain": 0,
+                        "id": 3,
+                        "position": 3,
+                        "state": "occluding",
+                        "template": "pB",
+                        "template_index": 1,
+                        "terminator": 0
+                    },
+                    {
+                        "domain": 0,
+                        "id": 4,
+                        "position": 0,
+                        "state": "occluding",
+                        "template": "pA",
+                        "template_index": 0,
+                        "terminator": 0
+                    }
+                ],
+                "root_domain": 0
+            },
+            "molecules": {
+                "rATP": -3,
+                "rCTP": -4,
+                "rGTP": -8,
+                "rUTP": -4
+            },
+            "proteins": {
+                "RNA Polymerase": -3
+            },
+            "transcripts": {
+                "oA": 0,
+                "oAZ": 0,
+                "oB": 0,
+                "oBY": 1
+            }
+        }
+
         '''
 
         log.debug('inital_parameters: {}'.format(initial_parameters))
@@ -341,7 +627,7 @@ def test_transcription():
         for nucleotide in transcription.monomer_ids})
 
     update = transcription.next_update(1.0, states)
-    
+
     print(update)
     print('complete!')
 

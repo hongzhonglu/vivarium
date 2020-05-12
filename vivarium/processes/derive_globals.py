@@ -16,12 +16,36 @@ AVOGADRO = constants.N_A * 1 / units.mol
 
 
 
-def get_length(volume, width):
-    radius = width / 2
-    cylinder_length = volume / (PI * radius ** 2) + (4 / 3) * PI * radius ** 3
-    length = cylinder_length + width
+def length_from_volume(volume, width):
+    '''
+    get cell length from volume, using the following equation for capsule volume, with V=volume, r=radius,
+    a=length of cylinder without rounded caps, l=total length:
 
-    return length
+    V = (4/3)*PI*r^3 + PI*r^2*a
+    l = a + 2*r
+    '''
+    radius = width / 2
+    cylinder_length = (volume - (4/3) * PI * radius**3) / (PI * radius**2)
+    total_length = cylinder_length + 2 * radius
+    return total_length
+
+def volume_from_length(length, width):
+    '''
+    inverse of length_from_volume
+    '''
+    radius = width / 2
+    cylinder_length = length - width
+    volume = cylinder_length * (PI * radius**2) + (4 / 3) * PI * radius**3
+    return volume
+
+def surface_area_from_length(length, width):
+    '''
+    SA = 3*PI*r^2 + 2*PI*r*a
+    '''
+    radius = width / 2
+    cylinder_length = length - width
+    surface_area = 3 * PI * radius**2 + 2 * PI * radius * cylinder_length
+    return surface_area
 
 
 
@@ -31,7 +55,7 @@ class DeriveGlobals(Process):
     """
 
     defaults = {
-        'width': 0.5,  # um
+        'width': 1,  # um
     }
 
     def __init__(self, initial_parameters={}):
@@ -53,7 +77,9 @@ class DeriveGlobals(Process):
                 'volume',
                 'mmol_to_counts',
                 'density',
-                'length']}
+                'width',
+                'length',
+                'surface_area']}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -66,14 +92,17 @@ class DeriveGlobals(Process):
         density = 1100 * units.g / units.L
         volume = mass/density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
-        length = get_length(volume.magnitude, self.width)
+        length = length_from_volume(volume.magnitude, self.width)
+        surface_area = surface_area_from_length(length, self.width)
 
         global_state = {
             'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
             'density': density.magnitude,
+            'width': self.width,
             'length': length,
+            'surface_area': surface_area,
         }
 
         default_state = {
@@ -81,10 +110,10 @@ class DeriveGlobals(Process):
 
         # default emitter keys
         default_emitter_keys = {
-            'global': ['volume']}
+            'global': ['volume', 'width', 'length', 'surface_area']}
 
         # schema
-        set_states = ['volume', 'mmol_to_counts', 'length']
+        set_states = ['volume', 'mmol_to_counts', 'length', 'surface_area']
         set_divide = ['density']
         schema = {
             'global': {
@@ -113,13 +142,15 @@ class DeriveGlobals(Process):
         # get volume from mass, and more variables from volume
         volume = mass / density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
-        length = get_length(volume.magnitude, self.width)
+        length = length_from_volume(volume.magnitude, self.width)
+        surface_area = surface_area_from_length(length, self.width)
 
         return {
             'global': {
                 'volume': volume.to('fL').magnitude,
                 'mmol_to_counts': mmol_to_counts.magnitude,
-                'length': length}}
+                'length': length,
+                'surface_area': surface_area}}
 
 
 

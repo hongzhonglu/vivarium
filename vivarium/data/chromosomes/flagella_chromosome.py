@@ -1,10 +1,19 @@
+import os
+
 from vivarium.utils.fasta import read_sequence
 from vivarium.utils.polymerize import generate_template
 from vivarium.data.knowledge_base import KnowledgeBase
 from vivarium.states.chromosome import Chromosome
 
 
-ECOLI_GENOME_PATH = 'vivarium/data/flat/Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
+ECOLI_GENOME_FILE_NAME = 'Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.dna.chromosome.Chromosome.fa'
+ECOLI_GENOME_PATH = os.path.abspath(
+    os.path.join(
+        __file__,
+        "../../flat/{}".format(ECOLI_GENOME_FILE_NAME)
+    )
+)
+
 
 class FlagellaChromosome(object):
     ecoli_sequence = None
@@ -53,6 +62,7 @@ class FlagellaChromosome(object):
                 'fliE': ['fliE'],
                 'fliF': ['fliF', 'fliG', 'fliH', 'fliI', 'fliJ', 'fliK'],
                 'flgA': ['flgA', 'flgM', 'flgN'],
+                'flgM': ['flgM', 'flgN'],
                 'flgE': ['flgE'],
                 'flgB': ['flgB', 'flgC', 'flgD', 'flgE', 'flgF', 'flgG', 'flgH', 'flgI', 'flgJ'],
                 'flhB': ['flhB', 'flhA', 'flhE'],
@@ -61,8 +71,7 @@ class FlagellaChromosome(object):
                 'flgK': ['flgK', 'flgL'],
                 'fliC': ['fliC'],
                 'tar': ['tar', 'tap', 'cheR', 'cheB', 'cheY', 'cheZ'],
-                'motA': ['motA', 'motB', 'cheA', 'cheW'],
-                'flgM': ['flgM', 'flgN']},
+                'motA': ['motA', 'motB', 'cheA', 'cheW']},
             'promoters': {
                 'flhDp': {
                     'id': 'flhDp',
@@ -324,7 +333,7 @@ class FlagellaChromosome(object):
             affinities = {}
             first, second = list(promoter_factors[
                 list(promoter_factors.keys())[0]].keys())
-            
+
             # this hard coding of simple addition is alarming and probably points
             # towards providing a function of promoter state for affinity rather
             # than a simple lookup of the affinity for each promoter state tuple.
@@ -342,8 +351,6 @@ class FlagellaChromosome(object):
 
         flhDC_affinities = binary_sum_gates(flhDC_factors)
         self.promoter_affinities.update(flhDC_affinities)
-        print('flhDC_affinities')
-        print(flhDC_affinities)
 
         # for promoter in self.flhDC_activated:
         #     self.promoter_affinities[(promoter, 'flhDC')] = 1.0
@@ -371,12 +378,23 @@ class FlagellaChromosome(object):
                 [key[1]])
             for key, sequence in self.protein_sequences.items()}
 
-        self.transcript_affinities = {
-            operon: 0.01
-            for operon in self.transcripts}
-
+        # transcript affinities are the affinities transcripts to bind a ribosome and translate to protein
+        # transcript affinities are scaled relative to the requirements to build a single full flagellum.
+        self.min_tr_affinity = 1e-1
+        tr_affinity_scaling = {
+            'fliL': 2,
+            'fliM': 34,
+            'fliG': 26,
+            'fliH': 12,
+            'fliI': 6,
+            'fliD': 5,
+            'flgE': 120}
+        self.transcript_affinities = {}
+        for (operon, product) in self.transcripts:
+            self.transcript_affinities[(operon, product)] = self.min_tr_affinity * tr_affinity_scaling.get(product,1)
         self.transcript_affinities.update(
             parameters.get('transcript_affinities', {}))
+
 
         self.transcription_factors = [
             'flhDC', 'fliA', 'CsgD', 'CRP', 'GadE', 'H-NS', 'CpxR', 'Fnr']

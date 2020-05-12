@@ -4,16 +4,11 @@ import copy
 import numpy as np
 from arrow import StochasticSystem
 
+from vivarium.data.molecular_weight import molecular_weight
 from vivarium.compartment.process import Process, keys_list
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 
 chromosome = FlagellaChromosome()
-
-default_complexation_parameters = {
-    'monomer_ids': chromosome.complexation_monomer_ids,
-    'complex_ids': chromosome.complexation_complex_ids,
-    'stoichiometry': chromosome.complexation_stoichiometry,
-    'rates': chromosome.complexation_rates}
 
 def build_complexation_stoichiometry(
         stoichiometry,
@@ -37,11 +32,17 @@ def build_complexation_stoichiometry(
             matrix[reaction_index][reverse_index[molecule_id]] = level
 
     return matrix, rates_array
-    
+
 
 class Complexation(Process):
+    defaults = {
+        'monomer_ids': chromosome.complexation_monomer_ids,
+        'complex_ids': chromosome.complexation_complex_ids,
+        'stoichiometry': chromosome.complexation_stoichiometry,
+        'rates': chromosome.complexation_rates}
+
     def __init__(self, initial_parameters={}):
-        self.default_parameters = copy.deepcopy(default_complexation_parameters)
+        self.default_parameters = copy.deepcopy(self.defaults)
         self.derive_defaults(initial_parameters, 'stoichiometry', 'reaction_ids', keys_list)
 
         self.parameters = self.default_parameters
@@ -65,7 +66,8 @@ class Complexation(Process):
 
         ports = {
             'monomers': self.monomer_ids,
-            'complexes': self.complex_ids}
+            'complexes': self.complex_ids,
+            'global': []}
 
         super(Complexation, self).__init__(ports)
 
@@ -78,8 +80,38 @@ class Complexation(Process):
             'monomers': self.monomer_ids,
             'complexes': self.complex_ids}
 
+        # get mass schema
+        monomers_with_mass = [
+            mol_id for mol_id in self.ports['monomers']
+            if mol_id in molecular_weight]
+        complexes_with_mass = [
+            mol_id for mol_id in self.ports['complexes']
+            if mol_id in molecular_weight]
+        schema = {
+            'monomers': {mol_id: {
+                'mass': molecular_weight.get(mol_id)}
+                for mol_id in monomers_with_mass},
+            'complexes': {mol_id: {
+                'mass': molecular_weight.get(mol_id)}
+                for mol_id in complexes_with_mass}}
+
+        # deriver_settings
+        deriver_setting = [
+            {
+            'type': 'mass',
+            'source_port': 'monomers',
+            'derived_port': 'global',
+            'keys': monomers_with_mass},
+            {
+            'type': 'mass',
+            'source_port': 'complexes',
+            'derived_port': 'global',
+            'keys': complexes_with_mass}]
+
         return {
             'state': default_state,
+            'schema': schema,
+            'deriver_setting': deriver_setting,
             'emitter_keys': default_emitter_keys,
             'parameters': self.parameters}
 
