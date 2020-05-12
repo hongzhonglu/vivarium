@@ -128,6 +128,7 @@ class Compartment(object):
                 if key != '_subschema'}
 
         if self.schema_keys & config.keys():
+            # TODO (Eran) -- check if config schema match existing schema, make exceptions if mismatched
             self.default = config.get('_default')
             self.updater = config.get('_updater', self.updater or 'accumulate')
             if isinstance(self.updater, str):
@@ -517,14 +518,6 @@ class Experiment(object):
                         step = interval
                     front[path]['time'] = future
                     front[path]['update'] = update
-
-
-
-                    print('path: {}'.format(path))
-                    print('update: {}'.format(update))
-
-
-
 
             if step == INFINITY:
                 # no processes ran, jump to next process

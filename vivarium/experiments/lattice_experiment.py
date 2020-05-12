@@ -77,7 +77,7 @@ def lattice_experiment(config):
     print('before ------------------------')
     print(experiment.state.get_value())
 
-    experiment.update(10.0)
+    experiment.update(50.0)
 
     print('after ----------------------------------')
     print(experiment.state.get_value())
