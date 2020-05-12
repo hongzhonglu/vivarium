@@ -218,6 +218,12 @@ class Compartment(object):
                     child = self.children[key]
                     child.apply_update(value)
         else:
+
+
+            # TODO -- growth should have set self.updater...
+            # import ipdb; ipdb.set_trace()
+
+
             self.value = self.updater(self.value, update)
 
     def child_value(self, key):
@@ -465,6 +471,10 @@ class Experiment(object):
         for update in updates:
             self.state.apply_update(update)
 
+
+            # import ipdb; ipdb.set_trace()
+
+
         self.run_derivers(derivers)
 
     def update(self, timestep):
@@ -520,9 +530,8 @@ class Experiment(object):
 
 
 
-                    import ipdb;
-                    ipdb.set_trace()
-                    # update is not applied from growth.... time is not progressing
+                    print('path: {}'.format(path))
+                    print('update: {}'.format(update))
 
 
 
@@ -545,6 +554,10 @@ class Experiment(object):
                         new_update['_path'] = path
                         updates.append(new_update)
                         advance['update'] = {}
+
+                # TODO -- agent update paths are ('agents', '0', 'cell', 'growth')...
+                import ipdb;
+                ipdb.set_trace()
 
                 self.send_updates(updates, derivers)
 

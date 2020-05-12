@@ -93,9 +93,4 @@ class Growth(Process):
         mass = states['global']['mass']
         new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
 
-
-        import ipdb; ipdb.set_trace()
-        # TODO -- mass is not updataing
-
-
         return {'global': {'mass': new_mass}}
