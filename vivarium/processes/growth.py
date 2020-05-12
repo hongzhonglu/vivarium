@@ -92,5 +92,4 @@ class Growth(Process):
     def next_update(self, timestep, states):
         mass = states['global']['mass']
         new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
-
         return {'global': {'mass': new_mass}}

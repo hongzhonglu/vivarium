@@ -753,16 +753,13 @@ def run_growth_division():
     fields = {}
     plot_snapshots(agents, fields, gd_config, out_dir, 'growth_division_snapshots')
 
-
 def simulate_growth_division(config, settings):
 
     # make the process
     multibody = Multibody(config)
     experiment = process_in_experiment(multibody)
-    # experiment.update(10)
 
     # get initial agent state
-    # agents_store = compartment.states['agents']
     agents_store = experiment.state.get_path(['agents'])
 
     ## run simulation
@@ -848,7 +845,7 @@ def simulate_growth_division(config, settings):
         experiment.send_updates([{'agents': agent_updates}])
         experiment.update(timestep)
 
-    # return compartment.emitter.get_data()
+    # return experiment.emitter.get_data()  # TODO -- bring emitters back
 
 
 # plotting
