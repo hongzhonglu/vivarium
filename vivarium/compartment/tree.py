@@ -96,7 +96,7 @@ def schema_for(port, keys, initial_state, default=0.0, updater='accumulate'):
             '_updater': updater}
         for key in keys}
 
-class Compartment(object):
+class Store(object):
     schema_keys = set([
         '_default',
         '_updater',
@@ -142,7 +142,7 @@ class Compartment(object):
 
             for key, child in config.items():
                 if not key in self.children:
-                    self.children[key] = Compartment(child, self)
+                    self.children[key] = Store(child, self)
                 else:
                     self.children[key].apply_config(child)
 
@@ -255,12 +255,12 @@ class Compartment(object):
 
             if step == '..':
                 if not self.parent:
-                    self.parent = Compartment({})
+                    self.parent = Store({})
                     self.parent.children[child_key] = self
                 return self.parent.establish_path(remaining, config, child_key)
             else:
                 if not step in self.children:
-                    self.children[step] = Compartment({}, self)
+                    self.children[step] = Store({}, self)
                 return self.children[step].establish_path(remaining, config, child_key)
         else:
             self.apply_config(config)
@@ -282,7 +282,7 @@ class Compartment(object):
         for key, subprocess in processes.items():
             subtopology = topology[key]
             if isinstance(subprocess, Process):
-                process_state = Compartment({
+                process_state = Store({
                     '_value': subprocess,
                     '_updater': 'set'}, self)
                 self.children[key] = process_state
@@ -300,11 +300,11 @@ class Compartment(object):
                                     schema = dict(
                                         schema,
                                         _value=initial[target])
-                                subpath = path + [target]
+                                subpath = tuple(path) + (target,)
                                 self.establish_path(subpath, schema)
             else:
                 if not key in self.children:
-                    self.children[key] = Compartment({}, self)
+                    self.children[key] = Store({}, self)
                 substate = initial_state.get(key, {})
                 self.children[key].generate_paths(
                     subprocess,
@@ -348,7 +348,7 @@ def process_derivers_config(processes, topology):
                         source_port: source_compartment_port,
                         target_port: target_compartment_port,
                         # TODO
-                        'global': ['..', 'global']}}
+                        'global': ('..', 'global')}}
                 deep_merge(full_deriver_topology, deriver_topology)
 
                 # TODO -- what if multiple different source/targets?
@@ -409,7 +409,7 @@ def process_derivers(processes, topology, deriver_config={}):
 
 
 def generate_state(processes, topology, initial_state):
-    state = Compartment({})
+    state = Store({})
     state.generate_paths(processes, topology, initial_state)
     state.apply_subschemas()
     return state
@@ -442,7 +442,7 @@ class Experiment(object):
         for port, update in new_update.items():
             topology = get_in(self.topology, path + (port,))
             if topology is not None:
-                state_path = list(path[:-1]) + topology
+                state_path = path[:-1] + topology
                 normal_path = normalize_path(state_path)
                 assoc_in(absolute, normal_path, update)
         return absolute
@@ -623,7 +623,7 @@ def test_recursive_store():
                             '_default': 0,
                             '_updater': 'accumulate'}}}}}}
 
-    state = Compartment(environment_config)
+    state = Store(environment_config)
 
     state.apply_update({})
     state.state_for({})

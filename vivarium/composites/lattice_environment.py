@@ -41,10 +41,10 @@ def make_lattice_environment(config):
     # topology
     topology = {
         'multibody': {
-            'agents': ['agents']},
+            'agents': ('agents',)},
         'diffusion': {
-            'agents': ['agents'],
-            'fields': ['fields']}}
+            'agents': ('agents',),
+            'fields': ('fields',)}}
 
     return {
         'processes': processes,

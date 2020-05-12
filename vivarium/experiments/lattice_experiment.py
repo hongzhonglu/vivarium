@@ -113,7 +113,7 @@ def lattice_experiment(config):
         'environment': environment_topology}
 
     agents = make_agents(count, growth_division, {
-        'cells_key': ['..', 'agents']})
+        'cells_key': ('..', 'agents')})
     environment_processes['agents'] = agents['processes']
     environment_topology['agents'] = agents['topology']
 
