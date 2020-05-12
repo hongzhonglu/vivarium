@@ -478,10 +478,14 @@ class Experiment(object):
             update = self.process_update(path, deriver, 0)
             self.state.apply_update(update)
 
-    def send_updates(self, updates, derivers):
+    def send_updates(self, updates, derivers=None):
         for update in updates:
             self.state.apply_update(update)
-
+        if derivers is None:
+            derivers = {
+                path: state
+                for path, state in self.state.depth()
+                if state.value is not None and isinstance(state.value, Process) and state.value.is_deriver()}
         self.run_derivers(derivers)
 
     def update(self, timestep):

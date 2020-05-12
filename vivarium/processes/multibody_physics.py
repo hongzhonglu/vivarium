@@ -763,7 +763,7 @@ def simulate_growth_division(config, settings):
 
     # get initial agent state
     # agents_store = compartment.states['agents']
-    agents_store = experiment.state.get_config()['agents']
+    agents_store = experiment.state.get_path(['agents'])
 
     ## run simulation
     # get simulation settings
@@ -778,23 +778,18 @@ def simulate_growth_division(config, settings):
     while time < total_time:
         print('time: {}'.format(time))
         time += timestep
+        agents_state = agents_store.get_value()
 
-
-        import ipdb;
-        ipdb.set_trace()
-
-
-        agents_state = agents_store.state
         agent_updates = {}
         remove_agents = []
         add_agents = {}
-        for agent_id, state in agents_state['agents'].items():
-            state = state['global']
-            location = state['location']
-            angle = state['angle']
-            length = state['length']
-            width = state['width']
-            mass = state['mass']
+        for agent_id, state in agents_state.items():
+            global_state = state['global']
+            location = global_state['location']
+            angle = global_state['angle']
+            length = global_state['length']
+            width = global_state['width']
+            mass = global_state['mass']
 
             # update
             growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
@@ -814,12 +809,13 @@ def simulate_growth_division(config, settings):
 
                 daughter_states = {}
                 for index, daughter_id in enumerate(daughter_ids):
-                    daughter_state = state.copy()
+                    daughter_state = global_state.copy()
                     daughter_state.update({
                         'location': new_locations[index],
                         'mass': half_mass,
                         'length': half_length})
-                    daughter_states[daughter_id] = daughter_state
+                    daughter_states[daughter_id] = {
+                        'global': daughter_state}
 
                 # remove mother from store, add daughters
                 remove_agents.append(agent_id)
@@ -828,26 +824,31 @@ def simulate_growth_division(config, settings):
 
             else:
                 agent_updates[agent_id] = {
-                    'volume': new_volume,
-                    'length': new_length,
-                    'mass': new_mass}
+                    'global': {
+                        'volume': new_volume,
+                        'length': new_length,
+                        'mass': new_mass}}
 
         for agent_id in remove_agents:
+
+            import ipdb; ipdb.set_trace()
+
             # remove from store
             del agents_state['agents'][agent_id]
 
         if add_agents:
+
+            import ipdb; ipdb.set_trace()
+
             # add to store
-            agents_state['agents'].update(add_agents)
+            agents_store.establish_path(add_agents)
 
 
-        import ipdb; ipdb.set_trace()
+        # update experiment
+        experiment.send_updates([{'agents': agent_updates}])
+        experiment.update(timestep)
 
-        # update compartment
-        compartment.send_updates({'agents': [{'agents': agent_updates}]})
-        compartment.update(timestep)
-
-    return compartment.emitter.get_data()
+    # return compartment.emitter.get_data()
 
 
 # plotting

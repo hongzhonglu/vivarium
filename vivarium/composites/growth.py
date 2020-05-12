@@ -10,7 +10,6 @@ from vivarium.processes.growth import Growth
 
 def growth_compartment(config):
 
-
     # declare the processes
     growth = Growth(config.get('growth', {}))
 
