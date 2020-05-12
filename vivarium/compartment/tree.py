@@ -518,6 +518,15 @@ class Experiment(object):
                     front[path]['time'] = future
                     front[path]['update'] = update
 
+
+
+                    import ipdb;
+                    ipdb.set_trace()
+                    # update is not applied from growth.... time is not progressing
+
+
+
+
             if step == INFINITY:
                 # no processes ran, jump to next process
                 next_event = timestep
