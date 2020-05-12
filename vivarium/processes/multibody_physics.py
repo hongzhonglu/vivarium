@@ -34,6 +34,7 @@ from vivarium.compartment.process import (
     Process,
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
+    process_in_experiment,
     process_in_compartment,
     simulate_process,
     simulate_compartment)
@@ -196,8 +197,10 @@ class Multibody(Process):
                     'location': {
                         '_default': [0.5, 0.5],
                         '_updater': 'set'},
+                    'length': {
+                        '_default': 2.0},
                     'width': {
-                        '_default': 0.0},
+                        '_default': 1.0},
                     'angle': {
                         '_default': 0.0},
                     'mass': {
@@ -754,86 +757,92 @@ def simulate_growth_division(config, settings):
 
     # make the process
     multibody = Multibody(config)
-    compartment = process_in_compartment(multibody)
+    experiment = process_in_experiment(multibody)
+    experiment.update(10)
 
-    # get initial agent state
-    agents_store = compartment.states['agents']
 
-    ## run simulation
-    # get simulation settings
-    growth_rate = settings.get('growth_rate', 0.0006)
-    growth_rate_noise = settings.get('growth_rate_noise', 0.0)
-    division_volume = settings.get('division_volume', 0.4)
-    channel_height = settings.get('channel_height')
-    total_time = settings.get('total_time', 10)
-    timestep = compartment.time_step
 
-    time = 0
-    while time < total_time:
-        print('time: {}'.format(time))
-        time += timestep
 
-        agents_state = agents_store.state
-        agent_updates = {}
-        remove_agents = []
-        add_agents = {}
-        for agent_id, state in agents_state['agents'].items():
-            state = state['global']
-            location = state['location']
-            angle = state['angle']
-            length = state['length']
-            width = state['width']
-            mass = state['mass']
-
-            # update
-            growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
-            new_mass = mass + mass * growth_rate2
-            new_length = length + length * growth_rate2
-            new_volume = volume_from_length(new_length, width)
-
-            if channel_height and location[1] > channel_height:
-                remove_agents.append(agent_id)
-            elif new_volume > division_volume:
-                daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
-
-                # daughter state with updated values
-                half_mass = new_mass / 2
-                half_length = new_length / 2
-                new_locations = daughter_locations(location, length, angle)
-
-                daughter_states = {}
-                for index, daughter_id in enumerate(daughter_ids):
-                    daughter_state = state.copy()
-                    daughter_state.update({
-                        'location': new_locations[index],
-                        'mass': half_mass,
-                        'length': half_length})
-                    daughter_states[daughter_id] = daughter_state
-
-                # remove mother from store, add daughters
-                remove_agents.append(agent_id)
-                add_agents.update(daughter_states)
-                agent_updates.update(daughter_states)  # TODO -- why is this not updating the store?
-
-            else:
-                agent_updates[agent_id] = {
-                    'volume': new_volume,
-                    'length': new_length,
-                    'mass': new_mass}
-
-        for agent_id in remove_agents:
-            # remove from store
-            del agents_state['agents'][agent_id]
-
-        if add_agents:
-            # add to store
-            agents_state['agents'].update(add_agents)
-
-        # update compartment
-        compartment.send_updates({'agents': [{'agents': agent_updates}]})
-        compartment.update(timestep)
-
-    return compartment.emitter.get_data()
+    #
+    #
+    # # get initial agent state
+    # agents_store = compartment.states['agents']
+    #
+    # ## run simulation
+    # # get simulation settings
+    # growth_rate = settings.get('growth_rate', 0.0006)
+    # growth_rate_noise = settings.get('growth_rate_noise', 0.0)
+    # division_volume = settings.get('division_volume', 0.4)
+    # channel_height = settings.get('channel_height')
+    # total_time = settings.get('total_time', 10)
+    # timestep = compartment.time_step
+    #
+    # time = 0
+    # while time < total_time:
+    #     print('time: {}'.format(time))
+    #     time += timestep
+    #
+    #     agents_state = agents_store.state
+    #     agent_updates = {}
+    #     remove_agents = []
+    #     add_agents = {}
+    #     for agent_id, state in agents_state['agents'].items():
+    #         state = state['global']
+    #         location = state['location']
+    #         angle = state['angle']
+    #         length = state['length']
+    #         width = state['width']
+    #         mass = state['mass']
+    #
+    #         # update
+    #         growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
+    #         new_mass = mass + mass * growth_rate2
+    #         new_length = length + length * growth_rate2
+    #         new_volume = volume_from_length(new_length, width)
+    #
+    #         if channel_height and location[1] > channel_height:
+    #             remove_agents.append(agent_id)
+    #         elif new_volume > division_volume:
+    #             daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
+    #
+    #             # daughter state with updated values
+    #             half_mass = new_mass / 2
+    #             half_length = new_length / 2
+    #             new_locations = daughter_locations(location, length, angle)
+    #
+    #             daughter_states = {}
+    #             for index, daughter_id in enumerate(daughter_ids):
+    #                 daughter_state = state.copy()
+    #                 daughter_state.update({
+    #                     'location': new_locations[index],
+    #                     'mass': half_mass,
+    #                     'length': half_length})
+    #                 daughter_states[daughter_id] = daughter_state
+    #
+    #             # remove mother from store, add daughters
+    #             remove_agents.append(agent_id)
+    #             add_agents.update(daughter_states)
+    #             agent_updates.update(daughter_states)  # TODO -- why is this not updating the store?
+    #
+    #         else:
+    #             agent_updates[agent_id] = {
+    #                 'volume': new_volume,
+    #                 'length': new_length,
+    #                 'mass': new_mass}
+    #
+    #     for agent_id in remove_agents:
+    #         # remove from store
+    #         del agents_state['agents'][agent_id]
+    #
+    #     if add_agents:
+    #         # add to store
+    #         agents_state['agents'].update(add_agents)
+    #
+    #     # update compartment
+    #     compartment.send_updates({'agents': [{'agents': agent_updates}]})
+    #     compartment.update(timestep)
+    #
+    # return compartment.emitter.get_data()
 
 
 # plotting

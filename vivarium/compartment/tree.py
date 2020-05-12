@@ -7,8 +7,24 @@ import numpy as np
 import logging as log
 
 from vivarium.compartment.process import Process
-from vivarium.compartment.composition import deriver_library
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
+
+# processes
+from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
+from vivarium.processes.derive_counts import DeriveCounts
+from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_mass import DeriveMass
+
+
+deriver_library = {
+    'mass': DeriveMass,
+    'globals': DeriveGlobals,
+    'mmol_to_counts': DeriveCounts,
+    'counts_to_mmol': DeriveConcs,
+}
+
+
+
 
 def get_in(d, path):
     if path:

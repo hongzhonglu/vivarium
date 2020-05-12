@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 
+from vivarium.compartment.tree import (
+    Experiment,
+    deriver_library
+)
 from vivarium.compartment import emitter as emit
 from vivarium.utils.dict_utils import (
     deep_merge,
@@ -20,24 +24,10 @@ from vivarium.compartment.process import (
     Process,
     Store)
 from vivarium.utils.units import units
-
-# processes
-from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
-from vivarium.processes.derive_counts import DeriveCounts
-from vivarium.processes.derive_concentrations import DeriveConcs
-from vivarium.processes.derive_mass import DeriveMass
-
+from vivarium.processes.derive_globals import AVOGADRO
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
 TEST_OUT_DIR = os.path.join('out', 'tests')
-
-
-deriver_library = {
-    'mass': DeriveMass,
-    'globals': DeriveGlobals,
-    'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs,
-}
 
 
 
@@ -154,6 +144,34 @@ def get_schema(process_list, topology):
                 deep_merge_check(schema, compartment_schema)
 
     return schema
+
+def process_in_experiment(process, settings={}):
+    process_settings = process.default_settings()
+    compartment_state_port = settings.get('compartment_state_port')
+    emitter = settings.get('emitter', 'timeseries')
+    deriver_config = settings.get('deriver_config', {})
+
+    processes = {'process': process}
+    topology = {
+        'process': {
+            port: [port] for port in process.ports
+            if (not compartment_state_port
+                or port != compartment_state_port)
+        }
+    }
+
+    if compartment_state_port:
+        topology['process'][compartment_state_port] = COMPARTMENT_STATE
+
+    # add derivers
+    derivers = get_derivers(processes, topology, deriver_config)
+    processes.update(derivers['deriver_processes'])
+    topology.update(derivers['deriver_topology'])
+
+    return Experiment({
+        'processes': processes,
+        'topology': topology,
+        'initial_state': process_settings.get('state', {})})
 
 def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
