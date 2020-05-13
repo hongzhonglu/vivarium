@@ -32,11 +32,11 @@ def growth_division(config):
     expression = MinimalExpression(config)
 
     # place processes in layers
-    processes = [
-        {'transport': transport,
-         'growth': growth,
-         'expression': expression},
-        {'division': division}]
+    processes = {
+        'transport': transport,
+        'growth': growth,
+        'expression': expression,
+        'division': division}
 
     # make the topology.
     # for each process, map process ports to store ids
@@ -69,7 +69,9 @@ def compose_growth_division(config):
     # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(derivers['deriver_processes'])
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
 

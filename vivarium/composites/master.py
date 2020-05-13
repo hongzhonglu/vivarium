@@ -59,14 +59,14 @@ def compose_master(config):
     division = Division(division_config)
 
     # Place processes in layers
-    processes = [
-        {'transport': transport,
-         'transcription': transcription,
-         'translation': translation,
-         'degradation': degradation,
-         'complexation': complexation},
-        {'metabolism': metabolism},
-        {'division': division}]
+    processes = {
+        'transport': transport,
+        'transcription': transcription,
+        'translation': translation,
+        'degradation': degradation,
+        'complexation': complexation,
+        'metabolism': metabolism,
+        'division': division}
 
     # Make the topology
     # for each process, map process ports to store ids
@@ -116,7 +116,9 @@ def compose_master(config):
     # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(deriver_processes)
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
     # initialize the states

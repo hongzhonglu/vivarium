@@ -263,12 +263,12 @@ def divide_composite(config):
                     'division': self.division}}
 
     # declare processes in list
-    processes = [
-        {'growth': ToyGrowth()},
-        {'divide': ToyDivide()}]
+    processes = {
+        'growth': ToyGrowth(),
+        'divide': ToyDivide()}
 
     # declare derivers
-    derivers = []
+    derivers = {}
 
     # declare the states
     states = {

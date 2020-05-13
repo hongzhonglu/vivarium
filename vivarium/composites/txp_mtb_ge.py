@@ -61,11 +61,11 @@ def txp_mtb_ge_compartment(config):
     division = Division(division_config)
 
     # Place processes in layers
-    processes = [
-        {'transport': transport},
-        {'metabolism': metabolism,
-         'expression': gene_expression},
-        {'division': division}]
+    processes = {
+        'transport': transport,
+        'metabolism': metabolism,
+        'expression': gene_expression,
+        'division': division}
 
     # Make the topology
     # for each process, map process ports to store ids
@@ -107,7 +107,7 @@ def compose_txp_mtb_ge(config):
     config['metabolism'] = config.get('metabolism', default_metabolism_config())
     config['metabolism']['initial_mass'] = initial_mass
     config['transport'] = config.get('transport', get_glc_lct_config())
-    config['expression'] = config.get('transport', get_lacy_config())
+    config['expression'] = config.get('expression', get_lacy_config())
     config['division'] = config.get('division', {'division_volume': 2.4})
 
     # get compartment
@@ -119,7 +119,9 @@ def compose_txp_mtb_ge(config):
     deriver_config = {}
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(deriver_processes)
     topology.update(derivers['deriver_topology'])  # add derivers to the topology
 
     # initialize the states

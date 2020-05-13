@@ -77,17 +77,13 @@ def compose_antibiotics(config):
     division = Division(config)
 
     # place processes in layers
-    processes = [
-        {
-            'antibiotic_transport': antibiotic_transport,
-            'growth': growth,
-            'expression': expression,
-            'death': death,
-        },
-        {
-            'division': division,
-        },
-    ]
+    processes = {
+        'antibiotic_transport': antibiotic_transport,
+        'growth': growth,
+        'expression': expression,
+        'death': death,
+        'division': division,
+    }
 
     # make the topology.
     # for each process, map process ports to compartment ports
@@ -120,7 +116,9 @@ def compose_antibiotics(config):
     # add derivers
     derivers = get_derivers(processes, topology)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(deriver_processes)
     topology.update(derivers['deriver_topology'])
 
     # initialize the states

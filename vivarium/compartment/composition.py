@@ -41,12 +41,12 @@ deriver_library = {
 
 
 
-def get_derivers(process_list, topology, deriver_config={}):
+def get_derivers(processes, topology, config={}):
     '''
     get the derivers for a list of processes
 
     requires:
-        - process_list: (list) with configured processes
+        - processes: (dict) with configured processes
         - topology: (dict) with topology of the processes connected to compartment ports
         - config: (dict) with deriver configurations, which are used to make deriver processes
 
@@ -56,18 +56,18 @@ def get_derivers(process_list, topology, deriver_config={}):
     '''
 
     # get deriver configuration from processes
-    process_derivers = get_deriver_config_from_proceses(process_list, topology)
+    process_derivers = get_deriver_config_from_proceses(processes, topology)
     deriver_configs = process_derivers['deriver_configs']
     deriver_topology = process_derivers['deriver_topology']
 
     # update deriver_configs
-    deriver_configs = deep_merge(deriver_configs, deriver_config)
+    deriver_configs = deep_merge(deriver_configs, config)
 
-    # update topology based on deriver_config
-    for process_id, config in deriver_config.items():
+    # update topology based on deriver_configs
+    for process_id, deriver_config in deriver_configs.items():
         if process_id not in deriver_topology:
             try:
-                ports = config['ports']
+                ports = deriver_config['ports']
                 deriver_topology[process_id] = ports
             except:
                 print('{} deriver requires topology in deriver_config'.format(process_id))
@@ -78,58 +78,54 @@ def get_derivers(process_list, topology, deriver_config={}):
     for deriver_type, deriver_config in deriver_configs.items():
         deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
 
-    # TODO -- put derivers in order
-    processes = [deriver_processes]
-
     return {
-        'deriver_processes': processes,
+        'deriver_processes': deriver_processes,
         'deriver_topology': deriver_topology}
 
-def get_deriver_config_from_proceses(process_list, topology):
+def get_deriver_config_from_proceses(processes, topology):
     ''' get the deriver configuration from processes' deriver_settings'''
 
     deriver_configs = {}
     full_deriver_topology = {}
 
-    for level in process_list:
-        for process_id, process in level.items():
-            process_settings = process.default_settings()
-            deriver_setting = process_settings.get('deriver_setting', [])
+    for process_id, process in processes.items():
+        process_settings = process.default_settings()
+        deriver_setting = process_settings.get('deriver_setting', [])
+        try:
+            port_map = topology[process_id]
+        except:
+            print('{} topology port mismatch'.format(process_id))
+            raise
+
+        for setting in deriver_setting:
+            deriver_type = setting['type']
+            keys = setting['keys']
+            source_port = setting['source_port']
+            target_port = setting['derived_port']
             try:
-                port_map = topology[process_id]
+                source_compartment_port = port_map[source_port]
+                target_compartment_port = port_map[target_port]
             except:
-                print('{} topology port mismatch'.format(process_id))
+                print('source/target port mismatch for process "{}"'.format(process_id))
                 raise
 
-            for setting in deriver_setting:
-                deriver_type = setting['type']
-                keys = setting['keys']
-                source_port = setting['source_port']
-                target_port = setting['derived_port']
-                try:
-                    source_compartment_port = port_map[source_port]
-                    target_compartment_port = port_map[target_port]
-                except:
-                    print('source/target port mismatch for process "{}"'.format(process_id))
-                    raise
+            # make deriver_topology, add to full_deriver_topology
+            deriver_topology = {
+                deriver_type: {
+                    source_port: source_compartment_port,
+                    target_port: target_compartment_port,
+                    'global': 'global'}}
+            deep_merge(full_deriver_topology, deriver_topology)
 
-                # make deriver_topology, add to full_deriver_topology
-                deriver_topology = {
-                    deriver_type: {
-                        source_port: source_compartment_port,
-                        target_port: target_compartment_port,
-                        'global': 'global'}}
-                deep_merge(full_deriver_topology, deriver_topology)
+            # TODO -- what if multiple different source/targets?
+            # TODO -- merge overwrites them. need list extend
+            ports_config = {
+                'source_ports': {source_port: keys},
+                'target_ports': {target_port: keys}}
 
-                # TODO -- what if multiple different source/targets?
-                # TODO -- merge overwrites them. need list extend
-                ports_config = {
-                    'source_ports': {source_port: keys},
-                    'target_ports': {target_port: keys}}
-
-                # ports for configuration
-                deriver_config = {deriver_type: ports_config}
-                deep_merge(deriver_configs, deriver_config)
+            # ports for configuration
+            deriver_config = {deriver_type: ports_config}
+            deep_merge(deriver_configs, deriver_config)
 
     return {
         'deriver_configs': deriver_configs,
@@ -166,7 +162,7 @@ def process_in_compartment(process, settings={}):
     emitter = settings.get('emitter', 'timeseries')
     deriver_config = settings.get('deriver_config', {})
 
-    processes = [{'process': process}]
+    processes = {'process': process}
     topology = {
         'process': {
             port: port for port in process.ports
@@ -181,7 +177,9 @@ def process_in_compartment(process, settings={}):
     # add derivers
     derivers = get_derivers(processes, topology, deriver_config)
     deriver_processes = derivers['deriver_processes']
-    all_processes = processes + derivers['deriver_processes']
+    all_processes = {}
+    all_processes.update(processes)
+    all_processes.update(deriver_processes)
     topology.update(derivers['deriver_topology'])
 
     # make the state
@@ -336,13 +334,13 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
                            with_labels=True,
                            node_color=process_rgb,
                            node_size=node_size,
-                           node_shape='o')
+                           node_shape='s')
     nx.draw_networkx_nodes(G, pos,
                            nodelist=store_nodes,
                            with_labels=True,
                            node_color=store_rgb,
                            node_size=node_size,
-                           node_shape='s')
+                           node_shape='o')
 
     # edges
     colors = list(range(1,len(edges)+1))
@@ -746,7 +744,7 @@ class ToyLinearGrowthDeathProcess(Process):
         }
         if mass > ToyLinearGrowthDeathProcess.THRESHOLD:
             update['compartment'] = {
-                'processes': [],
+                'processes': {},
             }
         return update
 
@@ -781,7 +779,7 @@ def load_compartment(composite, boot_config={}):
 
     composite_config = composite(boot_config)
     processes = composite_config['processes']
-    derivers = composite_config.get('derivers', [])
+    derivers = composite_config.get('derivers', {})
     states = composite_config['states']
     options = composite_config['options']
     options['emitter'] = boot_config.get('emitter', 'timeseries')
@@ -914,22 +912,21 @@ def toy_composite(config):
                 # kill the cell
                 update = {
                     'global': {
-                        'processes': []}}
+                        'processes': {}}}
 
             return update
 
 
-    processes = [
-        {'metabolism': ToyMetabolism(
-            initial_parameters={
-                'mass_conversion_rate': 0.5}), # example of overriding default parameters
-         'transport': ToyTransport()},
-        {'death': ToyDeath()}]
+    processes = {
+        'metabolism': ToyMetabolism(
+            {'mass_conversion_rate': 0.5}), # example of overriding default parameters
+        'transport': ToyTransport(),
+        'death': ToyDeath()}
 
     # deriver processes
-    derivers_processes = [
-        {'external_volume': ToyDeriveVolume(),
-         'internal_volume': ToyDeriveVolume()}]
+    derivers_processes = {
+        'external_volume': ToyDeriveVolume(),
+        'internal_volume': ToyDeriveVolume()}
 
     # declare the states
     states = {

@@ -35,9 +35,9 @@ def get_lattice_environment(config):
     diffusion = DiffusionField(config.get('diffusion_field', {}))
 
     # place processes in layers
-    processes = [
-        {'multibody': multibody,
-        'diffusion': diffusion}]
+    processes = {
+        'multibody': multibody,
+        'diffusion': diffusion}
 
     # topology
     topology = {
@@ -96,7 +96,7 @@ def compose_lattice_environment(config):
     topology = environment_compartment['topology']
 
     # add derivers
-    deriver_processes = []
+    deriver_processes = {}
 
     # initialize the states
     states = initialize_state(
