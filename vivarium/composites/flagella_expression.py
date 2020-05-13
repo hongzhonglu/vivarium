@@ -40,7 +40,7 @@ def add_dummy_protein(chromosome_data, dummy_config):
     chromosome_data = chromosome_data.copy()
     chromosome_config = chromosome_data.get('chromosome_config')
     sequences = chromosome_data.get('sequences')
-    transcription_factors = chromosome_data.get('transcription_factors')
+    # transcription_factors = chromosome_data.get('transcription_factors')
     promoter_affinities = chromosome_data.get('promoter_affinities')
     protein_sequences = chromosome_data.get('protein_sequences')
     transcript_templates = chromosome_data.get('transcript_templates')
@@ -93,18 +93,18 @@ def add_dummy_protein(chromosome_data, dummy_config):
         ipdb.set_trace()
 
 
-
     return {
         'chromosome_config': chromosome_config,
         'sequences': sequences,
-        'transcription_factors': transcription_factors,
-        'promoter_affinities': promoter_affinities,
-        'protein_sequences': protein_sequences,
-        'transcript_templates': transcript_templates,
-        'transcript_affinities': transcript_affinities}
+        # 'transcription_factors': transcription_factors,  # remove
+        'promoter_affinities': promoter_affinities,  # TODO -- no TF, so single element tuple with promoter name
+        'protein_sequences': protein_sequences,  # TODO -- convert nucleotide, swapping codons.
+        'transcript_templates': transcript_templates,  # (operon name, protein name). same structure as promoters
+        'transcript_affinities': transcript_affinities}  # like promoter affinities, for ribosome binding sites.
 
 def get_flagella_expression_config(config):
     flagella_data = FlagellaChromosome(config)
+
     chromosome_config = flagella_data.chromosome_config
     sequences = flagella_data.chromosome.product_sequences()
     transcription_factors = flagella_data.transcription_factors
@@ -125,14 +125,18 @@ def get_flagella_expression_config(config):
         chromosome_data = {
             'chromosome_config': chromosome_config,
             'sequences': sequences,
-            'transcription_factors': transcription_factors,
+            # 'transcription_factors': transcription_factors,
             'promoter_affinities': promoter_affinities,
             'protein_sequences': protein_sequences,
             'transcript_templates': transcript_templates,
             'transcript_affinities': transcript_affinities,
         }
 
-        dummy_chromosome_data = add_dummy_protein(chromosome_data, config['dummy_protein'])
+        dummy_chromosome_data = add_dummy_protein(
+            chromosome_data,
+            config['dummy_protein'])
+        # TODO set new data here
+
 
     molecules = {}
     for nucleotide in nucleotides.values():
