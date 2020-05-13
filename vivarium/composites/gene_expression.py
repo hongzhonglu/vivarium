@@ -393,6 +393,7 @@ def gene_network_plot(data, out_dir, filename='gene_network'):
 
     plt.close()
 
+
 def plot_gene_expression_output(timeseries, config, out_dir='out'):
 
     name = config.get('name', 'gene_expression')

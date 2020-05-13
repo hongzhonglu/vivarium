@@ -23,7 +23,6 @@ from vivarium.data.chromosomes.lac_chromosome import LacChromosome
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
 from vivarium.processes.translation import Translation, UNBOUND_RIBOSOME_KEY
 from vivarium.processes.degradation import RnaDegradation
-from vivarium.processes.complexation import Complexation
 from vivarium.processes.division import Division, divide_condition
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
@@ -32,7 +31,7 @@ from vivarium.data.nucleotides import nucleotides
 from vivarium.composites.gene_expression import plot_gene_expression_output
 
 
-def compose_gene_expression_monomers(config):
+def get_gene_expression_monomers(config):
     # declare the processes
     transcription = Transcription(config.get('transcription', {}))
     translation = Translation(config.get('translation', {}))
@@ -71,6 +70,15 @@ def compose_gene_expression_monomers(config):
 
         'division': {
             'global': 'global'}}
+
+    return {
+        'processes': processes,
+        'topology': topology}
+
+def compose_gene_expression_monomers(config):
+    compartment = get_gene_expression_monomers(config)
+    processes = compartment['processes']
+    topology = compartment['topology']
 
     # add derivers
     deriver_config = {
