@@ -231,6 +231,7 @@ class ODE_expression(Process):
         # default emitter keys
         default_emitter_keys = {
             'internal': self.ports['internal'],
+            'external': self.ports['external'],
             'counts': self.ports['internal']}
 
         # derivers
@@ -306,6 +307,11 @@ def get_lacy_config():
         'lacy_RNA': 1e-1,
         'LacY': 1e-4}
 
+    # define regulation
+    regulators = [('external', 'Glucose')]
+    regulation = {'lacy_RNA': 'if not (external, Glucose) > 0.1'}
+
+    # initial state
     initial_state = {
         'internal': {
             'lacy_RNA': 0,
@@ -316,6 +322,8 @@ def get_lacy_config():
         'translation_rates': toy_translation_rates,
         'degradation_rates': toy_degradation_rates,
         'protein_map': toy_protein_map,
+        'regulators': regulators,
+        'regulation': regulation,
         'initial_state': initial_state}
 
 def get_flagella_expression():
@@ -362,20 +370,29 @@ def get_flagella_expression():
         'protein_map': protein_map,
         'initial_state': initial_state}
 
-def test_expression(time=10):
+def test_expression(time=100):
     expression_config = get_lacy_config()
 
     # load process
     expression = ODE_expression(expression_config)
+    compartment = process_in_compartment(expression)
+    options = compartment.configuration
+
+    # simulate
+    shift_time1 = int(time / 4)
+    shift_time2 = int(3 * time / 4)
+    timeline = [
+        (0, {'external': {'Glucose': 10}}),
+        (shift_time1, {'external': {'Glucose': 0}}),
+        (shift_time2, {'external': {'Glucose': 10}}),
+        (time, {})]
 
     settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-12,
-    }
+        'environment_port': options.get('environment_port'),
+        'exchange_port': options.get('exchange_port'),
+        'environment_volume': 1e-13,  # L
+        'timeline': timeline}
 
-    compartment = process_in_compartment(expression)
     return simulate_with_environment(compartment, settings)
 
 
@@ -384,5 +401,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_expression(5000) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_simulation_output(timeseries, {}, out_dir)
