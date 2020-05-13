@@ -10,14 +10,9 @@ from vivarium.compartment.process import initialize_state
 from vivarium.compartment.composition import (
     get_derivers,
     load_compartment,
-    simulate_compartment,
-    plot_compartment_topology
+    simulate_compartment
 )
 from vivarium.utils.make_network import save_network
-
-# chromosomes
-from vivarium.data.chromosomes.lac_chromosome import LacChromosome
-
 
 # processes
 from vivarium.processes.transcription import Transcription, UNBOUND_RNAP_KEY
@@ -108,7 +103,6 @@ def compose_gene_expression(config):
         'derivers': deriver_processes,
         'states': states,
         'options': options}
-
 
 
 # analysis
@@ -472,7 +466,6 @@ def plot_gene_expression_output(timeseries, config, out_dir='out'):
     fig_path = os.path.join(out_dir, name)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.savefig(fig_path, bbox_inches='tight')
-
 
 
 if __name__ == '__main__':
