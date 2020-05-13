@@ -197,7 +197,7 @@ def scan_txp_mtb_ge():
         ('transport',
          'kinetic_parameters',
          'EX_glc__D_e',
-         ('internal', 'PTSG'),
+         ('internal', 'EIIglc'),
          'kcat_f'):
             get_parameters_logspace(1e3, 1e6, 4),
         ('transport',

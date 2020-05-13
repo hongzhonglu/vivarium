@@ -168,9 +168,9 @@ if __name__ == '__main__':
         'timeline': timeline}
 
     plot_settings = {
-        'max_rows': 20,
+        'max_rows': 30,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux'},
+        'overlay': {'reactions': 'flux_bounds'},
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lcts_e'),
@@ -178,11 +178,11 @@ if __name__ == '__main__':
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lcts_e'),
             ('cytoplasm', 'g6p_c'),
-            ('cytoplasm', 'PTSG'),
+            ('cytoplasm', 'EIIglc'),
             ('cytoplasm', 'lcts_p'),
             ('cytoplasm', 'lacy_RNA'),
             ('cytoplasm', 'LacY')],
-        'skip_ports': ['prior_state', 'null', 'reactions']}
+        'skip_ports': ['prior_state', 'null']}
 
     timeseries = simulate_with_environment(compartment, settings)
     volume_ts = timeseries['global']['volume']

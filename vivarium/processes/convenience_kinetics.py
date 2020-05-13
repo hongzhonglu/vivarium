@@ -351,7 +351,7 @@ def get_glc_lct_config():
                 ('internal', 'pyr_c'): 1.0,
             },
             'is reversible': False,
-            'catalyzed by': [('internal', 'PTSG')]
+            'catalyzed by': [('internal', 'EIIglc')]
         },
         'EX_lcts_e': {
             'stoichiometry': {
@@ -365,7 +365,7 @@ def get_glc_lct_config():
 
     transport_kinetics = {
         'EX_glc__D_e': {
-            ('internal', 'PTSG'): {
+            ('internal', 'EIIglc'): {
                 ('external', 'glc__D_e'): 1e0,  # k_m for external [glc__D_e]
                 ('internal', 'pep_c'): None,  # Set k_m = None to make a reactant non-limiting
                 'kcat_f': 2.5e5,  # kcat for the forward direction
@@ -374,14 +374,14 @@ def get_glc_lct_config():
         'EX_lcts_e': {
             ('internal', 'LacY'): {
                 ('external', 'lcts_e'): 1e0,
-                'kcat_f': 1e4,
+                'kcat_f': 1e3,
             }
         }
     }
 
     transport_initial_state = {
         'internal': {
-            'PTSG': 1.8e-6,  # concentration (mmol/L)
+            'EIIglc': 1.8e-6,  # concentration (mmol/L)
             'g6p_c': 0.0,
             'pep_c': 1.8e-1,
             'pyr_c': 0.0,
@@ -400,7 +400,7 @@ def get_glc_lct_config():
 
     transport_ports = {
         'internal': [
-            'g6p_c', 'pep_c', 'pyr_c', 'PTSG', 'LacY', 'lcts_p'],
+            'g6p_c', 'pep_c', 'pyr_c', 'EIIglc', 'LacY', 'lcts_p'],
         'external': [
             'glc__D_e', 'lcts_e']
     }

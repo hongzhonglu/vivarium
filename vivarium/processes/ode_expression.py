@@ -295,17 +295,17 @@ def get_lacy_config():
     >>> expression_process = ODE_expression(config)
     '''
     toy_transcription_rates = {
-        'lacy_RNA': 2e-6}
+        'lacy_RNA': 1e-7}
 
     toy_translation_rates = {
-        'LacY': 2e-4}
+        'LacY': 1e-3}
 
     toy_protein_map = {
         'LacY': 'lacy_RNA'}
 
     toy_degradation_rates = {
-        'lacy_RNA': 1e-1,
-        'LacY': 1e-4}
+        'lacy_RNA': 3e-3,  # a single RNA lasts about 5 minutes
+        'LacY': 3e-5}
 
     # define regulation
     regulators = [('external', 'Glucose')]
@@ -379,8 +379,8 @@ def test_expression(time=100):
     options = compartment.configuration
 
     # simulate
-    shift_time1 = int(time / 4)
-    shift_time2 = int(3 * time / 4)
+    shift_time1 = int(time / 5)
+    shift_time2 = int(3 * time / 5)
     timeline = [
         (0, {'external': {'Glucose': 10}}),
         (shift_time1, {'external': {'Glucose': 0}}),
@@ -401,5 +401,5 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_expression(5000) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_expression(6000) # 2520 sec (42 min) is the expected doubling time in minimal media
     plot_simulation_output(timeseries, {}, out_dir)

@@ -503,7 +503,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
             if row_idx == columns[col_idx]-1:
                 # if last row of column
                 set_axes(ax, True)
-                ax.set_xlabel('time')
+                ax.set_xlabel('time (s)')
                 row_idx = 0
                 col_idx += 1
             else:
