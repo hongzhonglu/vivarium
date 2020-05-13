@@ -284,6 +284,9 @@ class Process(object):
 
         return self.next_update(timestep, states)
 
+    def or_default(self, parameters, key):
+        return parameters.get(key, self.defaults[key])
+
     def parameters_for(self, parameters, key):
         ''' Return key in parameters or from self.default_parameters if not present. '''
 

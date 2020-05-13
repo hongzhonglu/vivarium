@@ -17,24 +17,25 @@ from vivarium.processes.diffusion_field import plot_field_output
 from vivarium.composites.lattice_environment import (
     make_lattice_environment,
 )
-from vivarium.composites.growth_division import growth_division
+from vivarium.composites.growth_division import GrowthDivision
 
 from vivarium.composites.growth import growth_compartment
 
 
 
-def make_agents(count, compartment, config):
+def make_agents(keys, compartment, config=None):
     processes = {}
     topology = {}
+    if config is None:
+        config = {}
 
-    for agent in range(count):
+    for agent in keys:
         # agent_id = str(uuid.uuid1())
         agent_id = str(agent)
 
         # make the agent
         agent_config = config.copy()
-        agent_config.update({'agent_id': agent_id})
-        agent = compartment(dict(
+        agent = compartment.generate(dict(
             agent_config,
             agent_id=agent_id))
 
@@ -58,8 +59,9 @@ def lattice_experiment(config):
     processes = environment['processes']
     topology = environment['topology']
 
-    agents = make_agents(count, growth_division, {
+    growth_division = GrowthDivision({
         'cells_key': ('..', 'agents')})
+    agents = make_agents(range(count), growth_division, {})
     processes['agents'] = agents['processes']
     topology['agents'] = agents['topology']
 

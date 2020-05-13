@@ -59,6 +59,19 @@ def update_in(d, path, f):
             update_in(d[head], path[1:], f)
 
 
+def dissoc(d, removing):
+    return {
+        key: value
+        for key, value in d.items()
+        if not key in removing}
+        
+
+def select_keys(d, keys):
+    return {
+        key: d.get(key)
+        for key in keys}
+
+
 DEFAULT_TIMESTEP = 1.0
 
 INFINITY = float('inf')
@@ -228,15 +241,40 @@ class Store(object):
                 state[key] = child.get_template(value)
         return state
 
-    def delete_in(self, path):
+    def delete_path(self, path):
         if not path:
             self.children = {}
+            self.value = None
+            return self
         else:
-            target = self.get_in(path[:-1])
-            del target.children[path[-1]]
+            target = self.get_path(path[:-1])
+            remove = path[-1]
+            if remove in target.children:
+                lost = target.children[remove]
+                del target.children[remove]
+                return lost
 
     def apply_update(self, update):
         if self.children:
+            if '_delete' in update:
+                # delete a list of paths
+                for path in update['_delete']:
+                    self.delete_path(path)
+                update = dissoc(update, ['_delete'])
+
+            if '_generate' in update:
+                # generate a list of new compartments
+                for generate in update['_generate']:
+                    self.generate(
+                        generate['path'],
+                        generate['processes'],
+                        generate['topology'],
+                        generate['initial_state'])
+                update = dissoc(update, '_generate')
+
+                if self.subschema:
+                    self.apply_subschema()
+
             for key, value in update.items():
                 if key in self.children:
                     child = self.children[key]
@@ -335,6 +373,10 @@ class Store(object):
                     subtopology,
                     substate)
 
+    def generate(self, path, processes, topology, initial_state):
+        target = self.establish_path(path, {})
+        target.generate_paths(processes, topology, initial_state)
+
 
 def process_derivers_config(processes, topology):
     ''' get the deriver configuration from processes' deriver_settings'''
@@ -430,6 +472,30 @@ def process_derivers(processes, topology, deriver_config={}):
     return {
         'processes': deriver_processes,
         'topology': deriver_topology}
+
+
+class Compartment(object):
+    def __init__(self, config):
+        self.config = config
+
+    def generate_processes(self, config):
+        return {}
+
+    def generate_topology(self, config):
+        return {}
+
+    def generate(self, config):
+        processes = self.generate_processes(config)
+        topology = self.generate_topology(config)
+
+        # add derivers
+        derivers = process_derivers(processes, topology)
+        processes.update(derivers['processes'])
+        topology.update(derivers['topology'])
+
+        return {
+            'processes': processes,
+            'topology': topology}
 
 
 def generate_state(processes, topology, initial_state):
