@@ -8,7 +8,6 @@ from vivarium.data.molecular_weight import molecular_weight
 from vivarium.compartment.process import Process, keys_list
 from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 
-chromosome = FlagellaChromosome()
 
 def build_complexation_stoichiometry(
         stoichiometry,
@@ -36,24 +35,26 @@ def build_complexation_stoichiometry(
 
 class Complexation(Process):
     defaults = {
-        'monomer_ids': chromosome.complexation_monomer_ids,
-        'complex_ids': chromosome.complexation_complex_ids,
-        'stoichiometry': chromosome.complexation_stoichiometry,
-        'rates': chromosome.complexation_rates}
+        'monomer_ids': [],
+        'complex_ids': [],
+        'reaction_ids': [],
+        'stoichiometry': {},
+        'rates': {}}
 
     def __init__(self, initial_parameters={}):
+
         self.default_parameters = copy.deepcopy(self.defaults)
         self.derive_defaults(initial_parameters, 'stoichiometry', 'reaction_ids', keys_list)
 
         self.parameters = self.default_parameters
         self.parameters.update(initial_parameters)
 
-        self.monomer_ids = self.parameters['monomer_ids']
-        self.complex_ids = self.parameters['complex_ids']
-        self.reaction_ids = self.parameters['reaction_ids']
+        self.monomer_ids = self.parameters.get('monomer_ids', self.defaults['monomer_ids'])
+        self.complex_ids = self.parameters.get('complex_ids', self.defaults['complex_ids'])
+        self.reaction_ids = self.parameters.get('reaction_ids', self.defaults['reaction_ids'])
 
-        self.stoichiometry = self.parameters['stoichiometry']
-        self.rates = self.parameters['rates']
+        self.stoichiometry = self.parameters.get('stoichiometry', self.defaults['stoichiometry'])
+        self.rates = self.parameters.get('rates', self.defaults['rates'])
 
         self.complexation_stoichiometry, self.complexation_rates = build_complexation_stoichiometry(
             self.stoichiometry,
@@ -61,6 +62,11 @@ class Complexation(Process):
             self.reaction_ids,
             self.monomer_ids,
             self.complex_ids)
+
+
+        import ipdb; ipdb.set_trace()
+        # TODO -- if no stoich, remove process?
+
 
         self.complexation = StochasticSystem(self.complexation_stoichiometry)
 
@@ -148,7 +154,15 @@ class Complexation(Process):
         return update
 
 def test_complexation():
-    complexation = Complexation()
+
+    chromosome = FlagellaChromosome()
+    flagella_config = {
+        'monomer_ids': chromosome.complexation_monomer_ids,
+        'complex_ids': chromosome.complexation_complex_ids,
+        'stoichiometry': chromosome.complexation_stoichiometry,
+        'rates': chromosome.complexation_rates}
+
+    complexation = Complexation(flagella_config)
     settings = complexation.default_settings()
     state = settings['state']
     for monomer in complexation.monomer_ids:

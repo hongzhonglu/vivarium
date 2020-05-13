@@ -125,6 +125,8 @@ def get_lac_operon_config(config):
     for amino_acid in amino_acids.values():
         molecules[amino_acid] = 1000000
 
+    molecules['GLC-6-P'] = 10000  # TODO -- make sure this is read by transcription
+
     lac_config = {
 
         'transcription': {
@@ -141,27 +143,21 @@ def get_lac_operon_config(config):
 
             'sequences': lac_data.protein_sequences,
             'templates': lac_data.transcript_templates,
-            'concentration_keys': ['CRP', 'flhDC', 'fliA'],
+            # 'concentration_keys': ['GLC-6-P'],  # TODO -- translation assumes that these are proteins
             'transcript_affinities': lac_data.transcript_affinities,
             'elongation_rate': 22,
             'polymerase_occlusion': 50},
 
-        # 'degradation': {
-        #
-        #     'sequences': sequences,
-        #     'catalysis_rates': {
-        #         'endoRNAse': 0.01},
-        #     'degradation_rates': {
-        #         'transcripts': {
-        #             'endoRNAse': {
-        #                 transcript: 1e-23
-        #                 for transcript in chromosome_config['genes'].keys()}}}},
-        #
-        # 'complexation': {
-        #     'monomer_ids': lac_data.complexation_monomer_ids,
-        #     'complex_ids': lac_data.complexation_complex_ids,
-        #     'stoichiometry': lac_data.complexation_stoichiometry,
-        #     'rates': lac_data.complexation_rates},
+        'degradation': {
+
+            'sequences': sequences,
+            'catalysis_rates': {
+                'endoRNAse': 0.01},
+            'degradation_rates': {
+                'transcripts': {
+                    'endoRNAse': {
+                        transcript: 1e-23
+                        for transcript in chromosome_config['genes'].keys()}}}},
 
         'initial_state': {
             'molecules': molecules,
@@ -169,7 +165,10 @@ def get_lac_operon_config(config):
                 gene: 0
                 for gene in chromosome_config['genes'].keys()},
             'proteins': {
-                'lacY': 10,
+                'lacY': 0,
+                'lacZ': 0,
+                'lacA': 0,
+                'endoRNAse': 1,
                 UNBOUND_RIBOSOME_KEY: 200,  # e. coli has ~ 20000 ribosomes
                 UNBOUND_RNAP_KEY: 200}}}
 
@@ -193,7 +192,7 @@ def run_lac_operon(config={}, out_dir='out'):
 
     # run simulation
     settings = {
-        'total_time': 960,  # 2400
+        'total_time': 100,  # 2400
         'verbose': True}
     timeseries = simulate_compartment(compartment, settings)
 
