@@ -63,11 +63,7 @@ class Complexation(Process):
             self.monomer_ids,
             self.complex_ids)
 
-
-        import ipdb; ipdb.set_trace()
-        # TODO -- if no stoich, remove process?
-
-
+        assert len(self.complexation_stoichiometry) > 0, 'Complexation requires stoichiometry'
         self.complexation = StochasticSystem(self.complexation_stoichiometry)
 
         ports = {

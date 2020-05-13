@@ -372,9 +372,9 @@ class Transcription(Process):
         self.ports = {
             'chromosome': ['rnaps', 'rnap_id', 'domains', 'root_domain'],
             'molecules': self.molecule_ids,
-            'factors': self.transcription_factors,
+            'factors': self.transcription_factors,  # TODO -- this is where GLC-6-P needs to come in
             'transcripts': self.transcript_ids,
-            'proteins': [UNBOUND_RNAP_KEY] + self.transcription_factors}
+            'proteins': [UNBOUND_RNAP_KEY] + self.transcription_factors}  # TODO -- transcription factors assumed to be proteins
 
         log.debug('transcription parameters: {}'.format(self.parameters))
 
