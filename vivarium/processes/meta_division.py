@@ -84,18 +84,14 @@ class MetaDivision(Process):
         division = states['global']['division']
 
         if division:
-            harikari = {
-                'cells': {
-                    '_delete': [self.cell_id]}}
+            harikari = [self.cell_id]
 
             # daughter_states = divide_state()
 
             daughter_ids = [
                 self.id_function(), self.id_function()]
 
-            daughter_updates = {
-                'cells': {
-                    '_generate': []}}
+            daughter_updates = []
             
             for daughter_id in daughter_ids:
                 compartment = self.compartment.generate({
@@ -106,4 +102,9 @@ class MetaDivision(Process):
                     'topology': compartment['topology'],
                     # TODO: provide initial state})
                     'initial_state': {}})
+
+            return {
+                'cells': {
+                    '_delete': harikari,
+                    '_generate': daughter_updates}}
                         
