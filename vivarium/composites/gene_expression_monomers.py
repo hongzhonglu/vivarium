@@ -28,6 +28,9 @@ from vivarium.processes.division import Division, divide_condition
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.nucleotides import nucleotides
 
+# composites
+from vivarium.composites.gene_expression import plot_gene_expression_output
+
 
 def compose_gene_expression_monomers(config):
     # declare the processes
@@ -41,7 +44,6 @@ def compose_gene_expression_monomers(config):
         'transcription': transcription,
         'translation': translation,
         'degradation': degradation,
-        'complexation': complexation,
         'division': division}
 
     # make the topology
@@ -202,34 +204,9 @@ def run_lac_operon(config={}, out_dir='out'):
 
 
 
-
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'gene_expression_monomers_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    parser = argparse.ArgumentParser(description='gene_expression_monomers')
-    parser.add_argument('--lac', '-l', action='store_true', default=False)
-    args = parser.parse_args()
-
-    if args.lac:
-        run_lac_operon({}, out_dir)
-
-    else:
-        # load the compartment
-        gene_expression_compartment = load_compartment(compose_gene_expression)
-
-        # run simulation
-        sim_settings = {
-            'total_time': 100,
-        }
-        timeseries = simulate_compartment(gene_expression_compartment, sim_settings)
-
-        plot_settings = {
-            'name': 'gene_expression_monomers',
-            'ports': {
-                'transcripts': 'transcripts',
-                'molecules': 'molecules',
-                'proteins': 'proteins'}}
-
-        plot_gene_expression_output(timeseries, plot_settings, out_dir)
+    run_lac_operon({}, out_dir)
