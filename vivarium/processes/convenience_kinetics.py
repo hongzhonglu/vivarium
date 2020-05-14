@@ -368,31 +368,31 @@ def get_glc_lct_config():
             ('internal', 'EIIglc'): {
                 ('external', 'glc__D_e'): 1e0,  # k_m for external [glc__D_e]
                 ('internal', 'pep_c'): None,  # Set k_m = None to make a reactant non-limiting
-                'kcat_f': 2.5e5,  # kcat for the forward direction
+                'kcat_f': 6e1,  # kcat for the forward direction
             }
         },
         'EX_lcts_e': {
             ('internal', 'LacY'): {
                 ('external', 'lcts_e'): 1e0,
-                'kcat_f': 1e3,
+                'kcat_f': 6e1,
             }
         }
     }
 
     transport_initial_state = {
         'internal': {
-            'EIIglc': 1.8e-6,  # concentration (mmol/L)
+            'EIIglc': 1.8e-3,  # (mmol/L)
             'g6p_c': 0.0,
             'pep_c': 1.8e-1,
             'pyr_c': 0.0,
-            'LacY': 1.0e-6,
+            'LacY': 0,
             'lcts_p': 0.0,
         },
         'external': {
-            'glc__D_e': 12.0,
+            'glc__D_e': 10.0,
             'lcts_e': 10.0,
         },
-        'fluxes': {  # TODO -- is this needed?
+        'fluxes': {
             'EX_glc__D_e': 0.0,
             'EX_lcts_e': 0.0,
         }

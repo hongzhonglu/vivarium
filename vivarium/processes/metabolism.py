@@ -678,9 +678,7 @@ if __name__ == '__main__':
     plot_settings = {
         'max_rows': 30,
         'remove_zeros': True,
-        'skip_ports': ['exchange', 'flux_bounds', 'reactions'],
-        'overlay': {
-            'reactions': 'flux_bounds'}}
+        'skip_ports': ['exchange']}
 
     # make plots from simulation output
     plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')

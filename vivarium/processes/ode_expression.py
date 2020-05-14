@@ -309,8 +309,8 @@ def get_lacy_config():
         'LacY': 3e-5}
 
     # define regulation
-    regulators = [('external', 'Glucose')]
-    regulation = {'lacy_RNA': 'if not (external, Glucose) > 0.1'}
+    regulators = [('external', 'glc__D_e')]
+    regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
 
     # initial state
     initial_state = {
