@@ -295,16 +295,16 @@ def get_lacy_config():
     >>> config = get_lacy_config()
     >>> expression_process = ODE_expression(config)
     '''
-    toy_transcription_rates = {
+    transcription_rates = {
         'lacy_RNA': 1e-7}
 
-    toy_translation_rates = {
-        'LacY': 1e-3}
+    translation_rates = {
+        'LacY': 5e-3}
 
-    toy_protein_map = {
+    protein_map = {
         'LacY': 'lacy_RNA'}
 
-    toy_degradation_rates = {
+    degradation_rates = {
         'lacy_RNA': 3e-3,  # a single RNA lasts about 5 minutes
         'LacY': 3e-5}
 
@@ -315,14 +315,14 @@ def get_lacy_config():
     # initial state
     initial_state = {
         'internal': {
-            'lacy_RNA': 0,
+            'lacy_RNA': 0.0,
             'LacY': 0.0}}
 
     return {
-        'transcription_rates': toy_transcription_rates,
-        'translation_rates': toy_translation_rates,
-        'degradation_rates': toy_degradation_rates,
-        'protein_map': toy_protein_map,
+        'transcription_rates': transcription_rates,
+        'translation_rates': translation_rates,
+        'degradation_rates': degradation_rates,
+        'protein_map': protein_map,
         'regulators': regulators,
         'regulation': regulation,
         'initial_state': initial_state}
@@ -400,13 +400,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.lacY:
-        total_time = 6000
+        total_time = 5000
         shift_time1 = int(total_time / 5)
         shift_time2 = int(3 * total_time / 5)
         timeline = [
-            (0, {'external': {'Glucose': 10}}),
-            (shift_time1, {'external': {'Glucose': 0}}),
-            (shift_time2, {'external': {'Glucose': 10}}),
+            (0, {'external': {'glc__D_e': 10}}),
+            (shift_time1, {'external': {'glc__D_e': 0}}),
+            (shift_time2, {'external': {'glc__D_e': 10}}),
             (total_time, {})]
 
         timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
