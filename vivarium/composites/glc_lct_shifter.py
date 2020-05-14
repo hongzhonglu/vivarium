@@ -117,8 +117,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     set_axes(ax2)
     ax2.title.set_text('internal')
     ax2.set_ylabel('(mM)')
-    # ax2.set_yscale('log')
-    ax2.legend(loc='center  left', bbox_to_anchor=(1.0, 0.5))
+    ax2.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
     ax3 = fig.add_subplot(grid[2, 0])  # grid is (row, column)
     ax3.plot(time, mass, label='mass')
