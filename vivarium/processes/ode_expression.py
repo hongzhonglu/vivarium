@@ -7,6 +7,7 @@ Ordinary Differential Equation Expression Model
 from __future__ import absolute_import, division, print_function
 
 import os
+import argparse
 
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
@@ -370,11 +371,10 @@ def get_flagella_expression():
         'protein_map': protein_map,
         'initial_state': initial_state}
 
-def test_expression(time=100):
-    expression_config = get_lacy_config()
+def test_expression(config=get_lacy_config(), time=100):
 
     # load process
-    expression = ODE_expression(expression_config)
+    expression = ODE_expression(config)
     compartment = process_in_compartment(expression)
     options = compartment.configuration
 
@@ -401,5 +401,17 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_expression(6000) # 2520 sec (42 min) is the expected doubling time in minimal media
-    plot_simulation_output(timeseries, {}, out_dir)
+    parser = argparse.ArgumentParser(description='ODE expression')
+    parser.add_argument('--lacY', '-l', action='store_true', default=False)
+    parser.add_argument('--flagella', '-f', action='store_true', default=False)
+    args = parser.parse_args()
+
+    if args.lacY:
+        timeseries = test_expression(get_lacy_config(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
+    elif args.flagella:
+        timeseries = test_expression(get_flagella_expression(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'flagella_expression')
+    else:
+        timeseries = test_expression(get_lacy_config(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
