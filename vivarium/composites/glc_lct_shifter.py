@@ -124,7 +124,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     set_axes(ax3, True)
     ax3.title.set_text('global')
     ax3.set_ylabel('(fg)')
-    ax3.set_xlabel('time (s)')
+    ax3.set_xlabel('time (min)')
     ax3.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
     ax4 = fig.add_subplot(grid[0, 1])  # grid is (row, column)
@@ -153,18 +153,18 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    end_time = 6000
+    end_time = 7500
     timeline = [
         (0, {'environment': {
-            'glc__D_e': 5.0,
-            'lcts_e': 5.0}
+            'glc__D_e': 3.0,
+            'lcts_e': 3.0}
         }),
         (end_time, {})]
 
     settings = {
         'environment_port': options['environment_port'],
         'exchange_port': options['exchange_port'],
-        'environment_volume': 2e-13,  # L
+        'environment_volume': 1e-13,  # L
         'timeline': timeline}
 
     plot_settings = {
