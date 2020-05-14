@@ -173,9 +173,15 @@ def test_txp_mtb_ge(time=10):
     return simulate_with_environment(compartment, settings)
 
 def simulate_txp_mtb_ge(out_dir='out'):
-    timeseries = test_txp_mtb_ge(100) # 2520 sec (42 min) is the expected doubling time in minimal media
+
+    # run simulation
+    timeseries = test_txp_mtb_ge(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    volume_ts = timeseries['global']['volume']
+    print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+
+    # plot
     plot_settings = {
-        'max_rows': 20,
+        'max_rows': 30,
         'remove_zeros': True,
         'overlay': {
             'reactions': 'flux_bounds'},
@@ -184,7 +190,6 @@ def simulate_txp_mtb_ge(out_dir='out'):
         'show_state': [
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lcts_e')]}
-
     plot_simulation_output(timeseries, plot_settings, out_dir)
 
 
@@ -197,7 +202,7 @@ def scan_txp_mtb_ge():
         ('transport',
          'kinetic_parameters',
          'EX_glc__D_e',
-         ('internal', 'PTSG'),
+         ('internal', 'EIIglc'),
          'kcat_f'):
             get_parameters_logspace(1e3, 1e6, 4),
         ('transport',
@@ -270,6 +275,7 @@ if __name__ == '__main__':
     # run scan with python vivarium/composites/txp_mtb_ge.py --scan
     parser = argparse.ArgumentParser(description='transport metabolism composite')
     parser.add_argument('--scan', '-s', action='store_true', default=False,)
+    parser.add_argument('--run', '-r', action='store_true', default=False, )
     args = parser.parse_args()
 
     if args.scan:

@@ -38,7 +38,7 @@ def get_expression_config():
     # glc lct config from ode_expression
     config = get_lacy_config()
 
-    # define regulation
+    # redo regulation with BiGG id for glucose
     regulators = [('external', 'glc__D_e')]
     regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
     reg_config = {
@@ -69,7 +69,7 @@ def compose_glc_lct_shifter(config):
 
 def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
 
-    time = timeseries['time']
+    time = [t/60 for t in timeseries['time']]  # convert to minutes
     environment = timeseries['environment']
     cell = timeseries['cytoplasm']
     cell_counts = timeseries['cytoplasm_counts']
@@ -132,7 +132,7 @@ def plot_diauxic_shift(timeseries, settings={}, out_dir='out'):
     ax4.plot(time, lac_exchange, label='lactose exchange')
     set_axes(ax4, True)
     ax4.title.set_text('flux'.format(environment_volume))
-    ax4.set_xlabel('time (s)')
+    ax4.set_xlabel('time (min)')
     ax4.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
     # save figure
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     options = compartment.configuration
 
     # define timeline
-    end_time = 3000
+    end_time = 6000
     timeline = [
         (0, {'environment': {
             'glc__D_e': 5.0,
@@ -168,9 +168,9 @@ if __name__ == '__main__':
         'timeline': timeline}
 
     plot_settings = {
-        'max_rows': 20,
+        'max_rows': 30,
         'remove_zeros': True,
-        'overlay': {'reactions': 'flux'},
+        'overlay': {'reactions': 'flux_bounds'},
         'show_state': [
             ('environment', 'glc__D_e'),
             ('environment', 'lcts_e'),
@@ -178,11 +178,11 @@ if __name__ == '__main__':
             ('reactions', 'EX_glc__D_e'),
             ('reactions', 'EX_lcts_e'),
             ('cytoplasm', 'g6p_c'),
-            ('cytoplasm', 'PTSG'),
+            ('cytoplasm', 'EIIglc'),
             ('cytoplasm', 'lcts_p'),
             ('cytoplasm', 'lacy_RNA'),
             ('cytoplasm', 'LacY')],
-        'skip_ports': ['prior_state', 'null', 'reactions']}
+        'skip_ports': ['prior_state', 'null']}
 
     timeseries = simulate_with_environment(compartment, settings)
     volume_ts = timeseries['global']['volume']
