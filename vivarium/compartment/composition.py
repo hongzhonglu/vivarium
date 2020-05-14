@@ -377,7 +377,7 @@ def set_axes(ax, show_xaxis=False):
         ax.tick_params(bottom=False, labelbottom=False)
 
 
-def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='simulation'):
+def plot_simulation_output(timeseries_raw, settings={}, out_dir='out', filename='simulation'):
     '''
     plot simulation output, with rows organized into separate columns.
 
@@ -400,6 +400,7 @@ def plot_simulation_output(timeseries, settings={}, out_dir='out', filename='sim
     skip_keys = ['time']
 
     # get settings
+    timeseries = copy.deepcopy(timeseries_raw)
     max_rows = settings.get('max_rows', 25)
     remove_zeros = settings.get('remove_zeros', False)
     remove_flat = settings.get('remove_flat', False)

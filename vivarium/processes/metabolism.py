@@ -535,9 +535,6 @@ BiGG_energy_carriers = [
 def energy_synthesis_plot(timeseries, settings, out_dir, figname='energy_use'):
     # plot the synthesis of energy carriers in BiGG model output
 
-    import ipdb; ipdb.set_trace()
-
-
     energy_reactions = settings.get('reactions', {})
     saved_reactions = timeseries['reactions']
     time_vec = timeseries['time']
