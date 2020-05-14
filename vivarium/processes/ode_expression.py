@@ -371,7 +371,8 @@ def get_flagella_expression():
         'protein_map': protein_map,
         'initial_state': initial_state}
 
-def test_expression(config=get_lacy_config(), time=100):
+
+def test_expression(config=get_lacy_config(), timeline=[(100, {})]):
 
     # load process
     expression = ODE_expression(config)
@@ -379,14 +380,6 @@ def test_expression(config=get_lacy_config(), time=100):
     options = compartment.configuration
 
     # simulate
-    shift_time1 = int(time / 5)
-    shift_time2 = int(3 * time / 5)
-    timeline = [
-        (0, {'external': {'Glucose': 10}}),
-        (shift_time1, {'external': {'Glucose': 0}}),
-        (shift_time2, {'external': {'Glucose': 10}}),
-        (time, {})]
-
     settings = {
         'environment_port': options.get('environment_port'),
         'exchange_port': options.get('exchange_port'),
@@ -407,11 +400,24 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.lacY:
-        timeseries = test_expression(get_lacy_config(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
+        total_time = 6000
+        shift_time1 = int(total_time / 5)
+        shift_time2 = int(3 * total_time / 5)
+        timeline = [
+            (0, {'external': {'Glucose': 10}}),
+            (shift_time1, {'external': {'Glucose': 0}}),
+            (shift_time2, {'external': {'Glucose': 10}}),
+            (total_time, {})]
+
+        timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
         plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
+
     elif args.flagella:
-        timeseries = test_expression(get_flagella_expression(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
+        timeline = [(100, {})]
+        timeseries = test_expression(get_flagella_expression(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
         plot_simulation_output(timeseries, {}, out_dir, 'flagella_expression')
+
     else:
-        timeseries = test_expression(get_lacy_config(), 6000) # 2520 sec (42 min) is the expected doubling time in minimal media
-        plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
+        timeline = [(100, {})]
+        timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir)
