@@ -32,9 +32,10 @@ from vivarium.parameters.parameters import (
 def add_dummy_protein(chromosome_data, dummy_config):
 
     # get dummy config
-    dummy_sequence_length = dummy_config.get('sequence_length')
+    dummy_sequence_length = int(dummy_config.get('sequence_length'))
     dummy_promoter_affinities = dummy_config.get('promoter_affinities')
     dummy_transcript_affinities = dummy_config.get('transcript_affinities')
+    dummy_protein_length = dummy_sequence_length / 3  # nucleotide triplet to amino acid
 
     # get chromosome data
     chromosome_data = chromosome_data.copy()
@@ -63,34 +64,52 @@ def add_dummy_protein(chromosome_data, dummy_config):
         elif direction == -1:
             operon_region = [terminator_position, promoter_position]
 
-        new_regions = None
-        remove_region = None
+        remove_regions = []
         for region in dummy_regions:
             if (operon_region[0] >= region[0]) and (operon_region[1] <= region[1]):
-                new_regions = [[region[0], operon_region[0]], [operon_region[1], region[1]]]
-                remove_region = region
-
-        if remove_region:
+                dummy_regions.extend([[region[0], operon_region[0]], [operon_region[1], region[1]]])
+                remove_regions.append(region)
+        for remove_region in remove_regions:
             dummy_regions.remove(remove_region)
-            dummy_regions.extend(new_regions)
 
     # remove regions of length 0
     dummy_regions = [region for region in dummy_regions if not (region[0] == region[1])]
 
-    # add dummy operons to promoters
-    chromosome_config['promoters']['dummy'] = {
-        'id': 'dummy',
-        'sites': [],
-        'terminators': [],
-        'direction': None,
-        'position': None,
-    }
+    # break up dummy_regions by dummy_sequence_length
+    add_regions = []
+    remove_regions = []
     for region in dummy_regions:
         region_length = region[1] - region[0]
-        n_regions = np.ceil(region_length/dummy_sequence_length)
+        quotient, remain = divmod(region_length, dummy_sequence_length)
 
-        import ipdb;
-        ipdb.set_trace()
+        if quotient > 0:
+            position = region[0]
+            for r in range(int(quotient)):
+                add_regions.append([position, position + dummy_sequence_length - 1])
+                position += dummy_sequence_length
+            add_regions.append([position, position + remain - 1])
+            remove_regions.append(region)
+
+    for remove_region in remove_regions:
+        dummy_regions.remove(remove_region)
+    dummy_regions.extend(add_regions)
+
+    # add dummy operons to promoters
+    for index, region in enumerate(dummy_regions):
+        dummy_id = 'dummy_{}'.format(index)
+        chromosome_config['promoters'][dummy_id] = {
+            'id': dummy_id,
+            'sites': [],
+            'terminators': [{
+                'position': region[1],
+                'strength': 1.0,
+                'products': ['dummy']}],
+            'direction': 1,
+            'position': region[0]}
+
+
+    import ipdb;
+    ipdb.set_trace()
 
 
     return {
