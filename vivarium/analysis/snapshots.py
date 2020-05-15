@@ -17,7 +17,7 @@ from vivarium.utils.dict_utils import deep_merge
 # colors for phylogeny initial agents
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
 HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
-DEFAULT_SV = [1.0, 7.0]
+DEFAULT_SV = [1.0, 0.7]
 FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
 BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # HSV
 
@@ -238,7 +238,7 @@ class Snapshots(Analysis):
 
                     # colorbar in new column after final snapshot
                     if col_idx == N_SNAPSHOTS:
-                        cbar_col = col_idx+1
+                        cbar_col = col_idx + 2
                         ax = fig.add_subplot(grid[row_idx, cbar_col])
                         divider = make_axes_locatable(ax)
                         cax = divider.append_axes("left", size="5%", pad=0.0)
