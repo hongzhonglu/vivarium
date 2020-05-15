@@ -4,6 +4,7 @@ import random
 import math
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
@@ -183,7 +184,8 @@ class Snapshots(Analysis):
         ## make the figure
         # fields and tag data are plotted in separate rows
         n_rows = len(tag_range) + n_fields
-        n_cols = N_SNAPSHOTS + 3  # two columns for text, one for the colorbar
+        n_col_text = 2 # columns for text
+        n_cols = N_SNAPSHOTS + n_col_text + 1  # one column for the colorbar
         fig = plt.figure(figsize=(6*n_cols, 6*n_rows))
         grid = plt.GridSpec(n_rows, n_cols, wspace=0.1, hspace=0.1)
         plt.rcParams.update({'font.size': 36})
@@ -202,7 +204,7 @@ class Snapshots(Analysis):
             row_idx+=1
 
         # plot snapshot data in each subsequent column
-        for col_idx, time in enumerate(snapshot_times, 2):
+        for col_idx, time in enumerate(snapshot_times, n_col_text):
             row_idx = 0
             field_data = time_data[time].get('fields')
             agent_data = time_data[time]['agents']
@@ -238,11 +240,11 @@ class Snapshots(Analysis):
 
                     # colorbar in new column after final snapshot
                     if col_idx == N_SNAPSHOTS:
-                        cbar_col = col_idx + 2
+                        cbar_col = col_idx + n_col_text
                         ax = fig.add_subplot(grid[row_idx, cbar_col])
                         divider = make_axes_locatable(ax)
                         cax = divider.append_axes("left", size="5%", pad=0.0)
-                        fig.colorbar(im, cax=cax, format='%.6f')
+                        fig.colorbar(im, cax=cax, format='%.3f')
                         ax.axis('off')
 
                     row_idx += 1
@@ -276,6 +278,28 @@ class Snapshots(Analysis):
                     agent_tag_colors[agent_id] = agent_color
 
                 plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
+
+                # colorbar in new column after final snapshot
+                if col_idx == N_SNAPSHOTS:
+                    cbar_col = col_idx + n_col_text
+                    ax = fig.add_subplot(grid[row_idx, cbar_col])
+                    divider = make_axes_locatable(ax)
+                    cax = divider.append_axes("left", size="5%", pad=0.0)
+
+                    # create a colormap from this tag's flourescent color
+                    this_tag_range = tag_range[tag_id]
+                    cmaplist = [
+                        tuple(get_flourescent_color(BASELINE_TAG_COLOR, tag_colors[tag_id], intensity))
+                        for intensity in np.linspace(0, 1, 100)]
+                    tag_cmap = mpl.colors.LinearSegmentedColormap.from_list(
+                        tag_id, cmaplist, N=256, gamma=1.0)
+                    cmap = mpl.cm.ScalarMappable(
+                        norm=mpl.colors.Normalize(vmin=this_tag_range[0], vmax=this_tag_range[1]),
+                        cmap=tag_cmap)
+                    cmap.set_array([])
+
+                    fig.colorbar(cmap, ax=cax, format='%.3f')
+                    ax.axis('off')
 
                 row_idx += 1
 
