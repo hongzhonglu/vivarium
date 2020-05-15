@@ -292,6 +292,8 @@ class Store(object):
 
     def apply_update(self, update):
         if self.children:
+            topology_updates = {}
+
             if '_delete' in update:
                 # delete a list of paths
                 for path in update['_delete']:
@@ -307,6 +309,10 @@ class Store(object):
                         generate['processes'],
                         generate['topology'],
                         generate['initial_state'])
+                    assoc_in(
+                        topology_updates,
+                        generate['path'],
+                        generate['topology'])
                 self.apply_subschemas()
 
                 update = dissoc(update, '_generate')
@@ -331,6 +337,10 @@ class Store(object):
                         daughter['processes'],
                         daughter['topology'],
                         daughter['initial_state'])
+                    assoc_in(
+                        topology_updates,
+                        daughter['path'],
+                        daughter['topology'])
 
                     self.children[daughter_id].apply_update(initial_state)
 
@@ -342,7 +352,12 @@ class Store(object):
             for key, value in update.items():
                 if key in self.children:
                     child = self.children[key]
-                    child.apply_update(value)
+                    topology_updates = deep_merge(
+                        topology_updates,
+                        {key: child.apply_update(value)})
+
+            return topology_updates
+
         else:
             self.value = self.updater(self.value, update)
 
@@ -610,15 +625,20 @@ class Experiment(object):
         absolute = self.absolute_update(path, update)
         return absolute
 
+    def apply_update(self, update):
+        topology_updates = self.state.apply_update(update)
+        if topology_updates:
+            self.topology = deep_merge(self.topology, topology_updates)
+
     def run_derivers(self, derivers):
         for path, deriver in derivers.items():
             # timestep shouldn't influence derivers
             update = self.process_update(path, deriver, 0)
-            self.state.apply_update(update)
+            self.apply_update(update)
 
     def send_updates(self, updates, derivers=None):
         for update in updates:
-            self.state.apply_update(update)
+            self.apply_update(update)
         if derivers is None:
             derivers = {
                 path: state
