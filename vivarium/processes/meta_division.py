@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import Deriver
 
 
 def divide_condition(compartment):
@@ -16,7 +16,7 @@ def divide_condition(compartment):
 class CountForever(object):
     def __init__(self, start=0, by=1):
         self.index = start
-        self.by
+        self.by = by
 
     def generate(self):
         value = self.index
@@ -24,11 +24,11 @@ class CountForever(object):
         return value
 
 
-class MetaDivision(Process):
+class MetaDivision(Deriver):
 
     defaults = {
         'initial_state': {},
-        'id_function': CountForever().generate}
+        'id_function': CountForever(start=33).generate}
 
     def __init__(self, initial_parameters={}):
         self.division = 0
@@ -39,10 +39,10 @@ class MetaDivision(Process):
         self.cell_id = initial_parameters.get('cell_id', str(self.id_function()))
 
         ports = {
-            'global': ['division'],
+            'global': ['divide'],
             'cells': ['*']}
 
-        super(Division, self).__init__(ports, parameters)
+        super(MetaDivision, self).__init__(ports, initial_parameters)
 
     def default_settings(self):
         # default state
@@ -56,7 +56,7 @@ class MetaDivision(Process):
         # schema
         schema = {
             'global': {
-                'division': {
+                'divide': {
                     'updater': 'set',
                     'divide': 'zero'}}}
 
@@ -73,38 +73,38 @@ class MetaDivision(Process):
 
         return {
             'global': {
-                'division': {
+                'divide': {
                     '_default': False,
-                    '_updater': 'set'}}
+                    '_updater': 'set'}},
             'cells': {
-                '*': {
-                    'cell': {}}}}
+                '*': {}}}
 
     def next_update(self, timestep, states):
-        division = states['global']['division']
+        divide = states['global']['divide']
+        cells = states['cells']
 
-        if division:
-            harikari = [self.cell_id]
-
-            # daughter_states = divide_state()
-
+        if divide:
             daughter_ids = [
-                self.id_function(), self.id_function()]
+                str(self.id_function()), str(self.id_function())]
 
             daughter_updates = []
             
             for daughter_id in daughter_ids:
                 compartment = self.compartment.generate({
                     'agent_id': daughter_id})
-                daughter_updates['cells']['_generate'].append({
+                daughter_updates.append({
+                    'daughter': daughter_id,
                     'path': (daughter_id, 'cell'),
                     'processes': compartment['processes'],
                     'topology': compartment['topology'],
-                    # TODO: provide initial state})
                     'initial_state': {}})
 
+            # initial state will be provided by division in the tree
             return {
                 'cells': {
-                    '_delete': harikari,
-                    '_generate': daughter_updates}}
+                    '_divide': {
+                        'mother': self.cell_id,
+                        'daughters': daughter_updates}}}
+        else:
+             return {}   
                         

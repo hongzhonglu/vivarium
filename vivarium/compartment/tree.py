@@ -6,7 +6,9 @@ import random
 import numpy as np
 import logging as log
 
-from vivarium.compartment.process import Process
+from vivarium.compartment.process import (
+    Process,
+    divider_library)
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 # processes
@@ -22,8 +24,6 @@ deriver_library = {
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcs,
 }
-
-
 
 
 def get_in(d, path):
@@ -125,12 +125,19 @@ def schema_for(port, keys, initial_state, default=0.0, updater='accumulate'):
             '_updater': updater}
         for key in keys}
 
+def always_true(x):
+    return True
+
+def identity(y):
+    return y
+
 class Store(object):
     schema_keys = set([
         '_default',
         '_updater',
         '_divider',
         '_value',
+        '_divider',
         '_properties',
         '_units'])
 
@@ -143,6 +150,7 @@ class Store(object):
         self.updater = None
         self.value = None
         self.units = None
+        self.divider = None
 
         self.apply_config(config)
 
@@ -158,21 +166,28 @@ class Store(object):
 
         if self.schema_keys & config.keys():
             # TODO (Eran) -- check if config schema match existing schema, make exceptions if mismatched
-            self.default = config.get('_default')
+            self.default = config.get('_default', self.default)
+            self.value = config.get('_value', self.value or self.default)
+
             self.updater = config.get('_updater', self.updater or 'accumulate')
             if isinstance(self.updater, str):
                 self.updater = updater_library[self.updater]
-            self.value = config.get('_value', self.default)
+
+            self.divider = config.get('_divider', self.divider)
+            if isinstance(self.divider, str):
+                self.divider = divider_library[self.divider]
+
             self.properties = deep_merge(
                 self.properties,
                 config.get('_properties', {}))
-            self.units = config.get('_units')
+
+            self.units = config.get('_units', self.units)
         else:
             self.value = None
 
             for key, child in config.items():
                 if not key in self.children:
-                    self.children[key] = Store(child, self)
+                    self.children[key] = Store(child, parent=self)
                 else:
                     self.children[key].apply_config(child)
 
@@ -194,16 +209,25 @@ class Store(object):
                 '_value': self.value})
             if self.updater:
                 config['_updater'] = self.updater
+            if self.divider:
+                config['_divider'] = self.divider
             if self.units:
                 config['_units'] = self.units
 
         return config
 
-    def get_value(self):
+    def get_value(self, condition=None, f=None):
         if self.children:
+            if condition is None:
+                condition = always_true
+
+            if f is None:
+                f = identity
+
             return {
-                key: child.get_value()
-                for key, child in self.children.items()}
+                key: f(child.get_value(condition, f))
+                for key, child in self.children.items()
+                if condition(child)}
         else:
             return self.value
 
@@ -254,12 +278,25 @@ class Store(object):
                 del target.children[remove]
                 return lost
 
+    def divide_value(self):
+        if self.divider:
+            return self.divider(self.value)
+        elif self.children:
+            daughters = [{}, {}]
+            for key, child in self.children.items():
+                division = child.divide_value()
+                if division:
+                    for daughter, divide in zip(daughters, division):
+                        daughter[key] = divide
+            return daughters
+
     def apply_update(self, update):
         if self.children:
             if '_delete' in update:
                 # delete a list of paths
                 for path in update['_delete']:
                     self.delete_path(path)
+
                 update = dissoc(update, ['_delete'])
 
             if '_generate' in update:
@@ -270,10 +307,37 @@ class Store(object):
                         generate['processes'],
                         generate['topology'],
                         generate['initial_state'])
+                self.apply_subschemas()
+
                 update = dissoc(update, '_generate')
 
-                if self.subschema:
-                    self.apply_subschema()
+            if '_divide' in update:
+                # use dividers to find initial states for daughters
+                divide = update['_divide']
+                mother = divide['mother']
+                daughters = divide['daughters']
+                initial_state = self.children[mother].get_value(
+                    condition=lambda child: not(isinstance(child.value, Process)),
+                    f=lambda child: copy.deepcopy(child))
+                states = self.children[mother].divide_value()
+                for daughter, state in zip(daughters, states):
+                    daughter_id = daughter['daughter']
+                    initial_state = deep_merge(
+                        initial_state,
+                        state)
+
+                    self.generate(
+                        daughter['path'],
+                        daughter['processes'],
+                        daughter['topology'],
+                        daughter['initial_state'])
+
+                    self.children[daughter_id].apply_update(initial_state)
+
+                self.delete_path((mother,))
+                self.apply_subschemas()
+
+                update = dissoc(update, '_divide')
 
             for key, value in update.items():
                 if key in self.children:
@@ -351,14 +415,14 @@ class Store(object):
                 for port, targets in subprocess.ports_schema().items():
                     path = subtopology[port]
                     if path:
-                        initial = initial_state.get(port, {})
+                        initial = get_in(initial_state, path)
                         for target, schema in targets.items():
                             if target == '*':
                                 glob = self.establish_path(path, {
                                     '_subschema': schema})
                                 glob.apply_subschema()
                             else:
-                                if target in initial:
+                                if initial and target in initial:
                                     schema = dict(
                                         schema,
                                         _value=initial[target])
@@ -388,9 +452,9 @@ def process_derivers_config(processes, topology):
         if isinstance(process, Process):
             process_settings = process.default_settings()
             deriver_setting = process_settings.get('deriver_setting', [])
-            try:
+            if process_id in topology:
                 port_map = topology[process_id]
-            except:
+            else:
                 print('{} topology port mismatch'.format(process_id))
                 raise
 
@@ -520,6 +584,7 @@ class Experiment(object):
         self.processes = config['processes']
         self.topology = config['topology']
         self.initial_state = config['initial_state']
+
         self.state = generate_state(
             self.processes,
             self.topology,

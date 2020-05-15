@@ -53,7 +53,10 @@ class Growth(Process):
 
     def __init__(self, initial_parameters={}):
         ports = {
-            'global': ['mass', 'volume']}
+            'global': [
+                'mass',
+                'volume',
+                'divide']}
 
         growth_rate = initial_parameters.get('growth_rate', self.defaults['growth_rate'])
 
@@ -62,6 +65,19 @@ class Growth(Process):
         parameters.update(initial_parameters)
 
         super(Growth, self).__init__(ports, parameters)
+
+    def ports_schema(self):
+        split = {
+            '_updater': 'set',
+            '_divider': 'split'}
+
+        return {
+            'global': {
+                'mass': split,
+                'volume': split,
+                'divide': {
+                    '_default': False,
+                    '_updater': 'set'}}}
 
     def default_settings(self):
         # default state
@@ -76,6 +92,8 @@ class Growth(Process):
         schema = {
             'global': {
                 'mass': {
+                    'updater': 'set'},
+                'divide': {
                     'updater': 'set'}}}
 
         # derivers
@@ -92,4 +110,8 @@ class Growth(Process):
     def next_update(self, timestep, states):
         mass = states['global']['mass']
         new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
-        return {'global': {'mass': new_mass}}
+        divide = np.random.random() < 0.1
+        return {
+            'global': {
+                'mass': new_mass,
+                'divide': divide}}

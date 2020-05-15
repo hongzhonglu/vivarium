@@ -22,6 +22,7 @@ from vivarium.processes.division import (
     Division,
     divide_condition
 )
+from vivarium.processes.meta_division import MetaDivision
 from vivarium.processes.convenience_kinetics import (
     ConvenienceKinetics,
     get_glc_lct_config
@@ -34,7 +35,7 @@ class GrowthDivision(Compartment):
         self.config = config
         self.global_key = ('..', 'global')
         self.external_key = ('..',) + self.config.get('external_key', ('external',))
-        self.cells_key = ('..', '..', '..') + self.config.get('cells_key', ('cells',))
+        self.cells_key = ('..', '..') + self.config.get('cells_key', ('cells',))
 
         self.transport_config = self.config.get('transport', get_glc_lct_config())
         self.transport_config['global_deriver_config'] = {
@@ -54,11 +55,12 @@ class GrowthDivision(Compartment):
 
         division_config = dict(
             config.get('division', {}),
-            cell_id=agent_id)
+            cell_id=agent_id,
+            compartment=self)
 
         growth = Growth(config.get('growth', {}))
         transport = ConvenienceKinetics(transport_config)
-        division = Division(division_config)
+        division = MetaDivision(division_config)
         expression = MinimalExpression(config.get('expression', {}))
 
         # place processes in layers,
