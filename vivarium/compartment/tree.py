@@ -176,6 +176,8 @@ class Store(object):
             self.divider = config.get('_divider', self.divider)
             if isinstance(self.divider, str):
                 self.divider = divider_library[self.divider]
+            if isinstance(self.divider, dict) and isinstance(self.divider['divider'], str):
+                self.divider['divider'] = divider_library[self.divider['divider']]
 
             self.properties = deep_merge(
                 self.properties,
@@ -247,6 +249,16 @@ class Store(object):
         else:
             return self
 
+    def get_paths(self, paths):
+        return {
+            key: self.get_path(path)
+            for key, path in paths.items()}
+
+    def get_values(self, paths):
+        return {
+            key: self.get_in(path)
+            for key, path in paths.items()}
+
     def get_in(self, path):
         return self.get_path(path).get_value()
 
@@ -280,7 +292,14 @@ class Store(object):
 
     def divide_value(self):
         if self.divider:
-            return self.divider(self.value)
+            # divider is either a function or a dict with topology
+            if isinstance(self.divider, dict):
+                divider = self.divider['divider']
+                topology = self.divider['topology']
+                state = self.parent.get_values(topology)
+                return divider(self.value, state)
+            else:
+                return self.divider(self.value)
         elif self.children:
             daughters = [{}, {}]
             for key, child in self.children.items():
@@ -289,6 +308,14 @@ class Store(object):
                     for daughter, divide in zip(daughters, division):
                         daughter[key] = divide
             return daughters
+
+    def set_value(self, value):
+        if self.children:
+            for child, child_value in value.items():
+                if child in self.children:
+                    self.children[child].set_value(child_value)
+        else:
+            self.value = value
 
     def apply_update(self, update):
         if self.children:
@@ -342,7 +369,7 @@ class Store(object):
                         daughter['path'],
                         daughter['topology'])
 
-                    self.children[daughter_id].apply_update(initial_state)
+                    self.children[daughter_id].set_value(initial_state)
 
                 self.delete_path((mother,))
                 self.apply_subschemas()

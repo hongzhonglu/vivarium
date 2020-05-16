@@ -85,7 +85,8 @@ class MetaDivision(Deriver):
 
         if divide:
             daughter_ids = [
-                str(self.id_function()), str(self.id_function())]
+                str(self.id_function()),
+                str(self.id_function())]
 
             daughter_updates = []
             

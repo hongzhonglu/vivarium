@@ -84,7 +84,9 @@ def random_body_position(body):
             location = (width, random.uniform(0, length))
     return location
 
-def daughter_locations(parent_location, parent_length, parent_angle):
+def daughter_locations(parent_location, parent_values):
+    parent_length = parent_values['length']
+    parent_angle = parent_values['angle']
     pos_ratios = [-0.25, 0.25]
     daughter_locations = []
     for daughter in range(2):
@@ -196,7 +198,12 @@ class Multibody(Process):
                 'global': {
                     'location': {
                         '_default': [0.5, 0.5],
-                        '_updater': 'set'},
+                        '_updater': 'set',
+                        '_divider': {
+                            'divider': daughter_locations,
+                            'topology': {
+                                'length': ('length',),
+                                'angle': ('angle',)}}},
                     'length': {
                         '_default': 2.0,
                         '_updater': 'set'},
