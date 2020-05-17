@@ -16,6 +16,7 @@ from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcs
 from vivarium.processes.derive_mass import DeriveMass
+from vivarium.processes.tree_mass import TreeMass
 
 
 deriver_library = {
@@ -23,6 +24,7 @@ deriver_library = {
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcs,
+    'tree_mass': TreeMass,
 }
 
 
@@ -309,6 +311,17 @@ class Store(object):
                         daughter[key] = divide
             return daughters
 
+    def reduce(self, reducer, initial=None):
+        value = initial
+        for path, node in self.depth().items():
+            value = reducer(value, path, node)
+        return value
+
+    def reduce_to(self, path, reducer, initial=None):
+        value = self.reduce(reducer, initial)
+        update = assoc_in({}, path, value)
+        self.apply_update(update)
+
     def set_value(self, value):
         if self.children:
             for child, child_value in value.items():
@@ -386,6 +399,12 @@ class Store(object):
             return topology_updates
 
         else:
+            if isinstance(update, dict) and '_reduce' in update:
+                top = self.get_path(reduction.get('from'))
+                update = top.reduce(
+                    reduction['reducer'],
+                    initial=reduction['initial'])
+
             self.value = self.updater(self.value, update)
 
     def child_value(self, key):
@@ -484,97 +503,126 @@ class Store(object):
         target.generate_paths(processes, topology, initial_state)
 
 
-def process_derivers_config(processes, topology):
-    ''' get the deriver configuration from processes' deriver_settings'''
+# def process_derivers_config(processes, topology):
+#     ''' get the deriver configuration from processes' deriver_settings'''
 
-    deriver_configs = {}
-    full_deriver_topology = {}
+#     deriver_configs = {}
+#     full_deriver_topology = {}
 
-    for process_id, process in processes.items():
-        if isinstance(process, Process):
-            process_settings = process.default_settings()
-            deriver_setting = process_settings.get('deriver_setting', [])
-            if process_id in topology:
-                port_map = topology[process_id]
-            else:
-                print('{} topology port mismatch'.format(process_id))
-                raise
+#     for process_id, process in processes.items():
+#         if isinstance(process, Process):
+#             process_settings = process.default_settings()
+#             deriver_setting = process_settings.get('deriver_setting', [])
+#             if process_id in topology:
+#                 port_map = topology[process_id]
+#             else:
+#                 print('{} topology port mismatch'.format(process_id))
+#                 raise
 
-            for setting in deriver_setting:
-                deriver_type = setting['type']
-                keys = setting['keys']
-                source_port = setting['source_port']
-                target_port = setting['derived_port']
-                global_port = setting.get('global_port', ['global'])
+#             for setting in deriver_setting:
+#                 deriver_type = setting['type']
+#                 keys = setting['keys']
+#                 source_port = setting['source_port']
+#                 target_port = setting['derived_port']
 
-                try:
-                    source_compartment_port = port_map[source_port]
-                    target_compartment_port = port_map[target_port]
-                except:
-                    print('source/target port mismatch for process "{}"'.format(process_id))
-                    raise
+#                 try:
+#                     source_compartment_port = port_map[source_port]
+#                     target_compartment_port = port_map[target_port]
+#                 except:
+#                     print('source/target port mismatch for process "{}"'.format(process_id))
+#                     raise
 
-                # make deriver_topology, add to full_deriver_topology
-                deriver_topology = {
-                    deriver_type: {
-                        source_port: source_compartment_port,
-                        target_port: target_compartment_port,
-                        # TODO
-                        'global': ('..', 'global')}}
-                deep_merge(full_deriver_topology, deriver_topology)
+#                 # make deriver_topology, add to full_deriver_topology
+#                 deriver_topology = {
+#                     deriver_type: {
+#                         source_port: source_compartment_port,
+#                         target_port: target_compartment_port,
+#                         # TODO
+#                         'global': ('..', 'global')}}
+#                 deep_merge(full_deriver_topology, deriver_topology)
 
-                # TODO -- what if multiple different source/targets?
-                # TODO -- merge overwrites them. need list extend
-                ports_config = {
-                    'source_ports': {source_port: keys},
-                    'target_ports': {target_port: keys}}
+#                 # TODO -- what if multiple different source/targets?
+#                 # TODO -- merge overwrites them. need list extend
+#                 ports_config = {
+#                     'source_ports': {source_port: keys},
+#                     'target_ports': {target_port: keys}}
 
-                # ports for configuration
-                deriver_config = {deriver_type: ports_config}
-                deep_merge(deriver_configs, deriver_config)
+#                 # ports for configuration
+#                 deriver_config = {deriver_type: ports_config}
+#                 deep_merge(deriver_configs, deriver_config)
 
-    return {
-        'deriver_configs': deriver_configs,
-        'deriver_topology': full_deriver_topology}
+#     return {
+#         'deriver_configs': deriver_configs,
+#         'deriver_topology': full_deriver_topology}
 
-def process_derivers(processes, topology, deriver_config={}):
-    '''
-    get the derivers for a list of processes
+# def process_derivers(processes, topology, deriver_config={}):
+#     '''
+#     get the derivers for a list of processes
 
-    requires:
-        - process_list: (list) with configured processes
-        - topology: (dict) with topology of the processes connected to compartment ports
-        - config: (dict) with deriver configurations, which are used to make deriver processes
+#     requires:
+#         - process_list: (list) with configured processes
+#         - topology: (dict) with topology of the processes connected to compartment ports
+#         - config: (dict) with deriver configurations, which are used to make deriver processes
 
-    returns: (dict) with:
-        {'deriver_processes': processes,
-        'deriver_topology': topology}
-    '''
+#     returns: (dict) with:
+#         {'deriver_processes': processes,
+#         'deriver_topology': topology}
+#     '''
 
-    # get deriver configuration from processes
-    process_config = process_derivers_config(processes, topology)
+#     # get deriver configuration from processes
+#     process_config = process_derivers_config(processes, topology)
 
-    deriver_configs = process_config['deriver_configs']
-    deriver_topology = process_config['deriver_topology']
+#     deriver_configs = process_config['deriver_configs']
+#     deriver_topology = process_config['deriver_topology']
 
-    # update deriver_configs
-    deriver_configs = deep_merge(deriver_configs, deriver_config)
+#     # update deriver_configs
+#     deriver_configs = deep_merge(deriver_configs, deriver_config)
 
-    # update topology based on deriver_config
-    for process_id, config in deriver_configs.items():
-        if process_id not in deriver_topology:
-            try:
-                ports = config['ports']
-                deriver_topology[process_id] = ports
-            except:
-                print('{} deriver requires topology in deriver_config'.format(process_id))
-                raise
+#     # update topology based on deriver_config
+#     for process_id, config in deriver_configs.items():
+#         if process_id not in deriver_topology:
+#             try:
+#                 ports = config['ports']
+#                 deriver_topology[process_id] = ports
+#             except:
+#                 print('{} deriver requires topology in deriver_config'.format(process_id))
+#                 raise
 
-    # configure the deriver processes
+#     # configure the deriver processes
+#     deriver_processes = {}
+#     for deriver_type, deriver_config in deriver_configs.items():
+#         deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
+
+#     return {
+#         'processes': deriver_processes,
+#         'topology': deriver_topology}
+
+
+def generate_derivers(processes, topology):
     deriver_processes = {}
-    for deriver_type, deriver_config in deriver_configs.items():
-        deriver_processes[deriver_type] = deriver_library[deriver_type](deriver_config)
+    deriver_topology = {}
+    for process_key, node in processes.items():
+        subtopology = topology[process_key]
+        if isinstance(node, Process):
+            for deriver_key, config in node.derivers().items():
+                if deriver_key not in deriver_processes:
+                    # generate deriver process
+                    deriver_config = config.get('config', {})
+                    generate = config['deriver']
+                    if isinstance(generate, 'str'):
+                        generate = deriver_library[generate]
+                    deriver = generate(deriver_config)
+                    deriver_processes[deriver_key] = deriver
 
+                    # generate deriver topology
+                    deriver_topology[deriver_key] = {}
+                    for target, source in config.get('port_mapping', {}).items():
+                        path = subtopology[source]
+                        deriver_topology[target] = path
+        else:
+            subderivers = generate_derivers(node, subtopology)
+            deriver_processes[process_key] = subderivers['processes']
+            deriver_topology[process_key] = subderivers['topology']
     return {
         'processes': deriver_processes,
         'topology': deriver_topology}
@@ -595,9 +643,10 @@ class Compartment(object):
         topology = self.generate_topology(config)
 
         # add derivers
-        derivers = process_derivers(processes, topology)
-        processes.update(derivers['processes'])
-        topology.update(derivers['topology'])
+        # derivers = process_derivers(processes, topology)
+        derivers = generate_derivers(processes, topology)
+        processes = deep_merge(processes, derivers['processes'])
+        topology = deep_merge(topology, derivers['topology'])
 
         return {
             'processes': processes,

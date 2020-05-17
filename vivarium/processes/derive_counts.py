@@ -21,24 +21,42 @@ class DeriveCounts(Deriver):
     """
     Process for deriving counts from concentrations
     """
+    defaults = {
+        'concentration_keys': []}
+
     def __init__(self, initial_parameters={}):
 
         self.initial_state = initial_parameters.get('initial_state', get_default_state())
 
-        source_ports = initial_parameters.get('source_ports')
-        target_ports = initial_parameters.get('target_ports')
+        self.concentration_keys = self.or_default(
+            initial_parameters, 'concentration_keys')
 
-        assert len(target_ports) == 1, 'DeriveCounts too many target ports'
-        assert list(target_ports.keys())[0] == 'counts', 'DeriveCounts requires target port named counts'
-
-        ports = {'global': ['volume', 'mmol_to_counts']}
-        ports.update(source_ports)
-        ports.update(target_ports)
+        ports = {
+            'global': ['volume', 'mmol_to_counts'],
+            'concentrations': self.concentration_keys,
+            'counts': self.concentration_keys}
 
         parameters = {}
         parameters.update(initial_parameters)
 
         super(DeriveCounts, self).__init__(ports, parameters)
+
+    def ports_schema(self):
+        return {
+            'global': {
+                'volume': {
+                    '_default': 0.0},
+                'mmol_to_counts': {
+                    '_default': 0.0}},
+            'concentrations': {
+                concentration: {
+                    '_default': 0.0}
+                for concentration in self.concentration_keys()},
+            'counts': {
+                concentration: {
+                    '_default': 0,
+                    '_updater': 'set'}
+                for concentration in self.concentration_keys()}}
 
     def default_settings(self):
 

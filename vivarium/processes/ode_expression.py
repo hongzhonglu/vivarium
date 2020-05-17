@@ -30,6 +30,7 @@ class ODE_expression(Process):
         'regulation': {},
         'regulators': [],
         'initial_state': {},
+        'counts_deriver_key': 'expression_counts',
     }
 
     def __init__(self, initial_parameters={}):
@@ -203,10 +204,14 @@ class ODE_expression(Process):
         internal = list(self.initial_state.get('internal', {}).keys())
         external = list(self.initial_state.get('external', {}).keys())
 
+        self.counts_deriver_key = self.or_default(
+            initial_parameters, 'counts_deriver_key')
+
+        self.concentration_keys = internal + internal_regulators
         ports = {
-            'internal': internal + internal_regulators,
+            'internal': self.concentration_keys,
             'external': external + external_regulators,
-            'counts': []}
+            'counts': self.concentration_keys}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -234,7 +239,7 @@ class ODE_expression(Process):
             'counts': self.ports['internal']}
 
         # derivers
-        deriver_setting = [{
+        deriver_setting = {
             'type': 'mmol_to_counts',
             'source_port': 'internal',
             'derived_port': 'counts',
@@ -247,6 +252,17 @@ class ODE_expression(Process):
             'deriver_setting': deriver_setting}
 
         return default_settings
+
+    def derivers(self):
+        return {
+            self.counts_deriver_key: {
+                'deriver': 'mmol_to_counts',
+                'port_mapping': {
+                    'global': 'global',
+                    'concentrations': 'internal',
+                    'counts': 'counts'}
+                'config': {
+                    'concentration_keys': self.concentration_keys}}}
 
     def next_update(self, timestep, states):
         internal_state = states['internal']

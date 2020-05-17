@@ -228,6 +228,9 @@ class Process(object):
     def is_deriver(self):
         return False
 
+    def derivers(self):
+        return {}
+
     def schema_properties(self, states, schema_type):
         '''
         Requires:

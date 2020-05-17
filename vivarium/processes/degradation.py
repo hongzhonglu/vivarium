@@ -41,6 +41,26 @@ default_degradation_parameters = {
                 'oBY': DEFAULT_TRANSCRIPT_DEGRADATION_KM}}}}
 
 class RnaDegradation(Process):
+    defaults = {
+        'sequences': {
+            'oA': 'GCC',
+            'oAZ': 'GCCGUGCAC',
+            'oB': 'AGUUGA',
+            'oBY': 'AGUUGACGG'},
+
+        'catalysis_rates': {
+            'endoRNAse': 0.1},
+
+        'degradation_rates': {
+            'transcripts': {
+                'endoRNAse': {
+                    'oA': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                    'oAZ': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                    'oB': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
+                    'oBY': DEFAULT_TRANSCRIPT_DEGRADATION_KM}}},
+        'global_deriver_key': 'globals',
+    }
+
     def __init__(self, initial_parameters={}):
         self.default_parameters = default_degradation_parameters
 
@@ -60,6 +80,9 @@ class RnaDegradation(Process):
         self.partial_transcripts = {
             transcript: 0
             for transcript in self.transcript_order}
+
+        self.global_deriver_key = self.or_default(
+            initial_parameters, 'global_deriver_key')
 
         self.ports = {
             'transcripts': self.transcript_order,
@@ -99,6 +122,15 @@ class RnaDegradation(Process):
             'emitter_keys': default_emitter_keys,
             'deriver_setting': deriver_setting,
             'parameters': self.parameters}
+
+    def derivers(self):
+        return {
+            self.global_deriver_key: {
+                'deriver': 'globals',
+                'port_mapping': {
+                    'global': 'global'},
+                'config': {
+                    'width': 1.11}}}
 
     def next_update(self, timestep, states):
         transcripts = states['transcripts']

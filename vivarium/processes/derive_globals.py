@@ -61,15 +61,6 @@ class DeriveGlobals(Deriver):
     def __init__(self, initial_parameters={}):
 
         self.width = initial_parameters.get('width', self.defaults['width'])
-        source_ports = initial_parameters.get('source_ports')
-        target_ports = initial_parameters.get('target_ports')
-
-        if source_ports:
-            assert len(source_ports) == 1, 'DeriveGlobals too many source ports'
-            assert list(source_ports.keys())[0] == 'global', 'DeriveGlobals requires source port named global'
-        if target_ports:
-            assert len(target_ports) == 1, 'DeriveGlobals too many target ports'
-            assert list(target_ports.keys())[0] == 'global', 'DeriveGlobals requires target port named global'
 
         ports = {
             'global': [
@@ -138,12 +129,13 @@ class DeriveGlobals(Deriver):
         # states
         density = states['global']['density'] * units.g / units.L
         mass = states['global']['mass'] * units.fg
+        width = states['global']['width']
 
         # get volume from mass, and more variables from volume
         volume = mass / density
         mmol_to_counts = (AVOGADRO * volume).to('L/mmol')
-        length = length_from_volume(volume.magnitude, self.width)
-        surface_area = surface_area_from_length(length, self.width)
+        length = length_from_volume(volume.magnitude, width)
+        surface_area = surface_area_from_length(length, width)
 
         return {
             'global': {

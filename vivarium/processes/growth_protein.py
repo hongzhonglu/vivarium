@@ -5,7 +5,7 @@ import numpy as np
 from vivarium.compartment.process import Process
 
 
-class Growth(Process):
+class GrowthProtein(Process):
     """The Growth :term:`process class` models exponential cell growth.
 
     The cell's mass :math:`m_{t + h}` at time :math:`t + h` for
@@ -48,13 +48,16 @@ class Growth(Process):
 
     def __init__(self, initial_parameters={}):
         ports = {
+            'internal': [
+                'protein'],
             'global': [
-                'mass',
                 'volume',
                 'divide']}
 
         self.growth_rate = self.or_default(initial_parameters, 'growth_rate')
-        self.global_deriver_key = self.or_default(initial_parameters, 'global_deriver_key')
+        self.global_deriver_key = self.or_default(
+            initial_parameters, 'global_deriver_key')
+
         parameters = {
             'growth_rate': self.growth_rate}
         parameters.update(initial_parameters)
@@ -62,14 +65,21 @@ class Growth(Process):
         super(Growth, self).__init__(ports, parameters)
 
     def ports_schema(self):
-        split = {
-            '_updater': 'set',
-            '_divider': 'split'}
+        # default state
+        # 1000 proteins per fg
+        protein = 1339000  # (wet mass in fg)
 
         return {
+            'internal': {
+                'protein': {
+                    '_default': protein,
+                    '_divider': 'split',
+                    '_properties': {
+                        'mass': 1e-3}}}
             'global': {
-                'mass': split,
-                'volume': split,
+                'volume': {
+                    '_updater': 'set',
+                    '_divider': 'split'},
                 'divide': {
                     '_default': False,
                     '_updater': 'set'}}}
@@ -81,41 +91,22 @@ class Growth(Process):
                 'port_mapping': {
                     'global': 'global'},
                 'config': {
-                    'width': 1.23}}}
-
-    def default_settings(self):
-        # default state
-        mass = 1339  # (wet mass in fg)
-        internal = {'mass': mass}
-        default_state = {'global': internal}
-
-        # default emitter keys
-        default_emitter_keys = {'global': ['mass']}
-
-        # schema
-        schema = {
-            'global': {
-                'mass': {
-                    'updater': 'set'},
-                'divide': {
-                    'updater': 'set'}}}
-
-        # derivers
-        deriver_setting = [self.defaults['global_deriver_config']]
-
-        default_settings = {
-            'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'deriver_setting': deriver_setting,
-            'schema': schema}
-
-        return default_settings
+                    'width': 1.11}}}
 
     def next_update(self, timestep, states):
-        mass = states['global']['mass']
-        new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
-        divide = np.random.random() < 0.1
+        protein = states['internal']['protein']
+        total_protein = protein * np.exp(self.parameters['growth_rate'] * timestep)
+        new_protein = int(total_protein - protein)
+        extra = total_protein - int(total_protein)
+
+        # simulate remainder
+        if np.random.random() < extra:
+            new_protein += 1
+
+        divide = np.random.random() < 0.02
+
         return {
+            'internal': {
+                'protein': new_protein}
             'global': {
-                'mass': new_mass,
                 'divide': divide}}
