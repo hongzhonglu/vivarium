@@ -270,7 +270,7 @@ class DiffusionField(Process):
         bin = np.array([
             location[0] * self.n_bins[0] / self.size[0],
             location[1] * self.n_bins[1] / self.size[1]])
-        bin_site = tuple(np.floor(bin).astype(int))
+        bin_site = tuple(np.floor(bin).astype(int) % self.size)
         return bin_site
 
     def get_single_local_environments(self, specs, fields):
