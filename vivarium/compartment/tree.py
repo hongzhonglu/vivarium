@@ -20,11 +20,12 @@ from vivarium.processes.tree_mass import TreeMass
 
 
 deriver_library = {
-    'mass': DeriveMass,
+    # 'mass': DeriveMass,
+    # 'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcs,
-    'tree_mass': TreeMass,
+    'mass': TreeMass,
 }
 
 

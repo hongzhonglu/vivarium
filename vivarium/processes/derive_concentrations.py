@@ -12,16 +12,14 @@ class DeriveConcs(Deriver):
     """
     def __init__(self, initial_parameters={}):
         self.avogadro = AVOGADRO
+        self.concentration_keys = self.or_default(
+            initial_parameters, 'concentration_keys')
 
-        source_ports = initial_parameters.get('source_ports')
-        target_ports = initial_parameters.get('target_ports')
-
-        assert len(target_ports) == 1, 'DeriveConcs too many target ports'
-        assert list(target_ports.keys())[0] == 'concentrations', 'DeriveConcs requires target port named concentrations'
-
-        ports = {'global': ['volume', 'mmol_to_counts']}
-        ports.update(source_ports)
-        ports.update(target_ports)
+        ports = {
+            'global': [
+                'volume', 'mmol_to_counts'],
+            'counts': self.concentration_keys,
+            'concentrations': self.concentration_keys}
 
         parameters = {}
         parameters.update(initial_parameters)
@@ -56,20 +54,45 @@ class DeriveConcs(Deriver):
 
         return default_settings
 
+    def ports_schema(self):
+        return {
+            'global': {
+                'volume': {
+                    '_default': 0.0},
+                'mmol_to_counts': {
+                    '_default': 0.0}},
+            'counts': {
+                concentration: {
+                    '_default': 0,
+                    '_updater': 'set'}
+                for concentration in self.concentration_keys},
+            'concentrations': {
+                concentration: {
+                    '_default': 0.0,
+                    '_updater': 'set'}
+                for concentration in self.concentration_keys}}
+
     def next_update(self, timestep, states):
 
         # states
         mmol_to_counts = states['global']['mmol_to_counts']
-        counts = {port: state for port, state in states.items() if port not in ['concentrations', 'global']}
+        counts = states['counts']
 
         # concentration update
         concentrations = {}
-        for port, states in counts.items():
-            for state_id, count in states.items():
-                concentrations[state_id] = count / mmol_to_counts
+        for molecule, count in counts.items():
+            concentrations[molecule] = count / mmol_to_counts
 
-        for mol_id, conc in concentrations.items():
-            assert conc >= 0, 'derived {} concentration < 0'.format(mol_id)
+        # counts = {port: state for port, state in states.items() if port not in ['concentrations', 'global']}
+
+        # # concentration update
+        # concentrations = {}
+        # for port, states in counts.items():
+        #     for state_id, count in states.items():
+        #         concentrations[state_id] = count / mmol_to_counts
+
+        for molecule, concentration in concentrations.items():
+            assert concentration >= 0, 'derived {} concentration < 0'.format(molecule)
 
         return {
             'concentrations': concentrations}

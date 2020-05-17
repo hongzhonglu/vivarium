@@ -26,6 +26,7 @@ class MinimalExpression(Process):
     defaults = {
         'step_size': 1,
         'regulation': {},
+        'concentrations_deriver_key': 'expression_concentrations_deriver',
     }
 
     def __init__(self, initial_parameters={}):
@@ -39,6 +40,8 @@ class MinimalExpression(Process):
         internal_regulators = [state_id for port_id, state_id in regulators if port_id == 'internal']
         external_regulators = [state_id for port_id, state_id in regulators if port_id == 'external']
 
+        self.concentration_keys = self.internal_states + internal_regulators,
+
         ports = {
             'internal': self.internal_states + internal_regulators,
             'external': external_regulators,
@@ -50,6 +53,8 @@ class MinimalExpression(Process):
 
         parameters.update(initial_parameters)
 
+
+        self.concentrations_deriver_key = self.or_default(initial_parameters, 'concentrations_deriver_key')
 
         super(MinimalExpression, self).__init__(ports, parameters)
 
@@ -75,6 +80,17 @@ class MinimalExpression(Process):
             'deriver_setting': deriver_setting}
 
         return default_settings
+
+    def derivers(self):
+        return {
+            self.concentrations_deriver_key: {
+                'deriver': 'counts_to_mmol',
+                'port_mapping': {
+                    'global': 'global',
+                    'counts': 'proteins'
+                    'concentrations': 'concentrations'},
+                'config': {
+                    'concentration_keys': self.concentration_keys}}}
 
     def next_update(self, timestep, states):
         internal = states['internal']

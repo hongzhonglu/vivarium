@@ -51,37 +51,7 @@ Z = random_string(monomer_symbols, 60)
 B = random_string(monomer_symbols, 30)
 Y = random_string(monomer_symbols, 40)
 
-default_translation_parameters = {
-
-    'sequences': {
-        ('oA', 'eA'): A,
-        ('oAZ', 'eA'): A,
-        ('oAZ', 'eZ'): Z,
-        ('oB', 'eB'): B,
-        ('oBY', 'eB'): B,
-        ('oBY', 'eY'): Y},
-
-    'templates': {
-        ('oA', 'eA'): generate_template(('oA', 'eA'), 20, ['eA']),
-        ('oAZ', 'eA'): generate_template(('oAZ', 'eA'), 20, ['eA']),
-        ('oAZ', 'eZ'): generate_template(('oAZ', 'eZ'), 60, ['eZ']),
-        ('oB', 'eB'): generate_template(('oB', 'eB'), 30, ['eB']),
-        ('oBY', 'eB'): generate_template(('oBY', 'eB'), 30, ['eB']),
-        ('oBY', 'eY'): generate_template(('oBY', 'eY'), 40, ['eY'])},
-
-    'transcript_affinities': {
-        ('oA', 'eA'): 1.0,
-        ('oAZ', 'eA'): 2.0,
-        ('oAZ', 'eZ'): 5.0,
-        ('oB', 'eB'): 1.0,
-        ('oBY', 'eB'): 2.0,
-        ('oBY', 'eY'): 5.0},
-
-    'elongation_rate': 5.0,
-    'polymerase_occlusion': 10,
-    'symbol_to_monomer': amino_acids,
-    'monomer_ids': monomer_ids,
-    'concentration_keys': []}
+default_translation_parameters = 
 
 def gather_genes(affinities):
     genes = {}
@@ -99,6 +69,41 @@ def transcripts_to_gene_counts(transcripts, operons):
     return counts
 
 class Translation(Process):
+    defaults = {
+
+        'sequences': {
+            ('oA', 'eA'): A,
+            ('oAZ', 'eA'): A,
+            ('oAZ', 'eZ'): Z,
+            ('oB', 'eB'): B,
+            ('oBY', 'eB'): B,
+            ('oBY', 'eY'): Y},
+
+        'templates': {
+            ('oA', 'eA'): generate_template(('oA', 'eA'), 20, ['eA']),
+            ('oAZ', 'eA'): generate_template(('oAZ', 'eA'), 20, ['eA']),
+            ('oAZ', 'eZ'): generate_template(('oAZ', 'eZ'), 60, ['eZ']),
+            ('oB', 'eB'): generate_template(('oB', 'eB'), 30, ['eB']),
+            ('oBY', 'eB'): generate_template(('oBY', 'eB'), 30, ['eB']),
+            ('oBY', 'eY'): generate_template(('oBY', 'eY'), 40, ['eY'])},
+
+        'transcript_affinities': {
+            ('oA', 'eA'): 1.0,
+            ('oAZ', 'eA'): 2.0,
+            ('oAZ', 'eZ'): 5.0,
+            ('oB', 'eB'): 1.0,
+            ('oBY', 'eB'): 2.0,
+            ('oBY', 'eY'): 5.0},
+
+        'elongation_rate': 5.0,
+        'polymerase_occlusion': 10,
+        'symbol_to_monomer': amino_acids,
+        'monomer_ids': monomer_ids,
+        'concentration_keys': [],
+
+        'mass_deriver_key': 'mass_deriver',
+        'concentrations_deriver_key': 'translation_concentrations'}
+
     def __init__(self, initial_parameters={}):
         '''A stochastic translation model
 
@@ -327,11 +332,9 @@ class Translation(Process):
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
 
-        self.default_parameters = default_translation_parameters
+        self.default_parameters = copy.deep_copy(self.defaults)
 
-        templates = initial_parameters.get(
-            'templates',
-            self.default_parameters['templates'])
+        templates = self.or_default(initial_parameters, 'templates')
 
         self.default_parameters['protein_ids'] = all_products({
             key: Template(config)
@@ -374,14 +377,19 @@ class Translation(Process):
 
         self.ribosome_id = 0
 
-        concentration_keys = self.concentration_keys + self.protein_ids
+        self.protein_keys = self.concentration_keys + self.protein_ids
+        self.all_protein_keys = self.protein_keys + [UNBOUND_RIBOSOME_KEY],
         self.ports = {
             'ribosomes': ['ribosomes'],
             'molecules': self.molecule_ids,
             'transcripts': list(self.operons.keys()),
-            'proteins': concentration_keys + [UNBOUND_RIBOSOME_KEY],
-            'concentrations': concentration_keys,
+            'proteins': self.all_protein_keys,
+            'concentrations': self.protein_keys,
             'global': []}
+
+        self.mass_deriver_key = self.or_default(initial_parameters, 'mass_deriver_key')
+        self.concentrations_deriver_key = self.or_default(
+            initial_parameters, 'concentrations_deriver_key')
 
         if VERBOSE:
             print('translation parameters: {}'.format(self.parameters))
@@ -425,7 +433,8 @@ class Translation(Process):
         schema = {
             'ribosomes': {
                 'ribosomes': {'updater': 'set'}},
-            'proteins': {mol_id: {
+            'proteins': {
+                mol_id: {
                     'mass': molecular_weight.get(mol_id)}
                 for mol_id in mols_with_mass}}
 
@@ -448,6 +457,59 @@ class Translation(Process):
             'schema': schema,
             'deriver_setting': deriver_setting,
             'parameters': self.parameters}
+
+    def ports_schema(self):
+        self.ports = {
+            'ribosomes': ['ribosomes'],
+            'molecules': self.molecule_ids,
+            'transcripts': list(self.operons.keys()),
+            'proteins': self.all_protein_keys,
+            'concentrations': self.protein_keys,
+            'global': []}
+
+        def add_mass(schema, masses, key):
+            if key in masses:
+                schema['_properties']['mass'] = masses[key]
+            return schema
+
+        return {
+            'ribosomes': {
+                'ribosomes': {
+                    '_updater': 'set',
+                    '_default': []}},
+            'molecules': {
+                molecule: add_mass({
+                    '_default': 0}, molecular_weight, molecule)
+                for molecule in self.molecule_ids},
+            'transcripts': {
+                transcript: add_mass({
+                    '_default': 0}, molecular_weight, transcript)
+                for transcript in list(self.operons.keys())},
+            'proteins': {
+                protein: add_mass({
+                    '_default': 0}, molecular_weight, protein)
+                for protein in self.all_protein_keys},
+            'concentrations': {
+                molecule: add_mass({
+                    '_default': 0.0,
+                    '_updater': 'set'}, molecular_weight, molecule)
+                for molecule in self.protein_keys},
+            'global': {}}
+
+    def derivers(self):
+        return = {
+            self.mass_deriver_key: {
+                'deriver': 'mass',
+                'port_mapping': {
+                    'global': 'global'}},
+            self.concentrations_deriver_key: {
+                'deriver': 'counts_to_mmol',
+                'port_mapping': {
+                    'global': 'global',
+                    'counts': 'proteins'
+                    'concentrations': 'concentrations'},
+                'config': {
+                    'concentration_keys': self.protein_keys}
 
     def next_update(self, timestep, states):
         molecules = states['molecules']

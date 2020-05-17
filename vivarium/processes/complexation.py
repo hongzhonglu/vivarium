@@ -39,7 +39,8 @@ class Complexation(Process):
         'monomer_ids': chromosome.complexation_monomer_ids,
         'complex_ids': chromosome.complexation_complex_ids,
         'stoichiometry': chromosome.complexation_stoichiometry,
-        'rates': chromosome.complexation_rates}
+        'rates': chromosome.complexation_rates,
+        'mass_deriver_key': 'mass_deriver'}
 
     def __init__(self, initial_parameters={}):
         self.default_parameters = copy.deepcopy(self.defaults)
@@ -63,6 +64,8 @@ class Complexation(Process):
             self.complex_ids)
 
         self.complexation = StochasticSystem(self.complexation_stoichiometry)
+
+        self.mass_deriver_key = self.or_default(initial_parameters, 'mass_deriver_key')
 
         ports = {
             'monomers': self.monomer_ids,
@@ -117,6 +120,13 @@ class Complexation(Process):
             'deriver_setting': deriver_setting,
             'emitter_keys': default_emitter_keys,
             'parameters': self.parameters}
+
+    def derivers(self):
+        return = {
+            self.mass_deriver_key: {
+                'deriver': 'mass',
+                'port_mapping': {
+                    'global': 'global'}},
 
     def next_update(self, timestep, states):
         monomers = states['monomers']

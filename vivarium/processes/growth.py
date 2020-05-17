@@ -43,7 +43,7 @@ class Growth(Process):
 
     defaults = {
         'growth_rate': 0.0006,
-        'global_deriver_key': 'globals',
+        'global_deriver_key': 'global_deriver',
     }
 
     def __init__(self, initial_parameters={}):

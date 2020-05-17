@@ -58,7 +58,7 @@ class RnaDegradation(Process):
                     'oAZ': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
                     'oB': DEFAULT_TRANSCRIPT_DEGRADATION_KM,
                     'oBY': DEFAULT_TRANSCRIPT_DEGRADATION_KM}}},
-        'global_deriver_key': 'globals',
+        'global_deriver_key': 'global_deriver',
     }
 
     def __init__(self, initial_parameters={}):

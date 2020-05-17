@@ -63,12 +63,7 @@ class ConvenienceKinetics(Process):
         'ports': {
             'internal': [],
             'external': []},
-        'global_deriver_config': {
-            'type': 'globals',
-            'source_port': 'global',
-            'derived_port': 'global',
-            'global_port': 'global',
-            'keys': []}}
+        'global_deriver_key': 'global_deriver'}
 
     def __init__(self, initial_parameters={}):
         '''Michaelis-Menten-style enzyme kinetics model
@@ -252,9 +247,8 @@ class ConvenienceKinetics(Process):
         parameters = {}
         parameters.update(initial_parameters)
 
-        self.global_deriver_config = initial_parameters.get(
-            'global_deriver_config',
-            self.defaults['global_deriver_config'])
+        self.global_deriver_key = self.or_default(
+            initial_parameters, 'global_deriver_key')
 
         super(ConvenienceKinetics, self).__init__(ports, parameters)
 
@@ -269,6 +263,15 @@ class ConvenienceKinetics(Process):
                 default=0.0,
                 updater='set' if port in set_ports else 'accumulate')
             for port, keys in self.ports.items()}
+
+    def derivers(self):
+        return {
+            self.global_deriver_key: {
+                'deriver': 'globals',
+                'port_mapping': {
+                    'global': 'global'},
+                'config': {
+                    'width': 1.5555555}}}
 
     def default_settings(self):
 

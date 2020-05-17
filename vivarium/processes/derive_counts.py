@@ -51,12 +51,12 @@ class DeriveCounts(Deriver):
             'concentrations': {
                 concentration: {
                     '_default': 0.0}
-                for concentration in self.concentration_keys()},
+                for concentration in self.concentration_keys},
             'counts': {
                 concentration: {
                     '_default': 0,
                     '_updater': 'set'}
-                for concentration in self.concentration_keys()}}
+                for concentration in self.concentration_keys}}
 
     def default_settings(self):
 
@@ -80,12 +80,18 @@ class DeriveCounts(Deriver):
 
     def next_update(self, timestep, states):
         mmol_to_counts = states['global']['mmol_to_counts']
-        concentrations = {port: state for port, state in states.items() if port not in ['counts', 'global']}
+        concentrations = states['concentrations']
 
         counts = {}
-        for port, states in concentrations.items():
-            for state_id, conc in states.items():
-                counts[state_id] = int(conc * mmol_to_counts)
+        for molecule, concentration in concentrations.items():
+            counts[molecule] = int(concentration * mmol_to_counts)
+
+        # concentrations = {port: state for port, state in states.items() if port not in ['counts', 'global']}
+
+        # counts = {}
+        # for port, states in concentrations.items():
+        #     for state_id, conc in states.items():
+        #         counts[state_id] = int(conc * mmol_to_counts)
 
         return {
             'counts': counts}

@@ -13,7 +13,9 @@ class TreeMass(Deriver):
     """
 
     def __init__(self, initial_parameters={}):
-        ports = {'global': ['mass']}
+        ports = {
+            'global': [
+                'mass']}
 
         super(DeriveMass, self).__init__(ports, initial_parameters)
 
