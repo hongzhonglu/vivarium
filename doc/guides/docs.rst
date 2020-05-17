@@ -5,7 +5,7 @@ Working with Documentation
 We write Vivarium's documentation in plain text that utilizes the
 `reStructured Text <https://www.sphinx-doc.org/rest.html>`_ markup
 language. You can compile it to HTML with `Sphinx
-<https://sphinx-doc.org>`_, and you can also read it as plain text.
+<https://www.sphinx-doc.org>`_, and you can also read it as plain text.
 
 ---------------------
 Reading Documentation

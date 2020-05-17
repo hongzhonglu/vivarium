@@ -7,6 +7,7 @@ Ordinary Differential Equation Expression Model
 from __future__ import absolute_import, division, print_function
 
 import os
+import argparse
 
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
@@ -237,6 +238,7 @@ class ODE_expression(Process):
         # default emitter keys
         default_emitter_keys = {
             'internal': self.ports['internal'],
+            'external': self.ports['external'],
             'counts': self.ports['internal']}
 
         # derivers
@@ -310,29 +312,36 @@ def get_lacy_config():
     >>> config = get_lacy_config()
     >>> expression_process = ODE_expression(config)
     '''
-    toy_transcription_rates = {
-        'lacy_RNA': 2e-6}
+    transcription_rates = {
+        'lacy_RNA': 1e-7}
 
-    toy_translation_rates = {
-        'LacY': 2e-4}
+    translation_rates = {
+        'LacY': 5e-3}
 
-    toy_protein_map = {
+    protein_map = {
         'LacY': 'lacy_RNA'}
 
-    toy_degradation_rates = {
-        'lacy_RNA': 1e-1,
-        'LacY': 1e-4}
+    degradation_rates = {
+        'lacy_RNA': 3e-3,  # a single RNA lasts about 5 minutes
+        'LacY': 3e-5}
 
+    # define regulation
+    regulators = [('external', 'glc__D_e')]
+    regulation = {'lacy_RNA': 'if not (external, glc__D_e) > 0.1'}
+
+    # initial state
     initial_state = {
         'internal': {
-            'lacy_RNA': 0,
+            'lacy_RNA': 0.0,
             'LacY': 0.0}}
 
     return {
-        'transcription_rates': toy_transcription_rates,
-        'translation_rates': toy_translation_rates,
-        'degradation_rates': toy_degradation_rates,
-        'protein_map': toy_protein_map,
+        'transcription_rates': transcription_rates,
+        'translation_rates': translation_rates,
+        'degradation_rates': degradation_rates,
+        'protein_map': protein_map,
+        'regulators': regulators,
+        'regulation': regulation,
         'initial_state': initial_state}
 
 def get_flagella_expression():
@@ -379,20 +388,21 @@ def get_flagella_expression():
         'protein_map': protein_map,
         'initial_state': initial_state}
 
-def test_expression(time=10):
-    expression_config = get_lacy_config()
+
+def test_expression(config=get_lacy_config(), timeline=[(100, {})]):
 
     # load process
-    expression = ODE_expression(expression_config)
-
-    settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-12,
-    }
-
+    expression = ODE_expression(config)
     compartment = process_in_compartment(expression)
+    options = compartment.configuration
+
+    # simulate
+    settings = {
+        'environment_port': options.get('environment_port'),
+        'exchange_port': options.get('exchange_port'),
+        'environment_volume': 1e-13,  # L
+        'timeline': timeline}
+
     return simulate_with_environment(compartment, settings)
 
 
@@ -401,5 +411,30 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = test_expression(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
-    plot_simulation_output(timeseries, {}, out_dir)
+    parser = argparse.ArgumentParser(description='ODE expression')
+    parser.add_argument('--lacY', '-l', action='store_true', default=False)
+    parser.add_argument('--flagella', '-f', action='store_true', default=False)
+    args = parser.parse_args()
+
+    if args.lacY:
+        total_time = 5000
+        shift_time1 = int(total_time / 5)
+        shift_time2 = int(3 * total_time / 5)
+        timeline = [
+            (0, {'external': {'glc__D_e': 10}}),
+            (shift_time1, {'external': {'glc__D_e': 0}}),
+            (shift_time2, {'external': {'glc__D_e': 10}}),
+            (total_time, {})]
+
+        timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
+
+    elif args.flagella:
+        timeline = [(100, {})]
+        timeseries = test_expression(get_flagella_expression(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'flagella_expression')
+
+    else:
+        timeline = [(100, {})]
+        timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir)

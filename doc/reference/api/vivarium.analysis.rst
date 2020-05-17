@@ -9,6 +9,7 @@ Submodules
    vivarium.analysis.analysis
    vivarium.analysis.analyze_compartment
    vivarium.analysis.location_trace
+   vivarium.analysis.location_trace_temporal
    vivarium.analysis.motor
    vivarium.analysis.multigen_compartment
    vivarium.analysis.run_analysis
