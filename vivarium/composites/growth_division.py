@@ -6,7 +6,6 @@ from vivarium.compartment.process import (
     initialize_state)
 
 from vivarium.compartment.tree import (
-    process_derivers,
     Compartment,
 )
 
@@ -16,7 +15,7 @@ from vivarium.compartment.composition import (
     plot_simulation_output, load_compartment)
 
 # processes
-from vivarium.processes.growth import Growth
+from vivarium.processes.growth_protein import GrowthProtein
 from vivarium.processes.minimal_expression import MinimalExpression
 from vivarium.processes.division import (
     Division,
@@ -27,6 +26,8 @@ from vivarium.processes.convenience_kinetics import (
     ConvenienceKinetics,
     get_glc_lct_config
 )
+from vivarium.processes.tree_mass import TreeMass
+
 from vivarium.utils.dict_utils import deep_merge
 
 
@@ -58,10 +59,11 @@ class GrowthDivision(Compartment):
             cell_id=agent_id,
             compartment=self)
 
-        growth = Growth(config.get('growth', {}))
+        growth = GrowthProtein(config.get('growth', {}))
         transport = ConvenienceKinetics(transport_config)
         division = MetaDivision(division_config)
         expression = MinimalExpression(config.get('expression', {}))
+        mass = TreeMass(config.get('mass', {}))
 
         # place processes in layers,
         # let compartment handle derivers
@@ -69,7 +71,8 @@ class GrowthDivision(Compartment):
             'transport': transport,
             'growth': growth,
             'expression': expression,
-            'division': division}
+            'division': division,
+            'mass': mass}
 
     def generate_topology(self, config):
         # make the topology.
@@ -87,6 +90,9 @@ class GrowthDivision(Compartment):
                 'fluxes': None,
                 'global': global_key},
             'growth': {
+                'internal': ('cell',),
+                'global': global_key},
+            'mass': {
                 'global': global_key},
             'division': {
                 'global': global_key,
@@ -94,7 +100,8 @@ class GrowthDivision(Compartment):
             'expression': {
                 'internal': ('cell',),
                 'external': external_key,
-                'concentrations': ('cell_concentrations',)}}
+                'concentrations': ('cell_concentrations',),
+                'global': global_key}}
 
 
 def growth_division(config):

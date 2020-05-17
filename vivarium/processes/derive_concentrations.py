@@ -6,7 +6,10 @@ from vivarium.utils.units import units
 
 
 
-class DeriveConcs(Deriver):
+class DeriveConcentrations(Deriver):
+    defaults = {
+        'concentration_keys': []}
+
     """
     Process for deriving concentrations from counts
     """
@@ -24,7 +27,7 @@ class DeriveConcs(Deriver):
         parameters = {}
         parameters.update(initial_parameters)
 
-        super(DeriveConcs, self).__init__(ports, parameters)
+        super(DeriveConcentrations, self).__init__(ports, parameters)
 
     def default_settings(self):
         volume = 1.2 * units.fL

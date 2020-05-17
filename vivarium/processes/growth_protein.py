@@ -62,7 +62,7 @@ class GrowthProtein(Process):
             'growth_rate': self.growth_rate}
         parameters.update(initial_parameters)
 
-        super(Growth, self).__init__(ports, parameters)
+        super(GrowthProtein, self).__init__(ports, parameters)
 
     def ports_schema(self):
         # default state
@@ -75,7 +75,7 @@ class GrowthProtein(Process):
                     '_default': protein,
                     '_divider': 'split',
                     '_properties': {
-                        'mass': 1e-3}}}
+                        'mass': 1e-3}}},
             'global': {
                 'volume': {
                     '_updater': 'set',
@@ -107,6 +107,6 @@ class GrowthProtein(Process):
 
         return {
             'internal': {
-                'protein': new_protein}
+                'protein': new_protein},
             'global': {
                 'divide': divide}}

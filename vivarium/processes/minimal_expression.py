@@ -40,12 +40,13 @@ class MinimalExpression(Process):
         internal_regulators = [state_id for port_id, state_id in regulators if port_id == 'internal']
         external_regulators = [state_id for port_id, state_id in regulators if port_id == 'external']
 
-        self.concentration_keys = self.internal_states + internal_regulators,
+        self.concentration_keys = self.internal_states + internal_regulators
 
         ports = {
             'internal': self.internal_states + internal_regulators,
             'external': external_regulators,
-            'concentrations': []}
+            'concentrations': [],
+            'global': []}
 
         parameters = {
             'expression_rates': expression_rates,
@@ -87,7 +88,7 @@ class MinimalExpression(Process):
                 'deriver': 'counts_to_mmol',
                 'port_mapping': {
                     'global': 'global',
-                    'counts': 'proteins'
+                    'counts': 'internal',
                     'concentrations': 'concentrations'},
                 'config': {
                     'concentration_keys': self.concentration_keys}}}

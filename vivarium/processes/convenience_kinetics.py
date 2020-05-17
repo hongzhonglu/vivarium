@@ -292,7 +292,8 @@ class ConvenienceKinetics(Process):
                 for flux_id in self.kinetic_rate_laws.reaction_ids}}
 
         # derivers
-        deriver_setting = [self.global_deriver_config]
+        deriver_setting = []
+        # deriver_setting = [self.global_deriver_config]
 
         default_settings = {
             'process_id': 'convenience_kinetics',

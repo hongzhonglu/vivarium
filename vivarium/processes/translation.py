@@ -51,8 +51,6 @@ Z = random_string(monomer_symbols, 60)
 B = random_string(monomer_symbols, 30)
 Y = random_string(monomer_symbols, 40)
 
-default_translation_parameters = 
-
 def gather_genes(affinities):
     genes = {}
     for operon, product in affinities.keys():

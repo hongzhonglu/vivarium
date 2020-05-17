@@ -211,7 +211,8 @@ class ODE_expression(Process):
         ports = {
             'internal': self.concentration_keys,
             'external': external + external_regulators,
-            'counts': self.concentration_keys}
+            'counts': self.concentration_keys,
+            'global': ['volume']}
 
         parameters = {}
         parameters.update(initial_parameters)

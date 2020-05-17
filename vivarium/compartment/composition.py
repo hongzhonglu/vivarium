@@ -9,7 +9,7 @@ import networkx as nx
 
 from vivarium.compartment.tree import (
     Experiment,
-    process_derivers,
+    generate_derivers,
     deriver_library
 )
 from vivarium.compartment import emitter as emit
@@ -157,7 +157,7 @@ def process_in_experiment(process, settings={}):
             port: (port,) for port in process.ports}}
 
     # add derivers
-    derivers = process_derivers(processes, topology, deriver_config)
+    derivers = generate_derivers(processes, topology)
     processes.update(derivers['processes'])
     topology.update(derivers['topology'])
 

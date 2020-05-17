@@ -101,7 +101,8 @@ class Growth(Process):
                     'updater': 'set'}}}
 
         # derivers
-        deriver_setting = [self.defaults['global_deriver_config']]
+        deriver_setting = []
+        # deriver_setting = [self.defaults['global_deriver_config']]
 
         default_settings = {
             'state': default_state,

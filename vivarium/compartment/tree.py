@@ -14,7 +14,7 @@ from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 # processes
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
-from vivarium.processes.derive_concentrations import DeriveConcs
+from vivarium.processes.derive_concentrations import DeriveConcentrations
 from vivarium.processes.derive_mass import DeriveMass
 from vivarium.processes.tree_mass import TreeMass
 
@@ -24,7 +24,7 @@ deriver_library = {
     # 'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
-    'counts_to_mmol': DeriveConcs,
+    'counts_to_mmol': DeriveConcentrations,
     'mass': TreeMass,
 }
 
@@ -221,6 +221,12 @@ class Store(object):
 
         return config
 
+    def top(self):
+        if self.parent:
+            return self.parent.top()
+        else:
+            return self
+
     def get_value(self, condition=None, f=None):
         if self.children:
             if condition is None:
@@ -314,7 +320,7 @@ class Store(object):
 
     def reduce(self, reducer, initial=None):
         value = initial
-        for path, node in self.depth().items():
+        for path, node in self.depth():
             value = reducer(value, path, node)
         return value
 
@@ -401,6 +407,9 @@ class Store(object):
 
         else:
             if isinstance(update, dict) and '_reduce' in update:
+                import ipdb; ipdb.set_trace()
+
+                reduction = update['_reduce']
                 top = self.get_path(reduction.get('from'))
                 update = top.reduce(
                     reduction['reducer'],
@@ -610,8 +619,9 @@ def generate_derivers(processes, topology):
                     # generate deriver process
                     deriver_config = config.get('config', {})
                     generate = config['deriver']
-                    if isinstance(generate, 'str'):
+                    if isinstance(generate, str):
                         generate = deriver_library[generate]
+
                     deriver = generate(deriver_config)
                     deriver_processes[deriver_key] = deriver
 
@@ -619,7 +629,7 @@ def generate_derivers(processes, topology):
                     deriver_topology[deriver_key] = {}
                     for target, source in config.get('port_mapping', {}).items():
                         path = subtopology[source]
-                        deriver_topology[target] = path
+                        deriver_topology[deriver_key][target] = path
         else:
             subderivers = generate_derivers(node, subtopology)
             deriver_processes[process_key] = subderivers['processes']
