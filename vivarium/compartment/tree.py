@@ -391,6 +391,7 @@ class Store(object):
                     condition=lambda child: not(isinstance(child.value, Process)),
                     f=lambda child: copy.deepcopy(child))
                 states = self.children[mother].divide_value()
+
                 for daughter, state in zip(daughters, states):
                     daughter_id = daughter['daughter']
                     initial_state = deep_merge(
@@ -407,10 +408,9 @@ class Store(object):
                         daughter['path'],
                         daughter['topology'])
 
+                    self.apply_subschemas()
                     self.children[daughter_id].set_value(initial_state)
-
                 self.delete_path((mother,))
-                self.apply_subschemas()
 
                 update = dissoc(update, '_divide')
 
