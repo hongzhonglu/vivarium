@@ -768,6 +768,17 @@ def simulate_growth_division(config, settings):
     # make the process
     multibody = Multibody(config)
     experiment = process_in_experiment(multibody)
+    experiment.state.apply_config({
+        'agents': {
+            '*': {
+                'global': {
+                    'mass': {
+                        '_divider': 'split'},
+                    'length': {
+                        '_divider': 'split'}}}}})
+
+
+
 
     # get initial agent state
     agents_store = experiment.state.get_path(['agents'])
@@ -791,6 +802,9 @@ def simulate_growth_division(config, settings):
         remove_agents = []
         add_agents = {}
         for agent_id, state in agents_state.items():
+
+
+
             global_state = state['global']
             location = global_state['location']
             angle = global_state['angle']
@@ -809,28 +823,20 @@ def simulate_growth_division(config, settings):
             elif new_volume > division_volume:
                 daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
 
-                # daughter state with updated values
-                half_mass = new_mass / 2
-                half_length = new_length / 2
-                parent_values = {
-                    'length': length,
-                    'angle': angle}
-                new_locations = daughter_locations(location, parent_values)
+                daughter_updates = []
+                for daughter_id in daughter_ids:
+                    daughter_updates.append({
+                        'daughter': daughter_id,
+                        'path': (daughter_id,),
+                        'processes': {},
+                        'topology': {},
+                        'initial_state': {}})
 
-                daughter_states = {}
-                for index, daughter_id in enumerate(daughter_ids):
-                    daughter_state = global_state.copy()
-                    daughter_state.update({
-                        'location': new_locations[index],
-                        'mass': half_mass,
-                        'length': half_length})
-                    daughter_states[daughter_id] = {
-                        'global': daughter_state}
-
-                # remove mother from store, add daughters
-                remove_agents.append(agent_id)
-                add_agents.update(daughter_states)
-                agent_updates.update(daughter_states)  # TODO -- why is this not updating the store?
+                # initial state will be provided by division in the tree
+                agent_updates = {
+                    '_divide': {
+                        'mother': agent_id,
+                        'daughters': daughter_updates}}
 
             else:
                 agent_updates[agent_id] = {
@@ -838,20 +844,6 @@ def simulate_growth_division(config, settings):
                         'volume': new_volume,
                         'length': new_length,
                         'mass': new_mass}}
-
-        for agent_id in remove_agents:
-
-            import ipdb; ipdb.set_trace()
-
-            # remove from store
-            del agents_state['agents'][agent_id]
-
-        if add_agents:
-
-            import ipdb; ipdb.set_trace()
-
-            # add to store
-            agents_store.establish_path(add_agents)
 
         # update experiment
         experiment.send_updates([{'agents': agent_updates}])
