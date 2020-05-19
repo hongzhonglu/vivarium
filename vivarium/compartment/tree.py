@@ -491,6 +491,16 @@ class Store(object):
         for child in self.children.values():
             child.apply_subschemas()
 
+    def update_subschema(self, path, subschema):
+        target = self.get_path(path)
+        if target.subschema is None:
+            target.subschema = subschema
+        else:
+            target.subschema = deep_merge(
+                target.subschema,
+                subschema)
+        return target
+
     def generate_paths(self, processes, topology, initial_state):
         for key, subprocess in processes.items():
             subtopology = topology[key]
@@ -505,8 +515,9 @@ class Store(object):
                         initial = get_in(initial_state, path)
                         for target, schema in targets.items():
                             if target == '*':
-                                glob = self.establish_path(path, {
-                                    '_subschema': schema})
+                                glob = self.update_subschema(path, schema)
+                                # glob = self.establish_path(path, {
+                                #     '_subschema': schema})
                                 glob.apply_subschema()
                             else:
                                 if initial and target in initial:
