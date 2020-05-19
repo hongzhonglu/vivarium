@@ -812,7 +812,10 @@ def simulate_growth_division(config, settings):
                 # daughter state with updated values
                 half_mass = new_mass / 2
                 half_length = new_length / 2
-                new_locations = daughter_locations(location, length, angle)
+                parent_values = {
+                    'length': length,
+                    'angle': angle}
+                new_locations = daughter_locations(location, parent_values)
 
                 daughter_states = {}
                 for index, daughter_id in enumerate(daughter_ids):
