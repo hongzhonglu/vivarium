@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import copy
+import uuid
 import random
 
 import numpy as np
@@ -10,6 +11,7 @@ from vivarium.compartment.process import (
     Process,
     divider_library)
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
+from vivarium.compartment.emitter import get_emitter
 
 # processes
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
@@ -17,7 +19,6 @@ from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcentrations
 from vivarium.processes.derive_mass import DeriveMass
 from vivarium.processes.tree_mass import TreeMass
-
 
 deriver_library = {
     # 'mass': DeriveMass,
@@ -140,8 +141,8 @@ class Store(object):
         '_updater',
         '_divider',
         '_value',
-        '_divider',
         '_properties',
+        '_emit',
         '_units'])
 
     def __init__(self, config, parent=None):
@@ -154,6 +155,7 @@ class Store(object):
         self.value = None
         self.units = None
         self.divider = None
+        self.emit = False
 
         self.apply_config(config)
 
@@ -187,6 +189,7 @@ class Store(object):
                 config.get('_properties', {}))
 
             self.units = config.get('_units', self.units)
+            self.emit = config.get('_emit', self.emit)
         else:
             self.value = None
 
@@ -285,6 +288,21 @@ class Store(object):
             else:
                 state[key] = child.get_template(value)
         return state
+
+    def emit_data(self):
+        data = {}
+        if self.children:
+            for key, child in self.children.items():
+                child_data = child.emit_data()
+                if child_data:
+                    data[key] = child_data
+            return data
+        else:
+            if self.emit:
+                if isinstance(self.value, Process):
+                    return self.value.pull_data()
+                else:
+                    return self.value
 
     def delete_path(self, path):
         if not path:
@@ -557,7 +575,6 @@ class Compartment(object):
         topology = self.generate_topology(config)
 
         # add derivers
-        # derivers = process_derivers(processes, topology)
         derivers = generate_derivers(processes, topology)
         processes = deep_merge(processes, derivers['processes'])
         topology = deep_merge(topology, derivers['topology'])
@@ -586,6 +603,8 @@ def normalize_path(path):
 
 class Experiment(object):
     def __init__(self, config):
+        self.config = config
+        self.id = config.get('id', uuid.uuid1())
         self.processes = config['processes']
         self.topology = config['topology']
         self.initial_state = config['initial_state']
@@ -594,6 +613,10 @@ class Experiment(object):
             self.processes,
             self.topology,
             self.initial_state)
+
+        emitter_config = config.get('emitter', {})
+        emitter_config['experiment_id'] = self.id
+        self.emitter = get_emitter(emitter_config)
 
         self.local_time = 0.0
 
@@ -625,6 +648,10 @@ class Experiment(object):
             # timestep shouldn't influence derivers
             update = self.process_update(path, deriver, 0)
             self.apply_update(update)
+
+    def emit_data(self):
+        data = self.state.emit_data()
+        self.emitter.emit(data)
 
     def send_updates(self, updates, derivers=None):
         for update in updates:
@@ -721,8 +748,8 @@ class Experiment(object):
 
         self.local_time += timestep
 
-        # # run emitters
-        # self.emit_data()
+        # run emitters
+        self.emit_data()
 
 def test_recursive_store():
     environment_config = {

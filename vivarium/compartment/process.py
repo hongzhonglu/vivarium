@@ -231,6 +231,9 @@ class Process(object):
     def derivers(self):
         return {}
 
+    def pull_data(self):
+        return {}
+
     def schema_properties(self, states, schema_type):
         '''
         Requires:

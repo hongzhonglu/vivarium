@@ -74,6 +74,7 @@ class GrowthProtein(Process):
                 'protein': {
                     '_default': protein,
                     '_divider': 'split',
+                    '_emit': True,
                     '_properties': {
                         'mass': 1e-3}}},
             'global': {

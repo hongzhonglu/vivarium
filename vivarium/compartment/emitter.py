@@ -34,6 +34,8 @@ def get_emitter(config):
     * keys: A list of state keys to emit for each state label.
     '''
 
+    if config is None:
+        config = {'type': 'print'}
     emitter_type = config.get('type', 'print')
 
     if emitter_type == 'kafka':
@@ -47,9 +49,7 @@ def get_emitter(config):
     else:
         emitter = Emitter(config)
 
-    return {
-        'object': emitter,
-        'keys': config.get('keys',{})}
+    return emitter
 
 def get_emitter_keys(processes, topology):
     emitter_keys = {}
@@ -175,7 +175,6 @@ class DatabaseEmitter(Emitter):
 
     def __init__(self, config):
         self.config = config
-        self.simulation_id = config.get('simulation_id')
         self.experiment_id = config.get('experiment_id')
 
         # create singleton instance of mongo client
@@ -193,7 +192,6 @@ class DatabaseEmitter(Emitter):
     def emit(self, data_config):
         data = data_config['data']
         data.update({
-            'simulation_id': self.simulation_id,
             'experiment_id': self.experiment_id})
 
         table = getattr(self.db, data_config['table'])
