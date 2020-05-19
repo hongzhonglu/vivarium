@@ -800,12 +800,11 @@ def simulate_growth_division(config, settings):
         remove_agents = []
         add_agents = {}
         for agent_id, state in agents_state.items():
-            global_state = state['global']
-            location = global_state['location']
-            angle = global_state['angle']
-            length = global_state['length']
-            width = global_state['width']
-            mass = global_state['mass']
+            location = state['global']['location']
+            angle = state['global']['angle']
+            length = state['global']['length']
+            width = state['global']['width']
+            mass = state['global']['mass']
 
             # update
             growth_rate2 = (growth_rate + np.random.normal(0.0, growth_rate_noise)) * timestep
@@ -813,7 +812,6 @@ def simulate_growth_division(config, settings):
             new_length = length + length * growth_rate2
             new_volume = volume_from_length(new_length, width)
 
-            agent_updates = {}
             if channel_height and location[1] > channel_height:
                 agent_updates['_delete'] = (agent_id,)
             elif new_volume > division_volume:
