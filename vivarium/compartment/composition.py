@@ -211,6 +211,7 @@ def process_in_experiment(process, settings={}):
     process_settings = process.default_settings()
     emitter = settings.get('emitter', {'type': 'timeseries'})
     deriver_config = settings.get('deriver_config', {})
+    timeline = settings.get('timeline', [])  # TODO -- load a timeline process!
 
     processes = {'process': process}
     topology = {
@@ -227,6 +228,17 @@ def process_in_experiment(process, settings={}):
         'topology': topology,
         'emitter': emitter,
         'initial_state': process_settings.get('state', {})})
+
+def compartment_in_experiment(compartment, settings={}):
+    compartment_config = settings.get('compartment')
+    network = compartment.generate(compartment_config)
+    processes = network['processes']
+    topology = network['topology']
+
+    return Experiment({
+        'processes': processes,
+        'topology': topology,
+        'initial_state': settings.get('initial_state', {})})
 
 
 # simulation functions

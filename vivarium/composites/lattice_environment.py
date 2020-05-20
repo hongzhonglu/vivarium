@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import (
-    initialize_state,
+from vivarium.compartment.tree import (
+    Compartment,
 )
 from vivarium.compartment.composition import (
     simulate_compartment,
@@ -24,95 +24,66 @@ from vivarium.processes.diffusion_field import (
 
 
 
-def make_lattice_environment(config):
+class Lattice(Compartment):
     """
     Lattice environment:  A two-dimensional lattice environmental model
     """
 
-    # declare the processes.
-    multibody = Multibody(config.get('multibody', {}))
-    diffusion = DiffusionField(config.get('diffusion_field', {}))
+    defaults = {
+        'bounds': DEFAULT_BOUNDS,
+        'size': DEFAULT_BOUNDS,
+        'molecules': ['glc']
+    }
 
-    # place processes in layers
-    processes = {
-        'multibody': multibody,
-        'diffusion': diffusion}
+    def __init__(self, config):
+        bounds = config.get('bounds', self.defaults['bounds'])
+        size = config.get('size', self.defaults['size'])
+        molecules = config.get('molecules', self.defaults['molecules'])
 
-    # topology
-    topology = {
-        'multibody': {
-            'agents': ('agents',)},
-        'diffusion': {
-            'agents': ('agents',),
-            'fields': ('fields',)}}
+        # configure the agents
+        agents_config = config.get('agents', {})
+        agent_ids = list(agents_config.keys())
+        n_agents = len(agent_ids)
+        self.default_multibody_config = {
+            'n_agents': n_agents,
+            'bounds': bounds}
+        self.default_multibody_config.update(random_body_config(multibody_config))
 
-    return {
-        'processes': processes,
-        'topology': topology}
-
-
-
-def compose_lattice_environment(config):
-    """"""
-    bounds = config.get('bounds', DEFAULT_BOUNDS)
-    size = config.get('size', DEFAULT_BOUNDS)
-    molecules = config.get('molecules', ['glc'])
-
-    # configure the agents
-    agents_config = config.get('agents', {})
-    agent_ids = list(agents_config.keys())
-    n_agents = len(agent_ids)
-    multibody_config = {
-        'n_agents': n_agents,
-        'bounds': bounds}
-
-    multibody_config.update(random_body_config(multibody_config))
-
-    # config for the diffusion proces
-    agents = {
-        agent_id: {
-        'location': boundary['location'],
-        'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
+        # config for diffusion process
+        agents = {
+            agent_id: {
+                'location': boundary['location'],
+                'exchange': {
+                    mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
             for agent_id, boundary in multibody_config['agents'].items()}
 
-    exchange_config = {
-        'molecules': molecules,
-        'n_bins': bounds,
-        'size': size,
-        'agents': agents}
+        exchange_config = {
+            'molecules': molecules,
+            'n_bins': bounds,
+            'size': size,
+            'agents': agents}
 
-    diffusion_config = exchange_agent_config(exchange_config)
+        self.default_diffusion_config = exchange_agent_config(exchange_config)
 
-    # environment gets both process configs
-    environment_config = {
-        'multibody': multibody_config,
-        'diffusion_field': diffusion_config}
+    def generate_processes(self, config):
+        multibody = Multibody(config.get(
+            'multibody',
+            self.default_multibody_config))
+        diffusion = DiffusionField(config.get(
+            'diffusion_field',
+            self.default_diffusion_config))
 
-    # get the environment compartment
-    environment_compartment = make_lattice_environment(environment_config)
-    processes = environment_compartment['processes']
-    topology = environment_compartment['topology']
+        return {
+            'multibody': multibody,
+            'diffusion': diffusion}
 
-    # add derivers
-    deriver_processes = {}
-
-    # initialize the states
-    states = initialize_state(
-        processes,
-        topology,
-        config.get('initial_state', {}))
-
-    options = {
-        'name': config.get('name', 'lattice_environment'),
-        'topology': topology,
-        'initial_time': config.get('initial_time', 0.0)}
-
-    return {
-        'processes': processes,
-        'derivers': deriver_processes,
-        'states': states,
-        'options': options}
+    def generate_topology(self, config):
+        return {
+            'multibody': {
+                'agents': ('agents',)},
+            'diffusion': {
+                'agents': ('agents',),
+                'fields': ('fields',)}}
 
 
 

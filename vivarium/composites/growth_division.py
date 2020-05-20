@@ -10,9 +10,10 @@ from vivarium.compartment.tree import (
 )
 
 from vivarium.compartment.composition import (
-    get_derivers,
+    compartment_in_experiment,
     simulate_with_environment,
-    plot_simulation_output, load_compartment)
+    plot_simulation_output
+)
 
 # processes
 from vivarium.processes.growth_protein import GrowthProtein
@@ -65,8 +66,6 @@ class GrowthDivision(Compartment):
         expression = MinimalExpression(config.get('expression', {}))
         mass = TreeMass(config.get('mass', {}))
 
-        # place processes in layers,
-        # let compartment handle derivers
         return {
             'transport': transport,
             'growth': growth,
@@ -104,66 +103,37 @@ class GrowthDivision(Compartment):
                 'global': global_key}}
 
 
-def growth_division(config):
-    compartment = GrowthDivision(config)
-    return compartment.generate({})
-
-
-def compose_growth_division(config):
-    agent = growth_division(config)
-    processes = agent['processes']
-    topology= agent['topology']
-
-    # add derivers
-    derivers = get_derivers(processes, topology)
-    deriver_processes = derivers['deriver_processes']
-    all_processes = {}
-    all_processes.update(processes)
-    all_processes.update(derivers['deriver_processes'])
-    topology.update(derivers['deriver_topology'])  # add derivers to the topology
-
-
-    # initialize the states
-    states = initialize_state(
-        all_processes,
-        topology,
-        config.get('initial_state', {}))
-
-    options = {
-        'name': 'growth_division_composite',
-        # 'environment_port': BOUNDARY_STATE,
-        # 'exchange_port': BOUNDARY_STATE,
-        'topology': topology,
-        'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition}
-
-    return {
-        'processes': processes,
-        'derivers': deriver_processes,
-        'states': states,
-        'options': options}
-
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'growth_division_composite')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    compartment = load_compartment(compose_growth_division)
+    compartment_config = {}
+    compartment = GrowthDivision(compartment_config)
+
+    experiment_settings = {
+        'compartment': {}
+    }
+
+
+    # TODO -- pass in an environment compartment, add to experiment
+    import ipdb; ipdb.set_trace()
+
+
+    experiment = compartment_in_experiment(compartment, experiment_settings)
+
+
 
     # settings for simulation and plot
-    options = compartment.configuration
     settings = {
-        'environment_port': options['environment_port'],
-        'exchange_port': options['exchange_port'],
         'environment_volume': 1e-6,  # L
         'timestep': 1,
         'total_time': 100,
     }
+    timeseries = simulate_with_environment(compartment, settings)
 
     plot_settings = {
         'max_rows': 25,
         'skip_ports': ['prior_state']}
-
-    timeseries = simulate_with_environment(compartment, settings)
     plot_simulation_output(timeseries, plot_settings, out_dir)
