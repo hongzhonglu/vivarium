@@ -685,7 +685,7 @@ def run_mother_machine():
     channel_space = 1.5
 
     settings = {
-        'growth_rate': 0.01,
+        'growth_rate': 0.03,
         'growth_rate_noise': 0.02,
         'division_volume': 2.6,
         'channel_height': channel_height,
@@ -813,7 +813,9 @@ def simulate_growth_division(config, settings):
             new_volume = volume_from_length(new_length, width)
 
             if channel_height and location[1] > channel_height:
-                agent_updates['_delete'] = (agent_id,)
+                update = {'_delete': [(agent_id,)]}
+                experiment.send_updates([{'agents': update}])
+
             elif new_volume > division_volume:
                 daughter_ids = [str(agent_id) + '0', str(agent_id) + '1']
 
@@ -827,9 +829,11 @@ def simulate_growth_division(config, settings):
                         'initial_state': {}})
 
                 # initial state will be provided by division in the tree
-                agent_updates['_divide'] = {
-                    'mother': agent_id,
-                    'daughters': daughter_updates}
+                update = {
+                    '_divide': {
+                        'mother': agent_id,
+                        'daughters': daughter_updates}}
+                experiment.send_updates([{'agents': update}])
             else:
                 agent_updates[agent_id] = {
                     'global': {
