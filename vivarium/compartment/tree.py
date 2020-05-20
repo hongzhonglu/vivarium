@@ -515,9 +515,9 @@ class Store(object):
                         initial = get_in(initial_state, path)
                         for target, schema in targets.items():
                             if target == '*':
-                                glob = self.update_subschema(path, schema)
-                                # glob = self.establish_path(path, {
-                                #     '_subschema': schema})
+                                # glob = self.update_subschema(path, schema)
+                                glob = self.establish_path(path, {
+                                    '_subschema': schema})
                                 glob.apply_subschema()
                             else:
                                 if initial and target in initial:
