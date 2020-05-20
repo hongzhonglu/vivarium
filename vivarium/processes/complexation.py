@@ -122,11 +122,11 @@ class Complexation(Process):
             'parameters': self.parameters}
 
     def derivers(self):
-        return = {
+        return {
             self.mass_deriver_key: {
                 'deriver': 'mass',
                 'port_mapping': {
-                    'global': 'global'}},
+                    'global': 'global'}}}
 
     def next_update(self, timestep, states):
         monomers = states['monomers']

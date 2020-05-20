@@ -495,7 +495,7 @@ class Translation(Process):
             'global': {}}
 
     def derivers(self):
-        return = {
+        return {
             self.mass_deriver_key: {
                 'deriver': 'mass',
                 'port_mapping': {
@@ -504,10 +504,10 @@ class Translation(Process):
                 'deriver': 'counts_to_mmol',
                 'port_mapping': {
                     'global': 'global',
-                    'counts': 'proteins'
+                    'counts': 'proteins',
                     'concentrations': 'concentrations'},
                 'config': {
-                    'concentration_keys': self.protein_keys}
+                    'concentration_keys': self.protein_keys}}}
 
     def next_update(self, timestep, states):
         molecules = states['molecules']

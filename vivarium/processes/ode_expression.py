@@ -246,7 +246,7 @@ class ODE_expression(Process):
             'type': 'mmol_to_counts',
             'source_port': 'internal',
             'derived_port': 'counts',
-            'keys': self.ports['internal']}]
+            'keys': self.ports['internal']}
 
         default_settings = {
             'state': default_state,
@@ -263,7 +263,7 @@ class ODE_expression(Process):
                 'port_mapping': {
                     'global': 'global',
                     'concentrations': 'internal',
-                    'counts': 'counts'}
+                    'counts': 'counts'},
                 'config': {
                     'concentration_keys': self.concentration_keys}}}
 
