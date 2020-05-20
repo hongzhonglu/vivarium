@@ -330,7 +330,7 @@ class Translation(Process):
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
 
-        self.default_parameters = copy.deep_copy(self.defaults)
+        self.default_parameters = copy.deepcopy(self.defaults)
 
         templates = self.or_default(initial_parameters, 'templates')
 

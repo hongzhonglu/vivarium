@@ -35,12 +35,9 @@ from vivarium.compartment.process import (
     COMPARTMENT_STATE)
 from vivarium.compartment.composition import (
     process_in_experiment,
-    process_in_compartment,
-    simulate_process,
-    simulate_compartment)
+    simulate_experiment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble
-from vivarium.processes.derive_globals import (
-    volume_from_length)
+from vivarium.processes.derive_globals import volume_from_length
 
 
 
@@ -592,22 +589,21 @@ def mother_machine_body_config(config):
         'bounds': bounds}
 
 # tests and simulations
-def test_multibody(config={'n_agents':1}, time=1):
+def test_multibody(config={'n_agents':1}, time=10):
     body_config = random_body_config(config)
     multibody = Multibody(body_config)
 
     # initialize agent's boundary state
     initial_agents_state = body_config['agents']
-    compartment = process_in_compartment(multibody)
-    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+    experiment = process_in_experiment(multibody)
+    experiment.state.set_value({'agents': initial_agents_state})
 
+    # run experiment
     settings = {
+        'timestep': 1,
         'total_time': time,
-        'return_raw_data': True,
-        'environment_port': 'external',
-        'environment_volume': 1e-2}
-
-    return simulate_compartment(compartment, settings)
+        'return_raw_data': True}
+    return simulate_experiment(experiment, settings)
 
 def simulate_motility(config, settings):
     # time of motor behavior without chemotaxis
@@ -620,30 +616,36 @@ def simulate_motility(config, settings):
 
     # make the process
     multibody = Multibody(config)
-    compartment = process_in_compartment(multibody)
-
-    # initialize agent boundary state
-    compartment.send_updates({'agents': [{'agents': initial_agents_state}]})
+    experiment = process_in_experiment(multibody)
+    experiment.state.update_subschema(
+        ('agents',), {
+            'global': {
+                'motile_force': {
+                    '_emit': True,
+                    '_updater': 'set'}}})
+    experiment.state.apply_subschemas()
 
     # get initial agent state
-    agents_store = compartment.states['agents']
-    agents_state = agents_store.state
+    experiment.state.set_value({'agents': initial_agents_state})
+    agents_store = experiment.state.get_path(['agents'])
 
     # initialize hidden agent motile states, and update agent motile_forces in agent store
     agent_motile_states = {}
     motile_forces = {}
-    for agent_id, specs in agents_state['agents'].items():
+    for agent_id, specs in agents_store.get_value().items():
         motile_force = run()
         agent_motile_states[agent_id] = {
             'motor_state': 1,  # 0 for run, 1 for tumble
             'time_in_motor_state': 0}
-        motile_forces[agent_id] = {'motile_force': motile_force}
-    compartment.send_updates({'agents': [{'agents': motile_forces}]})
+        motile_forces[agent_id] = {
+            'global': {'motile_force': motile_force}}
+    experiment.send_updates([{'agents': motile_forces}])
 
     ## run simulation
     # test run/tumble
     time = 0
     while time < total_time:
+        experiment.update(timestep)
         time += timestep
 
         # update motile force and apply to state
@@ -675,12 +677,12 @@ def simulate_motility(config, settings):
             agent_motile_states[agent_id] = {
                 'motor_state': motor_state,  # 0 for run, 1 for tumble
                 'time_in_motor_state': time_in_motor_state}
-            motile_forces[agent_id] = {'motile_force': motile_force}
+            motile_forces[agent_id] = {
+                'global': {'motile_force': motile_force}}
 
-        compartment.send_updates({'agents': [{'agents': motile_forces}]})
-        update = compartment.update(timestep)
+        experiment.send_updates([{'agents': motile_forces}])
 
-    return compartment.emitter.get_data()
+    return experiment.emitter.get_data()
 
 def run_mother_machine():
     bounds = [30, 30]
@@ -713,7 +715,6 @@ def run_mother_machine():
     fields = {}
     plot_snapshots(agents, fields, mm_config, out_dir, 'mother_machine_snapshots')
 
-
 def run_motility(out_dir):
     # test motility
     bounds = [100, 100]
@@ -731,15 +732,14 @@ def run_motility(out_dir):
 
     # run motility sim
     motility_data = simulate_motility(motility_config, motility_sim_settings)
+    motility_timeseries = timeseries_from_data(motility_data)
 
     # make motility plot
-    reduced_data = {time: data['agents'] for time, data in motility_data.items()}
-    motility_timeseries = timeseries_from_data(reduced_data)
     plot_motility(motility_timeseries, out_dir)
     plot_trajectory(motility_timeseries, motility_config, out_dir)
 
     # make motility snapshot
-    agents = {time: time_data['agents']['agents'] for time, time_data in motility_data.items()}
+    agents = {time: time_data['agents'] for time, time_data in motility_data.items()}
     fields = {}
     plot_snapshots(agents, fields, motility_config, out_dir, 'motility_snapshots')
 
@@ -795,6 +795,7 @@ def simulate_growth_division(config, settings):
 
     time = 0
     while time < total_time:
+        experiment.update(timestep)
         time += timestep
         agents_state = agents_store.get_value()
 
@@ -845,7 +846,6 @@ def simulate_growth_division(config, settings):
 
         # update experiment
         experiment.send_updates([{'agents': agent_updates}])
-        experiment.update(timestep)
 
     return experiment.emitter.get_data()
 
@@ -978,8 +978,8 @@ def plot_trajectory(agent_timeseries, config, out_dir='out', filename='trajector
     for agent_id, data in agents.items():
         trajectories[agent_id] = []
         for time_data in data:
-            x, y = time_data['location']
-            theta = time_data['angle']
+            x, y = time_data['global']['location']
+            theta = time_data['global']['angle']
             pos = [x, y, theta]
             trajectories[agent_id].append(pos)
 
@@ -1037,9 +1037,9 @@ def plot_motility(timeseries, out_dir='out', filename='motility_analysis'):
 
         # go through each time point for this agent
         for time, time_data in zip(times, agent_data):
-            angle = time_data['angle']
-            thrust, torque = time_data['motile_force']
-            location = time_data['location']
+            angle = time_data['global']['angle']
+            thrust, torque = time_data['global']['motile_force']
+            location = time_data['global']['location']
 
             # get speed since last time
             if time != times[0]:
@@ -1127,4 +1127,4 @@ if __name__ == '__main__':
     elif args.growth:
         data = run_growth_division()
     else:
-        run_motility(out_dir)
+        test_multibody()
