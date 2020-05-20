@@ -148,7 +148,7 @@ def get_schema(process_list, topology):
 
 def process_in_experiment(process, settings={}):
     process_settings = process.default_settings()
-    emitter = settings.get('emitter', 'timeseries')
+    emitter = settings.get('emitter', {'type': 'timeseries'})
     deriver_config = settings.get('deriver_config', {})
 
     processes = {'process': process}
@@ -164,6 +164,7 @@ def process_in_experiment(process, settings={}):
     return Experiment({
         'processes': processes,
         'topology': topology,
+        'emitter': emitter,
         'initial_state': process_settings.get('state', {})})
 
 def process_in_compartment(process, settings={}):

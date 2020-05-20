@@ -197,6 +197,7 @@ class Multibody(Process):
             '*': {
                 'global': {
                     'location': {
+                        '_emit': True,
                         '_default': [0.5, 0.5],
                         '_updater': 'set',
                         '_divider': {
@@ -205,12 +206,15 @@ class Multibody(Process):
                                 'length': ('length',),
                                 'angle': ('angle',)}}},
                     'length': {
+                        '_emit': True,
                         '_default': 2.0,
                         '_updater': 'set'},
                     'width': {
+                        '_emit': True,
                         '_default': 1.0,
                         '_updater': 'set'},
                     'angle': {
+                        '_emit': True,
                         '_default': 0.0,
                         '_updater': 'set'},
                     'mass': {
@@ -706,7 +710,7 @@ def run_mother_machine():
     mm_data = simulate_growth_division(mm_config, settings)
 
     # make snapshot
-    agents = {time: time_data['agents']['agents'] for time, time_data in mm_data.items()}
+    agents = {time: time_data['agents'] for time, time_data in mm_data.items()}
     fields = {}
     plot_snapshots(agents, fields, mm_config, out_dir, 'mother_machine_snapshots')
 
@@ -845,7 +849,7 @@ def simulate_growth_division(config, settings):
         experiment.send_updates([{'agents': agent_updates}])
         experiment.update(timestep)
 
-    # return experiment.emitter.get_data()  # TODO -- bring emitters back
+    return experiment.emitter.get_data()
 
 
 # plotting

@@ -119,17 +119,14 @@ class TimeSeriesEmitter(Emitter):
 
     def __init__(self, config):
         keys = config.get('keys', {})
-        self.ports = list(keys.keys())
         self.saved_data = {}
 
     def emit(self, data):
-
         # save history data
         if data['table'] == 'history':
             emit_data = data['data']
-            time = emit_data['time']
-            self.saved_data[time] = {
-                port: values for port, values in emit_data.items() if port in self.ports}
+            time = emit_data.pop('time')
+            self.saved_data[time] = emit_data
 
     def get_data(self):
         return self.saved_data
