@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import copy
 import uuid
 import random
+import datetime
 
 import numpy as np
 import logging as log
@@ -612,10 +613,20 @@ def normalize_path(path):
     return progress
 
 
+def timestamp(dt=None):
+    if not dt:
+        dt = datetime.datetime.now()
+
+    return "%04d%02d%02d.%02d%02d%02d" % (
+        dt.year, dt.month, dt.day,
+        dt.hour, dt.minute, dt.second)
+
+
 class Experiment(object):
     def __init__(self, config):
         self.config = config
-        self.id = config.get('id', uuid.uuid1())
+        self.experiment_id = config.get('experiment_id', uuid.uuid1())
+        self.description = config.get('description','')
         self.processes = config['processes']
         self.topology = config['topology']
         self.initial_state = config['initial_state']
@@ -626,10 +637,24 @@ class Experiment(object):
             self.initial_state)
 
         emitter_config = config.get('emitter', {})
-        emitter_config['experiment_id'] = self.id
+        emitter_config['experiment_id'] = self.experiment_id
         self.emitter = get_emitter(emitter_config)
+        self.emit_configuration()
 
         self.local_time = 0.0
+
+    def emit_configuration(self):
+        data = {
+            'time_created': timestamp(),
+            'experiment_id': self.experiment_id,
+            'description': self.description,
+            'processes': self.processes,
+            'topology': self.topology,
+            'initial_state': self.initial_state}
+        emit_config = {
+            'table': 'configuration',
+            'data': data}
+        self.emitter.emit(emit_config)
 
     def absolute_update(self, path, new_update):
         absolute = {}
@@ -662,7 +687,12 @@ class Experiment(object):
 
     def emit_data(self):
         data = self.state.emit_data()
-        self.emitter.emit(data)
+        data.update({
+            'time': self.local_time})
+        emit_config = {
+            'table': 'history',
+            'data': data}
+        self.emitter.emit(emit_config)
 
     def send_updates(self, updates, derivers=None):
         for update in updates:

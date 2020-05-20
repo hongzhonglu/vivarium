@@ -122,7 +122,6 @@ def get_deriver_config_from_proceses(processes, topology):
         'deriver_configs': deriver_configs,
         'deriver_topology': full_deriver_topology}
 
-
 def get_schema(process_list, topology):
     schema = {}
     for level in process_list:
@@ -146,25 +145,28 @@ def get_schema(process_list, topology):
 
     return schema
 
-def process_in_experiment(process, settings={}):
-    process_settings = process.default_settings()
-    emitter = settings.get('emitter', 'timeseries')
-    deriver_config = settings.get('deriver_config', {})
 
-    processes = {'process': process}
-    topology = {
-        'process': {
-            port: (port,) for port in process.ports}}
+# loading functions
+def load_compartment(composite, boot_config={}):
+    '''
+    put a composite function into a compartment
 
-    # add derivers
-    derivers = generate_derivers(processes, topology)
-    processes.update(derivers['processes'])
-    topology.update(derivers['topology'])
+    inputs:
+        - composite is a function that returns a dict with 'processes', 'states', and 'options'
+        for configuring a compartment
+        - boot_config (dict) with specific parameters for the processes
+    return:
+        - a compartment object for testing
+    '''
 
-    return Experiment({
-        'processes': processes,
-        'topology': topology,
-        'initial_state': process_settings.get('state', {})})
+    composite_config = composite(boot_config)
+    processes = composite_config['processes']
+    derivers = composite_config.get('derivers', {})
+    states = composite_config['states']
+    options = composite_config['options']
+    options['emitter'] = boot_config.get('emitter', 'timeseries')
+
+    return Compartment(processes, derivers, states, options)
 
 def process_in_compartment(process, settings={}):
     ''' put a process in a compartment, with all derivers added '''
@@ -205,6 +207,29 @@ def process_in_compartment(process, settings={}):
 
     return Compartment(processes, deriver_processes, states, options)
 
+def process_in_experiment(process, settings={}):
+    process_settings = process.default_settings()
+    emitter = settings.get('emitter', {'type': 'timeseries'})
+    deriver_config = settings.get('deriver_config', {})
+
+    processes = {'process': process}
+    topology = {
+        'process': {
+            port: (port,) for port in process.ports}}
+
+    # add derivers
+    derivers = generate_derivers(processes, topology)
+    processes.update(derivers['processes'])
+    topology.update(derivers['topology'])
+
+    return Experiment({
+        'processes': processes,
+        'topology': topology,
+        'emitter': emitter,
+        'initial_state': process_settings.get('state', {})})
+
+
+# simulation functions
 def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
     compartment = process_in_compartment(process, settings)
@@ -280,6 +305,59 @@ def simulate_with_environment(compartment, settings={}):
     else:
         return compartment.emitter.get_timeseries()
 
+# TODO -- remove simulate_compartment, only use simulate_experiment
+def simulate_compartment(compartment, settings={}):
+    '''
+    run a compartment simulation
+        Requires:
+        - a compartment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
+    '''
+
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+
+    # data settings
+    return_raw_data = settings.get('return_raw_data', False)
+
+    # run simulation
+    time = 0
+    while time < total_time:
+        time += timestep
+        compartment.update(timestep)
+
+    if return_raw_data:
+        return compartment.emitter.get_data()
+    else:
+        return compartment.emitter.get_timeseries()
+
+def simulate_experiment(experiment, settings={}):
+    '''
+    run an experiment simulation
+        Requires:
+        - a configured experiment
+
+    Returns:
+        - a timeseries of variables from all ports.
+        - if 'return_raw_data' is True, it returns the raw data instead
+    '''
+    timestep = settings.get('timestep', 1)
+    total_time = settings.get('total_time', 10)
+    return_raw_data = settings.get('return_raw_data', False)
+
+    # run simulation
+    time = 0
+    while time < total_time:
+        time += timestep
+        experiment.update(timestep)
+
+    if return_raw_data:
+        return experiment.emitter.get_data()
+    else:
+        return experiment.emitter.get_timeseries()
 
 
 # plotting functions
@@ -376,7 +454,6 @@ def plot_compartment_topology(compartment, settings, out_dir='out', filename='to
 
     plt.close()
 
-
 def set_axes(ax, show_xaxis=False):
     ax.ticklabel_format(style='sci', axis='y', scilimits=(-5,5))
     ax.spines['right'].set_visible(False)
@@ -385,7 +462,6 @@ def set_axes(ax, show_xaxis=False):
     if not show_xaxis:
         ax.spines['bottom'].set_visible(False)
         ax.tick_params(bottom=False, labelbottom=False)
-
 
 def plot_simulation_output(timeseries_raw, settings={}, out_dir='out', filename='simulation'):
     '''
@@ -537,7 +613,6 @@ def save_timeseries(timeseries, out_dir='out'):
         writer.writerow(flattened.keys())
         writer.writerows(rows)
 
-
 def load_timeseries(path_to_csv):
     '''Load a timeseries saved as a CSV using save_timeseries.
 
@@ -551,14 +626,12 @@ def load_timeseries(path_to_csv):
                 timeseries.setdefault(header, []).append(float(elem))
     return timeseries
 
-
 def timeseries_to_ndarray(timeseries, keys=None):
     if keys is None:
         keys = timeseries.keys()
     filtered = {key: timeseries[key] for key in keys}
     array = np.array(list(filtered.values()))
     return array
-
 
 def _prepare_timeseries_for_comparison(
     timeseries1, timeseries2, keys=None,
@@ -621,7 +694,6 @@ def _prepare_timeseries_for_comparison(
         keys,
     )
 
-
 def assert_timeseries_correlated(
     timeseries1, timeseries2, keys=None,
     default_threshold=(1 - 1e-10), thresholds={},
@@ -669,7 +741,6 @@ def assert_timeseries_correlated(
                 '{} is too small: {} < {}'.format(
                     key, corrcoef, threshold)
             )
-
 
 def assert_timeseries_close(
     timeseries1, timeseries2, keys=None,
@@ -719,8 +790,6 @@ def assert_timeseries_close(
 
 
 # TESTS
-
-
 class ToyLinearGrowthDeathProcess(Process):
 
     GROWTH_RATE = 1.0
@@ -759,7 +828,6 @@ class ToyLinearGrowthDeathProcess(Process):
             }
         return update
 
-
 class TestSimulateProcess:
 
     def test_compartment_state_port(self):
@@ -776,58 +844,6 @@ class TestSimulateProcess:
         masses = timeseries['global']['mass']
         assert masses == expected_masses
 
-def load_compartment(composite, boot_config={}):
-    '''
-    put a composite function into a compartment
-
-    inputs:
-        - composite is a function that returns a dict with 'processes', 'states', and 'options'
-        for configuring a compartment
-        - boot_config (dict) with specific parameters for the processes
-    return:
-        - a compartment object for testing
-    '''
-
-    composite_config = composite(boot_config)
-    processes = composite_config['processes']
-    derivers = composite_config.get('derivers', {})
-    states = composite_config['states']
-    options = composite_config['options']
-    options['emitter'] = boot_config.get('emitter', 'timeseries')
-
-    return Compartment(processes, derivers, states, options)
-
-
-def simulate_compartment(compartment, settings={}):
-    '''
-    run a compartment simulation
-        Requires:
-        - a compartment
-
-    Returns:
-        - a timeseries of variables from all ports.
-        - if 'return_raw_data' is True, it returns the raw data instead
-    '''
-
-    timestep = settings.get('timestep', 1)
-    total_time = settings.get('total_time', 10)
-
-    # data settings
-    return_raw_data = settings.get('return_raw_data', False)
-
-    # run simulation
-    time = 0
-    while time < total_time:
-        time += timestep
-        compartment.update(timestep)
-
-    if return_raw_data:
-        return compartment.emitter.get_data()
-    else:
-        return compartment.emitter.get_timeseries()
-
-
-## functions for testing
 def toy_composite(config):
     '''
     a toy composite function for testing
@@ -990,7 +1006,6 @@ def toy_composite(config):
         'derivers': derivers_processes,
         'states': states,
         'options': options}
-
 
 def test_compartment(composite=toy_composite):
     compartment = load_compartment(composite)

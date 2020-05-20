@@ -330,7 +330,7 @@ class Translation(Process):
         self.monomer_symbols = list(amino_acids.keys())
         self.monomer_ids = list(amino_acids.values())
 
-        self.default_parameters = copy.deep_copy(self.defaults)
+        self.default_parameters = copy.deepcopy(self.defaults)
 
         templates = self.or_default(initial_parameters, 'templates')
 
@@ -495,7 +495,7 @@ class Translation(Process):
             'global': {}}
 
     def derivers(self):
-        return = {
+        return {
             self.mass_deriver_key: {
                 'deriver': 'mass',
                 'port_mapping': {
@@ -504,10 +504,10 @@ class Translation(Process):
                 'deriver': 'counts_to_mmol',
                 'port_mapping': {
                     'global': 'global',
-                    'counts': 'proteins'
+                    'counts': 'proteins',
                     'concentrations': 'concentrations'},
                 'config': {
-                    'concentration_keys': self.protein_keys}
+                    'concentration_keys': self.protein_keys}}}
 
     def next_update(self, timestep, states):
         molecules = states['molecules']
