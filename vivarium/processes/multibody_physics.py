@@ -644,7 +644,6 @@ def simulate_motility(config, settings):
     # test run/tumble
     time = 0
     while time < total_time:
-        print('time: {}'.format(time))
         time += timestep
 
         # update motile force and apply to state
@@ -796,7 +795,6 @@ def simulate_growth_division(config, settings):
 
     time = 0
     while time < total_time:
-        print('time: {}'.format(time))
         time += timestep
         agents_state = agents_store.get_value()
 
@@ -855,11 +853,11 @@ def simulate_growth_division(config, settings):
 # plotting
 def plot_agent(ax, data, color):
     # location, orientation, length
-    x_center = data['location'][0]
-    y_center = data['location'][1]
-    theta = data['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
-    length = data['length']
-    width = data['width']
+    x_center = data['global']['location'][0]
+    y_center = data['global']['location'][1]
+    theta = data['global']['angle'] / PI * 180 + 90 # rotate 90 degrees to match field
+    length = data['global']['length']
+    width = data['global']['width']
 
     # get bottom left position
     x_offset = (width / 2)
