@@ -205,6 +205,7 @@ class DiffusionField(Process):
 
         super(DiffusionField, self).__init__(ports, parameters)
 
+
     def default_settings(self):
         state = {
             'fields': self.initial_state,
@@ -260,9 +261,11 @@ class DiffusionField(Process):
             agent_id: {'local_environment': local_env}
                 for agent_id, local_env in local_environments.items()}
 
-        return {
-            'fields': delta_fields,
-            'agents': agent_update}
+        update = {'fields': delta_fields}
+        if agent_update:
+            update.update({'agents': agent_update})
+
+        return update
 
     def count_to_concentration(self, count):
         return count / (self.bin_volume * AVOGADRO)
@@ -283,8 +286,9 @@ class DiffusionField(Process):
 
     def get_local_environments(self, agents, fields):
         local_environments = {}
-        for agent_id, specs in agents.items():
-            local_environments[agent_id] = self.get_single_local_environments(specs['global'], fields)
+        if agents:
+            for agent_id, specs in agents.items():
+                local_environments[agent_id] = self.get_single_local_environments(specs['global'], fields)
         return local_environments
 
     def apply_single_exchange(self, delta_fields, specs):
@@ -304,9 +308,10 @@ class DiffusionField(Process):
             mol_id: self.empty_field()
             for mol_id in self.molecule_ids}
 
-        # apply exchanges to delta_fields
-        for agent_id, specs in agents.items():
-            self.apply_single_exchange(delta_fields, specs['global'])
+        if agents:
+            # apply exchanges to delta_fields
+            for agent_id, specs in agents.items():
+                self.apply_single_exchange(delta_fields, specs['global'])
 
         return delta_fields
 
@@ -445,11 +450,10 @@ def exchange_agent_config(config):
 def test_diffusion_field(config=get_gaussian_config(), time=10):
     diffusion = DiffusionField(config)
     settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-12}
+        'total_time': 10,
+        'timestep': 1}
     return simulate_process(diffusion, settings)
+
 
 
 if __name__ == '__main__':
