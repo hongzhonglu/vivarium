@@ -312,20 +312,12 @@ class Store(object):
         return state
 
     def emit_data(self):
-
-        import ipdb; ipdb.set_trace()
-
-
         data = {}
         if self.children:
             for key, child in self.children.items():
                 child_data = child.emit_data()
-                if child_data:
+                if child_data or child_data == 0:
                     data[key] = child_data
-
-                    print('key {}'.format(key))
-                    print('{}'.format(data))
-
             return data
         else:
             if self.emit:
@@ -720,6 +712,7 @@ class Experiment(object):
             self.apply_update(update)
 
     def emit_data(self):
+        import ipdb; ipdb.set_trace()
         data = self.state.emit_data()
         data.update({
             'time': self.local_time})
