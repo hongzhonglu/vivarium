@@ -25,7 +25,10 @@ from vivarium.compartment.process import (
     Process,
     Store)
 from vivarium.utils.units import units
+
+# processes
 from vivarium.processes.derive_globals import AVOGADRO
+from vivarium.processes.timeline import Timeline
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
 TEST_OUT_DIR = os.path.join('out', 'tests')
@@ -217,6 +220,13 @@ def process_in_experiment(process, settings={}):
     topology = {
         'process': {
             port: (port,) for port in process.ports}}
+
+    if settings.get('timeline', []):
+        timeline_process = Timeline({'timeline': timeline})
+        processes.update({'timeline': timeline_process})
+        topology.update({
+            'timeline': {
+                port: (port,) for port in timeline_process.ports}})
 
     # add derivers
     derivers = generate_derivers(processes, topology)

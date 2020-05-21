@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     import ipdb; ipdb.set_trace()
 
-    timeseries = simulate_with_environment(compartment, settings)
+    # timeseries = simulate_with_environment(compartment, settings)
 
     # # plot settings for the simulations
     # plot_settings = {

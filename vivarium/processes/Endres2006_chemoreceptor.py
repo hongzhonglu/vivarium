@@ -246,8 +246,10 @@ def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
         'initial_ligand': initial_ligand}
     receptor = ReceptorCluster(process_config)
 
-    experiment_settings = {
-        'timeline': timeline}
+    experiment_settings = {'timeline': timeline}
+
+
+
     experiment = process_in_experiment(receptor, experiment_settings)
 
     experiment.update(end_time)
