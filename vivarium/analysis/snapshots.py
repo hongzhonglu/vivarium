@@ -23,7 +23,7 @@ DEFAULT_SV = [1.0, 0.7]
 FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
 BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # HSV
 
-N_SNAPSHOTS = 6  # number of snapshots
+N_SNAPSHOTS = 5  # number of snapshots
 
 
 class Snapshots(Analysis):
@@ -300,9 +300,9 @@ def rotate_agents_90(data, edge_length_x, edge_length_y):
     y_center = new_data['location'][1]
     # theta = new_data['location'][2]
 
-    new_data['location'][0] = edge_length_x - y_center
-    new_data['location'][1] = x_center
-    new_data['location'][2] += rad_angle
+    new_data['location'][0] = y_center
+    new_data['location'][1] = edge_length_y - x_center
+    new_data['location'][2] -= rad_angle
     return new_data
 
 
