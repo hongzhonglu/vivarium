@@ -3,8 +3,12 @@ from __future__ import absolute_import, division, print_function
 import os
 import uuid
 
-from vivarium.compartment.tree import generate_state, Experiment
+from vivarium.compartment.tree import (
+    generate_state,
+    Experiment
+)
 from vivarium.compartment.composition import (
+    make_agents,
     simulate_compartment,
     load_compartment,
     get_derivers
@@ -17,33 +21,6 @@ from vivarium.processes.diffusion_field import plot_field_output
 from vivarium.composites.lattice_environment import Lattice
 from vivarium.composites.growth_division import GrowthDivision
 
-
-
-def make_agents(keys, compartment, config=None):
-    processes = {}
-    topology = {}
-    if config is None:
-        config = {}
-
-    for agent in keys:
-        # agent_id = str(uuid.uuid1())
-        agent_id = str(agent)
-
-        # make the agent
-        agent_config = config.copy()
-        agent = compartment.generate(dict(
-            agent_config,
-            agent_id=agent_id))
-
-        # save processes and topology
-        processes[agent_id] = {
-            'cell': agent['processes']}
-        topology[agent_id] = {
-            'cell': agent['topology']}
-
-    return {
-        'processes': processes,
-        'topology': topology}
 
 
 def lattice_experiment(config):
@@ -85,20 +62,17 @@ def lattice_experiment(config):
 
 # toy functions/ defaults
 def get_lattice_config():
-
     environment_config = {
         'molecules': ['glc'],
         'bounds': [10, 10],
-        'size': [10, 10],
-    }
+        'size': [10, 10]}
 
     agent_config = {}
 
     return {
         'count': 3,
         'environment': environment_config,
-        'agents': agent_config
-    }
+        'agents': agent_config}
 
 
 

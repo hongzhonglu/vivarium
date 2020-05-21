@@ -33,7 +33,7 @@ def make_gradient(gradient, n_bins, size):
         by a gaussian function of distance from center and deviation
 
         'gradient': {
-            'type': 'gradient',
+            'type': 'gaussian',
             'molecules': {
                 'mol_id1':{
                     'center': [0.25, 0.5],
@@ -228,7 +228,8 @@ class DiffusionField(Process):
              'fields': {
                  field: {
                      '_default': state['fields'].get(field, self.empty_field()),
-                     '_updater': 'set'}
+                     '_updater': 'set',
+                     '_emit': True}
                  for field in self.molecule_ids},
              'agents': {
                  '*': {

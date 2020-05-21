@@ -150,6 +150,32 @@ def get_schema(process_list, topology):
 
 
 # loading functions
+def make_agents(keys, compartment, config=None):
+    processes = {}
+    topology = {}
+    if config is None:
+        config = {}
+
+    for agent in keys:
+        # agent_id = str(uuid.uuid1())
+        agent_id = str(agent)
+
+        # make the agent
+        agent_config = config.copy()
+        agent = compartment.generate(dict(
+            agent_config,
+            agent_id=agent_id))
+
+        # save processes and topology
+        processes[agent_id] = {
+            'cell': agent['processes']}
+        topology[agent_id] = {
+            'cell': agent['topology']}
+
+    return {
+        'processes': processes,
+        'topology': topology}
+
 def load_compartment(composite, boot_config={}):
     '''
     put a composite function into a compartment
@@ -234,7 +260,7 @@ def process_in_experiment(process, settings={}):
         'initial_state': process_settings.get('state', {})})
 
 def compartment_in_experiment(compartment, settings={}):
-    compartment_config = settings.get('compartment')
+    compartment_config = settings.get('compartment', {})
     emitter = settings.get('emitter', {'type': 'timeseries'})
     timeline = settings.get('timeline', [])
 

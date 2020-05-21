@@ -316,7 +316,7 @@ class Store(object):
         if self.children:
             for key, child in self.children.items():
                 child_data = child.emit_data()
-                if child_data or child_data == 0:
+                if child_data is not None or child_data == 0:
                     data[key] = child_data
             return data
         else:

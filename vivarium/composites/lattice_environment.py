@@ -2,20 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.tree import (
-    Compartment,
-)
-from vivarium.compartment.composition import (
-    simulate_compartment,
-    load_compartment,
-)
+from vivarium.compartment.tree import Compartment
+from vivarium.compartment.composition import compartment_in_experiment
 
 # processes
 from vivarium.processes.multibody_physics import (
     Multibody,
     random_body_config,
     plot_snapshots,
-    DEFAULT_BOUNDS
 )
 from vivarium.processes.diffusion_field import (
     DiffusionField,
@@ -26,52 +20,35 @@ from vivarium.processes.diffusion_field import (
 
 class Lattice(Compartment):
     """
-    Lattice environment:  A two-dimensional lattice environmental model
+    Lattice:  A two-dimensional lattice environmental model with multibody physics and diffusing molecular fields.
     """
 
     defaults = {
-        'bounds': DEFAULT_BOUNDS,
-        'size': DEFAULT_BOUNDS,
-        'molecules': ['glc']
+        'multibody': {
+            'bounds': [10, 10],
+            'size': [10, 10],
+            'agents': {}
+        },
+        'diffusion': {
+            'molecules': ['glc'],
+            'n_bins': [10, 10],
+            'size': [10, 10],
+            'depth': 3000.0,  # um
+            'diffusion': 5e-1,
+        }
     }
 
     def __init__(self, config):
-        bounds = config.get('bounds', self.defaults['bounds'])
-        size = config.get('size', self.defaults['size'])
-        molecules = config.get('molecules', self.defaults['molecules'])
-
-        # configure the agents
-        agents_config = config.get('agents', {})
-        agent_ids = list(agents_config.keys())
-        n_agents = len(agent_ids)
-        self.default_multibody_config = {
-            'n_agents': n_agents,
-            'bounds': bounds}
-        self.default_multibody_config.update(random_body_config(multibody_config))
-
-        # config for diffusion process
-        agents = {
-            agent_id: {
-                'location': boundary['location'],
-                'exchange': {
-                    mol_id: 1e2 for mol_id in molecules}}  # TODO -- don't hardcode exchange
-            for agent_id, boundary in multibody_config['agents'].items()}
-
-        exchange_config = {
-            'molecules': molecules,
-            'n_bins': bounds,
-            'size': size,
-            'agents': agents}
-
-        self.default_diffusion_config = exchange_agent_config(exchange_config)
+        self.multibody_config = config.get('multibody', self.defaults['multibody'])
+        self.diffusion_config = config.get('diffusion', self.defaults['diffusion'])
 
     def generate_processes(self, config):
         multibody = Multibody(config.get(
             'multibody',
-            self.default_multibody_config))
+            self.multibody_config))
         diffusion = DiffusionField(config.get(
             'diffusion_field',
-            self.default_diffusion_config))
+            self.diffusion_config))
 
         return {
             'multibody': multibody,
@@ -86,40 +63,68 @@ class Lattice(Compartment):
                 'fields': ('fields',)}}
 
 
+def get_lattice_config(bounds=[25,25]):
 
-# toy functions/ defaults
-def get_lattice_config(config={'n_agents':2}):
-    body_config = random_body_config(config)
-    body_config.update({
-        'molecules': ['glc'],
-        'bounds': DEFAULT_BOUNDS,
-        'size': DEFAULT_BOUNDS})  # no boundary store
+    # multibody confid
+    mbp_config = {
+        # 'animate': True,
+        'jitter_force': 1e0,
+        'bounds': bounds}
+    body_config = {
+        'bounds': bounds,
+        'n_agents': 2}
+    mbp_config.update(random_body_config(body_config))
 
-    return body_config
+    # diffusion config
+    dff_mol = 'glc'
+    dff_config = {
+        'molecules': [dff_mol],
+        'n_bins': bounds,
+        'size': bounds,
+        'diffusion': 1e-10,
+        'gradient': {
+            'type': 'gaussian',
+            'molecules': {
+                dff_mol:{
+                    'center': [0.5, 0.5],
+                    'deviation': 5}}}}
 
-def test_lattice_environment(config=get_lattice_config(), time=10):
-    initial_agents_state = config['agents']
-    compartment = load_compartment(compose_lattice_environment, config)
+    return {
+        'bounds': bounds,
+        'multibody': mbp_config,
+        'diffusion': dff_config}
 
-    # initialize agent boundary state
-    compartment.send_updates({'boundary': [{'agents': initial_agents_state}]})
+def test_lattice(config=get_lattice_config(), end_time=10):
 
-    settings = {
-        'return_raw_data': True,
-        'total_time': time}
-    return simulate_compartment(compartment, settings)
+    # configure the compartment
+    compartment = Lattice(config)
+
+    # configure experiment
+    experiment_settings = {
+        'compartment': config}
+    experiment = compartment_in_experiment(
+        compartment,
+        experiment_settings)
+
+    # run experiment
+    timestep = 1
+    time = 0
+    while time < end_time:
+        experiment.update(timestep)
+        time += timestep
+    return experiment.emitter.get_data()
 
 
 
 if __name__ == '__main__':
-    out_dir = os.path.join('out', 'tests', 'lattice_environment_composite')
+    out_dir = os.path.join('out', 'tests', 'lattice_compartment')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     config = get_lattice_config()
-    data = test_lattice_environment(config, 10)
+    data = test_lattice(config, 40)
 
     # make snapshot plot
-    agents = {time: time_data['boundary']['agents'] for time, time_data in data.items()}
+    agents = {time: time_data['agents'] for time, time_data in data.items()}
     fields = {time: time_data['fields'] for time, time_data in data.items()}
     plot_snapshots(agents, fields, config, out_dir, 'snapshots')
