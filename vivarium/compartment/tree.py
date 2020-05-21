@@ -200,6 +200,14 @@ class Store(object):
                 else:
                     self.children[key].apply_config(child)
 
+    def get_updater(self, update):
+        updater = self.updater
+        if '_updater' in update:
+            updater = update['_updater']
+            if isinstance(updater, str):
+                updater = updater_library[updater]
+        return updater
+
     def get_config(self):
         config = {}
         if self.properties:
@@ -432,7 +440,13 @@ class Store(object):
                     reduction['reducer'],
                     initial=reduction['initial'])
 
-            self.value = self.updater(self.value, update)
+            updater = self.updater
+            if isinstance(update, dict) and self.schema_keys & update.keys():
+                if '_updater' in update:
+                    updater = self.get_updater(update)
+                    update = update.get('_value', self.default)
+
+            self.value = updater(self.value, update)
 
     def child_value(self, key):
         if key in self.children:
@@ -516,7 +530,6 @@ class Store(object):
                         initial = get_in(initial_state, path)
                         for target, schema in targets.items():
                             if target == '*':
-                                # glob = self.update_subschema(path, schema)
                                 glob = self.establish_path(path, {
                                     '_subschema': schema})
                                 glob.apply_subschema()
