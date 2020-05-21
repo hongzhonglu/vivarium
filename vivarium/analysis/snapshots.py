@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import random
 import math
+import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +17,8 @@ from vivarium.utils.dict_utils import deep_merge
 
 # colors for phylogeny initial agents
 DEFAULT_COLOR = [220/360, 100.0/100.0, 70.0/100.0]  # HSV
-HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
+# HUES_LIST = [hue/360 for hue in np.linspace(0,360,30)]  # sample hues, to add to SVs
+HUES_LIST = [hue/360 for hue in [140]]  # sample hues, to add to SVs
 DEFAULT_SV = [1.0, 0.7]
 FLOURESCENT_SV = [0.5, 1.0]  # SV for flourescent colors
 BASELINE_TAG_COLOR = [220/360, 1.0, 0.2]  # HSV
@@ -275,7 +277,8 @@ class Snapshots(Analysis):
 
                     agent_tag_colors[agent_id] = agent_color
 
-                plot_agents(ax, agent_data, cell_radius, agent_tag_colors)
+                agent_data_rot = {agent_id: rotate_agents_90(dat, edge_length_x, edge_length_y) for agent_id, dat in agent_data.items()}
+                plot_agents(ax, agent_data_rot, cell_radius, agent_tag_colors)
 
                 row_idx += 1
 
@@ -285,8 +288,22 @@ class Snapshots(Analysis):
             figname = '/snap_out'
 
         plt.subplots_adjust(wspace=0.1, hspace=1.0)
-        plt.savefig(output_dir + figname)
+        plt.savefig(output_dir + figname + '.pdf')
         plt.close(fig)
+
+def rotate_agents_90(data, edge_length_x, edge_length_y):
+    angle = 90
+    rad_angle = angle / 180 * np.pi
+
+    new_data = copy.deepcopy(data)
+    x_center = new_data['location'][0]
+    y_center = new_data['location'][1]
+    # theta = new_data['location'][2]
+
+    new_data['location'][0] = edge_length_x - y_center
+    new_data['location'][1] = x_center
+    new_data['location'][2] += rad_angle
+    return new_data
 
 
 def plot_agents(ax, agent_data, cell_radius, agent_colors):
