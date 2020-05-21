@@ -712,17 +712,12 @@ class Experiment(object):
             self.apply_update(update)
 
     def emit_data(self):
-        import ipdb; ipdb.set_trace()
         data = self.state.emit_data()
         data.update({
             'time': self.local_time})
         emit_config = {
             'table': 'history',
             'data': data}
-
-        import ipdb;
-        ipdb.set_trace()
-
         self.emitter.emit(emit_config)
 
     def send_updates(self, updates, derivers=None):

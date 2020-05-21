@@ -230,7 +230,7 @@ def get_exponential_random_timeline(config):
     ligand = config.get('ligand', 'MeAsp')
 
     conc = conc_0
-    timeline = [(0, conc)]
+    timeline = [(0, {('external', ligand): conc})]
     for t in range(time):
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
@@ -253,68 +253,18 @@ def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
     experiment_settings = {'timeline': timeline}
     experiment = process_in_experiment(receptor, experiment_settings)
 
-    # TODO -- experiment.state.get_config()['external'] needs and _emit = True???
-
     time = 0
     while time < end_time:
         experiment.update(timestep)
         time += timestep
 
-
-    import ipdb;
-    ipdb.set_trace()
-
-    timeseries = experiment.emitter.get_timeseries()
-
-
-    #
-    #
-    #
-    # settings = receptor.default_settings()
-    # state = settings['state']
-    # ligand_id = receptor.ligand_id
-    # state['external'][ligand_id] = timeline[0][1]
-    #
-    # # run simulation
-    # ligand_vec = []
-    # receptor_activity_vec = []
-    # n_methyl_vec = []
-    # time_vec = []
-    # ligand_conc=timeline[0][1]
-    # while time < end_time:
-    #     time += timestep
-    #
-    #     # update ligand from timeline
-    #     timeline_steps = [
-    #         index for index, (t, conc) in enumerate(timeline) if t < time]
-    #     if len(timeline_steps) > 0:
-    #         step = timeline_steps[-1]
-    #         ligand_conc = timeline[step][1]
-    #         state['external'][ligand_id] = ligand_conc
-    #         del timeline[0:step+1]
-    #
-    #     # run step
-    #     run_step(receptor, state, timestep)
-    #     P_on = state['internal']['chemoreceptor_activity']
-    #     n_methyl = state['internal']['n_methyl']
-    #
-    #     # save state
-    #     ligand_vec.append(ligand_conc)
-    #     receptor_activity_vec.append(P_on)
-    #     n_methyl_vec.append(n_methyl)
-    #     time_vec.append(time)
-    #
-    # return {
-    #     'ligand_vec': ligand_vec,
-    #     'receptor_activity_vec': receptor_activity_vec,
-    #     'n_methyl_vec': n_methyl_vec,
-    #     'time_vec': time_vec}
+    return experiment.emitter.get_timeseries()
 
 def plot_output(output, out_dir='out', filename='response'):
-    ligand_vec = output['ligand_vec']
-    receptor_activity_vec = output['receptor_activity_vec']
-    n_methyl_vec = output['n_methyl_vec']
-    time_vec = output['time_vec']
+    ligand_vec = output['external']['MeAsp']  # TODO -- configure ligand name
+    receptor_activity_vec = output['internal']['chemoreceptor_activity']
+    n_methyl_vec = output['internal']['n_methyl']
+    time_vec = output['time']
 
     # plot results
     cols = 1
@@ -359,8 +309,8 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
 
     timeline = get_pulse_timeline()
-    output = test_receptor(timeline)
-    plot_output(output, out_dir, 'pulse')
+    timeseries = test_receptor(timeline)
+    plot_output(timeseries, out_dir, 'pulse')
 
     linear_config = {
         'time': 10,
