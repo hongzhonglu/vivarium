@@ -213,25 +213,19 @@ def process_in_compartment(process, settings={}):
 def process_in_experiment(process, settings={}):
     process_settings = process.default_settings()
     emitter = settings.get('emitter', {'type': 'timeseries'})
-    deriver_config = settings.get('deriver_config', {})
-    timeline = settings.get('timeline', [])  # TODO -- load a timeline process!
+    timeline = settings.get('timeline', [])
 
     processes = {'process': process}
     topology = {
         'process': {
             port: (port,) for port in process.ports}}
 
-    if settings.get('timeline', []):
+    if timeline:
         timeline_process = Timeline({'timeline': timeline})
         processes.update({'timeline': timeline_process})
         topology.update({
             'timeline': {
                 port: (port,) for port in timeline_process.ports}})
-
-    # add derivers
-    derivers = generate_derivers(processes, topology)
-    processes.update(derivers['processes'])
-    topology.update(derivers['topology'])
 
     return Experiment({
         'processes': processes,
@@ -241,13 +235,26 @@ def process_in_experiment(process, settings={}):
 
 def compartment_in_experiment(compartment, settings={}):
     compartment_config = settings.get('compartment')
+    emitter = settings.get('emitter', {'type': 'timeseries'})
+    timeline = settings.get('timeline', [])
+
     network = compartment.generate(compartment_config)
     processes = network['processes']
     topology = network['topology']
 
+    if timeline:
+        timeline_port_mapping = settings['timeline_port_mapping']
+        timeline_port_mapping.update({'global': ('global',)})  # timeline requires a global port
+        timeline_process = Timeline({'timeline': timeline})
+        processes.update({'timeline': timeline_process})
+        topology.update({
+            'timeline': {
+                port: timeline_port_mapping[port] for port in timeline_process.ports}})
+
     return Experiment({
         'processes': processes,
         'topology': topology,
+        'emitter': emitter,
         'initial_state': settings.get('initial_state', {})})
 
 

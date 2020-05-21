@@ -209,8 +209,9 @@ def get_linear_step_timeline(config):
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
     ligand = config.get('ligand', 'MeAsp')
+    env_port = config.get('environment_port', 'external')
 
-    return [(t, {('external', ligand): conc_0 + slope*t*speed}) for t in range(time)]
+    return [(t, {(env_port, ligand): conc_0 + slope*t*speed}) for t in range(time)]
 
 def get_exponential_step_timeline(config):
     time = config.get('time', 100)
@@ -218,24 +219,29 @@ def get_exponential_step_timeline(config):
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
     ligand = config.get('ligand', 'MeAsp')
+    env_port = config.get('environment_port', 'external')
 
-    return [(t, {('external', ligand): conc_0 + base**(t*speed) - 1}) for t in range(time)]
+    return [(t, {(env_port, ligand): conc_0 + base**(t*speed) - 1}) for t in range(time)]
 
 def get_exponential_random_timeline(config):
     # exponential space with random direction changes
     time = config.get('time', 100)
+    timestep = config.get('timestep', 1)
     base = config.get('base', 1+1e-4)  # mM/um
     speed = config.get('speed', 14)     # um/s
     conc_0 = config.get('initial_conc', 0)  # mM
     ligand = config.get('ligand', 'MeAsp')
+    env_port = config.get('environment_port', 'external')
 
     conc = conc_0
-    timeline = [(0, {('external', ligand): conc})]
-    for t in range(time):
+    timeline = [(0, {(env_port, ligand): conc})]
+    t = 0
+    while t < time:
         conc += base**(random.choice((-1, 1)) * speed) - 1
         if conc<0:
             conc = 0
-        timeline.append((t, {('external', ligand): conc}))
+        timeline.append((t, {(env_port, ligand): conc}))
+        t += timestep
 
     return timeline
 

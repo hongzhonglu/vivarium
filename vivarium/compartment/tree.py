@@ -136,9 +136,9 @@ def always_true(x):
 def identity(y):
     return y
 
-def check_update_schema(new, current, type=None):
-    if current is not None and new is not current:
-        raise Exception('schema merge mismatch: {}'.format(type))
+def check_update_schema(new, current, schema_type=None):
+    if current is not None and new != current:
+        raise Exception('schema merge mismatch: {}'.format(schema_type))
     else:
         return new
 
@@ -496,8 +496,7 @@ class Store(object):
 
             if path_step == '..':
                 if not self.parent:
-                    self.parent = Store({})
-                    self.parent.children[child_key] = self
+                    raise Exception('parent does not exist for path: {}'.format(path))
                 return self.parent.establish_path(remaining, config, child_key)
             else:
                 if not path_step in self.children:

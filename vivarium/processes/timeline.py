@@ -1,12 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import copy
+
 from vivarium.utils.dict_utils import deep_merge
 from vivarium.compartment.process import Process
+
 
 class Timeline(Process):
 
     def __init__(self, initial_parameters={}):
-        self.timeline = initial_parameters['timeline']
+        self.timeline = copy.deepcopy(initial_parameters['timeline'])
 
         # get ports
         ports = {'global': ['time']}

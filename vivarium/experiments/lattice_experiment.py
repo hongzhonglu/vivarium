@@ -14,7 +14,7 @@ from vivarium.processes.multibody_physics import plot_snapshots
 from vivarium.processes.diffusion_field import plot_field_output
 
 # compartments
-from vivarium.composites.lattice_environment import make_lattice_environment
+from vivarium.composites.lattice_environment import Lattice
 from vivarium.composites.growth_division import GrowthDivision
 
 
@@ -51,7 +51,7 @@ def lattice_experiment(config):
     count = config.get('count')
 
     # get the environment
-    environment = make_lattice_environment(config.get('environment', {}))
+    environment = Lattice(config.get('environment', {}))
     processes = environment['processes']
     topology = environment['topology']
 
