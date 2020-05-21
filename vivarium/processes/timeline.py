@@ -30,18 +30,19 @@ class Timeline(Process):
 
     def next_update(self, timestep, states):
 
-        for (t, change_dict) in timeline:
+        time = states['global']['time']
+
+        update = {'global': {'time': timestep}}
+        for (t, change_dict) in self.timeline:
             if time >= t:
-                for port_id, change in change_dict.items():
-                    port = compartment.states.get(port_id)
-                    port.assign_values(change)
-                timeline.pop(0)
+                for state, value in change_dict.items():
+                    port = state[0]
+                    variable = state[1]
+                    if port not in update:
+                        update[port] = {}
+                    update[port][variable] = {
+                        '_value': value,
+                        '_updater': 'set'}
+                self.timeline.pop(0)
 
-
-
-        import ipdb; ipdb.set_trace()
-        # TODO -- need to set the new value!
-
-        return {
-            'global': {'time': timestep}
-        }
+        return update

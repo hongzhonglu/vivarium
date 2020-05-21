@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from vivarium.compartment.composition import process_in_experiment
 from vivarium.compartment.process import Process
+from vivarium.utils.dict_utils import deep_merge
 from vivarium.utils.units import units
 
 
@@ -84,39 +85,41 @@ class ReceptorCluster(Process):
 
         super(ReceptorCluster, self).__init__(ports, parameters)
 
-    def default_settings(self):
+    def ports_schema(self):
 
         set_keys = ['chemoreceptor_activity', 'n_methyl']
 
-        # get default state by running to steady state
-        internal = self.initial_state
-        external = {self.ligand_id: self.initial_ligand}
-        state = {
-            'external': external,
-            'internal': internal}
-        run_to_steady_state(self, state, 1.0)
-
-        # default emitter keys
-        default_emitter_keys = {
-            'internal': set_keys,
-            'external': [self.ligand_id]}
-
-        # schema
-        schema = {
+        ports_schema = {
             'internal': {
                 state_id : {
-                    'updater': 'set',
-                    'divide': 'set'}
+                    '_default': value}
+                for state_id, value in self.initial_state.items()}}
+
+        set_schema = {
+            'internal': {
+                state_id : {
+                    '_default': self.initial_state[state_id],
+                    '_emit': True,
+                    '_updater': 'set',
+                    '_divide': 'set'}
                 for state_id in set_keys}}
 
-        default_settings = {
+        ligand_schema = {
+            'external': {
+                self.ligand_id: {
+                    '_default': self.initial_ligand,
+                    '_emit': True}}}
+
+        ports_schema = deep_merge(ports_schema, set_schema)
+        ports_schema = deep_merge(ports_schema, ligand_schema)
+        return ports_schema
+
+
+    def default_settings(self):
+        return {
             'process_id': 'receptor',
-            'state': state,
-            'emitter_keys': default_emitter_keys,
-            'schema': schema,
             'time_step': 1.0}
 
-        return default_settings
 
     def next_update(self, timestep, states):
         '''
@@ -246,22 +249,22 @@ def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
         'initial_ligand': initial_ligand}
     receptor = ReceptorCluster(process_config)
 
+    # run experiment
     experiment_settings = {'timeline': timeline}
-
-
-
     experiment = process_in_experiment(receptor, experiment_settings)
 
-    experiment.update(end_time)
+    # TODO -- experiment.state.get_config()['external'] needs and _emit = True???
+
+    time = 0
+    while time < end_time:
+        experiment.update(timestep)
+        time += timestep
+
 
     import ipdb;
     ipdb.set_trace()
 
-    #
-
-
-
-
+    timeseries = experiment.emitter.get_timeseries()
 
 
     #

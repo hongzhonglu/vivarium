@@ -136,6 +136,13 @@ def always_true(x):
 def identity(y):
     return y
 
+def check_update_schema(new, current, type=None):
+    if current is not None and new is not current:
+        raise Exception('schema merge mismatch: {}'.format(type))
+    else:
+        return new
+
+
 class Store(object):
     schema_keys = set([
         '_default',
@@ -171,9 +178,13 @@ class Store(object):
                 if key != '_subschema'}
 
         if self.schema_keys & config.keys():
-            # TODO (Eran) -- check if config schema match existing schema, make exceptions if mismatched
-            self.default = config.get('_default', self.default)
-            self.value = config.get('_value', self.value or self.default)
+            # check_update_schema, exception if mismatched schemas
+            if '_default' in config:
+                self.default = check_update_schema(config.get('_default'), self.default, '_default')
+            if '_value' in config:
+                self.value = check_update_schema(config.get('_value'), self.value, '_value')
+            else:
+                self.value = self.default
 
             self.updater = config.get('_updater', self.updater or 'accumulate')
             if isinstance(self.updater, str):
@@ -230,6 +241,8 @@ class Store(object):
                 config['_divider'] = self.divider
             if self.units:
                 config['_units'] = self.units
+            if self.emit:
+                config['_emit'] = self.emit
 
         return config
 
@@ -299,12 +312,20 @@ class Store(object):
         return state
 
     def emit_data(self):
+
+        import ipdb; ipdb.set_trace()
+
+
         data = {}
         if self.children:
             for key, child in self.children.items():
                 child_data = child.emit_data()
                 if child_data:
                     data[key] = child_data
+
+                    print('key {}'.format(key))
+                    print('{}'.format(data))
+
             return data
         else:
             if self.emit:
@@ -478,18 +499,18 @@ class Store(object):
 
     def establish_path(self, path, config, child_key='child'):
         if len(path) > 0:
-            step = path[0]
+            path_step = path[0]
             remaining = path[1:]
 
-            if step == '..':
+            if path_step == '..':
                 if not self.parent:
                     self.parent = Store({})
                     self.parent.children[child_key] = self
                 return self.parent.establish_path(remaining, config, child_key)
             else:
-                if not step in self.children:
-                    self.children[step] = Store({}, self)
-                return self.children[step].establish_path(remaining, config, child_key)
+                if not path_step in self.children:
+                    self.children[path_step] = Store({}, self)
+                return self.children[path_step].establish_path(remaining, config, child_key)
         else:
             self.apply_config(config)
             return self
@@ -705,6 +726,10 @@ class Experiment(object):
         emit_config = {
             'table': 'history',
             'data': data}
+
+        import ipdb;
+        ipdb.set_trace()
+
         self.emitter.emit(emit_config)
 
     def send_updates(self, updates, derivers=None):
