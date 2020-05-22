@@ -193,7 +193,15 @@ class DiffusionField(Process):
             self.initial_state.update(gradient_fields)
 
         # agents
-        self.initial_agents = initial_parameters.get('agents', self.defaults['agents'])
+        initial_agents = initial_parameters.get('agents', self.defaults['agents'])
+        self.initial_agents_schema = {
+            agent_id: {
+                'global': {
+                    key: {
+                        '_default': value,
+                        '_value': value}
+                    for key, value in agent.items()}}
+            for agent_id, agent in initial_agents.items()}
 
         # make ports
         ports = {
@@ -205,43 +213,33 @@ class DiffusionField(Process):
 
         super(DiffusionField, self).__init__(ports, parameters)
 
-
-    def default_settings(self):
-        state = {
-            'fields': self.initial_state,
-            'agents': {'agents': self.initial_agents}
-        }
-        schema = {'agents': {'agents': {'updater': 'merge'}}}
-        default_emitter_keys = {
-            port_id: keys for port_id, keys in self.ports.items()}
-
-        return {
-            'state': state,
-            'schema': schema,
-            'emitter_keys': default_emitter_keys,
-        }
-
     def ports_schema(self):
-        defaults = self.default_settings()
-        state = defaults['state']
 
-        return {
+        schema = {'agents': self.initial_agents_schema}
+        glob_schema = {
+            '*': {
+                'global': {
+                    'location': {
+                        '_default': [0.5, 0.5],
+                        '_updater': 'set'},
+                    'exchange': {}
+                },
+                'local_environment': {
+                    molecule: {'_default': 0.0}
+                    for molecule in self.molecule_ids}}}
+        schema['agents'].update(glob_schema)
+
+        fields_schema = {
              'fields': {
                  field: {
-                     '_default': state['fields'].get(field, self.empty_field()),
+                     '_default': self.initial_state.get(field, self.empty_field()),
                      '_updater': 'set',
                      '_emit': True}
-                 for field in self.molecule_ids},
-             'agents': {
-                 '*': {
-                     'global': {
-                         'location': {
-                             '_default': [0.5, 0.5],
-                             '_updater': 'set'}},
-                     'local_environment': {
-                         molecule: {
-                             '_default': 0.0}
-                         for molecule in self.molecule_ids}}}}
+                 for field in self.molecule_ids}}
+        schema.update(fields_schema)
+
+        return schema
+
 
     def next_update(self, timestep, states):
         fields = states['fields'].copy()
@@ -311,7 +309,7 @@ class DiffusionField(Process):
         if agents:
             # apply exchanges to delta_fields
             for agent_id, specs in agents.items():
-                self.apply_single_exchange(delta_fields, specs['global'])
+                self.apply_single_exchange(delta_fields, specs['global']['global'])
 
         return delta_fields
 
@@ -418,11 +416,14 @@ def get_gaussian_config(n_bins=(10, 10)):
 
 def get_secretion_agent_config(molecules=['glc'], n_bins=[10, 10]):
     agent = {
-        'location': [
-                np.random.uniform(0, n_bins[0]),
-                np.random.uniform(0, n_bins[1])],
-        'exchange': {
-            mol_id: 1e2 for mol_id in molecules}}
+        'global': {
+            'location': [
+                    np.random.uniform(0, n_bins[0]),
+                    np.random.uniform(0, n_bins[1])],
+            'exchange': {
+                mol_id: 1e2 for mol_id in molecules}},
+        'local_environment': {
+                mol_id: 0 for mol_id in molecules}}
     agents = {'1': agent}
 
     config = {
