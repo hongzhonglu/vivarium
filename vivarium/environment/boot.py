@@ -51,7 +51,7 @@ from vivarium.processes.transcription import Transcription
 from vivarium.composites.master import compose_master
 from vivarium.composites.glc_lct_shifter import compose_glc_lct_shifter
 # from vivarium.composites.growth_division import compose_growth_division
-from vivarium.composites.chemotaxis_minimal import compose_simple_chemotaxis
+# from vivarium.composites.chemotaxis_minimal import compose_simple_chemotaxis
 from vivarium.composites.antibiotics import (
     compose_antibiotics,
 )
@@ -461,7 +461,7 @@ class BootEnvironment(BootAgent):
             'master': wrap_boot(wrap_init_composite(compose_master), {'volume': 1.0}),
             'shifter': wrap_boot(wrap_init_composite(compose_glc_lct_shifter), {'volume': 1.0}),
             # 'growth_division': wrap_boot(wrap_init_composite(compose_growth_division), {'volume': 1.0}),
-            'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
+            # 'minimal_chemotaxis': wrap_boot(wrap_init_composite(compose_simple_chemotaxis), {'volume': 1.0}),
             'antibiotic_composite': wrap_boot(
                 wrap_init_composite(compose_antibiotics),
                 {'volume': 1.0},

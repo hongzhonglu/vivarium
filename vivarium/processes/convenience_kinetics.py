@@ -33,7 +33,7 @@ from scipy import constants
 from vivarium.compartment.process import Process
 from vivarium.compartment.tree import schema_for
 from vivarium.compartment.composition import (
-    simulate_process_with_environment,
+    simulate_process,
     plot_simulation_output,
     flatten_timeseries,
     save_timeseries,
@@ -43,7 +43,10 @@ from vivarium.compartment.composition import (
     assert_timeseries_close,
 )
 from vivarium.utils.kinetic_rate_laws import KineticFluxModel
-from vivarium.utils.dict_utils import tuplify_port_dicts
+from vivarium.utils.dict_utils import (
+    deep_merge,
+    tuplify_port_dicts,
+)
 from vivarium.utils.units import units
 
 
@@ -254,8 +257,9 @@ class ConvenienceKinetics(Process):
 
     def ports_schema(self):
         set_ports = ['fluxes']
+        emit_ports = ['internal', 'external']
 
-        return {
+        schema =  {
             port: schema_for(
                 port,
                 keys,
@@ -263,6 +267,16 @@ class ConvenienceKinetics(Process):
                 default=0.0,
                 updater='set' if port in set_ports else 'accumulate')
             for port, keys in self.ports.items()}
+
+        emit_schema = {
+            port: {
+                state: {
+                    '_emit': True}
+                for state in state_list}
+            for port, state_list in self.ports.items() if port in emit_ports}
+
+        schema = deep_merge(schema, emit_schema)
+        return schema
 
     def derivers(self):
         return {
@@ -488,15 +502,11 @@ def test_convenience_kinetics(end_time=2520):
     kinetic_process = ConvenienceKinetics(config)
 
     settings = {
-        'environment_port': 'external',
-        'exchange_port': 'exchange',
-        'environment_volume': 5e-14,  # L
+        # 'environment_volume': 5e-14,  # L  # TODO -- bring back environment volume
         'timestep': 1,
         'total_time': end_time}
 
-    saved_state = simulate_process_with_environment(kinetic_process, settings)
-    return saved_state
-
+    return simulate_process(kinetic_process, settings)
 
 def test_convenience_kinetics_correlated_to_reference():
     timeseries = test_convenience_kinetics()
@@ -511,8 +521,8 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    plot_settings = {}
-
     timeseries = test_convenience_kinetics()
+
+    plot_settings = {}
     plot_simulation_output(timeseries, plot_settings, out_dir)
     save_timeseries(timeseries, out_dir)
