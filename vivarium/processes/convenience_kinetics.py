@@ -259,14 +259,12 @@ class ConvenienceKinetics(Process):
         set_ports = ['fluxes']
         emit_ports = ['internal', 'external']
 
-        schema =  {
-            port: schema_for(
-                port,
-                keys,
-                self.initial_state.get(port, {}),
-                default=0.0,
-                updater='set' if port in set_ports else 'accumulate')
-            for port, keys in self.ports.items()}
+        schema = {
+            port: {
+                state: {
+                    '_updater': 'set'}
+                for state in state_list}
+            for port, state_list in self.ports.items() if port in set_ports}
 
         emit_schema = {
             port: {
@@ -285,36 +283,16 @@ class ConvenienceKinetics(Process):
                 'port_mapping': {
                     'global': 'global'},
                 'config': {
-                    'width': 1.5555555}}}
+                    'width': 1.0}}}
 
     def default_settings(self):
 
         # default state
         default_state = self.initial_state
 
-        # default emitter keys
-        emit_ports = ['internal', 'external']
-        default_emitter_keys = {
-            port: state_list
-            for port, state_list in self.ports.items() if port in emit_ports}
-
-        # schema
-        schema = {
-            'fluxes': {
-                flux_id : {
-                    'updater': 'set'}
-                for flux_id in self.kinetic_rate_laws.reaction_ids}}
-
-        # derivers
-        deriver_setting = []
-        # deriver_setting = [self.global_deriver_config]
-
         default_settings = {
             'process_id': 'convenience_kinetics',
             'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'schema': schema,
-            'deriver_setting': deriver_setting,
             'time_step': 1.0}
 
         return default_settings

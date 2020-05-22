@@ -250,16 +250,16 @@ def process_in_experiment(process, settings={}):
 
     if timeline:
         timeline_process = Timeline({'timeline': timeline})
-        processes.update({'timeline': timeline_process})
+        processes.update({'timeline_process': timeline_process})
         topology.update({
-            'timeline': {
+            'timeline_process': {
                 port: (port,) for port in timeline_process.ports}})
 
     if environment:
         environment_process = Environment(environment)
-        processes.update({'environment': environment_process})
+        processes.update({'environment_process': environment_process})
         topology.update({
-            'environment': {
+            'environment_process': {
                 port: (port,) for port in environment_process.ports}})
 
     # add derivers

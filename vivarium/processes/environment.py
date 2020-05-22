@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import copy
 
+from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
 from vivarium.compartment.process import Process
 
@@ -20,8 +21,9 @@ class Environment(Process):
 
     def __init__(self, initial_parameters={}):
 
-        self.nAvogadro = AVOGADRO
-        volume = initial_parameters.get('volume', self.defaults['volume'])
+        volume = initial_parameters.get('volume', self.defaults['volume']) * units.L
+        self.mmol_to_counts = (AVOGADRO.to('1/mmol') * volume).to('L/mmol').magnitude
+
         environment_states = initial_parameters.get('states', self.defaults['states'])
         self.environment_port = initial_parameters.get('environment_port', self.defaults['environment_port'])
         self.exchange_port = initial_parameters.get('exchange_port', self.defaults['exchange_port'])
@@ -34,26 +36,30 @@ class Environment(Process):
         super(Environment, self).__init__(ports, parameters)
 
     def ports_schema(self):
-        return {}
+        schema = {
+            self.exchange_port: {
+                mol_id: {
+                    '_default': 0.0}
+                for mol_id in self.ports['exchange']}}
+        return schema
 
     def next_update(self, timestep, states):
+        exchange = states[self.exchange_port]  # units: counts
 
-        import ipdb;
-        ipdb.set_trace()
+        ## apply exchange to environment
+        # get counts, convert to concentration change
+        update = {
+            self.exchange_port: {},
+            self.environment_port: {}}
 
-        update = {}
-        # ## apply exchange to environment
-        # # get counts, convert to change in concentration
-        # if exchange:
-        #     delta_counts = exchange.state_for(exchange_ids)
-        #     mmol_to_counts = (self.nAvogadro.to('1/mmol') * env_volume).to('L/mmol').magnitude
-        #     delta_concs = {mol_id: counts / mmol_to_counts for mol_id, counts in delta_counts.items()}
-        #     environment.apply_update(delta_concs)
-        #
-        #     # reset exchange
-        #     reset_exchange = {key: 0 for key in exchange_ids}
-        #     exchange.assign_values(reset_exchange)
+        for mol_id, delta_count in exchange.items():
+            delta_concs = delta_count / self.mmol_to_counts
+            if delta_concs != 0:
+                update[self.environment_port][mol_id] = delta_concs
 
-
+                # reset exchange
+                update[self.exchange_port][mol_id] = {  # 0.0
+                    '_value': 0.0,
+                    '_updater': 'set'}
 
         return update
