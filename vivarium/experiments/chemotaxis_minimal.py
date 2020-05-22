@@ -8,9 +8,7 @@ from vivarium.compartment.tree import (
     Experiment)
 from vivarium.compartment.composition import (
     make_agents,
-    simulate_compartment,
-    load_compartment,
-    get_derivers
+    simulate_experiment
 )
 
 # compartments
@@ -19,29 +17,38 @@ from vivarium.composites.chemotaxis_minimal import ChemotaxisMinimal
 
 
 
-def chemotaxis_experiment(config={}):
+def make_chemotaxis_experiment(config={}):
 
     # get the environment
-    environment = Lattice(config.get('environment', {}))
-    processes = environment['processes']
-    topology = environment['topology']
+    env_config = config.get('environment', {})
+    environment = Lattice(env_config)
+    network = environment.generate({})
+    processes = network['processes']
+    topology = network['topology']
 
     # get the agents
+    n_agents = config.get('n_agents', 1)
     chemotaxis = ChemotaxisMinimal({
-        'cells_key': ('..', 'agents')})
-    agents = make_agents(range(count), chemotaxis, {})
+        'external_key': ('..', 'external')})
+    agents = make_agents(range(n_agents), chemotaxis, {})
     processes['agents'] = agents['processes']
     topology['agents'] = agents['topology']
 
-    experiment = Experiment({
+    emitter = {'type': 'timeseries'}
+    return Experiment({
         'processes': processes,
         'topology': topology,
+        'emitter': emitter,
         'initial_state': config.get('initial_state', {})})
 
-    import ipdb; ipdb.set_trace()
+def run_chemotaxis_experiment(config={}, time=10):
+    experiment = make_chemotaxis_experiment(config)
 
-    return {}
-
+    settings = {
+        'timestep': 1,
+        'total_time': time,
+        'return_raw_data': True}
+    return simulate_experiment(experiment, settings)
 
 
 if __name__ == '__main__':
@@ -49,4 +56,4 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    data = chemotaxis_experiment()
+    timeseries = run_chemotaxis_experiment()

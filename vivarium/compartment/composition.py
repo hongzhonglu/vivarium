@@ -310,7 +310,6 @@ def simulate_process(process, settings={}):
         time += timestep
     return experiment.emitter.get_timeseries()
 
-
 def simulate_with_environment(compartment, settings={}):
     '''
     run a compartment simulation with an environment.

@@ -33,8 +33,8 @@ class Lattice(Compartment):
             'molecules': ['glc'],
             'n_bins': [10, 10],
             'size': [10, 10],
-            'depth': 3000.0,  # um
-            'diffusion': 5e-1,
+            'depth': 3000.0,
+            'diffusion': 1e-2,
         }
     }
 
