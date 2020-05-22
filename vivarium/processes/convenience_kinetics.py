@@ -33,7 +33,7 @@ from scipy import constants
 from vivarium.compartment.process import Process
 from vivarium.compartment.tree import schema_for
 from vivarium.compartment.composition import (
-    simulate_process,
+    simulate_process_in_experiment,
     plot_simulation_output,
     flatten_timeseries,
     save_timeseries,
@@ -502,11 +502,15 @@ def test_convenience_kinetics(end_time=2520):
     kinetic_process = ConvenienceKinetics(config)
 
     settings = {
-        # 'environment_volume': 5e-14,  # L  # TODO -- bring back environment volume
+        'environment': {
+            'volume': 5e-14,
+            'states': ['glc__D_e', 'lcts_e'],
+            'environment_port': 'external',
+            'exchange_port': 'exchange'},
         'timestep': 1,
         'total_time': end_time}
 
-    return simulate_process(kinetic_process, settings)
+    return simulate_process_in_experiment(kinetic_process, settings)
 
 def test_convenience_kinetics_correlated_to_reference():
     timeseries = test_convenience_kinetics()

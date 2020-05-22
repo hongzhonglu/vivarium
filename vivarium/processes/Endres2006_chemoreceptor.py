@@ -7,7 +7,7 @@ import random
 
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.composition import process_in_experiment
+from vivarium.compartment.composition import simulate_process_in_experiment
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge
 from vivarium.utils.units import units
@@ -257,14 +257,8 @@ def test_receptor(timeline=get_pulse_timeline(), timestep = 1):
 
     # run experiment
     experiment_settings = {'timeline': timeline}
-    experiment = process_in_experiment(receptor, experiment_settings)
+    return simulate_process_in_experiment(receptor, experiment_settings)
 
-    time = 0
-    while time < end_time:
-        experiment.update(timestep)
-        time += timestep
-
-    return experiment.emitter.get_timeseries()
 
 def plot_output(output, out_dir='out', filename='response'):
     ligand_vec = output['external']['MeAsp']  # TODO -- configure ligand name

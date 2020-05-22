@@ -29,6 +29,7 @@ from vivarium.utils.units import units
 # processes
 from vivarium.processes.derive_globals import AVOGADRO
 from vivarium.processes.timeline import Timeline
+from vivarium.processes.environment import Environment
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
 TEST_OUT_DIR = os.path.join('out', 'tests')
@@ -240,6 +241,7 @@ def process_in_experiment(process, settings={}):
     process_settings = process.default_settings()
     emitter = settings.get('emitter', {'type': 'timeseries'})
     timeline = settings.get('timeline', [])
+    environment = settings.get('environment', {})
 
     processes = {'process': process}
     topology = {
@@ -252,6 +254,13 @@ def process_in_experiment(process, settings={}):
         topology.update({
             'timeline': {
                 port: (port,) for port in timeline_process.ports}})
+
+    if environment:
+        environment_process = Environment(environment)
+        processes.update({'environment': environment_process})
+        topology.update({
+            'environment': {
+                port: (port,) for port in environment_process.ports}})
 
     return Experiment({
         'processes': processes,
@@ -289,11 +298,6 @@ def simulate_process_with_environment(process, settings={}):
     ''' simulate a process in a compartment with an environment '''
     compartment = process_in_compartment(process, settings)
     return simulate_with_environment(compartment, settings)
-
-# def simulate_process(process, settings={}):
-#     ''' simulate a process in a compartment with no environment '''
-#     compartment = process_in_compartment(process, settings)
-#     return simulate_compartment(compartment, settings)
 
 def simulate_process(process, settings={}):
     timestep = settings.get('timestep', 1)
@@ -403,6 +407,13 @@ def simulate_compartment(compartment, settings={}):
         return compartment.emitter.get_data()
     else:
         return compartment.emitter.get_timeseries()
+
+def simulate_process_in_experiment(process, settings={}):
+    experiment = process_in_experiment(process, settings)
+    if 'timeline' in settings:
+        total_time = settings['timeline'][-1][0]
+        settings['total_time'] = total_time
+    return simulate_experiment(experiment, settings)
 
 def simulate_experiment(experiment, settings={}):
     '''
