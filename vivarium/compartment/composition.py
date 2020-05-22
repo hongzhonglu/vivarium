@@ -262,6 +262,11 @@ def process_in_experiment(process, settings={}):
             'environment': {
                 port: (port,) for port in environment_process.ports}})
 
+    # add derivers
+    derivers = generate_derivers(processes, topology)
+    processes = deep_merge(processes, derivers['processes'])
+    topology = deep_merge(topology, derivers['topology'])
+
     return Experiment({
         'processes': processes,
         'topology': topology,

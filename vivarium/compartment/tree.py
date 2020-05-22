@@ -743,7 +743,7 @@ class Experiment(object):
         front = {}
 
         while time < timestep:
-            step = INFINITY
+            full_step = INFINITY
 
             if VERBOSE:
                 for state_id in self.states:
@@ -780,12 +780,12 @@ class Experiment(object):
                     interval = future - process_time
                     update = self.process_update(path, state, interval)
 
-                    if interval < step:
-                        step = interval
+                    if interval < full_step:
+                        full_step = interval
                     front[path]['time'] = future
                     front[path]['update'] = update
 
-            if step == INFINITY:
+            if full_step == INFINITY:
                 # no processes ran, jump to next process
                 next_event = timestep
                 for process_name in front.keys():
@@ -794,7 +794,7 @@ class Experiment(object):
                 time = next_event
             else:
                 # at least one process ran, apply updates and continue
-                future = time + step
+                future = time + full_step
 
                 updates = []
                 for path, advance in front.items():
