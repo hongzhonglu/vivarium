@@ -29,7 +29,7 @@ from vivarium.utils.units import units
 # processes
 from vivarium.processes.derive_globals import AVOGADRO
 from vivarium.processes.timeline import Timeline
-from vivarium.processes.environment import Environment
+from vivarium.processes.homogeneous_environment import HomogeneousEnvironment
 
 REFERENCE_DATA_DIR = os.path.join('vivarium', 'reference_data')
 TEST_OUT_DIR = os.path.join('out', 'tests')
@@ -256,7 +256,7 @@ def process_in_experiment(process, settings={}):
                 port: (port,) for port in timeline_process.ports}})
 
     if environment:
-        environment_process = Environment(environment)
+        environment_process = HomogeneousEnvironment(environment)
         processes.update({'environment_process': environment_process})
         topology.update({
             'environment_process': {

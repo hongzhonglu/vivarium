@@ -9,7 +9,7 @@ from vivarium.compartment.process import Process
 from vivarium.processes.derive_globals import AVOGADRO
 
 
-class Environment(Process):
+class HomogeneousEnvironment(Process):
     ''' A minimal, non-spatial environment with volume'''
 
     defaults = {
@@ -33,7 +33,7 @@ class Environment(Process):
             self.exchange_port: environment_states}
 
         parameters = initial_parameters
-        super(Environment, self).__init__(ports, parameters)
+        super(HomogeneousEnvironment, self).__init__(ports, parameters)
 
     def ports_schema(self):
         schema = {

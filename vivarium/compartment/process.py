@@ -265,9 +265,11 @@ class Process(object):
         defaults = self.default_settings()
         schema = defaults.get('schema', {})
         state = defaults.get('state', {})
+        emitter = defaults.get('emitter_keys', {})
         
         for port, targets in self.ports.items():
             port_state = state.get(port, {})
+            port_emitter = emitter.get(port, [])
             if not port in schema:
                 schema[port] = {}
             for target in targets:
@@ -275,6 +277,8 @@ class Process(object):
                     schema[port][target] = {}
                 if not 'default' in schema[port][target]:
                     schema[port][target]['default'] = port_state.get(target)
+                if target in port_emitter:
+                    schema[port][target]['emit'] = True
                 # TODO: underscore_keys should not be necessary, start
                 #   with special keys for schema properties
                 schema[port][target] = underscore_keys(schema[port][target])
