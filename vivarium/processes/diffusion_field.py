@@ -196,11 +196,10 @@ class DiffusionField(Process):
         initial_agents = initial_parameters.get('agents', self.defaults['agents'])
         self.initial_agents_schema = {
             agent_id: {
-                'global': {
-                    key: {
-                        '_default': value,
-                        '_value': value}
-                    for key, value in agent.items()}}
+                key: {
+                    '_default': value,
+                    '_value': value}
+                for key, value in agent.items()}
             for agent_id, agent in initial_agents.items()}
 
         # make ports
@@ -218,12 +217,10 @@ class DiffusionField(Process):
         schema = {'agents': self.initial_agents_schema}
         glob_schema = {
             '*': {
-                'global': {
-                    'location': {
-                        '_default': [0.5, 0.5],
-                        '_updater': 'set'},
-                    'exchange': {}
-                },
+                'location': {
+                    '_default': [0.5, 0.5],
+                    '_updater': 'set'},
+                'exchange': {},
                 'local_environment': {
                     molecule: {'_default': 0.0}
                     for molecule in self.molecule_ids}}}
@@ -309,7 +306,7 @@ class DiffusionField(Process):
         if agents:
             # apply exchanges to delta_fields
             for agent_id, specs in agents.items():
-                self.apply_single_exchange(delta_fields, specs['global']['global'])
+                self.apply_single_exchange(delta_fields, specs['global'])
 
         return delta_fields
 
