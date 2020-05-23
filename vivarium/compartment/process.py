@@ -399,9 +399,7 @@ def initialize_state(processes, topology, initial_state):
     compartment_states = {}
     for process_id, ports_map in topology.items():
         process_ports = processes[process_id].ports
-
-        settings = processes[process_id].default_settings()
-        default_process_states = settings['state']
+        default_process_states = processes[process_id].default_state()
 
         for process_port, states in process_ports.items():
             try:
@@ -658,72 +656,3 @@ class Compartment(Store):
             'data': data}
 
         self.emitter.emit(emit_config)
-
-
-def test_timescales():
-    class Slow(Process):
-        def __init__(self):
-            self.timestep = 3.0
-            self.ports = {
-                'state': ['base']}
-
-        def local_timestep(self):
-            return self.timestep
-
-        def next_update(self, timestep, states):
-            base = states['state']['base']
-            next_base = timestep * base * 0.1
-
-            return {
-                'state': {'base': next_base}}
-
-    class Fast(Process):
-        def __init__(self):
-            self.timestep = 0.1
-            self.ports = {
-                'state': ['base', 'motion']}
-
-        def local_timestep(self):
-            return self.timestep
-
-        def next_update(self, timestep, states):
-            base = states['state']['base']
-            motion = timestep * base * 0.001
-
-            return {
-                'state': {'motion': motion}}
-
-    processes = {
-        'slow': Slow(),
-        'fast': Fast()}
-
-    derivers = {}
-
-    states = {
-        'state': Store({
-            'base': 1.0,
-            'motion': 0.0})}
-
-    topology = {
-        'slow': {'state': 'state'},
-        'fast': {'state': 'state'}}
-
-    emitter_config = {
-            'type': 'print',
-            'keys': {
-                'state': ['base', 'motion']}}
-
-    configuration = {
-        'topology': topology,
-        'emitter': emit.get_emitter(emitter_config)}
-
-    compartment = Compartment(
-        processes,
-        derivers,
-        states,
-        configuration)
-
-    compartment.update(10.0)
-
-if __name__ == '__main__':
-    test_timescales()

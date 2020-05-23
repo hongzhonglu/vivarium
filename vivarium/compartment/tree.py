@@ -891,9 +891,8 @@ def test_recursive_store():
                             '_updater': 'accumulate'}}}}}}
 
     state = Store(environment_config)
-
     state.apply_update({})
-    state.state_for({})
+    state.state_for(['environment'], ['temperature'])
 
 def test_in():
     blank = {}
@@ -905,6 +904,64 @@ def test_in():
     print(blank)
 
 
+def test_timescales():
+    class Slow(Process):
+        def __init__(self):
+            self.timestep = 3.0
+            self.ports = {
+                'state': ['base']}
+
+        def local_timestep(self):
+            return self.timestep
+
+        def next_update(self, timestep, states):
+            base = states['state']['base']
+            next_base = timestep * base * 0.1
+
+            return {
+                'state': {'base': next_base}}
+
+    class Fast(Process):
+        def __init__(self):
+            self.timestep = 0.1
+            self.ports = {
+                'state': ['base', 'motion']}
+
+        def local_timestep(self):
+            return self.timestep
+
+        def next_update(self, timestep, states):
+            base = states['state']['base']
+            motion = timestep * base * 0.001
+
+            return {
+                'state': {'motion': motion}}
+
+    processes = {
+        'slow': Slow(),
+        'fast': Fast()}
+
+    states = {
+        'state': {
+            'base': 1.0,
+            'motion': 0.0}}
+
+    topology = {
+        'slow': {'state': ('state',)},
+        'fast': {'state': ('state',)}}
+
+    emitter = {'type': 'null'}
+    experiment = Experiment({
+        'processes': processes,
+        'topology': topology,
+        'emitter': emitter,
+        'initial_state': states})
+
+    experiment.update(10.0)
+
+
+
 if __name__ == '__main__':
     test_recursive_store()
     test_in()
+    test_timescales()
