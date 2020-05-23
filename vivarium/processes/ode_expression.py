@@ -158,7 +158,7 @@ class ODE_expression(Process):
         ...     },
         ... }
         >>> expression_process = ODE_expression(config)
-        >>> state = expression_process.default_settings()['state']
+        >>> state = expression_process.default_state()
         >>> state == initial_state
         True
         >>> # When external glc__D_e present, no transcription

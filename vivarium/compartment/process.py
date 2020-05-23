@@ -219,6 +219,17 @@ class Process(object):
         '''
         return self.time_step
 
+    def default_state(self):
+        schema = self.ports_schema()
+        state = {}
+        for port, states in schema.items():
+            for key, value in states.items():
+                if '_default' in value:
+                    if port not in state:
+                        state[port] = {}
+                    state[port][key] = value['_default']
+        return state
+
     def default_settings(self):
         return {}
 

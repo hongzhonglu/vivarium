@@ -322,8 +322,7 @@ def test_motor_PMF():
 
     # initialize process and state
     motor = FlagellaActivity()
-    settings = motor.default_settings()
-    state = settings['state']
+    state = motor.default_state()
 
     motor_state_vec = []
     motor_force_vec = []
