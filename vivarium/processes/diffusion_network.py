@@ -5,9 +5,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from vivarium.utils.dict_utils import deep_merge
 from vivarium.compartment.process import Process
 from vivarium.compartment.composition import (
-    simulate_process_with_environment,
+    simulate_process_in_experiment,
     plot_simulation_output)
 
 
@@ -91,7 +92,7 @@ class DiffusionNetwork(Process):
         # initial state
         initial_state = initial_parameters.get('initial_state', self.defaults['initial_state'])
         self.initial_membrane = initial_state.get('membrane_composition', self.defaults['membrane_composition'])
-        self.initial_concentrations = initial_state.get('concentrations', self.defaults['concentrations'])
+        concentrations = initial_state.get('concentrations', self.defaults['concentrations'])
 
         # membrane channels
         channels = initial_parameters.get('channels', self.defaults['channels'])
@@ -126,6 +127,11 @@ class DiffusionNetwork(Process):
         self.membrane_edges = membrane_edges
         self.channel_diffusion = channels
 
+        # initialize concentrations at each location
+        self.initial_concentrations = {loc: {mol_id: 0.0 for mol_id in self.molecule_ids} for loc in locations}
+        for site, concs in concentrations.items():
+            self.initial_concentrations[site] = deep_merge(self.initial_concentrations[site], concs)
+
         # make ports from locations and membrane channels
         ports = {
             site: molecule_ids
@@ -138,28 +144,26 @@ class DiffusionNetwork(Process):
 
         super(DiffusionNetwork, self).__init__(ports, parameters)
 
-
-    def default_settings(self):
-
-        # emitter keys
-        emitter_keys = {port_id: keys for port_id, keys in self.ports.items()}
-
-        # initial_state
+    def ports_schema(self):
         initial_state = {
             'membrane_composition': self.initial_membrane}
         initial_state.update(self.initial_concentrations)
 
-        return {
-            'state': initial_state,
-            'emitter_keys': emitter_keys
-        }
+        schema = {
+            port: {
+                state: {
+                    '_default': value,
+                    '_emit': True}
+                for state, value in states.items()}
+            for port, states in initial_state.items()}
+
+        return schema
 
     def next_update(self, timestep, states):
         concentrations = {
             state_id: concs
             for state_id, concs in states.items() if state_id is not 'membrane_composition'}
         membrane = states['membrane_composition']
-
         diffusion_delta = self.diffusion_delta(concentrations, membrane, timestep)
 
         return diffusion_delta
@@ -254,11 +258,11 @@ def get_grid_config():
                 ((3, 3), (3, 2)),
                 # ((4, 3), (4, 2)),
                 # right
-                ((4, 2), (5, 2)),
+                # ((4, 2), (5, 2)),
                 ((4, 1), (5, 1)),
-                ((1, 0), (1, 1)),
-                ((2, 0), (2, 1)),
                 # bottom
+                # ((1, 0), (1, 1)),
+                ((2, 0), (2, 1)),
                 ((3, 0), (3, 1)),
                 ((4, 0), (4, 1)),
             ],
@@ -266,18 +270,15 @@ def get_grid_config():
         'channels': {
             'porin': 1e-4  # diffusion rate through porin
         },
-        'diffusion': 3e-1}
+        'diffusion': 1e0}
 
-def test_diffusion_network(config = get_two_compartment_config(), time=10):
+def test_diffusion_network(config = get_two_compartment_config(), end_time=10):
     diffusion = DiffusionNetwork(config)
-    settings = {
-        'total_time': time,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-2,
-    }
 
-    return simulate_process_with_environment(diffusion, settings)
+    settings = {
+        'timestep': 0.2,
+        'total_time': end_time}
+    return simulate_process_in_experiment(diffusion, settings)
 
 def plot_diffusion_field_output(data, config, out_dir='out', filename='field'):
     n_snapshots = 6
