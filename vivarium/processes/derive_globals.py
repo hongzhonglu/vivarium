@@ -77,7 +77,11 @@ class DeriveGlobals(Deriver):
 
         super(DeriveGlobals, self).__init__(ports, parameters)
 
-    def default_settings(self):
+    def ports_schema(self):
+        set_states = ['volume', 'mmol_to_counts', 'length', 'surface_area']
+        set_divide = ['density']
+        set_emit = {'global': ['volume', 'width', 'length', 'surface_area']}
+
         # default state
         mass = 1339 * units.fg  # wet mass in fg
         density = 1100 * units.g / units.L
@@ -87,25 +91,16 @@ class DeriveGlobals(Deriver):
         surface_area = surface_area_from_length(length, self.width)
 
         global_state = {
-            'mass': mass.magnitude,
             'volume': volume.to('fL').magnitude,
             'mmol_to_counts': mmol_to_counts.magnitude,
             'density': density.magnitude,
             'width': self.width,
             'length': length,
-            'surface_area': surface_area,
-        }
-
+            'surface_area': surface_area}
         default_state = {
             'global': global_state}
 
-        # default emitter keys
-        default_emitter_keys = {
-            'global': ['volume', 'width', 'length', 'surface_area']}
-
-        # schema
-        set_states = ['volume', 'mmol_to_counts', 'length', 'surface_area']
-        set_divide = ['density']
+        # make schema
         schema = {
             'global': {
                 state_id : {
@@ -116,14 +111,23 @@ class DeriveGlobals(Deriver):
                 state_id : {
                     'divide': 'set'}
                 for state_id in set_divide}}
+        emit_schema = {
+            port: {
+                state_id: {
+                    '_emit': True}
+                for state_id in states}
+            for port, states in set_emit.items()}
+        state_schema = {
+            port: {
+                state_id: {
+                    '_default': value}
+                for state_id, value in states.items()}
+            for port, states in default_state.items()}
+
         schema = deep_merge(schema, divide_schema)
-
-        default_settings = {
-            'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'schema': schema}
-
-        return default_settings
+        schema = deep_merge(schema, emit_schema)
+        schema = deep_merge(schema, state_schema)
+        return schema
 
     def next_update(self, timestep, states):
         # states

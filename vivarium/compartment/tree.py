@@ -18,12 +18,9 @@ from vivarium.compartment.emitter import get_emitter
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
 from vivarium.processes.derive_counts import DeriveCounts
 from vivarium.processes.derive_concentrations import DeriveConcentrations
-from vivarium.processes.derive_mass import DeriveMass
 from vivarium.processes.tree_mass import TreeMass
 
 deriver_library = {
-    # 'mass': DeriveMass,
-    # 'mass': DeriveMass,
     'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcentrations,
