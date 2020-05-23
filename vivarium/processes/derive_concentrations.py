@@ -32,7 +32,7 @@ class DeriveConcentrations(Deriver):
 
     def ports_schema(self):
         volume = 1.2
-        mmol_to_counts = (self.avogadro * volume * units.fL).to('L/mmol').magnitude()
+        mmol_to_counts = (self.avogadro * volume * units.fL).to('L/mmol').magnitude
 
         return {
             'global': {
@@ -44,8 +44,7 @@ class DeriveConcentrations(Deriver):
                     '_units': units.L/units.mmol}},
             'counts': {
                 concentration: {
-                    '_divider': 'split',
-                    '_updater': 'set'}
+                    '_divider': 'split'}
                 for concentration in self.concentration_keys},
             'concentrations': {
                 concentration: {

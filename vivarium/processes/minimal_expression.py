@@ -7,8 +7,7 @@ from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.regulation_logic import build_rule
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process_in_experiment,
     plot_simulation_output
 )
 
@@ -54,33 +53,18 @@ class MinimalExpression(Process):
 
         parameters.update(initial_parameters)
 
-
         self.concentrations_deriver_key = self.or_default(initial_parameters, 'concentrations_deriver_key')
 
         super(MinimalExpression, self).__init__(ports, parameters)
 
-    def default_settings(self):
-
-        # default state
-        # TODO -- load in initial state, or have compartment set to 0
-        internal = {state_id: 0 for state_id in self.internal_states}
-        default_state = {'internal': internal}
-
-        # default emitter keys
-        default_emitter_keys = {'internal': self.internal_states}
-
-        deriver_setting = [{
-            'type': 'counts_to_mmol',
-            'source_port': 'internal',
-            'derived_port': 'concentrations',
-            'keys': self.internal_states}]
-
-        default_settings = {
-            'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'deriver_setting': deriver_setting}
-
-        return default_settings
+    def ports_schema(self):
+        return {
+            'internal': {
+                state : {
+                    '_updater': 'accumulate',
+                    '_default': 0.0,
+                    '_emit': True}
+                for state in self.ports['internal']}}
 
     def derivers(self):
         return {
@@ -130,16 +114,9 @@ def test_expression(end_time=10):
 
     # load process
     expression = MinimalExpression(expression_config)
+    settings = {'total_time': end_time}
+    return simulate_process_in_experiment(expression, settings)
 
-    settings = {
-        'total_time': 100,
-        # 'exchange_port': 'exchange',
-        'environment_port': 'external',
-        'environment_volume': 1e-12,
-    }
-
-    compartment = process_in_compartment(expression)
-    return simulate_with_environment(compartment, settings)
 
 
 if __name__ == '__main__':
