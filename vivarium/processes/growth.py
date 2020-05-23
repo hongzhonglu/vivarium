@@ -35,7 +35,7 @@ class Growth(Process):
     {'global': {'mass': 1339}}
     >>> update = growth_process.next_update(TIMESTEP, state)
     >>> update
-    {'global': {'mass': 2678.0}}
+    {'global': {'mass': 2678.0, 'divide': False}}
     >>> update['global']['mass'] / state['global']['mass']
     2.0
 
@@ -62,14 +62,15 @@ class Growth(Process):
         super(Growth, self).__init__(ports, parameters)
 
     def ports_schema(self):
-        split = {
-            '_updater': 'set',
-            '_divider': 'split'}
-
         return {
             'global': {
-                'mass': split,
-                'volume': split,
+                'mass': {
+                    '_emit': True,
+                    '_updater': 'set',
+                    '_divider': 'split'},
+                'volume': {
+                    '_updater': 'set',
+                    '_divider': 'split'},
                 'divide': {
                     '_default': False,
                     '_updater': 'set'}}}
@@ -89,28 +90,8 @@ class Growth(Process):
         internal = {'mass': mass}
         default_state = {'global': internal}
 
-        # default emitter keys
-        default_emitter_keys = {'global': ['mass']}
-
-        # schema
-        schema = {
-            'global': {
-                'mass': {
-                    'updater': 'set'},
-                'divide': {
-                    'updater': 'set'}}}
-
-        # derivers
-        deriver_setting = []
-        # deriver_setting = [self.defaults['global_deriver_config']]
-
-        default_settings = {
-            'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'deriver_setting': deriver_setting,
-            'schema': schema}
-
-        return default_settings
+        return {
+            'state': default_state}
 
     def next_update(self, timestep, states):
         mass = states['global']['mass']
