@@ -138,7 +138,7 @@ def identity(y):
 
 def check_update_schema(new, current, schema_type=None):
     if current is not None and new != current:
-        raise Exception('schema merge mismatch: {}'.format(schema_type))
+        raise Exception('schema merge error: {} is {} and {}'.format(schema_type, current, new))
     else:
         return new
 

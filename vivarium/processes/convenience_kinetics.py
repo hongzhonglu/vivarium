@@ -271,7 +271,8 @@ class ConvenienceKinetics(Process):
                 state: {
                     '_emit': True}
                 for state in state_list}
-            for port, state_list in self.ports.items() if port in emit_ports}
+            for port, state_list in self.ports.items()
+            if port in emit_ports}
 
         schema = deep_merge(schema, emit_schema)
         return schema

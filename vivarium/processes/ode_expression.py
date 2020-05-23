@@ -12,8 +12,7 @@ import argparse
 from vivarium.compartment.process import Process
 from vivarium.utils.dict_utils import deep_merge, tuplify_port_dicts
 from vivarium.compartment.composition import (
-    process_in_compartment,
-    simulate_with_environment,
+    simulate_process_in_experiment,
     plot_simulation_output
 )
 from vivarium.utils.regulation_logic import build_rule
@@ -220,41 +219,33 @@ class ODE_expression(Process):
 
         super(ODE_expression, self).__init__(ports, parameters)
 
-    def default_settings(self):
-
-        # default state
-        default_state = self.initial_state
-
-        # schema
-        # don't include if it uses the default
+    def ports_schema(self):
         schema = {
             'internal': {
                 state : {
-                    'divide': 'set',
-                    'units': 'mmol',
-                    'updater': 'accumulate'}
+                    '_divider': 'set',
+                    '_units': units.mmol,
+                    '_updater': 'accumulate'}
                 for state in self.ports['internal']}}
 
-        # default emitter keys
-        default_emitter_keys = {
-            'internal': self.ports['internal'],
-            'external': self.ports['external'],
-            'counts': self.ports['internal']}
+        state_schema = {
+            port: {
+                mol_id: {
+                    '_default': value}
+                for mol_id, value in state.items()}
+            for port, state in self.initial_state.items()}
 
-        # derivers
-        deriver_setting = {
-            'type': 'mmol_to_counts',
-            'source_port': 'internal',
-            'derived_port': 'counts',
-            'keys': self.ports['internal']}
+        emit_schema = {
+            port: {
+                state: {
+                    '_emit': True}
+                for state in state_list}
+            for port, state_list in self.ports.items()
+            if port in ['internal', 'external', 'counts']}
 
-        default_settings = {
-            'state': default_state,
-            'emitter_keys': default_emitter_keys,
-            'schema': schema,
-            'deriver_setting': deriver_setting}
-
-        return default_settings
+        schema = deep_merge(schema, emit_schema)
+        schema = deep_merge(schema, state_schema)
+        return schema
 
     def derivers(self):
         return {
@@ -333,7 +324,9 @@ def get_lacy_config():
     initial_state = {
         'internal': {
             'lacy_RNA': 0.0,
-            'LacY': 0.0}}
+            'LacY': 0.0},
+        'external': {
+            'glc__D_e': 8.0}}
 
     return {
         'transcription_rates': transcription_rates,
@@ -390,20 +383,9 @@ def get_flagella_expression():
 
 
 def test_expression(config=get_lacy_config(), timeline=[(100, {})]):
-
-    # load process
     expression = ODE_expression(config)
-    compartment = process_in_compartment(expression)
-    options = compartment.configuration
-
-    # simulate
-    settings = {
-        'environment_port': options.get('environment_port'),
-        'exchange_port': options.get('exchange_port'),
-        'environment_volume': 1e-13,  # L
-        'timeline': timeline}
-
-    return simulate_with_environment(compartment, settings)
+    settings = {'timeline': timeline}
+    return simulate_process_in_experiment(expression, settings)
 
 
 if __name__ == '__main__':
@@ -416,25 +398,18 @@ if __name__ == '__main__':
     parser.add_argument('--flagella', '-f', action='store_true', default=False)
     args = parser.parse_args()
 
-    if args.lacY:
+    if args.flagella:
+        timeline = [(100, {})]
+        timeseries = test_expression(get_flagella_expression(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
+        plot_simulation_output(timeseries, {}, out_dir, 'flagella_expression')
+    else:
         total_time = 5000
         shift_time1 = int(total_time / 5)
         shift_time2 = int(3 * total_time / 5)
         timeline = [
-            (0, {'external': {'glc__D_e': 10}}),
-            (shift_time1, {'external': {'glc__D_e': 0}}),
-            (shift_time2, {'external': {'glc__D_e': 10}}),
+            (0, {('external', 'glc__D_e'): 10}),
+            (shift_time1, {('external', 'glc__D_e'): 0}),
+            (shift_time2, {('external', 'glc__D_e'): 10}),
             (total_time, {})]
-
         timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
         plot_simulation_output(timeseries, {}, out_dir, 'lacY_expression')
-
-    elif args.flagella:
-        timeline = [(100, {})]
-        timeseries = test_expression(get_flagella_expression(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
-        plot_simulation_output(timeseries, {}, out_dir, 'flagella_expression')
-
-    else:
-        timeline = [(100, {})]
-        timeseries = test_expression(get_lacy_config(), timeline) # 2520 sec (42 min) is the expected doubling time in minimal media
-        plot_simulation_output(timeseries, {}, out_dir)
