@@ -210,16 +210,13 @@ class Process(object):
         self.ports = ports
         self.parameters = parameters or {}
         self.states = None
-
-        default_timestep = self.default_settings().get('time_step', 1.0)
-        self.time_step = self.parameters.get('time_step', default_timestep)
+        self.time_step = parameters.get('time_step', 1.0)
 
     def local_timestep(self):
         '''
         Returns the favored timestep for this process.
         Meant to be overridden in subclasses, unless 1.0 is a happy value. 
         '''
-
         return self.time_step
 
     def default_settings(self):
