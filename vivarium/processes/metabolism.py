@@ -154,8 +154,8 @@ class Metabolism(Process):
         scaling_factor = (initial_metabolite_mass / composition_mass).magnitude
         internal_state = {mol_id: int(coeff * scaling_factor)
             for mol_id, coeff in composition.items()}
-        initial_mass = get_fg_from_counts(internal_state, mw)
-        print('metabolism initial mass: {}'.format(initial_mass))
+        self.initial_mass = get_fg_from_counts(internal_state, mw).magnitude
+        print('metabolism initial mass: {}'.format(self.initial_mass))
 
         ## Get external state from minimal_external fba solution
         external_state = {state_id: 0.0 for state_id in self.fba.external_molecules}

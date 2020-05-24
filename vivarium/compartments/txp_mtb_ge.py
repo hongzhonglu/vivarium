@@ -3,9 +3,13 @@ from __future__ import absolute_import, division, print_function
 import os
 import argparse
 
-from vivarium.core.process import initialize_state
+from vivarium.core.tree import Compartment
+from vivarium.core.composition import compartment_in_experiment
+
+
+
+
 from vivarium.core.composition import (
-    get_derivers,
     simulate_with_environment,
     plot_simulation_output,
     load_compartment)
@@ -15,9 +19,7 @@ from vivarium.parameters.parameters import (
     plot_scan_results)
 
 # processes
-from vivarium.processes.division import (
-    Division,
-    divide_condition)
+from vivarium.processes.meta_division import MetaDivision
 from vivarium.processes.metabolism import (
     Metabolism,
     get_iAF1260b_config)
@@ -29,47 +31,74 @@ from vivarium.processes.ode_expression import (
     get_lacy_config)
 
 
+def default_metabolism_config():
+    config = get_iAF1260b_config()
 
-# the composite compartment
-def txp_mtb_ge_compartment(config):
-    '''
-    Transport-Metabolism-Gene expression compartment.
+    # set flux bond tolerance for reactions in ode_expression's lacy_config
+    metabolism_config = {
+        'moma': False,
+        'tolerance': {
+            'EX_glc__D_e': [1.05, 1.0],
+            'EX_lcts_e': [1.05, 1.0]}}
+    config.update(metabolism_config)
+    return config
 
-    TODO -- this should replace ode_expression composite, with glc-lcts-shifter as default
-    '''
 
-    ## Declare the processes.
-    # Transport
-    # load the kinetic parameters
-    transport_config = config.get('transport', {})
-    transport = ConvenienceKinetics(transport_config)
-    target_fluxes = transport.kinetic_rate_laws.reaction_ids
+class TransportMetabolismExpression(Compartment):
+    """
+    TransportMetabolismExpression Compartment
+    """
 
-    # Metabolism
-    # get target fluxes from transport
-    metabolism_config = config.get('metabolism', {})
-    metabolism_config.update({'constrained_reaction_ids': target_fluxes})
-    metabolism = Metabolism(metabolism_config)
+    defaults = {
+        'transport': get_glc_lct_config(),
+        'metabolism': default_metabolism_config(),
+        'expression': get_lacy_config(),
+        'division': {}}
 
-    # Gene expression
-    gene_expression_config = config.get('expression', {})
-    gene_expression = ODE_expression(gene_expression_config)
+    def __init__(self, config):
+        self.transport_config = config.get('transport', self.defaults['transport'])
+        self.metabolism_config = config.get('metabolism', self.defaults['metabolism'])
+        self.expression_config = config.get('expression', self.defaults['expression'])
+        self.division_config = config.get('division', self.defaults['division'])
 
-    # Division
-    # get initial volume from metabolism
-    division_config = config.get('division', {})
-    division = Division(division_config)
+    def generate_processes(self, config):
+        # Transport
+        # load the kinetic parameters
+        transport = ConvenienceKinetics(config.get(
+            'transport',
+            self.transport_config))
 
-    # Place processes in layers
-    processes = {
-        'transport': transport,
-        'metabolism': metabolism,
-        'expression': gene_expression,
-        'division': division}
+        # Metabolism
+        # get target fluxes from transport, and update constrained_reaction_ids
+        metabolism_config = config.get(
+            'metabolism',
+            self.metabolism_config)
+        target_fluxes = transport.kinetic_rate_laws.reaction_ids
+        metabolism_config.update({'constrained_reaction_ids': target_fluxes})
+        metabolism = Metabolism(metabolism_config)
 
-    # Make the topology
-    # for each process, map process ports to store ids
-    topology = {
+        # Gene expression
+        expression = ODE_expression(config.get(
+            'expression',
+            self.expression_config))
+
+        # Division
+        division_config = config.get(
+            'division',
+            self.division_config)
+        # initial_mass = metabolism.initial_mass
+        # division_config.update({'constrained_reaction_ids': target_fluxes})
+        # TODO -- configure metadivision
+        division = MetaDivision(division_config)
+
+        return {
+            'transport': transport,
+            'metabolism': metabolism,
+            'expression': expression,
+            'division': division}
+
+    def generate_topology(self, config):
+        return {
         'transport': {
             'internal': 'cytoplasm',
             'external': 'environment',
@@ -88,94 +117,37 @@ def txp_mtb_ge_compartment(config):
             'internal': 'cytoplasm',
             'external': 'environment'},
         'division': {
-            'global': 'global'}
-    }
+            'global': 'global'}}
 
-    return {
-        'processes': processes,
-        'topology': topology}
-
-
-
-def compose_txp_mtb_ge(config):
-    """
-    A composite with kinetic transport, metabolism, and gene expression
-    """
-
-    # set config
-    initial_mass = config.get('initial_mass', 1339)
-    config['metabolism'] = config.get('metabolism', default_metabolism_config())
-    config['metabolism']['initial_mass'] = initial_mass
-    config['transport'] = config.get('transport', get_glc_lct_config())
-    config['expression'] = config.get('expression', get_lacy_config())
-    config['division'] = config.get('division', {'division_volume': 2.4})
-
-    # get compartment
-    compartment = txp_mtb_ge_compartment(config)
-    processes = compartment['processes']
-    topology = compartment['topology']
-
-    # add derivers
-    deriver_config = {}
-    derivers = get_derivers(processes, topology, deriver_config)
-    deriver_processes = derivers['deriver_processes']
-    all_processes = {}
-    all_processes.update(processes)
-    all_processes.update(deriver_processes)
-    topology.update(derivers['deriver_topology'])  # add derivers to the topology
-
-    # initialize the states
-    states = initialize_state(
-        all_processes,
-        topology,
-        config.get('initial_state', {}))
-
-    options = {
-        'name': config.get('name', 'master_composite'),
-        'environment_port': 'environment',
-        'exchange_port': 'exchange',
-        'topology': topology,
-        'initial_time': config.get('initial_time', 0.0),
-        'divide_condition': divide_condition}
-
-    return {
-        'processes': processes,
-        'derivers': deriver_processes,
-        'states': states,
-        'options': options}
-
-
-
-# toy functions/ defaults
-def default_metabolism_config():
-    config = get_iAF1260b_config()
-
-    # set flux bond tolerance for reactions in ode_expression's lacy_config
-    metabolism_config = {
-        'moma': False,
-        'tolerance': {
-            'EX_glc__D_e': [1.05, 1.0],
-            'EX_lcts_e': [1.05, 1.0]}}
-
-    config.update(metabolism_config)
-
-    return config
 
 # simulate
-def test_txp_mtb_ge(time=10):
-    compartment = load_compartment(compose_txp_mtb_ge)
-    options = compartment.configuration
-    settings = {
-        'environment_port': options['environment_port'],
-        'exchange_port': options['exchange_port'],
-        'environment_volume': 1e-5,  # L
-        'timeline': [(time, {})]}
-    return simulate_with_environment(compartment, settings)
+def test_txp_mtb_ge(config={}, time=10):
 
-def simulate_txp_mtb_ge(out_dir='out'):
+    # configure the compartment
+    compartment = TransportMetabolismExpression(config)
+
+    # configure experiment
+    experiment_settings = {
+        'compartment': config}
+    experiment = compartment_in_experiment(
+        compartment,
+        experiment_settings)
+
+    import ipdb;
+    ipdb.set_trace()
+
+    # run experiment
+    timestep = 1
+    time = 0
+    while time < end_time:
+        experiment.update(timestep)
+        time += timestep
+    return experiment.emitter.get_data()
+
+def simulate_txp_mtb_ge(config={}, out_dir='out'):
 
     # run simulation
-    timeseries = test_txp_mtb_ge(2520) # 2520 sec (42 min) is the expected doubling time in minimal media
+    timeseries = test_txp_mtb_ge(config, 2520) # 2520 sec (42 min) is the expected doubling time in minimal media
     volume_ts = timeseries['global']['volume']
     print('growth: {}'.format(volume_ts[-1]/volume_ts[0]))
 
@@ -282,4 +254,5 @@ if __name__ == '__main__':
         results = scan_txp_mtb_ge()
         plot_scan_results(results, out_dir)
     else:
-        simulate_txp_mtb_ge(out_dir)
+        config = {}
+        simulate_txp_mtb_ge(config, out_dir)
