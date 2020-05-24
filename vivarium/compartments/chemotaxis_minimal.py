@@ -61,21 +61,26 @@ class ChemotaxisMinimal(Compartment):
                 'internal': ('cell',)}}
 
 
-ligand_id = 'MeAsp'
-environment_port = 'external'
 
-def get_chemotaxis_config(timeline):
+
+def get_chemotaxis_config(config={}):
+    ligand_id = config.get('ligand_id', 'MeAsp')
+    initial_ligand = config.get('initial_ligand', 5.0)
+    external_key = config.get('external_key', 'external')
     # configure the compartment
     return {
-        'external_key': (environment_port,),
+        'external_key': (external_key,),
         'ligand_id': ligand_id,
-        'initial_ligand': timeline[0][1][(environment_port, ligand_id)]}  # set initial_ligand from timeline
+        'initial_ligand': initial_ligand}  # set initial_ligand from timeline
 
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'tests', 'chemotaxis_minimal')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+
+    ligand_id = 'MeAsp'
+    environment_port = 'external'
 
     exponential_random_config = {
         'ligand': ligand_id,
@@ -87,7 +92,12 @@ if __name__ == '__main__':
     timeline = get_exponential_random_timeline(exponential_random_config)
     end_time = timeline[-1][0]
 
-    compartment = ChemotaxisMinimal(get_chemotaxis_config(timeline))
+
+    config = {
+        'ligand_id': ligand_id,
+        'initial_ligand': timeline[0][1][(environment_port, ligand_id)],
+        'external_key': environment_port}
+    compartment = ChemotaxisMinimal(get_chemotaxis_config(config))
 
     # configure experiment
     experiment_settings = {

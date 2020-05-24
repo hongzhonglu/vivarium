@@ -55,7 +55,7 @@ def run_chemotaxis_experiment(out_dir):
     time = 60
     config = {
         'environment': get_lattice_config(),
-        'chemotaxis': get_chemotaxis_config()}
+        'chemotaxis': get_chemotaxis_config({})}
 
     experiment = make_chemotaxis_experiment(config)
 
