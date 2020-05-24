@@ -28,7 +28,7 @@ from matplotlib.collections import LineCollection
 from vivarium.actor import filepath
 from vivarium.actor.outer import EnvironmentSimulation
 from vivarium.utils.multicell_physics import MultiCellPhysics
-from vivarium.environment.make_media import Media
+from vivarium.utils.make_media import Media
 from vivarium.core.emitter import get_emitter
 
 # Constants

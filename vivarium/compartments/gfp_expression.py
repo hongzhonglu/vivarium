@@ -4,12 +4,12 @@ from vivarium.utils.units import units
 from vivarium.core.composition import load_compartment, simulate_compartment
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosomes.gfp_chromosome import gfp_plasmid_config
-from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers
+from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.utils.polymerize import generate_template
 from vivarium.compartments.gene_expression import compose_gene_expression, plot_gene_expression_output
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
-from vivarium.environment.make_media import Media
+from vivarium.utils.make_media import Media
 
 from vivarium.processes.derive_globals import AVOGADRO
 

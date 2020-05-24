@@ -32,7 +32,7 @@ from vivarium.core.emitter import get_emitter, configure_emitter
 # environment
 from vivarium.environment.lattice import EnvironmentSpatialLattice
 from vivarium.environment.lattice_compartment import LatticeCompartment, generate_lattice_compartment
-from vivarium.environment.make_media import Media
+from vivarium.utils.make_media import Media
 from vivarium.utils.units import units
 
 # processes

@@ -4,8 +4,8 @@ import os
 from scipy import constants
 
 from vivarium.core.process import Process
-from vivarium.environment.make_media import Media
-from vivarium.environment.look_up import LookUp
+from vivarium.utils.make_media import Media
+from vivarium.utils.look_up import LookUp
 from vivarium.utils.rate_law_utilities import load_reactions
 from vivarium.utils.rate_law_utilities import get_reactions_from_exchange
 from vivarium.utils.rate_law_utilities import get_molecules_from_reactions

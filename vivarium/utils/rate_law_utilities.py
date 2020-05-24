@@ -17,19 +17,17 @@ The RateLawUtilities module can be called with:
 from __future__ import absolute_import, division, print_function
 
 import os
-import csv
 import json
 import numpy as np
 import argparse
 
 # import matplotlib.pyplot as plt  # RuntimeError: Python is not installed as a framework.
-import matplotlib
 import matplotlib.pyplot as plt
 
 from vivarium.data.spreadsheets import load_tsv
 from vivarium.actor import filepath
 
-from vivarium.environment.look_up import LookUp
+from vivarium.utils.look_up import LookUp
 import vivarium.utils.kinetic_rate_laws as rate_laws
 
 REACTIONS_FILE = os.path.join("vivarium", "data", "flat", "wcEcoli_reactions.tsv")
