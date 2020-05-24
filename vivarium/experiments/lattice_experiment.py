@@ -18,7 +18,7 @@ from vivarium.processes.multibody_physics import plot_snapshots
 from vivarium.processes.diffusion_field import plot_field_output
 
 # compartments
-from vivarium.composites.lattice_environment import Lattice
+from vivarium.composites.lattice import Lattice
 from vivarium.composites.growth_division import GrowthDivision
 
 

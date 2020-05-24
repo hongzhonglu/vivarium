@@ -12,7 +12,7 @@ from vivarium.compartment.composition import (
 )
 
 # compartments
-from vivarium.composites.lattice_environment import Lattice
+from vivarium.composites.lattice import Lattice
 from vivarium.composites.chemotaxis_minimal import ChemotaxisMinimal
 
 
@@ -55,5 +55,4 @@ if __name__ == '__main__':
     out_dir = os.path.join('out', 'experiments', 'minimal_chemotaxis')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-
     timeseries = run_chemotaxis_experiment()

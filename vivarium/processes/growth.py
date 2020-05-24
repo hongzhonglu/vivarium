@@ -1,8 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 import numpy as np
 
 from vivarium.compartment.process import Process
+from vivarium.compartment.composition import (
+    simulate_process_in_experiment,
+    plot_simulation_output
+)
 
 
 class Growth(Process):
@@ -35,7 +41,7 @@ class Growth(Process):
     {'global': {'mass': 1339}}
     >>> update = growth_process.next_update(TIMESTEP, state)
     >>> update
-    {'global': {'mass': 2678.0, 'divide': False}}
+    {'global': {'mass': 2678.0}}
     >>> update['global']['mass'] / state['global']['mass']
     2.0
 
@@ -82,7 +88,7 @@ class Growth(Process):
                 'port_mapping': {
                     'global': 'global'},
                 'config': {
-                    'width': 1.23}}}
+                    'width': 1.0}}}
 
     def default_settings(self):
         # default state
@@ -96,8 +102,17 @@ class Growth(Process):
     def next_update(self, timestep, states):
         mass = states['global']['mass']
         new_mass = mass * np.exp(self.parameters['growth_rate'] * timestep)
-        divide = np.random.random() < 0.1
         return {
             'global': {
-                'mass': new_mass,
-                'divide': divide}}
+                'mass': new_mass}}
+
+
+if __name__ == '__main__':
+    out_dir = os.path.join('out', 'tests', 'growth')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    growth = Growth({})
+    settings = {'total_time': 10}
+    timeseries = simulate_process_in_experiment(growth, settings)
+    plot_simulation_output(timeseries, {}, out_dir)
