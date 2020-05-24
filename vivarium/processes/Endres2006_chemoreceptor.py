@@ -114,13 +114,6 @@ class ReceptorCluster(Process):
         ports_schema = deep_merge(ports_schema, ligand_schema)
         return ports_schema
 
-
-    def default_settings(self):
-        return {
-            'process_id': 'receptor',
-            'time_step': 1.0}
-
-
     def next_update(self, timestep, states):
         '''
         Monod-Wyman-Changeux model for mixed cluster activity from:
