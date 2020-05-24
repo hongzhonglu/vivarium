@@ -681,7 +681,7 @@ if __name__ == '__main__':
         metabolism = Metabolism(config)
 
         # simulation settings
-        timeline = [(30, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
+        timeline = [(60, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
         sim_settings = {
             'environment_port': 'external',
             'exchange_port': 'exchange',
@@ -702,7 +702,7 @@ if __name__ == '__main__':
         plot_settings = {
             'max_rows': 30,
             'remove_zeros': True,
-            'skip_ports': ['exchange']}
+            'skip_ports': ['exchange', 'reactions']}
 
         # make plots from simulation output
         plot_simulation_output(timeseries, plot_settings, out_dir, 'BiGG_simulation')
