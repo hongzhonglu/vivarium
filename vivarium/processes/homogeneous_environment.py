@@ -4,7 +4,7 @@ import copy
 
 from vivarium.utils.units import units
 from vivarium.utils.dict_utils import deep_merge
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 
 from vivarium.processes.derive_globals import AVOGADRO
 

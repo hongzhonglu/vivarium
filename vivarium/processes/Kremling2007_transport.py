@@ -7,9 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 from vivarium.utils.flux_conversion import millimolar_to_counts, counts_to_millimolar
-from vivarium.environment.make_media import Media
+from vivarium.utils.make_media import Media
 
 DEFAULT_PARAMETERS = {
     # enzyme synthesis

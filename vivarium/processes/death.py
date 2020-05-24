@@ -39,11 +39,11 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     plot_simulation_output,
     simulate_compartment,
     load_compartment)
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     Process,
     initialize_state,
     COMPARTMENT_STATE,
@@ -154,7 +154,7 @@ class DeathFreezeState(Process):
         * **``internal``**: The internal state of the cell.
         * **``compartment``**: The compartment within which this process
           is embedded. In the topology, the store name should be
-          :py:const:`vivarium.compartment.process.COMPARTMENT_STATE`.
+          :py:const:`vivarium.core.process.COMPARTMENT_STATE`.
         * **``global``**: Should be linked to the ``global``
           :term:`store`.
         '''

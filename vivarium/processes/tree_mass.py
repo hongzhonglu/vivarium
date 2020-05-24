@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.compartment.process import Deriver
+from vivarium.core.process import Deriver
 from vivarium.utils.units import units
 
 from vivarium.processes.derive_globals import AVOGADRO

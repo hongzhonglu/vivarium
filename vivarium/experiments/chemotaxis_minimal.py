@@ -3,17 +3,26 @@ from __future__ import absolute_import, division, print_function
 import os
 import uuid
 
-from vivarium.compartment.tree import (
+from vivarium.core.tree import (
     generate_state,
     Experiment)
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     make_agents,
     simulate_experiment
 )
 
 # compartments
-from vivarium.composites.lattice_environment import Lattice
-from vivarium.composites.chemotaxis_minimal import ChemotaxisMinimal
+from vivarium.compartments.lattice import (
+    Lattice,
+    get_lattice_config
+)
+from vivarium.compartments.chemotaxis_minimal import (
+    ChemotaxisMinimal,
+    get_chemotaxis_config
+)
+
+# processes
+from vivarium.processes.multibody_physics import plot_snapshots
 
 
 
@@ -41,19 +50,29 @@ def make_chemotaxis_experiment(config={}):
         'emitter': emitter,
         'initial_state': config.get('initial_state', {})})
 
-def run_chemotaxis_experiment(config={}, time=10):
+
+def run_chemotaxis_experiment(out_dir):
+    time = 60
+    config = {
+        'environment': get_lattice_config(),
+        'chemotaxis': get_chemotaxis_config({})}
+
     experiment = make_chemotaxis_experiment(config)
 
     settings = {
         'timestep': 1,
         'total_time': time,
         'return_raw_data': True}
-    return simulate_experiment(experiment, settings)
+    data = simulate_experiment(experiment, settings)
 
+    # make snapshot plot
+    agents = {time: time_data['agents'] for time, time_data in data.items()}
+    fields = {time: time_data['fields'] for time, time_data in data.items()}
+    plot_snapshots(agents, fields, config, out_dir, 'snapshots')
 
 if __name__ == '__main__':
     out_dir = os.path.join('out', 'experiments', 'minimal_chemotaxis')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    timeseries = run_chemotaxis_experiment()
+    run_chemotaxis_experiment(out_dir)

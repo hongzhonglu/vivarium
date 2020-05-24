@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 from vivarium.utils.dict_utils import tuplify_port_dicts
 from vivarium.utils.regulation_logic import build_rule
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     simulate_process_in_experiment,
     plot_simulation_output
 )

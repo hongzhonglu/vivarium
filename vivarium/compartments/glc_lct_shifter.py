@@ -4,14 +4,14 @@ import os
 
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.composition import set_axes, load_compartment
-from vivarium.compartment.composition import (
+from vivarium.core.composition import set_axes, load_compartment
+from vivarium.core.composition import (
     simulate_with_environment,
     plot_simulation_output
 )
 
 # composite
-from vivarium.composites.txp_mtb_ge import compose_txp_mtb_ge
+from vivarium.compartments.txp_mtb_ge import compose_txp_mtb_ge
 
 # process configurations
 from vivarium.processes.metabolism import get_iAF1260b_config

@@ -39,7 +39,7 @@ Processes
 ---------
 
 Processes are written as classes that inherit from
-:py:class:`vivarium.compartment.process.Process`.  To create a
+:py:class:`vivarium.core.process.Process`.  To create a
 composite, we create instances of these classes to make the processes we
 want to compose. If a process is configurable, we might provide a
 dictionary of configuration options. For information on configuring a
@@ -55,7 +55,7 @@ Stores
 
 Each store is implemented as a Python dictionary where the keys are the
 variable names and the values are the variable values. We also have
-wrapper :py:class:`vivarium.compartment.process.Store` objects that hold
+wrapper :py:class:`vivarium.core.process.Store` objects that hold
 these dictionaries.
 
 ----------------------------
@@ -92,7 +92,7 @@ How Processes Define Ports
 ==========================
 
 A process specifies its port names in its constructor by calling the
-superclass (:py:class:`vivarium.compartment.process.Process`)
+superclass (:py:class:`vivarium.core.process.Process`)
 constructor. For example, the
 :py:class:`vivarium.processes.convenience_kinetics.ConvenienceKinetics`
 class contains this line:
@@ -180,7 +180,7 @@ Example Composite
 To put all this information together, let's take a look at an example
 composite that combines transport, growth, division, and expression
 processes. This example comes from
-:py:func:`vivarium.composites.growth_division.compose_growth_division`.
+:py:func:`vivarium.compartments.growth_division.compose_growth_division`.
 
 .. code-block:: python
 
@@ -261,7 +261,7 @@ from the state, but it is not directly updated by processes.
 
 Third, we discuss the initialization of the states. This line will
 appear in each composite. The inner workings of
-:py:func:`vivarium.compartment.process.initialize_state` are beyond
+:py:func:`vivarium.core.process.initialize_state` are beyond
 the scope of this guide.
 
 Lastly, we provide extra information in ``options``, for example the

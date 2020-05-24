@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import copy
 
-from vivarium.compartment.process import Process, keys_list
-from vivarium.compartment.composition import (
+from vivarium.core.process import Process, keys_list
+from vivarium.core.composition import (
     simulate_process,
     plot_simulation_output
 )

@@ -2,14 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     initialize_state)
 
-from vivarium.compartment.tree import (
+from vivarium.core.tree import (
     Compartment,
 )
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     compartment_in_experiment,
     simulate_with_environment,
     plot_simulation_output

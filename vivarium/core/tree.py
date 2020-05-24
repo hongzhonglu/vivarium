@@ -8,11 +8,11 @@ import datetime
 import numpy as np
 import logging as log
 
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     Process,
     divider_library)
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
-from vivarium.compartment.emitter import get_emitter
+from vivarium.core.emitter import get_emitter
 
 # processes
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO
@@ -746,20 +746,14 @@ class Experiment(object):
                 for state_id in self.states:
                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            all_processes = {
-                path: state
-                for path, state in self.state.depth()
-                if state.value is not None and isinstance(state.value, Process)}
-
-            processes = {
-                path: state
-                for path, state in all_processes.items()
-                if not state.value.is_deriver()}
-
-            derivers = {
-                path: state
-                for path, state in all_processes.items()
-                if state.value.is_deriver()}
+            processes = {}
+            derivers = {}
+            for path, state in self.state.depth():
+                if state.value is not None and isinstance(state.value, Process):
+                    if state.value.is_deriver():
+                        derivers[path] = state
+                    else:
+                        processes[path] = state
 
             front = {
                 path: process

@@ -6,7 +6,7 @@ import numpy as np
 import scipy.constants as constants
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 from vivarium.utils.dict_utils import deep_merge
 
 # PMF ~170mV at pH 7. ~140mV at pH 7.7 (Berg)

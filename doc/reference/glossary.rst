@@ -111,7 +111,7 @@ Glossary
         A process class is a Python class that defines a process's
         model. These classes can be instantiated, and optionally
         configured, to create :term:`processes`. Each process class must
-        subclass either :py:class:`vivarium.compartment.process.Process`
+        subclass either :py:class:`vivarium.core.process.Process`
         or another process class.
 
     Store

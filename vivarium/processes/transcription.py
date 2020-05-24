@@ -10,7 +10,7 @@ import logging as log
 from arrow import StochasticSystem
 
 from vivarium.utils.dict_utils import deep_merge
-from vivarium.compartment.process import Process, keys_list
+from vivarium.core.process import Process, keys_list
 from vivarium.states.chromosome import Chromosome, Rnap, Promoter, frequencies, add_merge, toy_chromosome_config
 from vivarium.utils.polymerize import Elongation, build_stoichiometry, template_products
 from vivarium.data.nucleotides import nucleotides

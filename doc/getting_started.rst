@@ -378,7 +378,7 @@ expression model.
 
 In Vivarium, we store individual processes in
 ``vivarium/vivarium/processes`` and composites of processes in
-``vivarium/vivarium/composites``.
+``vivarium/vivarium/compartments``.
 
 Running Processes and Composites in Isolation
 =============================================
@@ -428,7 +428,7 @@ Lastly, try running the ``flagella_expression`` composite like this:
 
 .. code-block:: console
 
-    $ python vivarium_work/vivarium/vivarium/composites/flagella_expression.py
+    $ python vivarium_work/vivarium/vivarium/compartments/flagella_expression.py
 
 Now in the ``flagella_expression_composite`` in ``tests``, you should
 see an image containing a plot like this:

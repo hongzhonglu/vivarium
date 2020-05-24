@@ -18,7 +18,7 @@ Models in Vivarium are built by combining :term:`processes`, each of
 which models a mechanism in the cell. These processes can be combined in
 a :term:`composite` to build more complicated models. Process models are
 defined in a class that inherit from
-:py:class:`vivarium.compartment.process.Process`, and these
+:py:class:`vivarium.core.process.Process`, and these
 :term:`process classes` can be instantiated to create individual
 processes.  During instantiation, the process class may accept
 configuration options.
@@ -84,7 +84,7 @@ not used by the process class. Any information needed by the process
 class MAY also be included in these parameters. Once the object has
 been instantiated, these parameters are available as
 ``self.parameters``, where they have been stored by the
-:py:class:`vivarium.compartment.process.Process` constructor.
+:py:class:`vivarium.core.process.Process` constructor.
 
 Example Constructor
 -------------------

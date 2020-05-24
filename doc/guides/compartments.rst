@@ -33,7 +33,7 @@ Directly Creating Compartments
 ==============================
 
 You can create compartments directly using either the
-:py:class:`vivarium.compartment.process.Compartment` constructor or by
+:py:class:`vivarium.core.process.Compartment` constructor or by
 using a framework function.  Both are beyond the scope of this
 documentation.
 

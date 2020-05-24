@@ -30,9 +30,9 @@ import os
 
 from scipy import constants
 
-from vivarium.compartment.process import Process
-from vivarium.compartment.tree import schema_for
-from vivarium.compartment.composition import (
+from vivarium.core.process import Process
+from vivarium.core.tree import schema_for
+from vivarium.core.composition import (
     simulate_process_in_experiment,
     plot_simulation_output,
     flatten_timeseries,

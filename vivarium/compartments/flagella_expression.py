@@ -4,7 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     load_compartment,
     simulate_compartment,
     plot_compartment_topology,
@@ -16,7 +16,7 @@ from vivarium.data.chromosomes.flagella_chromosome import FlagellaChromosome
 from vivarium.states.chromosome import Chromosome, rna_bases, sequence_monomers
 from vivarium.processes.transcription import UNBOUND_RNAP_KEY
 from vivarium.processes.translation import UNBOUND_RIBOSOME_KEY
-from vivarium.composites.gene_expression import (
+from vivarium.compartments.gene_expression import (
     compose_gene_expression,
     plot_gene_expression_output,
     gene_network_plot
@@ -281,7 +281,7 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # run scan with python vivarium/composites/flagella_expression.py --scan
+    # run scan with python vivarium/compartments/flagella_expression.py --scan
     parser = argparse.ArgumentParser(description='flagella expression')
     parser.add_argument('--scan', '-s', action='store_true', default=False,)
     parser.add_argument('--network', '-n', action='store_true', default=False, )

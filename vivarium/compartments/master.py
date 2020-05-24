@@ -2,13 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     initialize_state)
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     get_derivers,
     simulate_with_environment,
     plot_simulation_output, load_compartment)
-from vivarium.composites.gene_expression import plot_gene_expression_output
+from vivarium.compartments.gene_expression import plot_gene_expression_output
 
 # processes
 from vivarium.processes.division import Division, divide_condition

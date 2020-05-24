@@ -2,15 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import (
+from vivarium.core.process import initialize_state
+from vivarium.core.composition import (
     load_compartment,
     get_derivers,
     simulate_with_environment,
     plot_simulation_output,
     plot_compartment_topology)
-from vivarium.composites.gene_expression import plot_gene_expression_output
-from vivarium.composites.flagella_expression import get_flagella_expression_config
+from vivarium.compartments.gene_expression import plot_gene_expression_output
+from vivarium.compartments.flagella_expression import get_flagella_expression_config
 
 # processes
 from vivarium.processes.division import (

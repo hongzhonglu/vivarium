@@ -7,8 +7,8 @@ import random
 
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.composition import simulate_process_in_experiment
-from vivarium.compartment.process import Process
+from vivarium.core.composition import simulate_process_in_experiment
+from vivarium.core.process import Process
 from vivarium.utils.dict_utils import deep_merge
 from vivarium.utils.units import units
 
@@ -113,13 +113,6 @@ class ReceptorCluster(Process):
         ports_schema = deep_merge(ports_schema, set_schema)
         ports_schema = deep_merge(ports_schema, ligand_schema)
         return ports_schema
-
-
-    def default_settings(self):
-        return {
-            'process_id': 'receptor',
-            'time_step': 1.0}
-
 
     def next_update(self, timestep, states):
         '''

@@ -7,18 +7,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 
-from vivarium.compartment.tree import (
+from vivarium.core.tree import (
     Experiment,
     generate_derivers,
     deriver_library
 )
-from vivarium.compartment import emitter as emit
+from vivarium.core import emitter as emit
 from vivarium.utils.dict_utils import (
     deep_merge,
     deep_merge_check,
     flatten_timeseries,
 )
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     initialize_state,
     Compartment,
     COMPARTMENT_STATE,
@@ -434,13 +434,13 @@ def simulate_experiment(experiment, settings={}):
     total_time = settings.get('total_time', 10)
     return_raw_data = settings.get('return_raw_data', False)
 
-    # run simulation
-    experiment.update(total_time)
+    # # run simulation
+    # experiment.update(total_time)
 
-    # time = 0
-    # while time < total_time:
-    #     time += timestep
-    #     experiment.update(timestep)
+    time = 0
+    while time < total_time:
+        time += timestep
+        experiment.update(timestep)
 
     if return_raw_data:
         return experiment.emitter.get_data()

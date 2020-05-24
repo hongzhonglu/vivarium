@@ -1,5 +1,5 @@
-from vivarium.compartment.process import Process
-from vivarium.compartment.composition import (
+from vivarium.core.process import Process
+from vivarium.core.composition import (
     simulate_process,
     plot_simulation_output,
 )
