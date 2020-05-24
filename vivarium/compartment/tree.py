@@ -737,20 +737,14 @@ class Experiment(object):
                 for state_id in self.states:
                     print('{}: {}'.format(time, self.states[state_id].to_dict()))
 
-            all_processes = {
-                path: state
-                for path, state in self.state.depth()
-                if state.value is not None and isinstance(state.value, Process)}
-
-            processes = {
-                path: state
-                for path, state in all_processes.items()
-                if not state.value.is_deriver()}
-
-            derivers = {
-                path: state
-                for path, state in all_processes.items()
-                if state.value.is_deriver()}
+            processes = {}
+            derivers = {}
+            for path, state in self.state.depth():
+                if state.value is not None and isinstance(state.value, Process):
+                    if state.value.is_deriver():
+                        derivers[path] = state
+                    else:
+                        processes[path] = state
 
             front = {
                 path: process
