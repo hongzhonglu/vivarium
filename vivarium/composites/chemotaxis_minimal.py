@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import random
 
-from vivarium.compartment.tree import Compartment
-from vivarium.compartment.composition import (
+from vivarium.core.tree import Compartment
+from vivarium.core.composition import (
     compartment_in_experiment,
     simulate_with_environment,
     plot_simulation_output)

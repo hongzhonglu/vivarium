@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from scipy import constants
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 from vivarium.environment.make_media import Media
 from vivarium.environment.look_up import LookUp
 from vivarium.utils.rate_law_utilities import load_reactions

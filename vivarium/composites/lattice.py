@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.tree import Compartment
-from vivarium.compartment.composition import compartment_in_experiment
+from vivarium.core.tree import Compartment
+from vivarium.core.composition import compartment_in_experiment
 
 # processes
 from vivarium.processes.multibody_physics import (

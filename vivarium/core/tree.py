@@ -8,11 +8,11 @@ import datetime
 import numpy as np
 import logging as log
 
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     Process,
     divider_library)
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
-from vivarium.compartment.emitter import get_emitter
+from vivarium.core.emitter import get_emitter
 
 # processes
 from vivarium.processes.derive_globals import DeriveGlobals, AVOGADRO

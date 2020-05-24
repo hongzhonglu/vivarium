@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 
 
 class Template(Process):

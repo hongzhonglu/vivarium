@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import os
 import uuid
 
-from vivarium.compartment.tree import (
+from vivarium.core.tree import (
     generate_state,
     Experiment)
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     make_agents,
     simulate_experiment
 )

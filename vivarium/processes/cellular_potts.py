@@ -8,8 +8,8 @@ import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import Process
-from vivarium.compartment.composition import (
+from vivarium.core.process import Process
+from vivarium.core.composition import (
     process_in_compartment,
     simulate_with_environment)
 

@@ -118,11 +118,11 @@ Implement the Model
 To implement the model, create a new Python file named
 ``glucose_phosphorylation.py`` in the ``vivarium/processes/`` directory.
 Then we create a new class that inherits from
-:py:class:`vivarium.compartment.process`:
+:py:class:`vivarium.core.process`:
 
 .. code-block:: python
 
-    from vivarium.compartment.process import Process
+    from vivarium.core.process import Process
 
     class GlucosePhosphorylation(Process):
         pass
@@ -146,7 +146,7 @@ process.
 
 .. code-block:: python
 
-    from vivarium.compartment.process import Process
+    from vivarium.core.process import Process
 
     class GlucosePhosphorylation(Process):
 
@@ -199,7 +199,7 @@ that ``k_ATP`` took on the default value.
 
 But wait! Where did the ``parameters`` attribute come from? We never
 created that attribute, but
-:py:class:`vivarium.compartment.process.Process` made it  from the
+:py:class:`vivarium.core.process.Process` made it  from the
 ``parameters`` argument we passed to its constructor. We'll take
 advantage of this in the next step.
 
@@ -399,12 +399,12 @@ for demonstration.
         }
 
 Now, we can run a simulation using Vivarium's
-:py:func:`vivarium.compartment.composition.simulate_process` function
+:py:func:`vivarium.core.composition.simulate_process` function
 like this:
 
 .. code-block:: python
 
-    from vivarium.compartment.composition import (
+    from vivarium.core.composition import (
         simulate_process,
         plot_simulation_output,
     )
@@ -424,7 +424,7 @@ like this:
         plot_simulation_output(timeseries, {}, './')
 
 We use
-:py:class:`vivarium.compartment.composition.plot_simulation_output` to
+:py:class:`vivarium.core.composition.plot_simulation_output` to
 plot the output from our simulation. In ``simulation.png`` you should
 see an output plot like this:
 

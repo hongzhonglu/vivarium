@@ -13,8 +13,8 @@ from matplotlib import colors
 from matplotlib.patches import Patch
 
 from vivarium.utils.dict_utils import deep_merge
-from vivarium.compartment.process import Process
-from vivarium.compartment.composition import simulate_process_in_experiment
+from vivarium.core.process import Process
+from vivarium.core.composition import simulate_process_in_experiment
 
 
 DEFAULT_PARAMETERS = {

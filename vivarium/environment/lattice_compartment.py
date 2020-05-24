@@ -2,10 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 import uuid
 
-from vivarium.compartment.process import Compartment, initialize_state, get_minimum_timestep, Process, Store
-from vivarium.compartment.emitter import get_emitter
+from vivarium.core.process import Compartment, initialize_state, get_minimum_timestep, Process, Store
+from vivarium.core.emitter import get_emitter
 from vivarium.actor.inner import Simulation
-from vivarium.compartment.composition import get_derivers
+from vivarium.core.composition import get_derivers
 
 
 # TODO -- remove these functions once all key manipulation is gone

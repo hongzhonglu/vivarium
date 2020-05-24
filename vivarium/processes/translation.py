@@ -9,7 +9,7 @@ import numpy as np
 import random
 from arrow import StochasticSystem
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 from vivarium.data.amino_acids import amino_acids
 from vivarium.data.molecular_weight import molecular_weight
 from vivarium.utils.datum import Datum

@@ -4,7 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     load_compartment,
     simulate_compartment,
     plot_compartment_topology,

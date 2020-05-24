@@ -16,7 +16,7 @@ setup(
         'vivarium',
         'vivarium.actor',
         'vivarium.analysis',
-        'vivarium.compartment',
+        'vivarium.core',
         'vivarium.composites',
         'vivarium.environment',
         'vivarium.parameters',

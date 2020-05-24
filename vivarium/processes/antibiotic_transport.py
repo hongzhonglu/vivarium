@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     plot_simulation_output,
     simulate_process_with_environment,
     flatten_timeseries,

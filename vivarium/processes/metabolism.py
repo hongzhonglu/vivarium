@@ -19,8 +19,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import Process
-from vivarium.compartment.composition import (
+from vivarium.core.process import Process
+from vivarium.core.composition import (
     simulate_process_with_environment,
     save_timeseries,
     flatten_timeseries,

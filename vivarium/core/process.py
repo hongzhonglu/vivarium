@@ -6,7 +6,7 @@ import random
 import numpy as np
 import logging as log
 
-import vivarium.compartment.emitter as emit
+import vivarium.core.emitter as emit
 from vivarium.utils.dict_utils import merge_dicts, deep_merge, deep_merge_check
 
 

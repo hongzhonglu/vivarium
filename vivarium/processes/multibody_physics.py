@@ -29,11 +29,11 @@ from pygame.locals import *
 from pygame.color import *
 
 # vivarium imports
-from vivarium.compartment.emitter import timeseries_from_data
-from vivarium.compartment.process import (
+from vivarium.core.emitter import timeseries_from_data
+from vivarium.core.process import (
     Process,
     COMPARTMENT_STATE)
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     process_in_experiment,
     simulate_experiment)
 from vivarium.processes.Vladimirov2008_motor import run, tumble

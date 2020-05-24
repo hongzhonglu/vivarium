@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import os
 
-from vivarium.compartment.composition import (
+from vivarium.core.composition import (
     plot_simulation_output,
     simulate_with_environment,
     get_derivers,
@@ -14,7 +14,7 @@ from vivarium.compartment.composition import (
     TEST_OUT_DIR,
     assert_timeseries_close,
     load_compartment)
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     initialize_state,
     COMPARTMENT_STATE,
 )

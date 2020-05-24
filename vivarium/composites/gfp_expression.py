@@ -1,7 +1,7 @@
 import os
 from vivarium.utils.units import units
 
-from vivarium.compartment.composition import load_compartment, simulate_compartment
+from vivarium.core.composition import load_compartment, simulate_compartment
 from vivarium.data.proteins import GFP
 from vivarium.data.chromosomes.gfp_chromosome import gfp_plasmid_config
 from vivarium.states.chromosome import Chromosome, Promoter, rna_bases, sequence_monomers

@@ -7,8 +7,8 @@ from scipy import constants
 from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import Process
-from vivarium.compartment.composition import simulate_process
+from vivarium.core.process import Process
+from vivarium.core.composition import simulate_process
 
 
 # laplacian kernel for diffusion

@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import argparse
 
-from vivarium.compartment.process import initialize_state
-from vivarium.compartment.composition import (
+from vivarium.core.process import initialize_state
+from vivarium.core.composition import (
     get_derivers,
     simulate_with_environment,
     plot_simulation_output,

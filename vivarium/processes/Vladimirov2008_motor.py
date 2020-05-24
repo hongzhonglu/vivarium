@@ -8,7 +8,7 @@ import numpy as np
 from numpy import linspace
 import matplotlib.pyplot as plt
 
-from vivarium.compartment.process import Process
+from vivarium.core.process import Process
 
 # parameters
 DEFAULT_PARAMETERS = {

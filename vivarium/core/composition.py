@@ -7,18 +7,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 
-from vivarium.compartment.tree import (
+from vivarium.core.tree import (
     Experiment,
     generate_derivers,
     deriver_library
 )
-from vivarium.compartment import emitter as emit
+from vivarium.core import emitter as emit
 from vivarium.utils.dict_utils import (
     deep_merge,
     deep_merge_check,
     flatten_timeseries,
 )
-from vivarium.compartment.process import (
+from vivarium.core.process import (
     initialize_state,
     Compartment,
     COMPARTMENT_STATE,
