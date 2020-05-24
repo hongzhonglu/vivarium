@@ -14,7 +14,6 @@ class Timeline(Process):
         # get ports
         ports = {'global': ['time']}
         for event in self.timeline:
-            # states = list(event[1].keys())
             for state in list(event[1].keys()):
                 port = {state[0]: [state[1]]}
                 ports = deep_merge(ports, port)

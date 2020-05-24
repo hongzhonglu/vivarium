@@ -21,10 +21,10 @@ from vivarium.processes.derive_concentrations import DeriveConcentrations
 from vivarium.processes.tree_mass import TreeMass
 
 deriver_library = {
-    'globals': DeriveGlobals,
     'mmol_to_counts': DeriveCounts,
     'counts_to_mmol': DeriveConcentrations,
     'mass': TreeMass,
+    'globals': DeriveGlobals,
 }
 
 

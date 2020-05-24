@@ -114,7 +114,7 @@ class Metabolism(Process):
         'initial_mass': 1339,  # fg
         'global_deriver_key': 'global_deriver',
         'mass_deriver_key': 'mass_deriver',
-        'time_step': 5,
+        'time_step': 2,
     }
 
     def __init__(self, initial_parameters={}):
