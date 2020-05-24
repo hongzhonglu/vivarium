@@ -12,8 +12,8 @@ from vivarium.core.composition import (
 )
 
 # compartments
-from vivarium.composites.lattice import Lattice
-from vivarium.composites.chemotaxis_minimal import ChemotaxisMinimal
+from vivarium.compartments.lattice import Lattice
+from vivarium.compartments.chemotaxis_minimal import ChemotaxisMinimal
 
 
 

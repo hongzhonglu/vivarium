@@ -11,7 +11,7 @@ from vivarium.core.composition import (
 )
 
 # composite
-from vivarium.composites.txp_mtb_ge import compose_txp_mtb_ge
+from vivarium.compartments.txp_mtb_ge import compose_txp_mtb_ge
 
 # process configurations
 from vivarium.processes.metabolism import get_iAF1260b_config

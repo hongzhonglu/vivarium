@@ -180,7 +180,7 @@ Example Composite
 To put all this information together, let's take a look at an example
 composite that combines transport, growth, division, and expression
 processes. This example comes from
-:py:func:`vivarium.composites.growth_division.compose_growth_division`.
+:py:func:`vivarium.compartments.growth_division.compose_growth_division`.
 
 .. code-block:: python
 

@@ -17,7 +17,7 @@ setup(
         'vivarium.actor',
         'vivarium.analysis',
         'vivarium.core',
-        'vivarium.composites',
+        'vivarium.compartments',
         'vivarium.environment',
         'vivarium.parameters',
         'vivarium.processes',
@@ -39,7 +39,7 @@ setup(
             'vivarium.actor.control=vivarium.actor.control:run',
             'vivarium.environment.boot=vivarium.environment.boot:run',
             'vivarium.environment.control=vivarium.environment.control:run',
-            'vivarium.composites=vivarium.composites:run']},
+            'vivarium.compartments=vivarium.compartments:run']},
     long_description=long_description,
     long_description_content_type='text/markdown',
     package_data={

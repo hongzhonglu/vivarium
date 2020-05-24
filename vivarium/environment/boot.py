@@ -48,11 +48,11 @@ from vivarium.processes.antibiotic_transport import AntibioticTransport
 from vivarium.processes.transcription import Transcription
 
 # composites
-from vivarium.composites.master import compose_master
-from vivarium.composites.glc_lct_shifter import compose_glc_lct_shifter
-# from vivarium.composites.growth_division import compose_growth_division
-# from vivarium.composites.chemotaxis_minimal import compose_simple_chemotaxis
-from vivarium.composites.antibiotics import (
+from vivarium.compartments.master import compose_master
+from vivarium.compartments.glc_lct_shifter import compose_glc_lct_shifter
+# from vivarium.compartments.growth_division import compose_growth_division
+# from vivarium.compartments.chemotaxis_minimal import compose_simple_chemotaxis
+from vivarium.compartments.antibiotics import (
     compose_antibiotics,
 )
 

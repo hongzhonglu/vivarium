@@ -14,7 +14,7 @@ from vivarium.core.composition import (
     simulate_with_environment)
 
 # composites
-from vivarium.composites.master import compose_master
+from vivarium.compartments.master import compose_master
 
 
 
