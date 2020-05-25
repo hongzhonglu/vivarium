@@ -818,6 +818,10 @@ class Experiment(object):
         # run emitters
         self.emit_data()
 
+    def update_interval(self, time, interval):
+        while self.local_time < time:
+            self.update(interval)
+
 def test_recursive_store():
     environment_config = {
         'environment': {
