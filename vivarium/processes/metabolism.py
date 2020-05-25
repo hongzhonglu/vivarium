@@ -122,6 +122,8 @@ class Metabolism(Process):
     def __init__(self, initial_parameters={}):
         self.nAvogadro = AVOGADRO
 
+        time_step = initial_parameters.get('time_step', self.defaults['time_step'])
+
         # initialize FBA
         self.fba = CobraFBA(initial_parameters)
         self.reaction_ids = self.fba.reaction_ids()
@@ -187,7 +189,7 @@ class Metabolism(Process):
             'global': GLOBALS}
 
         ## parameters
-        parameters = {'time_step': self.defaults['time_step']}
+        parameters = {'time_step': time_step}
         parameters.update(initial_parameters)
 
         self.global_deriver_key = self.or_default(
@@ -212,8 +214,8 @@ class Metabolism(Process):
                         'mass': self.fba.molecular_weights[mol_id]}}
                 for mol_id in self.internal_state_ids},
             'reactions': {rxn_id: {
-                    'updater': 'set',
-                    'divide': 'set'}
+                    '_updater': 'set',
+                    '_divider': 'set'}
                 for rxn_id in self.reaction_ids}}
         state_schema = {
             port: {
@@ -462,8 +464,18 @@ def run_sim_save_network(config=get_toy_configuration(), out_dir='out/network'):
     save_network(nodes, edges, out_dir)
 
 def run_metabolism(metabolism, settings):
+    environment_volume = settings.get('environment_volume', 1e-12)
     sim_settings = default_sim_settings
     sim_settings.update(settings)
+
+    environment = {
+        'volume': environment_volume,
+        'states': ['glc__D_e', 'lcts_e'],
+        'environment_port': 'external',
+        'exchange_port': 'exchange'}
+    # import ipdb; ipdb.set_trace()
+
+
     return simulate_process_in_experiment(metabolism, sim_settings)
 
 # plots
@@ -629,28 +641,6 @@ def test_BiGG_metabolism(config=get_iAF1260b_config(), settings={}):
     metabolism = Metabolism(config)
     run_metabolism(metabolism, settings)
 
-def test_config(config=get_toy_configuration()):
-    # configure metabolism process
-    metabolism = Metabolism(config)
-
-    print('MODEL: {}'.format(metabolism.fba.model))
-    print('REACTIONS: {}'.format(metabolism.fba.model.reactions))
-    print('METABOLITES: {}'.format(metabolism.fba.model.metabolites))
-    print('GENES: {}'.format(metabolism.fba.model.genes))
-    print('COMPARTMENTS: {}'.format(metabolism.fba.model.compartments))
-    print('SOLVER: {}'.format(metabolism.fba.model.solver))
-    print('EXPRESSION: {}'.format(metabolism.fba.model.objective.expression))
-
-    print(metabolism.fba.optimize())
-    print(metabolism.fba.model.summary())
-    print('internal: {}'.format(metabolism.fba.internal_reactions()))
-    print('external: {}'.format(metabolism.fba.external_reactions()))
-    print(metabolism.fba.reaction_ids())
-    print(metabolism.fba.get_reactions())
-    print(metabolism.fba.get_reaction_bounds())
-    print(metabolism.fba.read_exchange_fluxes())
-
-
 reference_sim_settings = {
     'environment_port': 'external',
     'exchange_port': 'exchange',
@@ -683,7 +673,7 @@ if __name__ == '__main__':
         metabolism = Metabolism(config)
 
         # simulation settings
-        timeline = [(60, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
+        timeline = [(100, {})] # 2520 sec (42 min) is the expected doubling time in minimal media
         sim_settings = {
             'environment_port': 'external',
             'exchange_port': 'exchange',
@@ -695,10 +685,17 @@ if __name__ == '__main__':
         timeseries = run_metabolism(metabolism, sim_settings)
         save_timeseries(timeseries, out_dir)
 
+
+
+        import ipdb; ipdb.set_trace()
+
+
         volume_ts = timeseries['global']['volume']
         mass_ts = timeseries['global']['mass']
-        print('volume growth: {}'.format(volume_ts[-1]/volume_ts[0]))
+        print('volume growth: {}'.format(volume_ts[-1] / volume_ts[0]))
         print('mass growth: {}'.format(mass_ts[-1] / mass_ts[0]))
+
+
 
         # plot settings
         plot_settings = {

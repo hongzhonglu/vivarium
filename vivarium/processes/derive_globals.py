@@ -79,7 +79,7 @@ class DeriveGlobals(Deriver):
 
     def ports_schema(self):
         set_states = ['volume', 'mmol_to_counts', 'length', 'surface_area']
-        set_divide = ['density']
+        split_divide = ['volume', 'length', 'surface_area']
         set_emit = {'global': ['volume', 'width', 'length', 'surface_area']}
 
         # default state
@@ -90,43 +90,29 @@ class DeriveGlobals(Deriver):
         length = length_from_volume(volume.magnitude, self.width)
         surface_area = surface_area_from_length(length, self.width)
 
-        global_state = {
-            'volume': volume.to('fL').magnitude,
-            'mmol_to_counts': mmol_to_counts.magnitude,
-            'density': density.magnitude,
-            'width': self.width,
-            'length': length,
-            'surface_area': surface_area}
         default_state = {
-            'global': global_state}
-
-        # make schema
-        schema = {
             'global': {
-                state_id : {
-                    'updater': 'set'}
-                for state_id in set_states}}
-        divide_schema = {
-            'global': {
-                state_id : {
-                    'divide': 'set'}
-                for state_id in set_divide}}
-        emit_schema = {
-            port: {
-                state_id: {
-                    '_emit': True}
-                for state_id in states}
-            for port, states in set_emit.items()}
-        state_schema = {
-            port: {
-                state_id: {
-                    '_default': value}
-                for state_id, value in states.items()}
-            for port, states in default_state.items()}
+                'volume': volume.to('fL').magnitude,
+                'mmol_to_counts': mmol_to_counts.magnitude,
+                'density': density.magnitude,
+                'width': self.width,
+                'length': length,
+                'surface_area': surface_area}}
 
-        schema = deep_merge(schema, divide_schema)
-        schema = deep_merge(schema, emit_schema)
-        schema = deep_merge(schema, state_schema)
+        schema = {}
+        for port, states in default_state.items():
+            schema[port] = {}
+            for state_id, value in states.items():
+                schema[port][state_id] = {}
+                if state_id in set_states:
+                    schema[port][state_id]['_updater'] = 'set'
+                if state_id in set_emit[port]:
+                    schema[port][state_id]['_emit'] = True
+                if state_id in split_divide:
+                    schema[port][state_id]['_divider'] = 'split'
+                if state_id in default_state[port]:
+                    schema[port][state_id]['_default'] = default_state[port][state_id]
+
         return schema
 
     def next_update(self, timestep, states):
